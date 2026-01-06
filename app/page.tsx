@@ -1,4 +1,4 @@
-import Store from './components/Store'; // Tu diseño UI se mantiene intacto
+import Store from '../components/Store'; // Tu diseño UI se mantiene intacto
 import { supabase } from '@/lib/supabase'; // Importamos la conexión nueva
 
 // Evitamos caché para que si cambias el precio, se vea al instante
