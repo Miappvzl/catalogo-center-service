@@ -1,130 +1,111 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
+import { useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr' // Usamos la librería moderna
+import { useRouter } from 'next/navigation'
+import { Lock, Mail, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false); // Switch entre Login y Registro
-  const [msg, setMsg] = useState('');
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const router = useRouter()
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMsg('');
+  // Cliente de Supabase para el navegador
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setErrorMsg('')
 
     try {
-      if (isSignUp) {
-        // --- LÓGICA DE REGISTRO ---
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (error) throw error;
-        setMsg('✅ ¡Cuenta creada! Revisa tu correo para confirmar (o inicia sesión si desactivaste confirmación).');
-      } else {
-        // --- LÓGICA DE LOGIN ---
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (error) throw error;
-        router.push('/admin'); // Si entra, lo mandamos al Admin
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        setErrorMsg('Credenciales incorrectas')
+        setLoading(false)
+        return
       }
-    } catch (error: any) {
-      setMsg(`❌ ${error.message}`);
-    } finally {
-      setLoading(false);
+
+      // SI LLEGAMOS AQUÍ, EL JSON QUE VISTE YA SUCEDIÓ ✅
+      
+      // 1. Refrescamos el router para que el Middleware se entere de la cookie nueva
+      router.refresh()
+      
+      // 2. Forzamos la redirección
+      router.push('/admin')
+
+    } catch (err) {
+      setErrorMsg('Ocurrió un error inesperado')
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-        
-        {/* Header Visual */}
-        <div className="bg-zinc-900 p-8 text-center">
-          <div className="inline-flex bg-zinc-800 p-3 rounded-full mb-4">
-            <Lock className="text-blue-400" size={24} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+        <div className="text-center mb-8">
+          <div className="bg-black text-white w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-gray-200">
+            <Lock size={24} />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Center Service Admin</h1>
-          <p className="text-zinc-400 text-sm mt-2">Acceso exclusivo para administradores</p>
+          <h1 className="text-2xl font-bold text-gray-900">Bienvenido de nuevo</h1>
+          <p className="text-gray-500 text-sm mt-1">Ingresa a tu panel de control</p>
         </div>
 
-        {/* Formulario */}
-        <div className="p-8">
-          
-          {/* Tabs Login/Registro */}
-          <div className="flex bg-zinc-100 p-1 rounded-lg mb-6">
-            <button 
-              onClick={() => setIsSignUp(false)}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${!isSignUp ? 'bg-white shadow text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              Iniciar Sesión
-            </button>
-            <button 
-              onClick={() => setIsSignUp(true)}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${isSignUp ? 'bg-white shadow text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              Crear Cuenta
-            </button>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Email</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                placeholder="tu@email.com"
+                required
+              />
+            </div>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-zinc-500 uppercase">Email Corporativo</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  placeholder="admin@centerservice.com"
-                  className="w-full pl-10 p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Contraseña</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                placeholder="••••••••"
+                required
+              />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-zinc-500 uppercase">Contraseña</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input 
-                  type="password" 
-                  required
-                  placeholder="••••••••"
-                  className="w-full pl-10 p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                />
-              </div>
+          {errorMsg && (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 font-medium">
+              {errorMsg}
             </div>
+          )}
 
-            {msg && (
-              <p className={`text-sm text-center p-2 rounded ${msg.includes('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                {msg}
-              </p>
-            )}
-
-            <button 
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 mt-4"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? 'Registrarse Gratis' : 'Entrar al Panel')}
-              {!loading && <ArrowRight size={18} />}
-            </button>
-          </form>
-        </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-black text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 className="animate-spin" /> : 'Ingresar al Panel'}
+          </button>
+        </form>
       </div>
     </div>
-  );
+  )
 }
