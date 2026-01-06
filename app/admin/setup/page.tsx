@@ -1,95 +1,128 @@
 'use client'
+
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js' // <--- IMPORTACIÓN CORREGIDA
+import { createBrowserClient } from '@supabase/ssr' // <--- CAMBIO: Usamos la librería moderna
 import { useRouter } from 'next/navigation'
+import { Store, Loader2, ArrowRight } from 'lucide-react'
 
-// Inicializamos cliente manual (Igual que en Login/Registro)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-export default function SetupStore() {
-  const [slug, setSlug] = useState('')
+export default function SetupPage() {
   const [name, setName] = useState('')
+  const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleSave = async (e: React.FormEvent) => {
+  // CAMBIO: Usamos createBrowserClient igual que en el Admin y Login
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setName(val)
+    setSlug(val.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''))
+  }
+
+  const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    // 1. Obtener usuario actual
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      alert("No estás autenticado")
-      router.push('/login')
-      return
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+         router.push('/login')
+         return
+      }
 
-    // 2. Guardar tienda
-    // Formateamos el slug para que sea url-amigable (ej: "Mi Tienda" -> "mi-tienda")
-    const cleanSlug = slug.toLowerCase().trim().replace(/\s+/g, '-')
+      // 1. Verificar si el slug ya existe
+      const { data: existing } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle() // Usamos maybeSingle para evitar errores en consola
 
-    const { error } = await supabase.from('stores').insert({
-      user_id: user.id,
-      slug: cleanSlug,
-      name: name
-    })
+      if (existing) {
+        alert('¡Esa URL ya está ocupada! Prueba con otra.')
+        setLoading(false)
+        return
+      }
 
-    if (error) {
+      // 2. Crear la tienda
+      const { error } = await supabase
+        .from('stores')
+        .insert([
+          {
+            user_id: user.id,
+            name: name,
+            slug: slug,
+            currency_type: 'usd',
+            phone: ''
+          }
+        ])
+
+      if (error) throw error
+
+      // 3. Éxito: Refrescamos y vamos al Admin
+      router.refresh()
+      router.push('/admin')
+
+    } catch (error: any) {
       console.error(error)
-      alert('Error: Ese link ya está en uso o hubo un problema.')
+      alert('Error creando la tienda: ' + error.message)
       setLoading(false)
-    } else {
-      alert('¡Tienda Creada!')
-      // Redirigir al Admin o directamente a ver su tienda
-      router.push('/admin') 
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 font-sans">
-      <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full border border-gray-100">
-        <h1 className="text-2xl font-bold mb-2 text-center">Configura tu Link 🔗</h1>
-        <p className="text-gray-500 mb-8 text-sm text-center">Elige cómo te encontrarán tus clientes.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
         
-        <form onSubmit={handleSave} className="space-y-6">
+        <div className="text-center mb-8">
+          <div className="bg-black text-white w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Store size={24} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Nombra tu Imperio</h1>
+          <p className="text-gray-500 text-sm mt-1">Configura la URL de tu tienda para empezar.</p>
+        </div>
+
+        <form onSubmit={handleCreateStore} className="space-y-6">
+          
           <div>
-            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Nombre del Negocio</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Nombre de la Tienda</label>
             <input 
               type="text" 
-              placeholder="Ej: Zapatería Center"
-              className="w-full border border-gray-200 p-4 rounded-xl focus:ring-2 focus:ring-black outline-none transition"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
+              placeholder="Ej: Zapatos Caracas"
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-black transition-all"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Tu URL Personalizada</label>
-            <div className="flex items-center">
-              <span className="bg-gray-100 border border-r-0 border-gray-200 p-4 rounded-l-xl text-gray-500 text-sm font-mono">qatalog.com/</span>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tu URL (Link)</label>
+            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3">
+              <span className="text-gray-400 text-sm border-r border-gray-200 pr-2 mr-2">catalogo...app/</span>
               <input 
                 type="text" 
-                placeholder="zapateria-center"
-                className="w-full border border-gray-200 p-4 rounded-r-xl font-mono text-sm focus:ring-2 focus:ring-black outline-none transition"
                 value={slug}
-                onChange={(e) => setSlug(e.target.value)}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/ /g, '-'))}
+                className="w-full py-3 bg-transparent focus:outline-none font-medium text-black"
+                placeholder="zapatos-caracas"
                 required
               />
             </div>
-            <p className="text-xs text-gray-400 mt-2">Se usará para tu link oficial.</p>
           </div>
 
           <button 
-            disabled={loading}
-            className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition disabled:opacity-50"
+            type="submit" 
+            disabled={loading || !name || !slug}
+            className="w-full bg-black text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? 'Creando Tienda...' : 'Generar mi Link Oficial'}
+            {loading ? <Loader2 className="animate-spin" /> : <>Crear Tienda <ArrowRight size={18} /></>}
           </button>
+
         </form>
       </div>
     </div>
