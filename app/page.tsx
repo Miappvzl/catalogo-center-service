@@ -6,7 +6,21 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   // 1. Pedir Productos y Dólar a Supabase en paralelo (Súper rápido)
-  const productsPromise = supabase.from('products').select('*').order('created_at', { ascending: false });
+ // ... imports y setup anterior ...
+
+  const shopOwnerId = process.env.NEXT_PUBLIC_SHOP_OWNER_ID;
+
+  // Si no hay ID configurado, lanzamos error en consola para avisarte
+  if (!shopOwnerId) console.warn("⚠️ ALERTA: No se ha configurado el ID del dueño de la tienda.");
+
+  // 1. Pedir Productos (FILTRADO POR DUEÑO)
+  const productsPromise = supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', shopOwnerId) 
+    .order('id', { ascending: true });
+
+  
   const configPromise = supabase.from('config').select('value').eq('key', 'dolar_rate').single();
 
   const [productsRes, configRes] = await Promise.all([productsPromise, configPromise]);
