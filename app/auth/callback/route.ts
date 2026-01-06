@@ -4,51 +4,61 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // Si viene una ruta "next", la usamos; si no, vamos al admin
   const next = searchParams.get('next') ?? '/admin'
 
   if (code) {
-    // 1. Creamos la respuesta ANTES para poder inyectarle las cookies
+    // 1. Preparamos la respuesta vacía donde pegaremos las cookies
     const response = NextResponse.redirect(`${origin}${next}`)
 
+    // 2. Usamos el adaptador MODERNO (getAll / setAll)
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return request.headers.get('Cookie')?.split('; ').find((row) => row.startsWith(`${name}=`))?.split('=')[1]
+          getAll() {
+            // Leemos las cookies de la petición
+            const cookieHeader = request.headers.get('Cookie') ?? ''
+            return parseCookieHeader(cookieHeader)
           },
-          set(name: string, value: string, options: CookieOptions) {
-            // 2. Aquí conectamos Supabase con la Respuesta de Next.js
-            // Cuando Supabase cree la sesión, escribirá la cookie en 'response'
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            })
-          },
-          remove(name: string, options: CookieOptions) {
-            // Igual para borrar
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
+          setAll(cookiesToSet) {
+            // AQUÍ ESTÁ EL TRUCO: Supabase nos da las cookies y las pegamos en la respuesta
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set({
+                name,
+                value,
+                ...options,
+              })
             })
           },
         },
       }
     )
-    
-    // 3. Intercambiamos el código por la sesión
-    // (Esto disparará automáticamente los métodos 'set' de arriba)
+
+    // 3. Canjeamos el código. Esto disparará 'setAll' automáticamente.
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
+
     if (!error) {
+      // Devolvemos la respuesta CON las cookies pegadas
       return response
     }
   }
 
-  // Si algo falla, devolvemos al login con error
+  // Si falla, al login
   return NextResponse.redirect(`${origin}/login?error=auth-code-error`)
+}
+
+// Pequeña utilidad para leer cookies manuales (necesaria para getAll)
+function parseCookieHeader(header: string) {
+  const list: any[] = []
+  if (!header) return list
+  header.split(';').forEach((cookie) => {
+    const parts = cookie.split('=')
+    if (parts.length >= 2) {
+      const name = parts.shift()?.trim()
+      const value = parts.join('=')
+      list.push({ name, value })
+    }
+  })
+  return list
 }
