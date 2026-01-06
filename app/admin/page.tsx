@@ -36,48 +36,29 @@ export default function AdminPage() {
         return
       }
 
-      // 1. Buscamos si el usuario ya tiene tienda
-      let { data: store, error } = await supabase
+      // 1. Buscamos la tienda ESTRICTAMENTE de este usuario
+      // Usamos 'maybeSingle' para que no lance error rojo en consola si no existe
+      const { data: storeData } = await supabase
         .from('stores')
         .select('*')
-        .eq('user_id', user.id)
-        .single() // Esto da error si no encuentra nada, y eso es lo que vamos a manejar
+        .eq('user_id', user.id) 
+        .maybeSingle()
 
-      // 2. SI NO TIENE TIENDA (Usuario Nuevo) -> ¡LA CREAMOS!
-      if (!store) {
-        console.log("Usuario nuevo detectado. Creando tienda por defecto...")
-        
-        // Generamos un slug único temporal usando parte del ID del usuario
-        const tempSlug = `tienda-${user.id.slice(0, 5)}`
-
-        const { data: newStore, error: createError } = await supabase
-            .from('stores')
-            .insert([
-                { 
-                    user_id: user.id, 
-                    name: 'Mi Nueva Tienda', // Nombre por defecto
-                    slug: tempSlug,
-                    currency_type: 'usd'
-                }
-            ])
-            .select()
-            .single()
-
-        if (createError) {
-            console.error("Error creando tienda:", createError)
-            alert("Error crítico creando tu tienda. Contacta soporte.")
-            return
-        }
-        store = newStore
+      // 2. LOGICA CORREGIDA:
+      // Si NO existe tienda, lo expulsamos al Setup inmediatamente.
+      // Ya no creamos nada automático aquí.
+      if (!storeData) {
+        console.log("Usuario sin tienda. Redirigiendo a configuración...")
+        router.replace('/admin/setup') // Usamos 'replace' para que no pueda volver atrás
+        return
       }
 
-      // 3. Cargamos la configuración (Ahora seguro que 'store' existe)
-      if (store) {
-        setCurrency(store.currency_type || 'usd')
-        setPhone(store.phone || '')
-      }
+      // 3. Si existe, cargamos los datos y nos quedamos en el Admin
+      setStore(storeData) // Guardamos la tienda en el estado
+      setCurrency(storeData.currency_type || 'usd')
+      setPhone(storeData.phone || '')
 
-      // 4. Cargamos productos
+      // 4. Cargamos sus productos
       const { data: productsData } = await supabase
         .from('products')
         .select('*')
@@ -89,12 +70,13 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Error general:", error)
     } finally {
-      // 5. IMPORTANTE: Apagamos el "Cargando..." pase lo que pase
       setLoading(false)
     }
   }
 
   // --- NUEVA FUNCIÓN PARA GUARDAR EL TELÉFONO ---
+
+
   const savePhone = async () => {
     setSavingPhone(true)
     const { data: { user } } = await supabase.auth.getUser()
