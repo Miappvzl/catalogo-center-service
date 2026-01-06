@@ -28,51 +28,70 @@ export default function AdminPage() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
-    // 1. Verificar Usuario
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
+ async function fetchData() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      // 1. Buscamos si el usuario ya tiene tienda
+      let { data: store, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('user_id', user.id)
+        .single() // Esto da error si no encuentra nada, y eso es lo que vamos a manejar
+
+      // 2. SI NO TIENE TIENDA (Usuario Nuevo) -> ¡LA CREAMOS!
+      if (!store) {
+        console.log("Usuario nuevo detectado. Creando tienda por defecto...")
+        
+        // Generamos un slug único temporal usando parte del ID del usuario
+        const tempSlug = `tienda-${user.id.slice(0, 5)}`
+
+        const { data: newStore, error: createError } = await supabase
+            .from('stores')
+            .insert([
+                { 
+                    user_id: user.id, 
+                    name: 'Mi Nueva Tienda', // Nombre por defecto
+                    slug: tempSlug,
+                    currency_type: 'usd'
+                }
+            ])
+            .select()
+            .single()
+
+        if (createError) {
+            console.error("Error creando tienda:", createError)
+            alert("Error crítico creando tu tienda. Contacta soporte.")
+            return
+        }
+        store = newStore
+      }
+
+      // 3. Cargamos la configuración (Ahora seguro que 'store' existe)
+      if (store) {
+        setCurrency(store.currency_type || 'usd')
+        setPhone(store.phone || '')
+      }
+
+      // 4. Cargamos productos
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('id', { ascending: false })
+        
+      setProducts(productsData || [])
+
+    } catch (error) {
+      console.error("Error general:", error)
+    } finally {
+      // 5. IMPORTANTE: Apagamos el "Cargando..." pase lo que pase
+      setLoading(false)
     }
-
-    // 2. NUEVO: BUSCAMOS LA PREFERENCIA DE MONEDA DE LA TIENDA
-    const { data: store } = await supabase
-      .from('stores')
-      .select('currency_type, phone') // <--- AGREGAR phone AQUI
-      .eq('user_id', user.id)
-      .single()
-
-    if (store) {
-      setCurrency(store.currency_type || 'usd')
-      setPhone(store.phone || '') // <--- Cargar el teléfono guardado
-    }
-
-    // 2. Buscar si ya tiene Tienda configurada
-    const { data: storeData } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    // SI NO TIENE TIENDA -> Lo mandamos a configurarla
-    if (!storeData) {
-      router.push('/admin/setup')
-      return
-    }
-
-    setStore(storeData)
-
-
-    // 3. Cargar sus productos
-    const { data: productsData } = await supabase
-      .from('products')
-      .select('*')
-      .eq('user_id', user.id) // Solo los de este usuario
-      .order('id', { ascending: false })
-
-    if (productsData) setProducts(productsData)
-    setLoading(false)
   }
 
   // --- NUEVA FUNCIÓN PARA GUARDAR EL TELÉFONO ---
