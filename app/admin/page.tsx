@@ -1,4 +1,7 @@
 'use client'
+export const dynamic = 'force-dynamic'; // <--- ESTO ES VITAL
+export const revalidate = 0;
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js' // Cliente estándar
 import { useRouter } from 'next/navigation'
