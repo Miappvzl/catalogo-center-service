@@ -1,8 +1,39 @@
 @import "tailwindcss";
 
+@layer base {
+  /* ESTO ES LO NUEVO: Define el estilo base para todos los inputs del sitio */
+  input, 
+  textarea, 
+  select {
+    color: #1F2937; /* Texto Gris Oscuro (Charcoal) */
+    background-color: #f3f4f6; /* Fondo Gris Claro */
+  }
+
+  /* Opcional: define el color del placeholder (texto de ayuda) */
+  input::placeholder,
+  textarea::placeholder {
+    color: #9CA3AF; /* Gris medio */
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* FIX AUTOCOMPLETADO ACTUALIZADO */
+/* Ahora usa los mismos colores que definimos arriba */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    /* 1. Color del TEXTO: Igual al de arriba (#1F2937) */
+    -webkit-text-fill-color: #1F2937 !important;
+
+    /* 2. Color del FONDO: Igual al de arriba (#f3f4f6) */
+    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;
+    
+    transition: background-color 5000s ease-in-out 0s;
 }
 
 @theme inline {

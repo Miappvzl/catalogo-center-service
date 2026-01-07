@@ -18,7 +18,7 @@ export default function LandingPage() {
             <Link href="/login" className="text-sm font-medium hover:text-gray-600 transition">
               Entrar
             </Link>
-            <Link href="/register" className="text-sm font-medium bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition">
+            <Link href="/login" className="text-sm font-medium bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition">
               Crear Tienda
             </Link>
           </div>
