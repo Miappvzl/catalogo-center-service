@@ -71,7 +71,7 @@ export default function NewProductPage() {
             user_id: user.id,
             name: name,
             usd_cash_price: parseFloat(price),
-            bs_penalty: penalty ? parseFloat(penalty) : 0, // Si está vacío es 0
+            usd_penalty: penalty ? parseFloat(penalty) : 0, // Si está vacío es 0
             category: category,
             sizes: sizes,
             image_url: imageUrl
