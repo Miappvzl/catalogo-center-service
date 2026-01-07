@@ -1,21 +1,29 @@
 'use client'
+
 import { useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Mail, Lock } from 'lucide-react'
 
-export default function Register() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  // Creamos el cliente manualmente usando tus variables de entorno
+// MEJOR PRÁCTICA: Inicializar el cliente fuera del componente 
+// para evitar re-instancias en cada renderizado (cada vez que escribes).
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+export default function Register() {
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  // Manejador genérico para inputs (código más limpio)
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+    if (error) setError(null) // Limpiar error al escribir
+  }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,23 +31,32 @@ const supabase = createClient(
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+      const { error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
         options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
+          // Asegúrate que esta URL esté en la whitelist de Supabase
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        // Registro exitoso -> Al Admin
-        router.push('/admin')
-        router.refresh()
+      if (authError) {
+        // Traducción básica de errores comunes
+        if (authError.message.includes('already registered')) {
+          throw new Error('Este correo ya está registrado.')
+        } else if (authError.message.includes('password')) {
+          throw new Error('La contraseña es muy débil (min 6 caracteres).')
+        } else {
+          throw new Error(authError.message)
+        }
       }
-    } catch (err) {
-      setError('Ocurrió un error inesperado')
+
+      // Éxito
+      router.push('/admin')
+      router.refresh()
+
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error inesperado')
     } finally {
       setLoading(false)
     }
@@ -60,52 +77,74 @@ const supabase = createClient(
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
-          <div className="-space-y-px rounded-md">
-            {/* Campos separados para mejor estética */}
-            <div className="mb-4">
-              <label htmlFor="email-address" className="block text-xs font-bold text-gray-500 uppercase mb-2">Correo electrónico</label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="relative block w-full rounded-xl border-0 py-3 px-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 bg-gray-50"
-                placeholder="(ej: tienda@gmail.com)"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+          <div className="space-y-4">
+            
+            {/* Input Email con Icono */}
             <div>
-              <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase mb-2">Contraseña</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="relative block w-full rounded-xl border-0 py-3 px-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 bg-gray-50"
-                placeholder="(mínimo 6 caracteres)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <label htmlFor="email" className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                Correo electrónico
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="tu@email.com"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black sm:text-sm transition-all bg-gray-50"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Input Password con Icono */}
+            <div>
+              <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                Contraseña
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  placeholder="••••••••"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:ring-1 focus:ring-black sm:text-sm transition-all bg-gray-50"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
           </div>
 
+          {/* Mensaje de Error */}
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium">
-              ⚠️ {error}
+            <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-3 rounded-lg flex items-center justify-center gap-2 animate-pulse" role="alert">
+              <span>⚠️</span> {error}
             </div>
           )}
 
+          {/* Botón Submit */}
           <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative flex w-full justify-center rounded-xl bg-black px-3 py-3.5 text-sm font-bold text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-70 transition-all"
+              className="group relative flex w-full justify-center rounded-xl bg-black px-3 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:opacity-70 disabled:cursor-not-allowed transition-all"
             >
               {loading ? (
-                <Loader2 className="animate-spin h-5 w-5" />
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                  Creando cuenta...
+                </>
               ) : (
                 "Crear mi cuenta gratis"
               )}
@@ -116,7 +155,7 @@ const supabase = createClient(
         <div className="text-center text-sm">
           <p className="text-gray-500">
             ¿Ya tienes cuenta?{' '}
-            <Link href="/login" className="font-semibold text-black hover:underline">
+            <Link href="/login" className="font-semibold text-black hover:underline transition-colors">
               Inicia sesión aquí
             </Link>
           </p>
