@@ -87,7 +87,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-4 text-gray-800">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Email</label>
             <div className="relative">
@@ -112,7 +112,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
-                placeholder="••••••••"
+                placeholder="Minimo 6 caracteres"
                 minLength={6}
                 required
               />

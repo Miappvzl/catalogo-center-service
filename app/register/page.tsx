@@ -60,10 +60,10 @@ const supabase = createClient(
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
-          <div className="-space-y-px rounded-md shadow-sm">
+          <div className="-space-y-px rounded-md">
             {/* Campos separados para mejor estética */}
             <div className="mb-4">
-              <label htmlFor="email-address" className="sr-only">Correo electrónico</label>
+              <label htmlFor="email-address" className="block text-xs font-bold text-gray-500 uppercase mb-2">Correo electrónico</label>
               <input
                 id="email-address"
                 name="email"
@@ -71,13 +71,13 @@ const supabase = createClient(
                 autoComplete="email"
                 required
                 className="relative block w-full rounded-xl border-0 py-3 px-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 bg-gray-50"
-                placeholder="Correo electrónico (ej: tienda@gmail.com)"
+                placeholder="(ej: tienda@gmail.com)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">Contraseña</label>
+              <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase mb-2">Contraseña</label>
               <input
                 id="password"
                 name="password"
@@ -85,7 +85,7 @@ const supabase = createClient(
                 autoComplete="new-password"
                 required
                 className="relative block w-full rounded-xl border-0 py-3 px-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 bg-gray-50"
-                placeholder="Contraseña (mínimo 6 caracteres)"
+                placeholder="(mínimo 6 caracteres)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

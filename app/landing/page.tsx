@@ -39,7 +39,7 @@ export default function LandingPage() {
             La forma profesional de mostrar tus productos. Precios calculados automáticamente en Bolívares. Buscador instantáneo. Deja de enviar fotos por WhatsApp.
           </p>
           <div className="pt-8 flex flex-col md:flex-row justify-center gap-4">
-            <Link href="/register" className="bg-black text-white px-8 py-4 rounded-full font-semibold text-lg hover:scale-105 transition transform duration-200">
+            <Link href="/login" className="bg-black text-white px-8 py-4 rounded-full font-semibold text-lg hover:scale-105 transition transform duration-200">
               Empezar Gratis 
             </Link>
             <Link href="https://catalogo-center-service.vercel.app" target="_blank" className="bg-gray-100 text-black px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition">
@@ -178,7 +178,7 @@ export default function LandingPage() {
             </ul>
 
             {/* Botón con rounded-full */}
-            <Link href="/register" className="block w-full bg-black text-white text-center py-4 rounded-full font-bold hover:bg-gray-800 transition">
+            <Link href="/login" className="block w-full bg-black text-white text-center py-4 rounded-full font-bold hover:bg-gray-800 transition">
               Comenzar Prueba Gratis (7 días)
             </Link>
           </div>
