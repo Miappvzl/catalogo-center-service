@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr' 
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, LogOut, DollarSign } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 export default function AdminPage() {
   const [phone, setPhone] = useState('')
@@ -77,8 +78,26 @@ export default function AdminPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
         const { error } = await supabase.from('stores').update({ phone: phone }).eq('user_id', user.id)
-        if (error) alert("Error")
-        else alert("Guardado")
+        if (error){
+          Swal.fire({
+            title: '¡Error!',
+            text: error.message,
+            icon: 'error',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#000000',
+            backdrop: true,
+            allowOutsideClick: false
+          })
+        }
+        else Swal.fire({
+          title: '¡Telefono Guardado!',
+          text: 'Tus clientes enviaran los productos seleccionados a ese numero.',
+          icon: 'success',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#000000',
+          backdrop: true,
+          allowOutsideClick: false
+        })
     }
     setSavingPhone(false)
   }
@@ -90,9 +109,48 @@ export default function AdminPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Borrar?')) return
-    const { error } = await supabase.from('products').delete().eq('id', id)
-    if (!error) setProducts(products.filter(p => p.id !== id))
+    const handleDelete = async (id: number) => {
+    // 1. Preguntamos con SweetAlert en lugar de window.confirm
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: "No podrás recuperar este producto después.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#000000', // Tu branding
+      cancelButtonColor: '#d33',     // Rojo para cancelar/peligro
+      confirmButtonText: 'Sí, borrarlo',
+      cancelButtonText: 'Cancelar'
+    })
+
+    // 2. Solo si el usuario confirma (da click en "Sí, borrarlo"), procedemos
+    if (result.isConfirmed) {
+      
+      const { error } = await supabase.from('products').delete().eq('id', id)
+
+      if (!error) {
+        // Actualizamos la lista visualmente
+        setProducts(products.filter(p => p.id !== id))
+        
+        // Opcional: Una pequeña alerta de éxito que se cierra sola
+        Swal.fire({
+          title: '¡Borrado!',
+          text: 'El producto ha sido eliminado.',
+          icon: 'success',
+          confirmButtonColor: '#000000',
+          timer: 1500, // Se cierra sola en 1.5 segundos
+          showConfirmButton: false
+        })
+      } else {
+        // Si falla Supabase
+        Swal.fire({
+          title: 'Error',
+          text: 'No se pudo borrar el producto.',
+          icon: 'error',
+          confirmButtonColor: '#000000'
+        })
+      }
+    }
+  }
   }
 
   if (loading || (!store && loading === false)) return <div className="min-h-screen flex items-center justify-center">Cargando tu imperio...</div>
