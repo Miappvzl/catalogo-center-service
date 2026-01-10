@@ -6,12 +6,23 @@ import { CreditCard, Save, Smartphone, Banknote, Bitcoin } from 'lucide-react'
 import Swal from 'sweetalert2'
 
 export default function PaymentSettings({ storeId, initialData }: { storeId: number, initialData: any }) {
-  // Estado local con la estructura de métodos
-  const [methods, setMethods] = useState(initialData || {
+  // Aseguramos estructura por defecto si initialData viene vacío o incompleto
+  const defaultMethods = {
     pago_movil: { active: false, bank: '', phone: '', id: '' },
     zelle: { active: false, email: '', holder: '' },
-    cash: { active: true }, // Efectivo activo por defecto
+    cash: { active: true },
     binance: { active: false, email: '' }
+  }
+
+  // Mezclamos initialData con los defaults para evitar undefineds profundos
+  const [methods, setMethods] = useState({
+    ...defaultMethods,
+    ...initialData,
+    // Aseguramos que cada objeto interno exista también
+    pago_movil: { ...defaultMethods.pago_movil, ...(initialData?.pago_movil || {}) },
+    zelle: { ...defaultMethods.zelle, ...(initialData?.zelle || {}) },
+    cash: { ...defaultMethods.cash, ...(initialData?.cash || {}) },
+    binance: { ...defaultMethods.binance, ...(initialData?.binance || {}) },
   })
   
   const [saving, setSaving] = useState(false)
@@ -77,9 +88,10 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: num
           
           {methods.pago_movil?.active && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input placeholder="Banco (Ej: Banesco)" value={methods.pago_movil.bank} onChange={e => handleChange('pago_movil', 'bank', e.target.value)} className="input-base" />
-              <input placeholder="Teléfono (0412...)" value={methods.pago_movil.phone} onChange={e => handleChange('pago_movil', 'phone', e.target.value)} className="input-base" />
-              <input placeholder="Cédula / RIF" value={methods.pago_movil.id} onChange={e => handleChange('pago_movil', 'id', e.target.value)} className="input-base" />
+              {/* AGREGA "|| ''" EN TODOS LOS VALUE */}
+              <input placeholder="Banco (Ej: Banesco)" value={methods.pago_movil.bank || ''} onChange={e => handleChange('pago_movil', 'bank', e.target.value)} className="input-base" />
+              <input placeholder="Teléfono (0412...)" value={methods.pago_movil.phone || ''} onChange={e => handleChange('pago_movil', 'phone', e.target.value)} className="input-base" />
+              <input placeholder="Cédula / RIF" value={methods.pago_movil.id || ''} onChange={e => handleChange('pago_movil', 'id', e.target.value)} className="input-base" />
             </div>
           )}
         </div>
@@ -99,8 +111,9 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: num
           </div>
           {methods.zelle?.active && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input placeholder="Correo Zelle" value={methods.zelle.email} onChange={e => handleChange('zelle', 'email', e.target.value)} className="input-base" />
-              <input placeholder="Nombre del Titular" value={methods.zelle.holder} onChange={e => handleChange('zelle', 'holder', e.target.value)} className="input-base" />
+              {/* AGREGA "|| ''" EN TODOS LOS VALUE */}
+              <input placeholder="Correo Zelle" value={methods.zelle.email || ''} onChange={e => handleChange('zelle', 'email', e.target.value)} className="input-base" />
+              <input placeholder="Nombre del Titular" value={methods.zelle.holder || ''} onChange={e => handleChange('zelle', 'holder', e.target.value)} className="input-base" />
             </div>
           )}
         </div>
@@ -135,7 +148,8 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: num
           </div>
            {methods.binance?.active && (
             <div>
-              <input placeholder="Binance Email o Pay ID" value={methods.binance.email} onChange={e => handleChange('binance', 'email', e.target.value)} className="input-base" />
+              {/* AGREGA "|| ''" EN TODOS LOS VALUE */}
+              <input placeholder="Binance Email o Pay ID" value={methods.binance.email || ''} onChange={e => handleChange('binance', 'email', e.target.value)} className="input-base" />
             </div>
           )}
         </div>
@@ -146,7 +160,6 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: num
 
       </div>
       
-      {/* Estilos inline para inputs de este componente */}
       <style jsx>{`
         .input-base {
           width: 100%;
