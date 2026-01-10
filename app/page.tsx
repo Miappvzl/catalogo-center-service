@@ -1,5 +1,8 @@
-import Store from '../components/Store'; // Tu diseño UI se mantiene intacto
-import { supabase } from '@/lib/supabase'; // Importamos la conexión nueva
+import LandingPage from './landing/page' // Importamos la Landing que ya creaste
+import { supabase } from '@/lib/supabase'; // Importamos la conexión nueva\
+
+
+
 
 // Evitamos caché para que si cambias el precio, se vea al instante
 export const dynamic = 'force-dynamic';
@@ -9,6 +12,7 @@ export default async function Home() {
  // ... imports y setup anterior ...
 
   const shopOwnerId = process.env.NEXT_PUBLIC_SHOP_OWNER_ID;
+ 
 
   // Si no hay ID configurado, lanzamos error en consola para avisarte
   if (!shopOwnerId) console.warn("⚠️ ALERTA: No se ha configurado el ID del dueño de la tienda.");
@@ -41,10 +45,7 @@ export default async function Home() {
   const dolarRate = configRes.data?.value || 0;
 
   // 3. Renderizar
-  return (
-    <Store 
-      initialProducts={products} 
-      dolarRate={Number(dolarRate)} 
-    />
-  );
+
+   return <LandingPage />
+  
 }

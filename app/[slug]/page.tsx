@@ -34,7 +34,7 @@ async function getExchangeRates() {
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
-    .select('user_id, name, currency_type, phone') // <--- IMPORTANTE: Traer 'phone'
+    .select('user_id, name, currency_type, phone, payment_methods')
     .eq('slug', slug)
     .single()
   return store
@@ -42,9 +42,9 @@ async function getStoreOwner(slug: string) {
 
 // 3. Buscamos productos
 async function getProducts(userId: string) {
-  const { data: products } = await supabase
+  const { data: products } = await supabase 
     .from('products')
-    .select('*')
+    .select('*, payment_methods(*)')
     .eq('user_id', userId)
     .order('id', { ascending: false })
   return products
@@ -196,6 +196,7 @@ const ownerPhone = store.phone || '584120000000'
         currency={currencyMode}
         phone={ownerPhone} 
         storeName={store.name}
+        paymentMethods={store.payment_methods} // <--- NUEVA PROP
       />
       
       <footer className="mt-10 text-center text-xs text-gray-400">

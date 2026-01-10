@@ -25,11 +25,10 @@
     "types": [
       "node"
     ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
+        "paths": {
+      "@/*": ["./*"] 
     }
+
   },
   "include": [
     "next-env.d.ts",

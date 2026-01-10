@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic' // Vital para no ver datos viejos
 
 import { useEffect, useState } from 'react'
+import PaymentSettings from '@/components/PaymentSettings'
 import { createBrowserClient } from '@supabase/ssr' 
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, LogOut, DollarSign, Pencil} from 'lucide-react' // <--- Agrega Pencil
@@ -57,7 +58,7 @@ export default function AdminPage() {
       // 4. Productos
       const { data: productsData } = await supabase
         .from('products')
-        .select('*')
+        .select('*, payment_methods(*)')
         .eq('user_id', user.id)
         .order('id', { ascending: false })
         
@@ -193,6 +194,13 @@ export default function AdminPage() {
         </div>
 
         <div>
+          {/* CONFIGURACIÓN DE PAGOS */}
+{store && (
+    <PaymentSettings 
+        storeId={store.id} 
+        initialData={store.payment_methods} 
+    />
+)}
             <div className="flex justify-between items-end mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Mis Productos</h2>
                 <a href="/admin/product/new" className="bg-black text-white px-5 py-2.5 rounded-full text-sm font-bold hover:scale-105 transition-transform flex items-center gap-2 shadow-lg shadow-black/20"><Plus size={18} /> Nuevo</a>
