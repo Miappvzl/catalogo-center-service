@@ -19,7 +19,7 @@ async function getExchangeRates() {
   return data
 }
 
-// 2. Buscamos Tienda (CORREGIDO: Agregado payment_methods para evitar errores en checkout)
+// 2. Buscamos Tienda
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
@@ -39,7 +39,7 @@ async function getProducts(userId: string) {
   
   if (error) {
     console.error("Error SQL buscando productos:", error)
-    return [] // Retornamos array vacío en error para no romper la app
+    return [] 
   }
   return products
 }
@@ -69,11 +69,6 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
   const products = await getProducts(store.user_id) || []
   const ownerPhone = store.phone || '584120000000'
 
-  // --- MODO DEBUG INFALIBLE ---
-  // Si no hay productos, esto se activará.
-  const isDebug = products.length === 0; 
-  // ----------------------------
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24 font-sans relative">
       
@@ -95,71 +90,59 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
         </div>
       </header>
 
-      {/* --- BLOQUE DE DEBUG (SIN ICONOS, PURO TEXTO Y BORDE ROJO) --- */}
-      {isDebug && (
-        <div className="max-w-2xl mx-auto px-4 mt-6 mb-6 relative z-0">
-            <div className="bg-white border-2 border-red-500 p-6 rounded-xl text-sm font-mono text-gray-800 shadow-xl">
-                <h2 className="text-red-600 font-bold text-lg mb-2 uppercase">⚠️ ALERTA: Tienda Vacía</h2>
-                <p className="mb-2">No se encontraron productos para mostrar. Revisa lo siguiente:</p>
-                <ul className="list-disc pl-5 space-y-1 mb-4 text-xs">
-                    <li><strong>ID de la Tienda (Owner):</strong> <span className="bg-gray-100 p-1 rounded">{store.user_id}</span></li>
-                    <li><strong>Slug Actual:</strong> {slug}</li>
-                </ul>
-                <div className="bg-red-50 p-3 rounded text-red-800 text-xs border border-red-100">
-                    <strong>SOLUCIÓN:</strong> Ve a Supabase &gt; Tabla 'products'. Verifica que tus productos tengan en la columna <code>user_id</code> EXACTAMENTE el mismo código que ves arriba. Si son diferentes, tienes productos "huérfanos".
-                </div>
-            </div>
-        </div>
-      )}
-      {/* --------------------------------------------------- */}
-
       <main className="max-w-2xl mx-auto px-4 py-8">
         <p className="text-sm text-gray-500 mb-6">Mostrando {products.length} productos</p>
 
-        <div className="flex flex-col gap-4">
-            {products.map((product: any) => {
-              const totalRef = product.usd_cash_price + (product.usd_penalty || 0)
-              const priceInBs = totalRef * (activeRate || 0)
+        {products.length === 0 ? (
+           <div className="text-center py-12 text-gray-400">
+             <p>Esta tienda aún no tiene productos disponibles.</p>
+           </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+              {products.map((product: any) => {
+                const totalRef = product.usd_cash_price + (product.usd_penalty || 0)
+                const priceInBs = totalRef * (activeRate || 0)
 
-              return (
-                <div key={product.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                  <div className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-4 items-center">
-                    <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 border border-gray-50">
-                        {product.image_url && ( <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <h3 className="font-bold text-gray-900 text-lg line-clamp-1 leading-tight">{product.name}</h3>
-                        <p className="text-sm text-gray-500">{product.category} • {product.sizes || 'Unico'}</p>
-                        <div className="mt-3 flex flex-col gap-3 md:hidden">
-                            <div className="flex items-end gap-2">
-                                <span className="text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
-                                {activeRate > 0 && (
-                                    <span className="text-sm text-gray-500 font-medium pb-0.5">
-                                        Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
-                                    </span>
-                                )}
-                            </div>
+                return (
+                  <div key={product.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-all hover:shadow-md">
+                    <div className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-4 items-center">
+                      <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 border border-gray-50">
+                          {product.image_url && ( <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                          <h3 className="font-bold text-gray-900 text-lg line-clamp-1 leading-tight">{product.name}</h3>
+                          <p className="text-sm text-gray-500">{product.category} • {product.sizes || 'Unico'}</p>
+                          <div className="mt-3 flex flex-col gap-3 md:hidden">
+                              <div className="flex items-end gap-2">
+                                  <span className="text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
+                                  {activeRate > 0 && (
+                                      <span className="text-sm text-gray-500 font-medium pb-0.5">
+                                          Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
+                                      </span>
+                                  )}
+                              </div>
+                              <AddToCartBtn product={product} />
+                          </div>
+                      </div>
+                      <div className="hidden md:flex flex-col items-end gap-2 pl-4 border-l border-gray-50">
+                          <div className="text-right">
+                               <span className="block text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
+                               {activeRate > 0 && (
+                                  <span className="block text-xs text-gray-400 font-medium">
+                                      Ref. {symbol}{totalRef} | Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 }).format(priceInBs)}
+                                  </span>
+                               )}
+                          </div>
+                          <div className="mt-1">
                             <AddToCartBtn product={product} />
-                        </div>
-                    </div>
-                    <div className="hidden md:flex flex-col items-end gap-2 pl-4 border-l border-gray-50">
-                        <div className="text-right">
-                             <span className="block text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
-                             {activeRate > 0 && (
-                                <span className="block text-xs text-gray-400 font-medium">
-                                    Ref. {symbol}{totalRef} | Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 }).format(priceInBs)}
-                                </span>
-                             )}
-                        </div>
-                        <div className="mt-1">
-                          <AddToCartBtn product={product} />
-                        </div>
+                          </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-        </div>
+                )
+              })}
+          </div>
+        )}
       </main>
 
       <FloatingCheckout 
