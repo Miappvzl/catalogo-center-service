@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic' // Vital para no ver datos viejos
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr' 
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, LogOut, DollarSign } from 'lucide-react'
+import { Plus, Trash2, LogOut, DollarSign, Pencil} from 'lucide-react' // <--- Agrega Pencil
+import Link from 'next/link'
 import Swal from 'sweetalert2'
 
 export default function AdminPage() {
@@ -205,7 +206,30 @@ export default function AdminPage() {
                         <div key={product.id} className="bg-white p-4 rounded-xl border border-gray-100 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">{product.image_url && <img src={product.image_url} className="w-full h-full object-cover" />}</div>
                             <div className="flex-1 min-w-0"><h3 className="font-bold text-gray-900 truncate">{product.name}</h3><p className="text-sm text-green-600 font-medium">${product.usd_cash_price}</p></div>
-                            <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                            
+                            {/* ... dentro del map del producto ... */}
+
+<div className="flex items-center gap-2"> {/* Envuelve los botones en un div flex */}
+
+    {/* BOTÓN EDITAR (NUEVO) */}
+    <Link 
+        href={`/admin/product/edit/${product.id}`}
+        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+    >
+        <Pencil size={18} />
+    </Link>
+
+    {/* BOTÓN BORRAR (EXISTENTE) */}
+    <button 
+        onClick={() => handleDelete(product.id)}
+        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+    >
+        <Trash2 size={18} />
+    </button>
+
+</div>
+                            
+
                         </div>
                     ))
                 )}
