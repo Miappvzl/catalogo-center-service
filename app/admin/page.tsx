@@ -109,7 +109,7 @@ export default function AdminPage() {
     if (user) await supabase.from('stores').update({ currency_type: newCurrency }).eq('user_id', user.id)
   }
 
-  const handleDelete = async (id: number) => {
+ 
     const handleDelete = async (id: number) => {
     // 1. Preguntamos con SweetAlert en lugar de window.confirm
     const result = await Swal.fire({
@@ -151,7 +151,6 @@ export default function AdminPage() {
         })
       }
     }
-  }
   }
 
   if (loading || (!store && loading === false)) return <div className="min-h-screen flex items-center justify-center">Cargando tu imperio...</div>
