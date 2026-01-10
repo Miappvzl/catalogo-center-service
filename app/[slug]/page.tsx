@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import AddToCartBtn from '@/components/AddToCartBtn'
 import FloatingCheckout from '@/components/FloatingCheckout'
 import { createClient } from '@supabase/supabase-js' 
-import { ShoppingBag, RefreshCw, AlertTriangle } from 'lucide-react' // Agregué AlertTriangle para debug
+import { ShoppingBag, RefreshCw } from 'lucide-react' 
 
 // Cliente Supabase
 const supabase = createClient(
@@ -19,17 +19,17 @@ async function getExchangeRates() {
   return data
 }
 
-// 2. Buscamos Tienda (CORREGIDO: Agregado payment_methods)
+// 2. Buscamos Tienda (CORREGIDO: Agregado payment_methods para evitar errores en checkout)
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
-    .select('user_id, name, currency_type, phone, payment_methods') // <--- ¡AQUÍ FALTABA ESTO!
+    .select('user_id, name, currency_type, phone, payment_methods') 
     .eq('slug', slug)
     .single()
   return store
 }
 
-// 3. Buscamos Productos (Con manejo de errores para debug)
+// 3. Buscamos Productos 
 async function getProducts(userId: string) {
   const { data: products, error } = await supabase
     .from('products')
@@ -37,7 +37,10 @@ async function getProducts(userId: string) {
     .eq('user_id', userId)
     .order('id', { ascending: false })
   
-  if (error) console.error("Error buscando productos:", error)
+  if (error) {
+    console.error("Error SQL buscando productos:", error)
+    return [] // Retornamos array vacío en error para no romper la app
+  }
   return products
 }
 
@@ -66,13 +69,13 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
   const products = await getProducts(store.user_id) || []
   const ownerPhone = store.phone || '584120000000'
 
-  // --- MODO DEBUG (SOLO PARA TI) ---
-  // Si no hay productos, mostramos información técnica para entender por qué.
+  // --- MODO DEBUG INFALIBLE ---
+  // Si no hay productos, esto se activará.
   const isDebug = products.length === 0; 
-  // ---------------------------------
+  // ----------------------------
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-24 font-sans relative">
       
       {/* HEADER */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -92,20 +95,19 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
         </div>
       </header>
 
-      {/* --- BLOQUE DE DEBUG (BÓRRALO CUANDO ARREGLEMOS) --- */}
+      {/* --- BLOQUE DE DEBUG (SIN ICONOS, PURO TEXTO Y BORDE ROJO) --- */}
       {isDebug && (
-        <div className="max-w-2xl mx-auto px-4 py-4 mt-4">
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-xs font-mono text-yellow-800 break-all">
-                <p className="font-bold flex items-center gap-2 text-sm mb-2">
-                    <AlertTriangle size={16}/> MODO DETECTIVE ACTIVADO
-                </p>
-                <p><strong>Tienda Slug:</strong> {slug}</p>
-                <p><strong>Dueño ID (Store):</strong> {store.user_id}</p>
-                <p><strong>Buscando productos donde user_id == </strong> {store.user_id}</p>
-                <p><strong>Resultados encontrados:</strong> {products.length}</p>
-                <p className="mt-2 text-gray-500 italic">
-                    Si ves el ID del dueño aquí, ve a Supabase - Tabla Products y revisa si tus productos tienen EXACTAMENTE este mismo ID en la columna 'user_id'. Si son diferentes, ahí está el problema.
-                </p>
+        <div className="max-w-2xl mx-auto px-4 mt-6 mb-6 relative z-0">
+            <div className="bg-white border-2 border-red-500 p-6 rounded-xl text-sm font-mono text-gray-800 shadow-xl">
+                <h2 className="text-red-600 font-bold text-lg mb-2 uppercase">⚠️ ALERTA: Tienda Vacía</h2>
+                <p className="mb-2">No se encontraron productos para mostrar. Revisa lo siguiente:</p>
+                <ul className="list-disc pl-5 space-y-1 mb-4 text-xs">
+                    <li><strong>ID de la Tienda (Owner):</strong> <span className="bg-gray-100 p-1 rounded">{store.user_id}</span></li>
+                    <li><strong>Slug Actual:</strong> {slug}</li>
+                </ul>
+                <div className="bg-red-50 p-3 rounded text-red-800 text-xs border border-red-100">
+                    <strong>SOLUCIÓN:</strong> Ve a Supabase &gt; Tabla 'products'. Verifica que tus productos tengan en la columna <code>user_id</code> EXACTAMENTE el mismo código que ves arriba. Si son diferentes, tienes productos "huérfanos".
+                </div>
             </div>
         </div>
       )}
@@ -160,7 +162,6 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
         </div>
       </main>
 
-      {/* Checkout con métodos de pago corregidos */}
       <FloatingCheckout 
         rate={activeRate} 
         currency={currencyMode}
