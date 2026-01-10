@@ -13,13 +13,34 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
 
   if (!items || items.length === 0) return null
 
-  // Totales
-  const totalUSD = items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
-  const totalBs = items.reduce((acc, item) => acc + (item.price * rate * item.quantity), 0)
+  // --- LÓGICA DE PRECIOS DINÁMICOS ---
+  // Detecta si el método seleccionado merece descuento (Base Price)
+  // Si es NULL (no seleccionado) o PAGO MÓVIL -> Se cobra Penalty.
+  // Si es ZELLE, CASH, BINANCE -> Se cobra Base.
+  const isDiscountMethod = (methodKey: string | null) => {
+    if (!methodKey) return false // Por defecto (sin seleccionar) mostramos precio alto
+    const k = methodKey.toLowerCase()
+    return k.includes('zelle') || k.includes('cash') || k.includes('efectivo') || k.includes('binance') || k.includes('divisa')
+  }
 
-  // --- 🧠 LÓGICA BLINDADA DE FILTRADO ---
-  // 1. Convertimos el JSON en array
-  // 2. Filtramos solo los que tengan active == true
+  const applyDiscount = isDiscountMethod(selectedMethod)
+
+  // Calcular totales dinámicos
+  const totalUSD = items.reduce((acc, item) => {
+    // Si aplica descuento, usamos basePrice. Si no, sumamos penalty.
+    const priceToUse = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
+    return acc + (priceToUse * item.quantity)
+  }, 0)
+
+  const totalBs = items.reduce((acc, item) => {
+    // Para Bs, siempre usamos la referencia completa (Base + Penalty) por defecto para la tasa,
+    // o ajustamos según la lógica que prefieras.
+    // Usualmente en Bs se paga el "precio completo" si es pago móvil.
+    const priceToUse = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
+    return acc + (priceToUse * rate * item.quantity)
+  }, 0)
+
+  // Filtrar métodos activos
   const activeMethods = paymentMethods 
     ? Object.entries(paymentMethods).filter(([_, val]: any) => val && val.active === true) 
     : []
@@ -28,17 +49,22 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
     let message = `*Hola ${storeName}, quiero realizar el siguiente pedido:*\n\n`
     
     items.forEach(item => {
-      message += `▪️ ${item.quantity}x ${item.name}\n`
+      // Precio individual en el mensaje
+      const finalItemPrice = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
+      message += `▪️ ${item.quantity}x ${item.name} ($${finalItemPrice})\n`
     })
 
     message += `\n*Total a Pagar:*`
     message += `\n💵 $${totalUSD.toFixed(2)}`
+    
+    // Solo mostramos Bs si hay tasa y NO es un método puramente divisa (como Zelle)
+    // Aunque para referencia siempre es bueno dejarlo.
     if (rate > 0) message += `\n🇻🇪 Bs ${new Intl.NumberFormat('es-VE').format(totalBs)}`
 
     if (selectedMethod) {
-        // Formateamos el nombre del método para que se vea bonito en WhatsApp
         const methodNiceName = selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1).replace(/_/g, ' ');
         message += `\n\n💳 *Método de Pago:* ${methodNiceName}`
+        if(applyDiscount) message += ` (Descuento aplicado ✅)`
     }
 
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
@@ -51,19 +77,17 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
     Swal.fire({ toast: true, position: 'top', icon: 'success', title: 'Copiado', timer: 1000, showConfirmButton: false })
   }
 
-  // Helper para detectar iconos y nombres bonitos
   const getMethodInfo = (key: string) => {
     const lower = key.toLowerCase()
     if (lower.includes('movil')) return { label: '📱 Pago Móvil', color: 'bg-blue-50 border-blue-200' }
     if (lower.includes('zelle')) return { label: '🟣 Zelle', color: 'bg-purple-50 border-purple-200' }
     if (lower.includes('binance')) return { label: '🟡 Binance', color: 'bg-yellow-50 border-yellow-200' }
     if (lower.includes('cash') || lower.includes('efectivo')) return { label: '💵 Efectivo', color: 'bg-green-50 border-green-200' }
-    return { label: `💳 ${key.replace(/_/g, ' ')}`, color: 'bg-gray-50 border-gray-200' } // Fallback genérico
+    return { label: `💳 ${key.replace(/_/g, ' ')}`, color: 'bg-gray-50 border-gray-200' }
   }
 
   return (
     <>
-      {/* BOTÓN FLOTANTE */}
       <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-50">
         <button 
           onClick={() => setIsOpen(true)}
@@ -84,7 +108,6 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
         </button>
       </div>
 
-      {/* MODAL CHECKOUT */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full md:max-w-md md:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -100,39 +123,41 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
 
             <div className="overflow-y-auto p-4 flex-1">
                 {step === 1 ? (
-                    // PASO 1: LISTA DE PRODUCTOS
                     <div className="space-y-4">
-                        {items.map((item) => (
-                            <div key={item.id} className="flex gap-4 items-center">
-                                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                    {item.image && <img src={item.image} className="w-full h-full object-cover"/>}
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-sm">{item.name}</h4>
-                                    <p className="text-xs text-gray-500">Cant: {item.quantity}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
-                                    <button onClick={() => removeItem(item.id)} className="text-xs text-red-500 underline mt-1">Eliminar</button>
-                                </div>
-                            </div>
-                        ))}
+                        {items.map((item) => {
+                            // En la vista de lista, mostramos el precio "máximo" (con penalty) como referencia inicial,
+                            // o mostramos el precio según el descuento actual si ya seleccionó algo (aunque step es 1).
+                            // Para no confundir, mostramos el precio base + penalty y aclaramos si hay descuento.
+                            const currentPrice = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
+
+                            return (
+                              <div key={item.id} className="flex gap-4 items-center">
+                                  <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                      {item.image && <img src={item.image} className="w-full h-full object-cover"/>}
+                                  </div>
+                                  <div className="flex-1">
+                                      <h4 className="font-bold text-sm">{item.name}</h4>
+                                      <p className="text-xs text-gray-500">Cant: {item.quantity}</p>
+                                  </div>
+                                  <div className="text-right">
+                                      <p className="font-bold text-sm transition-all">${(currentPrice * item.quantity).toFixed(2)}</p>
+                                      {item.penalty > 0 && applyDiscount && (
+                                        <span className="text-[10px] text-green-600 font-bold">Descuento aplicado</span>
+                                      )}
+                                      <button onClick={() => removeItem(item.id)} className="text-xs text-red-500 underline mt-1 block ml-auto">Eliminar</button>
+                                  </div>
+                              </div>
+                            )
+                        })}
                     </div>
                 ) : (
-                    // PASO 2: SELECCIÓN DE PAGO (MEJORADO)
                     <div className="space-y-3">
                         <p className="text-sm text-gray-500 mb-2">Selecciona cómo deseas pagar:</p>
                         
-                        {activeMethods.length === 0 && (
-                            <div className="text-center p-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500 text-sm">No hay métodos configurados.</p>
-                                <p className="text-xs text-gray-400 mt-1">Se acordará por WhatsApp.</p>
-                            </div>
-                        )}
-
                         {activeMethods.map(([key, data]: any) => {
                             const info = getMethodInfo(key)
                             const isSelected = selectedMethod === key
+                            const methodHasDiscount = isDiscountMethod(key)
 
                             return (
                                 <div 
@@ -143,17 +168,16 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="font-bold capitalize flex items-center gap-2 text-gray-800">
                                             {info.label}
+                                            {methodHasDiscount && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full">Mejor Precio</span>}
                                         </span>
                                         {isSelected && <Check size={18} className="text-black"/>}
                                     </div>
                                     
                                     {isSelected && (
                                         <div className="mt-3 pt-3 border-t border-gray-200 text-sm space-y-2 text-gray-600 animate-in slide-in-from-top-2">
-                                            {/* Renderizado dinámico de campos */}
                                             {Object.entries(data).map(([fieldKey, fieldValue]: any) => {
-                                                if(fieldKey === 'active') return null // Ignorar campo 'active'
-                                                if(!fieldValue) return null // Ignorar vacíos
-                                                
+                                                if(fieldKey === 'active') return null
+                                                if(!fieldValue) return null
                                                 return (
                                                     <p key={fieldKey} className="flex justify-between items-center">
                                                         <span className="capitalize text-gray-400 text-xs">{fieldKey}:</span> 
@@ -163,7 +187,6 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
                                                     </p>
                                                 )
                                             })}
-                                            <p className="text-[10px] text-center text-gray-400 mt-2">(Toca los datos para copiar)</p>
                                         </div>
                                     )}
                                 </div>
@@ -177,7 +200,10 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
                 <div className="flex justify-between items-end mb-4">
                     <span className="text-gray-500 text-sm">Total a Pagar</span>
                     <div className="text-right">
-                        <div className="text-2xl font-black text-black">${totalUSD.toFixed(2)}</div>
+                        {/* PRECIO CON ANIMACIÓN SI CAMBIA */}
+                        <div className="text-2xl font-black text-black transition-all duration-300">
+                          ${totalUSD.toFixed(2)}
+                        </div>
                         {rate > 0 && <div className="text-xs text-gray-500 font-medium">~ Bs {new Intl.NumberFormat('es-VE').format(totalBs)}</div>}
                     </div>
                 </div>
@@ -192,7 +218,6 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
                 ) : (
                     <button 
                         onClick={handleCheckout}
-                        // Permitimos enviar aunque no elija método (por si acaso falla algo)
                         className={`w-full text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors ${selectedMethod ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 hover:bg-gray-500'}`}
                     >
                         <MessageCircle size={18} /> 

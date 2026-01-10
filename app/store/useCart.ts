@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// Definimos cómo se ve un producto en el carrito
 export interface CartItem {
   id: number
   name: string
-  price: number // Precio en Dólares (Base + Penalty)
+  basePrice: number    // Precio Base (Cash/Zelle)
+  penalty: number      // El sobreprecio (para Pago Móvil)
   image?: string
   quantity: number
 }
@@ -16,7 +16,7 @@ interface CartStore {
   removeItem: (id: number) => void
   clearCart: () => void
   totalItems: () => number
-  totalAmount: () => number
+  // Nota: Quitamos totalAmount de aquí porque ahora el cálculo es dinámico en el componente
 }
 
 export const useCart = create<CartStore>()(
@@ -28,11 +28,7 @@ export const useCart = create<CartStore>()(
         const currentItems = get().items
         const existingItem = currentItems.find((item) => item.id === product.id)
 
-        // Calculamos el precio total (Cash + Penalty si existe)
-        const finalPrice = product.usd_cash_price + (product.usd_penalty || 0)
-
         if (existingItem) {
-          // Si ya existe, sumamos +1 a la cantidad
           set({
             items: currentItems.map((item) =>
               item.id === product.id
@@ -41,14 +37,14 @@ export const useCart = create<CartStore>()(
             ),
           })
         } else {
-          // Si es nuevo, lo agregamos
           set({
             items: [
               ...currentItems,
               {
                 id: product.id,
                 name: product.name,
-                price: finalPrice,
+                basePrice: product.usd_cash_price, // Guardamos la base pura
+                penalty: product.usd_penalty || 0, // Guardamos el penalty aparte
                 image: product.image_url,
                 quantity: 1,
               },
@@ -62,14 +58,12 @@ export const useCart = create<CartStore>()(
         const existingItem = currentItems.find((item) => item.id === id)
 
         if (existingItem && existingItem.quantity > 1) {
-          // Si hay más de 1, restamos cantidad
           set({
             items: currentItems.map((item) =>
               item.id === id ? { ...item, quantity: item.quantity - 1 } : item
             ),
           })
         } else {
-          // Si queda 1, lo borramos del todo
           set({
             items: currentItems.filter((item) => item.id !== id),
           })
@@ -79,11 +73,9 @@ export const useCart = create<CartStore>()(
       clearCart: () => set({ items: [] }),
 
       totalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),
-      
-      totalAmount: () => get().items.reduce((acc, item) => acc + (item.price * item.quantity), 0),
     }),
     {
-      name: 'shopping-cart', // Nombre para guardar en LocalStorage
+      name: 'shopping-cart',
     }
   )
 )

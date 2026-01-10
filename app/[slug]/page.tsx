@@ -1,11 +1,11 @@
 // Esto obliga a Next.js a regenerar la página en cada visita
-export const revalidate = 0; 
+export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 import AddToCartBtn from '@/components/AddToCartBtn'
 import FloatingCheckout from '@/components/FloatingCheckout'
-import { createClient } from '@supabase/supabase-js' 
-import { ShoppingBag, RefreshCw } from 'lucide-react' 
+import { createClient } from '@supabase/supabase-js'
+import { ShoppingBag, RefreshCw, Tag } from 'lucide-react'
 
 // Cliente Supabase
 const supabase = createClient(
@@ -23,7 +23,7 @@ async function getExchangeRates() {
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
-    .select('user_id, name, currency_type, phone, payment_methods') 
+    .select('user_id, name, currency_type, phone, payment_methods')
     .eq('slug', slug)
     .single()
   return store
@@ -36,10 +36,10 @@ async function getProducts(userId: string) {
     .select('*')
     .eq('user_id', userId)
     .order('id', { ascending: false })
-  
+
   if (error) {
     console.error("Error SQL buscando productos:", error)
-    return [] 
+    return []
   }
   return products
 }
@@ -70,91 +70,124 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
   const ownerPhone = store.phone || '584120000000'
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 font-sans relative">
-      
+    <div className="min-h-screen bg-gray-50 pb-32 font-sans relative">
+
       {/* HEADER */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-blue-600 p-2 rounded-lg">
+            <div className="bg-black p-2 rounded-lg">
               <ShoppingBag className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-lg font-bold tracking-tight">{store.name}</h1>
+            <h1 className="text-lg font-bold tracking-tight text-gray-900">{store.name}</h1>
           </div>
-          <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${
-            currencyMode === 'eur' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-green-50 text-green-700 border-green-100'
-          }`}>
-             <RefreshCw className="w-3 h-3" />
-             <span className="uppercase">Tasa {currencyMode}: {activeRate} Bs</span>
+          <div className={`flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full border ${currencyMode === 'eur' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-green-50 text-green-700 border-green-100'
+            }`}>
+            <RefreshCw className="w-3 h-3" />
+            <span className="uppercase">Tasa: {activeRate} Bs</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <p className="text-sm text-gray-500 mb-6">Mostrando {products.length} productos</p>
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-end mb-6">
+          <p className="text-sm text-gray-500">{products.length} Productos</p>
+        </div>
 
         {products.length === 0 ? (
-           <div className="text-center py-12 text-gray-400">
-             <p>Esta tienda aún no tiene productos disponibles.</p>
-           </div>
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="text-gray-300" />
+            </div>
+            <p className="text-gray-400">Esta tienda aún no tiene productos.</p>
+          </div>
         ) : (
-          <div className="flex flex-col gap-4">
-              {products.map((product: any) => {
-                const totalRef = product.usd_cash_price + (product.usd_penalty || 0)
-                const priceInBs = totalRef * (activeRate || 0)
+          /* --- AQUÍ ESTÁ LA MAGIA DEL GRID --- */
+          /* Móvil: 2 columnas | Tablet: 3 columnas | PC: 4 columnas */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {products.map((product: any) => {
+              const hasPenalty = product.usd_penalty > 0
+              const totalRef = product.usd_cash_price + (product.usd_penalty || 0)
+              const priceInBs = totalRef * (activeRate || 0)
 
-                return (
-                  <div key={product.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                    <div className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-4 items-center">
-                      <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 border border-gray-50">
-                          {product.image_url && ( <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> )}
+              return (
+                <div key={product.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
+
+                  {/* 1. FOTO CUADRADA Y GRANDE */}
+                  <div className="aspect-square relative bg-gray-100 overflow-hidden">
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">Sin Foto</div>
+                    )}
+
+                    {/* 2. ETIQUETA VERDE DE DESCUENTO EN DIVISAS */}
+                    {hasPenalty && (
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                        <Tag size={10} /> DESC. EN DIVISAS
                       </div>
-                      <div className="flex flex-col gap-1">
-                          <h3 className="font-bold text-gray-900 text-lg line-clamp-1 leading-tight">{product.name}</h3>
-                          <p className="text-sm text-gray-500">{product.category} • {product.sizes || 'Unico'}</p>
-                          <div className="mt-3 flex flex-col gap-3 md:hidden">
-                              <div className="flex items-end gap-2">
-                                  <span className="text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
-                                  {activeRate > 0 && (
-                                      <span className="text-sm text-gray-500 font-medium pb-0.5">
-                                          Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
-                                      </span>
-                                  )}
-                              </div>
-                              <AddToCartBtn product={product} />
-                          </div>
-                      </div>
-                      <div className="hidden md:flex flex-col items-end gap-2 pl-4 border-l border-gray-50">
-                          <div className="text-right">
-                               <span className="block text-xl font-extrabold text-black tracking-tight">{symbol}{product.usd_cash_price}</span>
-                               {activeRate > 0 && (
-                                  <span className="block text-xs text-gray-400 font-medium">
-                                      Ref. {symbol}{totalRef} | Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 }).format(priceInBs)}
-                                  </span>
-                               )}
-                          </div>
-                          <div className="mt-1">
-                            <AddToCartBtn product={product} />
-                          </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )
-              })}
+
+                  {/* 3. INFORMACIÓN (Estilo Vertical) */}
+                  <div className="p-3 md:p-4 flex flex-col flex-1">
+                    <div className="mb-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{product.category}</span>
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
+                      {product.name}
+                    </h3>
+                    {product.sizes && <p className="text-xs text-gray-500 mb-3">Tallas: {product.sizes}</p>}
+
+                    {/* ... dentro del map ... */}
+
+{/* PRECIOS */}
+<div className="mt-auto pt-3 border-t border-gray-50">
+    <div className="flex flex-col">
+        {/* Precio Principal (Divisa Cash) - SIEMPRE EN DÓLARES */}
+        <div className="flex items-center gap-2">
+            <span className="text-xl font-black text-gray-900">${product.usd_cash_price}</span> {/* <--- AQUÍ FORZAMOS EL $ */}
+            {hasPenalty && (
+                <span className="text-xs text-gray-400 line-through font-medium">${totalRef}</span>
+            )}
+        </div>
+        
+        {/* Precio Bs - Calculado con la tasa activa (sea EUR o USD) */}
+        {activeRate > 0 && (
+            <p className="text-xs text-gray-500 font-medium mt-1">
+                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
+            </p>
+        )}
+    </div>
+    
+    <div className="mt-3">
+        <AddToCartBtn product={product} />
+    </div>
+</div>
+                  </div>
+
+                </div>
+              )
+            })}
           </div>
         )}
       </main>
 
-      <FloatingCheckout 
-        rate={activeRate} 
+      <FloatingCheckout
+        rate={activeRate}
         currency={currencyMode}
-        phone={ownerPhone} 
+        phone={ownerPhone}
         storeName={store.name}
-        paymentMethods={store.payment_methods} 
+        paymentMethods={store.payment_methods}
       />
-      
-      <footer className="mt-10 text-center text-xs text-gray-400">
-        Precios calculados a tasa {currencyMode.toUpperCase()} BCV
+
+      <footer className="py-8 text-center text-xs text-gray-400 bg-white border-t border-gray-100">
+        <p>Precios calculados a tasa {currencyMode.toUpperCase()} BCV</p>
+        <p className="mt-1">Powered by Center Service</p>
       </footer>
     </div>
   )
