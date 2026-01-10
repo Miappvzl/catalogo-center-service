@@ -204,7 +204,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
       
       <footer className="py-8 text-center text-xs text-gray-400 bg-white border-t border-gray-100">
         <p>Precios calculados a tasa {currencyMode.toUpperCase()} BCV</p>
-        <p className="mt-1">Powered by Center Service</p>
+        <p className="mt-1">Powered by Quanzosai</p>
       </footer>
 
       <style jsx global>{`
