@@ -58,7 +58,7 @@ export default function AdminPage() {
       // 4. Productos
       const { data: productsData } = await supabase
         .from('products')
-        .select('*, payment_methods(*)')
+        .select('*')
         .eq('user_id', user.id)
         .order('id', { ascending: false })
         
