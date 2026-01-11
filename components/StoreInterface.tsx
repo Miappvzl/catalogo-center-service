@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ShoppingBag, RefreshCw, Tag, Search, X } from 'lucide-react'
+import Link from 'next/link' // <--- IMPORTANTE: Importamos Link
 import AddToCartBtn from '@/components/AddToCartBtn'
 import FloatingCheckout from '@/components/FloatingCheckout'
 
@@ -16,7 +17,6 @@ export default function StoreInterface({ store, products, rates }: Props) {
   const [selectedCategory, setSelectedCategory] = useState('Todos')
 
   // --- FUNCIÓN DE LIMPIEZA (NORMALIZACIÓN) ---
-  // Convierte "  suplementos " -> "Suplementos"
   const normalizeCategory = (cat: string) => {
     if (!cat) return ''
     const trimmed = cat.trim().toLowerCase()
@@ -25,21 +25,15 @@ export default function StoreInterface({ store, products, rates }: Props) {
 
   // 1. Extraemos las categorías únicas y limpias
   const categories = useMemo(() => {
-    // Mapeamos cada producto a su versión "Limpia"
     const cats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
-    // El Set elimina los duplicados exactos
     return ['Todos', ...Array.from(new Set(cats))]
   }, [products])
 
   // 2. Filtramos los productos en tiempo real
   const filteredProducts = products.filter(product => {
-    // Filtro de Texto
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Filtro de Categoría (Comparando versión limpia con versión limpia)
     const productCatClean = normalizeCategory(product.category)
     const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
-    
     return matchesSearch && matchesCategory
   })
 
@@ -137,33 +131,41 @@ export default function StoreInterface({ store, products, rates }: Props) {
                 const priceInBs = totalRef * (activeRate || 0)
 
                 return (
-                  <div key={product.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
+                  <div key={product.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full relative">
                     
-                    <div className="aspect-square relative bg-gray-100 overflow-hidden">
-                        {product.image_url ? ( 
-                            <img 
-                                src={product.image_url} 
-                                alt={product.name} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                            /> 
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">Sin Foto</div>
-                        )}
-                        
-                        {hasPenalty && (
-                            <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
-                                <Tag size={10} /> DESC. EN DIVISAS
-                            </div>
-                        )}
-                    </div>
+                    {/* ENLACE EN LA FOTO */}
+                    <Link href={`/product/${product.id}`} className="block cursor-pointer">
+                        <div className="aspect-square relative bg-gray-100 overflow-hidden">
+                            {product.image_url ? ( 
+                                <img 
+                                    src={product.image_url} 
+                                    alt={product.name} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                /> 
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">Sin Foto</div>
+                            )}
+                            
+                            {hasPenalty && (
+                                <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                                    <Tag size={10} /> DESC. EN DIVISAS
+                                </div>
+                            )}
+                        </div>
+                    </Link>
 
                     <div className="p-3 md:p-4 flex flex-col flex-1">
                         <div className="mb-1">
                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{product.category}</span>
                         </div>
-                        <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
-                            {product.name}
-                        </h3>
+                        
+                        {/* ENLACE EN EL TÍTULO */}
+                        <Link href={`/product/${product.id}`} className="block cursor-pointer hover:underline decoration-1 underline-offset-2 decoration-gray-400">
+                            <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
+                                {product.name}
+                            </h3>
+                        </Link>
+
                         {product.sizes && <p className="text-xs text-gray-500 mb-3">Tallas: {product.sizes}</p>}
                         
                         <div className="mt-auto pt-3 border-t border-gray-50">
@@ -181,7 +183,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
                                 )}
                             </div>
                             
-                            <div className="mt-3">
+                            <div className="mt-3 relative z-10"> {/* z-10 para asegurar que el click vaya al botón y no al Link */}
                                 <AddToCartBtn product={product} />
                             </div>
                         </div>

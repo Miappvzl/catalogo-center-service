@@ -140,7 +140,7 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
                                       <p className="text-xs text-gray-500">Cant: {item.quantity}</p>
                                   </div>
                                   <div className="text-right">
-                                      <p className="font-bold text-sm transition-all">${(currentPrice * item.quantity).toFixed(2)}</p>
+                                      <p className="font-bold text-sm transition-all text-[#111827]">${(currentPrice * item.quantity).toFixed(2)}</p>
                                       {item.penalty > 0 && applyDiscount && (
                                         <span className="text-[10px] text-green-600 font-bold">Descuento aplicado</span>
                                       )}
