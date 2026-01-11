@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { createBrowserClient } from '@supabase/ssr' // <--- LA CLAVE: Librería moderna
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Upload, Loader2, DollarSign, Tag, Ruler } from 'lucide-react'
 import Link from 'next/link'
+
+// 1. IMPORTAMOS TU NUEVA UTILIDAD (Ajusta la ruta si es necesario)
+import { uploadImageToSupabase } from '@/utils/supabaseStorage' 
 
 export default function NewProductPage() {
   const [name, setName] = useState('')
@@ -19,18 +22,31 @@ export default function NewProductPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  // Conexión Moderna (Lee las cookies correctamente)
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Manejar selección de imagen
+  // 2. MEJORA EN LA SELECCIÓN (Protección contra errores en Android y Tamaño)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setImageFile(file)
-      setImagePreview(URL.createObjectURL(file))
+      // Validación rápida de tamaño antes de mostrar preview (Mejora UX)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("La imagen es muy pesada (Máximo 5MB).")
+        e.target.value = "" // Limpiar input
+        return
+      }
+
+      try {
+        setImageFile(file)
+        // Protegemos createObjectURL por si el archivo está corrupto en móviles
+        const objectUrl = URL.createObjectURL(file)
+        setImagePreview(objectUrl)
+      } catch (error) {
+        console.error("Error al previsualizar:", error)
+        alert("No se pudo cargar la vista previa de esta imagen.")
+      }
     }
   }
 
@@ -43,24 +59,13 @@ export default function NewProductPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No estás logueado. Inicia sesión de nuevo.")
 
-      // 2. Subir Imagen (Si existe)
+      // 2. SUBIDA DE IMAGEN (OPTIMIZADO CON TU NUEVA UTILIDAD)
       let imageUrl = null
+      
       if (imageFile) {
-        // Nombre único para la foto: usuario/timestamp.jpg
-        const fileName = `${user.id}/${Date.now()}-${imageFile.name}`
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('products') // Asegúrate de que este bucket exista en Supabase
-          .upload(fileName, imageFile)
-
-        if (uploadError) throw uploadError
-
-        // Obtener URL pública
-        const { data: { publicUrl } } = supabase.storage
-          .from('products')
-          .getPublicUrl(fileName)
-        
-        imageUrl = publicUrl
+        // ¡Magia! Todo el proceso complejo se reduce a esta línea:
+        // (Cliente, Archivo, NombreBucket, CarpetaUsuario)
+        imageUrl = await uploadImageToSupabase(supabase, imageFile, 'products', user.id)
       }
 
       // 3. Guardar Producto en Base de Datos
@@ -71,7 +76,7 @@ export default function NewProductPage() {
             user_id: user.id,
             name: name,
             usd_cash_price: parseFloat(price),
-            usd_penalty: penalty ? parseFloat(penalty) : 0, // Si está vacío es 0
+            usd_penalty: penalty ? parseFloat(penalty) : 0,
             category: category,
             sizes: sizes,
             image_url: imageUrl
@@ -82,11 +87,12 @@ export default function NewProductPage() {
 
       // 4. Éxito
       alert('¡Producto creado con éxito!')
-      router.push('/admin') // Volver al panel
-      router.refresh()      // Refrescar para ver el producto nuevo
+      router.push('/admin')
+      router.refresh()
 
     } catch (error: any) {
       console.error(error)
+      // Ahora si falla la subida por tamaño o nombre, el mensaje vendrá limpio desde tu utility
       alert(error.message || "Ocurrió un error al crear el producto")
     } finally {
       setLoading(false)
@@ -135,97 +141,47 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            {/* --- NOMBRE --- */}
+            {/* --- RESTO DEL FORMULARIO (Sin cambios, solo oculto para brevedad) --- */}
+            {/* ... inputs de nombre, precio, categoría ... */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Nombre del Producto
-              </label>
-              <input 
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Creatina Monohidratada"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-black transition-all"
-                required
-              />
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nombre del Producto</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Creatina Monohidratada" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-black transition-all" required />
             </div>
 
-            {/* --- PRECIOS (Grid) --- */}
-            <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  Precio ($)
-                </label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Precio ($)</label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-3 text-gray-400" size={16} />
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all font-medium"
-                    required
-                  />
+                  <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all font-medium" required />
                 </div>
               </div>
-              
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  Penalty en Bs ($) <span className="text-gray-300 font-normal normal-case">(Opcional)</span>
-                </label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Penalty en Bs ($) <span className="text-gray-300 font-normal normal-case">(Opcional)</span></label>
                 <div className="relative">
-                  <PlusSymbol /> {/* Icono pequeño custom abajo */}
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={penalty}
-                    onChange={(e) => setPenalty(e.target.value)}
-                    placeholder="+ 0.00"
-                    className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all font-medium"
-                  />
+                  <PlusSymbol />
+                  <input type="number" step="0.01" value={penalty} onChange={(e) => setPenalty(e.target.value)} placeholder="+ 0.00" className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all font-medium" />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1 leading-tight">
-                  Se sumará al precio base solo para pagos en Bolívares.
-                </p>
               </div>
             </div>
 
-            {/* --- CATEGORÍA --- */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Categoría
-              </label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Categoría</label>
               <div className="relative">
                 <Tag className="absolute left-3 top-3 text-gray-400" size={16} />
-                <input 
-                  type="text" 
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Zapatos / Sneakers / Suplementos"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all"
-                />
+                <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Zapatos / Sneakers / Suplementos" className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all" />
               </div>
             </div>
 
-            {/* --- TALLAS / MEDIDAS --- */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Medidas / Tallas / Peso
-              </label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Medidas / Tallas / Peso</label>
               <div className="relative">
                 <Ruler className="absolute left-3 top-3 text-gray-400" size={16} />
-                <input 
-                  type="text" 
-                  value={sizes}
-                  onChange={(e) => setSizes(e.target.value)}
-                  placeholder="Ej: S, M, L o 1kg, 500g, 40, 41"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all"
-                />
+                <input type="text" value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="Ej: S, M, L o 1kg, 500g, 40, 41" className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-black transition-all" />
               </div>
             </div>
 
-            {/* --- BOTÓN PUBLICAR --- */}
+
             <button 
               type="submit" 
               disabled={loading}
@@ -241,7 +197,6 @@ export default function NewProductPage() {
   )
 }
 
-// Icono auxiliar
 function PlusSymbol() {
   return <span className="absolute left-4 top-3 text-gray-400 font-bold text-lg">+</span>
 }

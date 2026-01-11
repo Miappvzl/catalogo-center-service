@@ -2,29 +2,30 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useRouter, useParams } from 'next/navigation' // <--- useParams es clave aquí
+import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Upload, Loader2, DollarSign, Tag, Ruler, Save } from 'lucide-react'
 import Link from 'next/link'
 import Swal from 'sweetalert2'
 
+// 1. IMPORTAMOS LA UTILIDAD DE SEGURIDAD
+import { uploadImageToSupabase } from '@/utils/supabaseStorage'
+
 export default function EditProductPage() {
   const params = useParams()
-  const id = params.id // Obtenemos el ID de la URL
+  const id = params.id 
 
-  // Estados del formulario
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [penalty, setPenalty] = useState('')
   const [category, setCategory] = useState('')
   const [sizes, setSizes] = useState('')
   
-  // Estados de Imagen
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
 
-  const [loading, setLoading] = useState(true) // Cargando datos iniciales
-  const [saving, setSaving] = useState(false)  // Guardando cambios
+  const [loading, setLoading] = useState(true) 
+  const [saving, setSaving] = useState(false) 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -33,7 +34,7 @@ export default function EditProductPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // 1. CARGAR DATOS DEL PRODUCTO AL ABRIR
+  // 1. CARGAR DATOS (Sin cambios mayores)
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -45,16 +46,15 @@ export default function EditProductPage() {
 
         if (error) throw error
 
-        // Rellenar formulario
         setName(product.name)
         setPrice(product.usd_cash_price)
-        setPenalty(product.usd_penalty || '') // Recordamos que es 'usd_penalty'
+        setPenalty(product.usd_penalty || '')
         setCategory(product.category)
         setSizes(product.sizes || '')
         
         if (product.image_url) {
           setCurrentImageUrl(product.image_url)
-          setImagePreview(product.image_url) // Mostrar la foto actual
+          setImagePreview(product.image_url)
         }
 
       } catch (error) {
@@ -69,16 +69,29 @@ export default function EditProductPage() {
     if (id) fetchProduct()
   }, [id, supabase, router])
 
-  // Manejar cambio de imagen (Igual que en crear)
+  // 2. MANEJO DE IMAGEN SEGURO (Validación de tamaño + Android Fix)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setImageFile(file)
-      setImagePreview(URL.createObjectURL(file))
+      // A. Validación de Tamaño (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+         Swal.fire('Archivo muy pesado', 'La imagen no debe superar los 5MB', 'warning')
+         e.target.value = "" // Reset del input
+         return
+      }
+
+      // B. Protección de Preview
+      try {
+        setImageFile(file)
+        setImagePreview(URL.createObjectURL(file))
+      } catch (error) {
+        console.error(error)
+        Swal.fire('Error', 'No se pudo leer la imagen seleccionada', 'error')
+      }
     }
   }
 
-  // 2. GUARDAR CAMBIOS
+  // 3. GUARDAR CAMBIOS
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -87,24 +100,13 @@ export default function EditProductPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Sesión expirada")
 
-      // Lógica de Imagen:
-      // Si subió una nueva (imageFile existe) -> La subimos y usamos esa URL.
-      // Si NO subió nueva -> Mantenemos currentImageUrl.
-      let finalImageUrl = currentImageUrl
+      // Lógica de Imagen Simplificada:
+      let finalImageUrl = currentImageUrl // Por defecto, mantenemos la anterior
 
       if (imageFile) {
-        const fileName = `${user.id}/${Date.now()}-${imageFile.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('products')
-          .upload(fileName, imageFile)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('products')
-          .getPublicUrl(fileName)
-        
-        finalImageUrl = publicUrl
+        // --- AQUÍ USAMOS TU FUNCIÓN SEGURA ---
+        // Esto sanitiza el nombre y valida errores automáticamente
+        finalImageUrl = await uploadImageToSupabase(supabase, imageFile, 'products', user.id)
       }
 
       // Actualizar en Base de Datos
@@ -118,7 +120,7 @@ export default function EditProductPage() {
           sizes,
           image_url: finalImageUrl
         })
-        .eq('id', id) // <--- IMPORTANTE: Solo actualizamos ESTE producto
+        .eq('id', id)
 
       if (updateError) throw updateError
 
@@ -134,7 +136,9 @@ export default function EditProductPage() {
       router.refresh()
 
     } catch (error: any) {
-      Swal.fire('Error', error.message, 'error')
+      console.error(error)
+      // Si la función uploadImageToSupabase falla, el mensaje llega aquí limpio
+      Swal.fire('Error', error.message || 'Error al actualizar', 'error')
     } finally {
       setSaving(false)
     }
@@ -169,7 +173,7 @@ export default function EditProductPage() {
                   <Upload className="text-gray-400" size={32} />
                 )}
                 <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
-                {/* Overlay al hacer hover para indicar que se puede cambiar */}
+                
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 flex items-center justify-center transition-colors group">
                     <span className="opacity-0 group-hover:opacity-100 bg-black/50 text-white text-xs px-2 py-1 rounded">Cambiar foto</span>
                 </div>

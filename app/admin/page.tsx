@@ -3,6 +3,8 @@
 export const dynamic = 'force-dynamic' 
 
 import { useEffect, useState, useRef } from 'react'
+// 1. Asegúrate de que esta importación esté correcta
+import { uploadImageToSupabase } from '@/utils/supabaseStorage'
 import { createBrowserClient } from '@supabase/ssr' 
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, LogOut, DollarSign, Image as ImageIcon, Loader2, Upload, RefreshCw, Save } from 'lucide-react'
@@ -18,11 +20,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('usd')
   
-  // ESTADOS NUEVOS PARA LA TASA
   const [rates, setRates] = useState({ usd_rate: 0, eur_rate: 0 })
   const [savingRates, setSavingRates] = useState(false)
 
-  // Estados para el Logo
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
   
@@ -45,18 +45,16 @@ export default function AdminPage() {
         return
       }
 
-      // 1. Buscamos TASAS GLOBALES (app_config)
+      // 1. Configuración
       const { data: configData } = await supabase
         .from('app_config')
         .select('usd_rate, eur_rate')
         .eq('id', 1)
         .single()
       
-      if (configData) {
-        setRates(configData)
-      }
+      if (configData) setRates(configData)
 
-      // 2. Buscamos la tienda
+      // 2. Tienda
       const { data: storeData } = await supabase
         .from('stores')
         .select('*')
@@ -117,27 +115,28 @@ export default function AdminPage() {
     setSavingRates(false)
   }
 
-  // --- SUBIDA DE LOGO ---
+  // --- SUBIDA DE LOGO (REFACTORIZADA) ---
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !store) return
 
+    // 1. VALIDACIÓN INMEDIATA DE TAMAÑO (UX)
+    if (file.size > 5 * 1024 * 1024) {
+        Swal.fire('Archivo muy pesado', 'El logo debe pesar menos de 5MB', 'warning')
+        e.target.value = "" // Reset del input
+        return
+    }
+
     setUploadingLogo(true)
     try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error("No user")
+        // No necesitamos user.id aquí para el nombre del archivo, 
+        // la utilidad genera uno único automáticamente.
 
-        const fileName = `logos/${user.id}-${Date.now()}`
-        const { error: uploadError } = await supabase.storage
-            .from('products')
-            .upload(fileName, file)
+        // 2. USAR LA UTILIDAD SEGURA
+        // Pasamos 'logos' como la carpeta destino dentro del bucket 'products'
+        const publicUrl = await uploadImageToSupabase(supabase, file, 'products', 'logos')
 
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('products')
-            .getPublicUrl(fileName)
-
+        // 3. ACTUALIZAR BASE DE DATOS
         const { error: dbError } = await supabase
             .from('stores')
             .update({ logo_url: publicUrl })
@@ -145,12 +144,14 @@ export default function AdminPage() {
 
         if (dbError) throw dbError
 
+        // Actualizar estado local
         setStore({ ...store, logo_url: publicUrl })
         Swal.fire('Logo Actualizado', '', 'success')
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(error)
-        Swal.fire('Error', 'No se pudo subir el logo', 'error')
+        // El error.message vendrá limpio desde la utilidad si es un error de validación
+        Swal.fire('Error', error.message || 'No se pudo subir el logo', 'error')
     } finally {
         setUploadingLogo(false)
     }
@@ -221,7 +222,7 @@ export default function AdminPage() {
         {/* --- GRID DE CONFIGURACIÓN --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* 1. CONTROL CAMBIARIO (NUEVO) */}
+            {/* 1. CONTROL CAMBIARIO */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 ring-1 ring-orange-50">
                 <div className="flex justify-between items-start mb-4">
                     <h2 className="text-xs font-bold text-orange-600 uppercase tracking-wider flex items-center gap-2">
