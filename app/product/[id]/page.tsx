@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import ShareButton from '@/components/ShareButton' // <--- 1. IMPORTAR
 import { createClient } from '@supabase/supabase-js' 
 import { ArrowLeft, MessageCircle, AlertTriangle, CheckCircle, Share2, Tag, ShoppingBag } from 'lucide-react'
 
@@ -41,7 +42,7 @@ async function getRates() {
   return data
 }
 
-// --- 2. METADATA (Para que se vea bonito al compartir) ---
+// --- 2. METADATA (MAGIA PARA WHATSAPP) ---
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const resolvedParams = await params
   const product = await getProduct(resolvedParams.id)
@@ -50,7 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   return {
     title: `${product.name} | Disponible`,
-    description: `Compra ${product.name} al mejor precio. Revisa los detalles aquí.`,
+    description: `Precio: $${product.usd_cash_price}. Entra para ver detalles y comprar.`,
     openGraph: {
       images: product.image_url ? [product.image_url] : [],
       title: product.name,
@@ -226,21 +227,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             Pedir por WhatsApp
           </a>
           
-          {/* Botón Compartir (Nativo del Navegador si es posible, sino link simple) */}
-          <Link 
-            href={`whatsapp://send?text=Mira este producto: ${product.name} - $${priceBase}`}
-            className="p-3.5 bg-gray-100 hover:bg-gray-200 text-black rounded-xl transition-all active:scale-90"
-            target="_blank"
-          >
-            <Share2 size={20} />
-          </Link>
+          {/* 2. USAR EL NUEVO BOTÓN AQUÍ */}
+          <ShareButton productName={product.name} price={priceBase} />
+          
         </div>
       </div>
     </div>
   )
 }
-
 function RefreshCw({ size, className, style }: any) {
-    // Icono simple para evitar conflictos de importación
     return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 }
