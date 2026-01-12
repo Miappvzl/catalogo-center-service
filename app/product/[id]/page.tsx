@@ -226,9 +226,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <MessageCircle size={20} />
             Pedir por WhatsApp
           </a>
-          
-          {/* 2. USAR EL NUEVO BOTÓN AQUÍ */}
-          <ShareButton productName={product.name} price={priceBase} />
+        {/* ... dentro del div fixed bottom-0 ... */}
+
+{/* USAR EL NUEVO BOTÓN CON TODOS LOS DATOS */}
+<ShareButton 
+    productName={product.name} 
+    price={priceBase} 
+    slug={id}
+    imageUrl={product.image_url} // <--- ¡Aquí pasamos la imagen!
+/>
           
         </div>
       </div>
