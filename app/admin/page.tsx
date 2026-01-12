@@ -212,8 +212,8 @@ export default function AdminPage() {
         <div className="bg-gray-900 rounded-2xl p-6 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Tu Link Oficial</p>
-                <code className="text-blue-400 text-sm md:text-base break-all cursor-pointer hover:text-blue-300" onClick={() => { navigator.clipboard.writeText(`https://catalogo-center-service.vercel.app/${store?.slug}`); Swal.fire({toast:true, title:'Link copiado', icon:'success', position:'top', showConfirmButton:false, timer:1000}) }}>
-                    https://catalogo-center-service.vercel.app/{store?.slug}
+                <code className="text-blue-400 text-sm md:text-base break-all cursor-pointer hover:text-blue-300" onClick={() => { navigator.clipboard.writeText(`https://preziso.vercel.app/${store?.slug}`); Swal.fire({toast:true, title:'Link copiado', icon:'success', position:'top', showConfirmButton:false, timer:1000}) }}>
+                    https://preziso.vercel.app/{store?.slug}
                 </code>
             </div>
             <a href={`/${store?.slug}`} target="_blank" className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">Ver Tienda ↗</a>

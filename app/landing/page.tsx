@@ -12,7 +12,7 @@ export default function LandingPage() {
             <div className="bg-black text-white p-1.5 rounded-lg shadow-lg">
                 <ShoppingBag size={20} />
             </div>
-            <span>Qatalog<span className="text-green-500">.</span></span>
+            <span>Preziso<span className="text-green-500">.</span></span>
           </div>
           
           <div className="flex items-center gap-3 md:gap-6">
@@ -50,7 +50,7 @@ export default function LandingPage() {
             
             {/* Subtítulo */}
             <p className="text-lg md:text-2xl text-gray-500 max-w-3xl mx-auto mb-10 md:mb-12 leading-relaxed font-medium">
-              Olvídate de cambiar precios manuales cada mañana. <span className="text-gray-900 font-semibold">Qatalog</span> actualiza tu inventario con la tasa del día y gestiona tus pedidos de WhatsApp en automático.
+              Olvídate de cambiar precios manuales cada mañana. <span className="text-gray-900 font-semibold">Preziso</span> actualiza tu inventario con la tasa del día y gestiona tus pedidos de WhatsApp en automático.
             </p>
 
             {/* Botones de Acción */}

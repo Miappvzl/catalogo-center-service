@@ -13,7 +13,7 @@ export default function SubscriptionPage() {
   }
 
   const handleReportPayment = () => {
-    const message = `Hola, mi periodo de prueba en Qatalog venció. Ya realicé el pago de la suscripción (${price}).\n\nAdjunto comprobante:`
+    const message = `Hola, mi periodo de prueba en Preziso venció. Ya realicé el pago de la suscripción (${price}).\n\nAdjunto comprobante:`
     const url = `https://wa.me/584145811936?text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
   }

@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 export const metadata: Metadata = {
-  title: "Qatalog | Tu Tienda Online",
+  title: "Preziso | Tu Tienda Online",
   description: "Plataforma de catálogo digital con tasa automática BCV.",
 };
 

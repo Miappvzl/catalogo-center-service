@@ -103,7 +103,7 @@ export default function SetupPage() {
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tu URL (Link)</label>
             <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3">
-              <span className="text-gray-400 text-sm border-r border-gray-200 pr-2 mr-2">catalogo...app/</span>
+              <span className="text-gray-400 text-sm border-r border-gray-200 pr-2 mr-2">preziso...app/</span>
               <input 
                 type="text" 
                 value={slug}
