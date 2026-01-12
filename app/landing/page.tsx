@@ -225,7 +225,7 @@ export default function LandingPage() {
                 <div className="bg-black text-white p-1 rounded">
                     <ShoppingBag size={16} />
                 </div>
-                Qatalog.
+                Preziso.
              </div>
              
              <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm font-medium text-gray-600">
