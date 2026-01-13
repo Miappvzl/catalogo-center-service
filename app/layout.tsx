@@ -12,8 +12,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 export const metadata: Metadata = {
-  title: "Preziso | Tu Tienda Online",
-  description: "Plataforma de catálogo digital con tasa automática BCV.",
+  metadataBase: new URL('https://preziso.vercel.app'),
+  title: {
+    default: "Preziso | E-commerce Automatizado para Venezuela",
+    template: "%s | Preziso"
+  },
+  description: "Sistema de ventas inteligente que actualiza tus precios a Tasa BCV automáticamente. Vende en dólares, cobra en bolívares y gestiona pedidos por WhatsApp.",
+  keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
+  openGraph: {
+    title: "Preziso - Deja de ser esclavo de la tasa",
+    description: "Tu tienda online que calcula el dólar sola. Prueba gratis hoy.",
+    siteName: "Preziso",
+    locale: "es_VE",
+    type: "website",
+  }
 };
 
 export default function RootLayout({
