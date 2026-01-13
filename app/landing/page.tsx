@@ -57,7 +57,7 @@ export default function LandingPage() {
             {/* Título Principal SEO + Persuasión */}
             <h1 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tight mb-6 md:mb-8 leading-[1.1] md:leading-[1]">
               Deja de ser esclavo <br className="hidden md:block"/>
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-[#009081s] to-gray-900">de la Tasa del Día.</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-[#009081] to-gray-900">de la Tasa del Día.</span>
             </h1>
             
             {/* Subtítulo (El Gancho) */}
