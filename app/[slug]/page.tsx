@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js' 
-import StoreInterface from '@/components/StoreInterface' // <--- Importamos el nuevo componente
+import StoreInterface from '@/components/StoreInterface'
 
 // Cliente Supabase
 const supabase = createClient(
@@ -12,17 +12,17 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// 1. Buscamos Tasas
+// 1. Buscamos Tasas Globales (Respaldo)
 async function getExchangeRates() {
   const { data } = await supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single()
   return data
 }
 
-// 2. Buscamos Tienda
+// 2. Buscamos Tienda (AHORA INCLUIMOS LAS NUEVAS COLUMNAS)
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
-    .select('user_id, name, currency_type, phone, payment_methods, logo_url') 
+    .select('user_id, name, currency_type, currency_symbol, usd_price, eur_price, phone, payment_methods, logo_url') 
     .eq('slug', slug)
     .single()
   return store
@@ -77,7 +77,6 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
   const resolvedParams = await params
   const slug = resolvedParams.slug
 
-  // Ejecutamos las peticiones en paralelo para que cargue más rápido
   const [store, rates] = await Promise.all([
     getStoreOwner(slug),
     getExchangeRates()
@@ -94,7 +93,6 @@ export default async function DynamicStore({ params }: { params: Promise<{ slug:
 
   const products = await getProducts(store.user_id) || []
 
-  // Le pasamos todo al componente Cliente para que maneje la interactividad
   return (
     <StoreInterface 
         store={store} 

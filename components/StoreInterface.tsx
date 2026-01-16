@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ShoppingBag, RefreshCw, Tag, Search, X } from 'lucide-react'
-import Link from 'next/link' // <--- IMPORTANTE: Importamos Link
+import Link from 'next/link'
 import AddToCartBtn from '@/components/AddToCartBtn'
 import FloatingCheckout from '@/components/FloatingCheckout'
 
@@ -16,20 +16,31 @@ export default function StoreInterface({ store, products, rates }: Props) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Todos')
 
-  // --- FUNCIÓN DE LIMPIEZA (NORMALIZACIÓN) ---
+  // --- LÓGICA MAESTRA DE MONEDA (AQUÍ ESTÁ LA SOLUCIÓN) ---
+  
+  // 1. Determinar Moneda: Si el símbolo es '€', es Euro. Si no, Dólar.
+  const currencyMode = store.currency_symbol === '€' ? 'eur' : 'usd'
+  const symbol = '$' // Los precios base siempre están en $
+  
+  // 2. Determinar Tasa: ¿Usamos la manual de la tienda o la global del sistema?
+  // Si la tienda tiene una tasa > 0, usamos esa. Si no, usamos la global (rates).
+  const activeRate = currencyMode === 'eur' 
+      ? (store.eur_price > 0 ? store.eur_price : rates?.eur_rate) 
+      : (store.usd_price > 0 ? store.usd_price : rates?.usd_rate)
+
+  // --------------------------------------------------------
+
   const normalizeCategory = (cat: string) => {
     if (!cat) return ''
     const trimmed = cat.trim().toLowerCase()
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
   }
 
-  // 1. Extraemos las categorías únicas y limpias
   const categories = useMemo(() => {
     const cats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
     return ['Todos', ...Array.from(new Set(cats))]
   }, [products])
 
-  // 2. Filtramos los productos en tiempo real
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
     const productCatClean = normalizeCategory(product.category)
@@ -37,15 +48,10 @@ export default function StoreInterface({ store, products, rates }: Props) {
     return matchesSearch && matchesCategory
   })
 
-  // Configuración de Moneda
-  const currencyMode = store.currency_type === 'eur' ? 'eur' : 'usd'
-  const activeRate = currencyMode === 'eur' ? rates?.eur_rate : rates?.usd_rate
-  const symbol = '$' 
-
   return (
     <div className="min-h-screen bg-gray-50 pb-32 font-sans relative">
       
-      {/* HEADER + BUSCADOR INTEGRADO */}
+      {/* HEADER */}
       <header className="bg-white sticky top-0 z-20 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -66,14 +72,13 @@ export default function StoreInterface({ store, products, rates }: Props) {
           </div>
         </div>
 
-        {/* Barra de Búsqueda y Filtros */}
+        {/* BUSCADOR */}
         <div className="max-w-5xl mx-auto px-4 py-3 space-y-3">
-            
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                     type="text" 
-                    placeholder="¿Qué estás buscando? (Ej: Creatina, Nike...)" 
+                    placeholder="¿Qué estás buscando?..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-black focus:ring-0 rounded-xl pl-10 pr-10 py-3 text-sm font-medium transition-all outline-none"
@@ -85,7 +90,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
                 )}
             </div>
 
-            {/* Chips de Categorías */}
+            {/* CHIPS */}
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {categories.map(cat => (
                     <button
@@ -133,7 +138,6 @@ export default function StoreInterface({ store, products, rates }: Props) {
                 return (
                   <div key={product.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full relative">
                     
-                    {/* ENLACE EN LA FOTO */}
                     <Link href={`/product/${product.id}`} className="block cursor-pointer">
                         <div className="aspect-square relative bg-gray-100 overflow-hidden">
                             {product.image_url ? ( 
@@ -159,7 +163,6 @@ export default function StoreInterface({ store, products, rates }: Props) {
                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{product.category}</span>
                         </div>
                         
-                        {/* ENLACE EN EL TÍTULO */}
                         <Link href={`/product/${product.id}`} className="block cursor-pointer hover:underline decoration-1 underline-offset-2 decoration-gray-400">
                             <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
                                 {product.name}
@@ -183,7 +186,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
                                 )}
                             </div>
                             
-                            <div className="mt-3 relative z-10"> {/* z-10 para asegurar que el click vaya al botón y no al Link */}
+                            <div className="mt-3 relative z-10">
                                 <AddToCartBtn product={product} />
                             </div>
                         </div>
@@ -205,8 +208,8 @@ export default function StoreInterface({ store, products, rates }: Props) {
       />
       
       <footer className="py-8 text-center text-xs text-gray-400 bg-white border-t border-gray-100">
-        <p>Precios calculados a tasa {currencyMode.toUpperCase()} BCV</p>
-        <p className="mt-1">Powered by Quanzosai</p>
+        <p>Precios calculados a tasa {currencyMode.toUpperCase()} {activeRate > 0 ? `(${activeRate} Bs)` : ''}</p>
+        <p className="mt-1">Powered by Preziso</p>
       </footer>
 
       <style jsx global>{`
