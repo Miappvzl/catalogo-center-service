@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 const playfair = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin"],
-  style: ['normal', 'italic'], // Importante: la itálica es clave en el lujo
+  style: ['normal', 'italic'],
 });
 
 export const metadata: Metadata = {
@@ -32,18 +32,24 @@ export const metadata: Metadata = {
     siteName: "Preziso",
     locale: "es_VE",
     type: "website",
-  }
+  },
+  // 1. PRIMERA DEFENSA: Metaetiqueta específica para Google
+  other: {
+    google: "notranslate",
+  },
 };
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // 2. SEGUNDA DEFENSA: lang="es" para SEO local y translate="no" HTML5 estándar
+    <html lang="es" translate="no">
       <body
-        // 3. Añadir la variable al body
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
+        // 3. TERCERA DEFENSA: Clase 'notranslate' que bloquea la acción en el DOM
+        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased notranslate`}
       >
         {children}
       </body>
