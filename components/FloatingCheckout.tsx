@@ -1,7 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ShoppingCart, X, MessageCircle, ChevronRight, Check } from 'lucide-react'
+import { 
+  ShoppingCart, X, ChevronRight, Check, 
+  CreditCard, Smartphone, Banknote, Landmark, 
+  Bitcoin, Copy, ArrowRight
+} from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 
@@ -13,58 +17,51 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
 
   if (!items || items.length === 0) return null
 
-  // --- LÓGICA DE PRECIOS DINÁMICOS ---
-  // Detecta si el método seleccionado merece descuento (Base Price)
-  // Si es NULL (no seleccionado) o PAGO MÓVIL -> Se cobra Penalty.
-  // Si es ZELLE, CASH, BINANCE -> Se cobra Base.
+  // --- LÓGICA DE PRECIOS ---
   const isDiscountMethod = (methodKey: string | null) => {
-    if (!methodKey) return false // Por defecto (sin seleccionar) mostramos precio alto
+    if (!methodKey) return false 
     const k = methodKey.toLowerCase()
     return k.includes('zelle') || k.includes('cash') || k.includes('efectivo') || k.includes('binance') || k.includes('divisa')
   }
 
   const applyDiscount = isDiscountMethod(selectedMethod)
 
-  // Calcular totales dinámicos
   const totalUSD = items.reduce((acc, item) => {
-    // Si aplica descuento, usamos basePrice. Si no, sumamos penalty.
     const priceToUse = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
     return acc + (priceToUse * item.quantity)
   }, 0)
 
   const totalBs = items.reduce((acc, item) => {
-    // Para Bs, siempre usamos la referencia completa (Base + Penalty) por defecto para la tasa,
-    // o ajustamos según la lógica que prefieras.
-    // Usualmente en Bs se paga el "precio completo" si es pago móvil.
     const priceToUse = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
     return acc + (priceToUse * rate * item.quantity)
   }, 0)
 
-  // Filtrar métodos activos
   const activeMethods = paymentMethods 
     ? Object.entries(paymentMethods).filter(([_, val]: any) => val && val.active === true) 
     : []
 
+  // --- GENERADOR DE MENSAJE WHATSAPP (SIN EMOJIS) ---
   const handleCheckout = () => {
-    let message = `*Hola ${storeName}, quiero realizar el siguiente pedido:*\n\n`
+    // Cabecera tipo factura
+    let message = `PEDIDO - ${storeName.toUpperCase()}\n`
+    message += `--------------------------------\n`
     
     items.forEach(item => {
-      // Precio individual en el mensaje
       const finalItemPrice = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
-      message += `▪️ ${item.quantity}x ${item.name} ($${finalItemPrice})\n`
+      // Formato: 2 x PRODUCTO ... $20.00
+      message += `${item.quantity} x ${item.name.toUpperCase()} ($${finalItemPrice.toFixed(2)})\n`
     })
 
-    message += `\n*Total a Pagar:*`
-    message += `\n💵 $${totalUSD.toFixed(2)}`
+    message += `--------------------------------\n`
+    message += `TOTAL USD: $${totalUSD.toFixed(2)}\n`
     
-    // Solo mostramos Bs si hay tasa y NO es un método puramente divisa (como Zelle)
-    // Aunque para referencia siempre es bueno dejarlo.
-    if (rate > 0) message += `\n🇻🇪 Bs ${new Intl.NumberFormat('es-VE').format(totalBs)}`
+    if (rate > 0) message += `REF BS: Bs ${new Intl.NumberFormat('es-VE').format(totalBs)}\n`
 
     if (selectedMethod) {
-        const methodNiceName = selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1).replace(/_/g, ' ');
-        message += `\n\n💳 *Método de Pago:* ${methodNiceName}`
-        if(applyDiscount) message += ` (Descuento aplicado ✅)`
+        // Limpiar nombre del método (ej: pago_movil -> PAGO MOVIL)
+        const methodNiceName = selectedMethod.replace(/_/g, ' ').toUpperCase();
+        message += `\nMETODO DE PAGO: ${methodNiceName}`
+        if(applyDiscount) message += ` [DESCUENTO APLICADO]`
     }
 
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
@@ -74,154 +71,212 @@ export default function FloatingCheckout({ rate, currency, phone, storeName, pay
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    Swal.fire({ toast: true, position: 'top', icon: 'success', title: 'Copiado', timer: 1000, showConfirmButton: false })
+    // Alerta minimalista negra
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top',
+      showConfirmButton: false,
+      timer: 1500,
+      customClass: {
+        popup: 'bg-black text-white rounded-none border border-gray-800'
+      }
+    })
+    Toast.fire({ icon: 'success', title: 'COPIADO' })
   }
 
-  const getMethodInfo = (key: string) => {
+  // --- ICONOS TÉCNICOS ---
+  const getMethodIcon = (key: string) => {
     const lower = key.toLowerCase()
-    if (lower.includes('movil')) return { label: '📱 Pago Móvil', color: 'bg-blue-50 border-blue-200' }
-    if (lower.includes('zelle')) return { label: '🟣 Zelle', color: 'bg-purple-50 border-purple-200' }
-    if (lower.includes('binance')) return { label: '🟡 Binance', color: 'bg-yellow-50 border-yellow-200' }
-    if (lower.includes('cash') || lower.includes('efectivo')) return { label: '💵 Efectivo', color: 'bg-green-50 border-green-200' }
-    return { label: `💳 ${key.replace(/_/g, ' ')}`, color: 'bg-gray-50 border-gray-200' }
+    if (lower.includes('movil')) return <Smartphone size={18} />
+    if (lower.includes('zelle')) return <Landmark size={18} /> // Icono de Banco
+    if (lower.includes('binance') || lower.includes('usdt')) return <Bitcoin size={18} />
+    if (lower.includes('cash') || lower.includes('efectivo')) return <Banknote size={18} />
+    return <CreditCard size={18} />
   }
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-50">
-        <button 
-          onClick={() => setIsOpen(true)}
-          className="w-full md:w-auto bg-black text-white p-4 rounded-full shadow-2xl flex items-center justify-between gap-4 hover:scale-105 transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2 rounded-full">
-                <ShoppingCart size={20} />
-            </div>
-            <div className="text-left">
-                <p className="text-xs font-medium text-gray-300">{items.length} productos</p>
-                <p className="font-bold text-sm">Ver Carrito</p>
-            </div>
-          </div>
-          <div className="bg-white text-black px-3 py-1 rounded-full font-bold text-sm">
-            ${totalUSD.toFixed(2)}
-          </div>
-        </button>
+      {/* BOTÓN FLOTANTE (ESTILO TARJETA NEGRA) */}
+     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-50">
+  <button 
+    onClick={() => setIsOpen(true)}
+    /* 1. Reducido md:w de 350px a 280px y p-5 a p-3 */
+    className="w-full md:w-[280px] bg-[#0f0f0f] text-white p-3 rounded-lg shadow-2xl shadow-black/20 flex items-center justify-between gap-3 hover:-translate-y-1 transition-transform duration-300 border border-white/10 group"
+  >
+    <div className="flex items-center gap-3">
+    
+      <div className="bg-white/10 p-1.5 rounded-md group-hover:bg-white group-hover:text-black transition-colors">
+         
+          <ShoppingCart size={18} />
       </div>
+      <div className="text-left flex flex-col">
+        
+          <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">{items.length} ITEMS</span>
+          
+          <span className="font-bold text-xs tracking-wide">VER PEDIDO</span>
+      </div>
+    </div>
+    
+    
+    <div className="font-mono text-base font-bold tracking-tight">
+      ${totalUSD.toFixed(2)}
+    </div>
+  </button>
+</div>
 
+      {/* MODAL / DRAWER */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full md:max-w-md md:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full md:max-w-md md:rounded-xl rounded-t-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-200">
             
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                <h3 className="font-bold text-lg">
-                    {step === 1 ? 'Tu Pedido' : 'Método de Pago'}
-                </h3>
-                <button onClick={() => { setIsOpen(false); setStep(1); }} className="p-2 hover:bg-gray-200 rounded-full text-gray-500">
+            {/* CABECERA INDUSTRIAL */}
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
+                <div>
+                    <h3 className="font-black text-lg uppercase tracking-tighter text-black leading-none">
+                        {step === 1 ? 'Tu Pedido' : 'Pago / Envio'}
+                    </h3>
+                    <p className="text-[10px] font-mono text-gray-400 mt-1">PASO {step}/2</p>
+                </div>
+                <button onClick={() => { setIsOpen(false); setStep(1); }} className="p-2 hover:bg-black hover:text-white transition-colors rounded-md text-gray-400">
                     <X size={20} />
                 </button>
             </div>
 
-            <div className="overflow-y-auto p-4 flex-1">
+            {/* CONTENIDO SCROLLABLE */}
+            <div className="overflow-y-auto p-5 flex-1 bg-gray-50/50">
                 {step === 1 ? (
-                    <div className="space-y-4">
+                    // --- VISTA CARRITO (TABLA TÉCNICA) ---
+                    <div className="space-y-3">
                         {items.map((item) => {
-                            // En la vista de lista, mostramos el precio "máximo" (con penalty) como referencia inicial,
-                            // o mostramos el precio según el descuento actual si ya seleccionó algo (aunque step es 1).
-                            // Para no confundir, mostramos el precio base + penalty y aclaramos si hay descuento.
                             const currentPrice = applyDiscount ? item.basePrice : (item.basePrice + item.penalty)
-
                             return (
-                              <div key={item.id} className="flex gap-4 items-center">
-                                  <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                      {item.image && <img src={item.image} className="w-full h-full object-cover"/>}
-                                  </div>
-                                  <div className="flex-1">
-                                      <h4 className="font-bold text-sm">{item.name}</h4>
-                                      <p className="text-xs text-gray-500">Cant: {item.quantity}</p>
-                                  </div>
-                                  <div className="text-right">
-                                      <p className="font-bold text-sm transition-all text-[#111827]">${(currentPrice * item.quantity).toFixed(2)}</p>
-                                      {item.penalty > 0 && applyDiscount && (
-                                        <span className="text-[10px] text-green-600 font-bold">Descuento aplicado</span>
+                              <div key={item.id} className="group bg-white border border-gray-200 p-3 rounded-lg flex gap-4 items-start hover:border-black transition-colors">
+                                  {/* FOTO MINI */}
+                                  <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                      {item.image ? (
+                                        <img src={item.image} className="w-full h-full object-contain mix-blend-multiply"/>
+                                      ) : (
+                                        <span className="text-xs font-bold text-gray-300">P.</span>
                                       )}
-                                      <button onClick={() => removeItem(item.id)} className="text-xs text-red-500 underline mt-1 block ml-auto">Eliminar</button>
+                                  </div>
+                                  
+                                  {/* DATOS */}
+                                  <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-start mb-1">
+                                          <h4 className="font-bold text-sm text-gray-900 truncate pr-2 uppercase tracking-tight">{item.name}</h4>
+                                          <span className="font-mono text-sm font-bold text-black">${(currentPrice * item.quantity).toFixed(2)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-end">
+                                          <div className="flex flex-col">
+                                              <span className="text-[10px] font-bold text-gray-400 uppercase">CANT: {item.quantity}</span>
+                                              {item.penalty > 0 && applyDiscount && (
+                                                <span className="text-[9px] bg-black text-white px-1.5 py-0.5 rounded-sm uppercase font-bold mt-1 inline-block w-fit">
+                                                    Promo Divisa
+                                                </span>
+                                              )}
+                                          </div>
+                                          <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wide border-b border-red-200 pb-0.5">
+                                              Remover
+                                          </button>
+                                      </div>
                                   </div>
                               </div>
                             )
                         })}
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        <p className="text-sm text-gray-500 mb-2">Selecciona cómo deseas pagar:</p>
+                    // --- VISTA PAGO (GRID SELECCIÓN) ---
+                    <div className="space-y-4">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Seleccione Método</p>
                         
-                        {activeMethods.map(([key, data]: any) => {
-                            const info = getMethodInfo(key)
-                            const isSelected = selectedMethod === key
-                            const methodHasDiscount = isDiscountMethod(key)
+                        <div className="grid grid-cols-1 gap-3">
+                            {activeMethods.map(([key, data]: any) => {
+                                const isSelected = selectedMethod === key
+                                const methodHasDiscount = isDiscountMethod(key)
 
-                            return (
-                                <div 
-                                    key={key} 
-                                    onClick={() => setSelectedMethod(key)} 
-                                    className={`p-4 rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-black bg-gray-50 ring-1 ring-black' : 'border-gray-200 hover:bg-gray-50'}`}
-                                >
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="font-bold capitalize flex items-center gap-2 text-gray-800">
-                                            {info.label}
-                                            {methodHasDiscount && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full">Mejor Precio</span>}
-                                        </span>
-                                        {isSelected && <Check size={18} className="text-black"/>}
-                                    </div>
-                                    
-                                    {isSelected && (
-                                        <div className="mt-3 pt-3 border-t border-gray-200 text-sm space-y-2 text-gray-600 animate-in slide-in-from-top-2">
-                                            {Object.entries(data).map(([fieldKey, fieldValue]: any) => {
-                                                if(fieldKey === 'active') return null
-                                                if(!fieldValue) return null
-                                                return (
-                                                    <p key={fieldKey} className="flex justify-between items-center">
-                                                        <span className="capitalize text-gray-400 text-xs">{fieldKey}:</span> 
-                                                        <b onClick={(e) => { e.stopPropagation(); copyToClipboard(fieldValue) }} className="hover:bg-gray-200 px-2 py-0.5 rounded cursor-copy text-gray-800">
-                                                            {fieldValue}
-                                                        </b>
-                                                    </p>
-                                                )
-                                            })}
+                                return (
+                                    <div 
+                                        key={key} 
+                                        onClick={() => setSelectedMethod(key)} 
+                                        className={`relative p-4 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-white border-black shadow-md ring-1 ring-black' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-md ${isSelected ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                                    {getMethodIcon(key)}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm uppercase tracking-wide text-gray-900">
+                                                        {key.replace(/_/g, ' ')}
+                                                    </span>
+                                                    {methodHasDiscount && (
+                                                        <span className="text-[9px] font-bold text-green-600 uppercase tracking-wider">
+                                                            Aplica Descuento
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {isSelected && <div className="w-4 h-4 bg-black rounded-full flex items-center justify-center"><Check size={10} className="text-white"/></div>}
                                         </div>
-                                    )}
-                                </div>
-                            )
-                        })}
+                                        
+                                        {/* DETALLES DE PAGO EXPANDIBLES */}
+                                        {isSelected && (
+                                            <div className="mt-4 pt-4 border-t border-dashed border-gray-200 space-y-3 animate-in fade-in">
+                                                {Object.entries(data).map(([fieldKey, fieldValue]: any) => {
+                                                    if(fieldKey === 'active') return null
+                                                    if(!fieldValue) return null
+                                                    return (
+                                                        <div key={fieldKey} className="flex justify-between items-center group">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{fieldKey}</span>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); copyToClipboard(fieldValue) }} 
+                                                                className="flex items-center gap-2 text-xs font-mono font-medium hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                                                            >
+                                                                {fieldValue} <Copy size={10} className="text-gray-400 group-hover:text-black"/>
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
 
-            <div className="p-4 bg-gray-50 border-t border-gray-200">
-                <div className="flex justify-between items-end mb-4">
-                    <span className="text-gray-500 text-sm">Total a Pagar</span>
-                    <div className="text-right">
-                        {/* PRECIO CON ANIMACIÓN SI CAMBIA */}
-                        <div className="text-2xl font-black text-black transition-all duration-300">
+            {/* FOOTER ACCIONES */}
+            <div className="p-5 bg-white border-t border-gray-200">
+                <div className="flex justify-between items-end mb-5">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Estimado</span>
+                    <div className="text-right flex flex-col items-end">
+                        <div className="text-2xl font-black text-black tracking-tighter leading-none">
                           ${totalUSD.toFixed(2)}
                         </div>
-                        {rate > 0 && <div className="text-xs text-gray-500 font-medium">~ Bs {new Intl.NumberFormat('es-VE').format(totalBs)}</div>}
+                        {rate > 0 && (
+                            <div className="text-xs font-mono text-gray-500 font-medium mt-1 bg-gray-100 px-2 py-0.5 rounded-sm">
+                                Ref: Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(totalBs)}
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {step === 1 ? (
                     <button 
                         onClick={() => setStep(2)}
-                        className="w-full bg-black text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                        className="w-full bg-black text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-900 transition-all uppercase tracking-widest text-xs shadow-lg"
                     >
-                        Continuar <ChevronRight size={18} />
+                        Continuar <ArrowRight size={16} />
                     </button>
                 ) : (
                     <button 
                         onClick={handleCheckout}
-                        className={`w-full text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors ${selectedMethod ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 hover:bg-gray-500'}`}
+                        disabled={!selectedMethod}
+                        className={`w-full font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all uppercase tracking-widest text-xs shadow-lg ${selectedMethod ? 'bg-black text-white hover:bg-gray-900' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                     >
-                        <MessageCircle size={18} /> 
-                        {selectedMethod ? 'Enviar Pedido por WhatsApp' : 'Selecciona un método'}
+                        Enviar Pedido
                     </button>
                 )}
             </div>

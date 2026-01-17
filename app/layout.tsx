@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,6 +11,13 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+const playfair = Playfair_Display({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  style: ['normal', 'italic'], // Importante: la itálica es clave en el lujo
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://preziso.vercel.app'),
   title: {
@@ -27,7 +34,6 @@ export const metadata: Metadata = {
     type: "website",
   }
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,7 +42,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        // 3. Añadir la variable al body
+        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
       >
         {children}
       </body>

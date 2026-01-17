@@ -1,38 +1,37 @@
 @import "tailwindcss";
 
 @layer base {
-  /* ESTO ES LO NUEVO: Define el estilo base para todos los inputs del sitio */
-  input, 
-  textarea, 
-  select {
-    color: #1F2937; /* Texto Gris Oscuro (Charcoal) */
-    background-color: #f3f4f6; /* Fondo Gris Claro */
+  input, textarea, select {
+    @apply bg-gray-50/50 border-0 ring-1 ring-gray-200 transition-all duration-300;
+    color: #0a0a0a;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    @apply ring-black ring-offset-0 bg-white shadow-lg;
+    outline: none;
   }
 
-  /* Opcional: define el color del placeholder (texto de ayuda) */
-  input::placeholder,
-  textarea::placeholder {
-    color: #9CA3AF; /* Gris medio */
-  }
+  input::placeholder { color: #a1a1aa; }
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  :root {
+  /* INDUSTRIAL PALETTE */
+  --background: #ffffff; /* Blanco puro, clínico */
+  --foreground: #09090b; /* Zinc-950 (Negro técnico) */
+  
+  --card-bg: #ffffff;
+  --border-subtle: #e4e4e7; /* Zinc-200 (Gris frío y nítido) */
+}
 }
 
-/* FIX AUTOCOMPLETADO ACTUALIZADO */
-/* Ahora usa los mismos colores que definimos arriba */
+/* FIX AUTOCOMPLETADO */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    /* 1. Color del TEXTO: Igual al de arriba (#1F2937) */
-    -webkit-text-fill-color: #1F2937 !important;
-
-    /* 2. Color del FONDO: Igual al de arriba (#f3f4f6) */
-    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;
-    
+    -webkit-text-fill-color: #0C0A09 !important;
+    -webkit-box-shadow: 0 0 0 30px #FAFAF9 inset !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -41,26 +40,12 @@ input:-webkit-autofill:active {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-serif: var(--font-serif); /* AÑADIR ESTO */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; /* Crucial para que la fuente se vea delgada y premium */
 }
-
-label{
-  color: #111827;
-}
-
-h4, h3{
-  color: #111827;
-}
-

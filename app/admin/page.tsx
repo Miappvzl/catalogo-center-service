@@ -8,7 +8,8 @@ import Link from 'next/link'
 import {
     Search, Plus, Edit2, Trash2, Settings, Package,
     CreditCard, LogOut, LayoutGrid, Store, Menu, X,
-    Copy, ExternalLink, Save, Coins, Upload, Loader2
+    Copy, ExternalLink, Save, Coins, Upload, Loader2,
+    ShieldCheck
 } from 'lucide-react'
 import PaymentSettings from '@/components/PaymentSettings'
 import { uploadImageToSupabase } from '@/utils/supabaseStorage'
@@ -18,6 +19,7 @@ interface Product {
     id: string
     name: string
     price: number
+    usd_cash_price?: number
     image_url: string
     category?: string
 }
@@ -34,6 +36,12 @@ interface StoreProfile {
     payment_config?: any
 }
 
+const normalizeCategory = (cat: string | undefined | null) => {
+    if (!cat || cat.trim() === '') return 'Sin Categoría';
+    const lower = cat.trim().toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
 export default function AdminPage() {
     const [activeTab, setActiveTab] = useState<'inventory' | 'settings'>('inventory')
     const [products, setProducts] = useState<Product[]>([])
@@ -42,6 +50,8 @@ export default function AdminPage() {
     const [user, setUser] = useState<any>(null)
     const [savingProfile, setSavingProfile] = useState(false)
     const [uploadingLogo, setUploadingLogo] = useState(false)
+    // Estado para guardar el origen (dominio) y evitar errores de hidratación
+    const [origin, setOrigin] = useState('')
 
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('Todos')
@@ -53,7 +63,11 @@ export default function AdminPage() {
     )
     const router = useRouter()
 
-    useEffect(() => { fetchData() }, [])
+    useEffect(() => { 
+        // Guardamos el dominio actual (ej: preziso.vercel.app)
+        setOrigin(window.location.origin)
+        fetchData() 
+    }, [])
 
     const fetchData = async () => {
         try {
@@ -62,7 +76,6 @@ export default function AdminPage() {
             if (!user) { router.push('/login'); return }
             setUser(user)
 
-            // 1. CARGAR DATOS DE LA TIENDA (DESDE TABLA STORES)
             const { data: stores } = await supabase
                 .from('stores')
                 .select('*')
@@ -73,20 +86,19 @@ export default function AdminPage() {
             if (storeData) {
                 setProfile({
                     id: user.id,
-                    store_name: storeData.slug, // URL
-                    display_name: storeData.name, // Nombre Real
+                    store_name: storeData.slug,
+                    display_name: storeData.name,
                     currency_symbol: storeData.currency_symbol || '$',
                     phone: storeData.phone,
                     logo_url: storeData.logo_url,
                     usd_price: storeData.usd_price,
                     eur_price: storeData.eur_price,
-                    payment_config: storeData.payment_methods // Para pasar a PaymentSettings
+                    payment_config: storeData.payment_methods
                 })
             } else {
                 router.push('/admin/setup')
             }
 
-            // 2. CARGAR PRODUCTOS
             const { data: productsData } = await supabase
                 .from('products')
                 .select('*')
@@ -102,25 +114,38 @@ export default function AdminPage() {
         }
     }
 
-    // --- FILTROS ---
+    const categories = useMemo(() => {
+        const cats = new Set(products.map(p => normalizeCategory(p.category)))
+        const sortedCats = Array.from(cats).sort();
+        return ['Todos', ...sortedCats]
+    }, [products])
+
     const filteredProducts = useMemo(() => {
         return products.filter(product => {
             const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
-            const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory
+            const productCat = normalizeCategory(product.category);
+            const matchesCategory = selectedCategory === 'Todos' || productCat === selectedCategory
             return matchesSearch && matchesCategory
         })
     }, [products, searchTerm, selectedCategory])
 
-    const categories = useMemo(() => {
-        const cats = new Set(products.map(p => p.category || 'Sin Categoría'))
-        return ['Todos', ...Array.from(cats)]
-    }, [products])
-
-    // --- ACCIONES ---
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro?')) return
-        await supabase.from('products').delete().eq('id', id)
-        setProducts(products.filter(p => p.id !== id))
+        Swal.fire({
+            title: '¿Eliminar ítem?',
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#000',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                await supabase.from('products').delete().eq('id', id)
+                setProducts(products.filter(p => p.id !== id))
+                Swal.fire('Eliminado', 'El producto ha sido eliminado.', 'success')
+            }
+        })
     }
 
     const handleSignOut = async () => {
@@ -128,7 +153,6 @@ export default function AdminPage() {
         router.push('/login')
     }
 
-    // GUARDAR PERFIL (EN TABLA STORES)
     const handleSaveProfile = async () => {
         if (!user || !profile) return
         setSavingProfile(true)
@@ -137,8 +161,8 @@ export default function AdminPage() {
             const { error } = await supabase
                 .from('stores')
                 .update({
-                    slug: profile.store_name, // slug en la BD
-                    name: profile.display_name, // name en la BD
+                    slug: profile.store_name,
+                    name: profile.display_name,
                     phone: profile.phone,
                     logo_url: profile.logo_url,
                     currency_symbol: profile.currency_symbol,
@@ -148,10 +172,10 @@ export default function AdminPage() {
                 .eq('user_id', user.id)
 
             if (error) throw error
-            Swal.fire({ icon: 'success', title: 'Tienda Actualizada', timer: 1500, showConfirmButton: false })
+            Swal.fire({ icon: 'success', title: 'Sistema Actualizado', timer: 1500, showConfirmButton: false })
         } catch (error) {
             console.error(error)
-            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar la tienda.' })
+            Swal.fire({ icon: 'error', title: 'Error de Sistema', text: 'No se pudo guardar la configuración.' })
         } finally {
             setSavingProfile(false)
         }
@@ -171,175 +195,195 @@ export default function AdminPage() {
         }
     }
 
-    // 1. FUNCIÓN ROBUSTA PARA COPIAR
-  const copyLink = () => {
-     // Si no hay nombre de tienda, avisamos
-     if(!profile?.store_name) {
-         Swal.fire({ 
-            icon: 'warning', 
-            title: 'Falta el nombre', 
-            text: 'Primero asigna un nombre URL a tu tienda.',
-            toast: true, position: 'top-end', timer: 3000, showConfirmButton: false 
-         });
-         return;
-     }
+    // --- LÓGICA DE COPIADO ROBUSTA ---
+    const copyLink = () => {
+        if(!profile?.store_name) return;
+        const url = `${origin}/${profile.store_name}`
+        
+        // Función auxiliar para éxito
+        const onSuccess = () => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Link Copiado',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            })
+        }
 
-     const url = `${window.location.origin}/${profile.store_name}`
+        // Intento 1: API Moderna
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url)
+                .then(onSuccess)
+                .catch(() => fallbackCopy(url, onSuccess)) // Si falla, vamos al Plan B
+        } else {
+            // Intento 2: Plan B directo
+            fallbackCopy(url, onSuccess)
+        }
+    }
 
-     // Intentamos primero con la API Moderna (Solo HTTPS)
-     if (navigator.clipboard && window.isSecureContext) {
-         navigator.clipboard.writeText(url)
-             .then(() => showSuccessAlert())
-             .catch((err) => {
-                 console.error('Error API moderna:', err)
-                 fallbackCopy(url) // Si falla, vamos al Plan B
-             })
-     } else {
-         // Si no hay HTTPS, usamos el Plan B directo
-         fallbackCopy(url)
-     }
-  }
+    // Plan B: Crear un elemento invisible y seleccionarlo (Funciona en todos lados)
+    const fallbackCopy = (text: string, onSuccess: () => void) => {
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        textArea.style.position = "fixed"
+        textArea.style.left = "-9999px"
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+            document.execCommand('copy')
+            onSuccess()
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No pudimos copiar el link automáticamente.' })
+        }
+        document.body.removeChild(textArea)
+    }
 
-  // 2. FUNCIÓN "PLAN B" (Vieja Escuela - Funciona siempre)
-  const fallbackCopy = (text: string) => {
-      const textArea = document.createElement("textarea")
-      textArea.value = text
-      
-      // Lo hacemos invisible y fijo para no mover la pantalla
-      textArea.style.position = "fixed"
-      textArea.style.left = "-9999px"
-      textArea.style.top = "0"
-      
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
-
-      try {
-          const successful = document.execCommand('copy')
-          if(successful) showSuccessAlert()
-          else throw new Error('Falló execCommand')
-      } catch (err) {
-          console.error('Fallback error:', err)
-          Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo copiar. Intenta seleccionarlo manualmente.' })
-      }
-      
-      document.body.removeChild(textArea)
-  }
-
-  // Alerta de éxito reutilizable
-  const showSuccessAlert = () => {
-      Swal.fire({
-         icon: 'success',
-         title: '¡Link Copiado!',
-         text: 'Listo para compartir en WhatsApp.',
-         toast: true,
-         position: 'top-end',
-         timer: 2000,
-         showConfirmButton: false
-     })
-  }
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin" size={32} /></div>
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="animate-spin text-black" size={32} />
+                <span className="text-xs font-mono uppercase tracking-widest text-gray-400">Cargando Sistema...</span>
+            </div>
+        </div>
+    )
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans text-gray-900">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans text-gray-900">
 
             {/* SIDEBAR */}
-            <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-screen sticky top-0 p-6">
-                <div className="flex items-center gap-2 mb-10">
-                    <div className="bg-black text-white p-1.5 rounded-lg"><Store size={20} /></div>
-                    <span className="font-bold text-lg tracking-tight">Admin<span className="text-green-600">.</span></span>
+            <aside className="hidden md:flex flex-col w-64 bg-gray-50 border-r border-gray-200 h-screen sticky top-0">
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-black flex items-center justify-center rounded-md">
+                            <span className="text-white font-serif italic font-bold">P.</span>
+                        </div>
+                        <span className="font-bold text-sm tracking-widest uppercase">Admin Panel</span>
+                    </div>
                 </div>
-                <nav className="flex-1 space-y-2">
-                    <button onClick={() => setActiveTab('inventory')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'inventory' ? 'bg-black text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100'}`}>
-                        <Package size={20} /> Inventario
+
+                <nav className="flex-1 p-4 space-y-1">
+                    <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Principal</p>
+                    <button onClick={() => setActiveTab('inventory')} 
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide transition-all rounded-md ${activeTab === 'inventory' ? 'bg-white border border-gray-200 text-black shadow-sm' : 'text-gray-500 hover:text-black hover:bg-gray-100'}`}>
+                        <Package size={16} /> Inventario
                     </button>
-                    <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'settings' ? 'bg-black text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100'}`}>
-                        <Settings size={20} /> Configuración
+                    <button onClick={() => setActiveTab('settings')} 
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide transition-all rounded-md ${activeTab === 'settings' ? 'bg-white border border-gray-200 text-black shadow-sm' : 'text-gray-500 hover:text-black hover:bg-gray-100'}`}>
+                        <Settings size={16} /> Configuración
                     </button>
                 </nav>
-                <div className="pt-6 border-t border-gray-100">
-                    <div className="flex items-center gap-3 mb-4 px-2">
+
+                <div className="p-4 border-t border-gray-200 bg-white">
+                    <div className="flex items-center gap-3 mb-4">
                         {profile?.logo_url ? (
-                            <Image src={profile.logo_url} width={32} height={32} alt="Logo" className="rounded-full bg-gray-100 object-cover" />
+                            <Image src={profile.logo_url} width={32} height={32} alt="Logo" className="rounded-md border border-gray-200 object-cover" />
                         ) : (
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
+                            <div className="w-8 h-8 bg-gray-100 rounded-md border border-gray-200"></div>
                         )}
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate">{profile?.display_name || 'Sin Nombre'}</p>
-                            <p className="text-xs text-gray-400">Admin</p>
+                            <p className="text-xs font-bold truncate uppercase">{profile?.display_name || 'Tienda'}</p>
+                            <p className="text-[10px] font-mono text-gray-400">Estado: Activo</p>
                         </div>
                     </div>
-                    <button onClick={handleSignOut} className="w-full flex items-center gap-2 text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"><LogOut size={16} /> Salir</button>
+                    <button onClick={handleSignOut} className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide border border-transparent hover:border-red-100 transition-all">
+                        <LogOut size={14} /> Cerrar Sesión
+                    </button>
                 </div>
             </aside>
 
             {/* MOBILE MENU */}
             <div className="md:hidden bg-white border-b border-gray-200 p-4 sticky top-0 z-30 flex items-center justify-between">
-                <div className="font-bold text-lg flex items-center gap-2"><Store size={18} /> Admin</div>
-                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 bg-gray-100 rounded-lg text-black">
-                    {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                <div className="font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+                    <div className="w-6 h-6 bg-black text-white flex items-center justify-center text-xs font-serif italic">P.</div>
+                    Admin
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 border border-gray-200 rounded-md text-black">
+                    {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
                 </button>
             </div>
             {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 top-16 bg-white z-20 p-4 space-y-4">
-                    <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false) }} className="w-full p-4 bg-gray-50 rounded-xl flex items-center gap-3 font-bold text-black"><Package /> Inventario</button>
-                    <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false) }} className="w-full p-4 bg-gray-50 rounded-xl flex items-center gap-3 font-bold text-black"><Settings /> Configuración</button>
-                    <button onClick={handleSignOut} className="w-full p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 font-bold"><LogOut /> Salir</button>
+                <div className="md:hidden fixed inset-0 top-14 bg-white z-20 p-4 space-y-2 border-t border-gray-100">
+                    <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Package size={16}/> Inventario</button>
+                    <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Settings size={16}/> Configuración</button>
+                    <button onClick={handleSignOut} className="w-full p-4 bg-red-50 text-red-600 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><LogOut size={16}/> Salir</button>
                 </div>
             )}
 
-            {/* CONTENT */}
-            <main className="flex-1 p-4 md:p-10 overflow-y-auto">
+            {/* CONTENT AREA */}
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-white">
 
                 {/* === INVENTARIO === */}
                 {activeTab === 'inventory' && (
-                    <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-gray-100 pb-6">
                             <div>
-                                <h1 className="text-3xl font-black tracking-tight text-black">Inventario</h1>
-                                <p className="text-gray-500">Gestiona tus productos.</p>
+                                <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-black uppercase leading-none">Inventario</h1>
+                                <p className="text-xs font-mono text-gray-400 mt-2">Total Items: {products.length}</p>
                             </div>
-                            <Link href="/admin/product/new" className="bg-black hover:bg-gray-800 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl hover:-translate-y-1 transition-all">
-                                <Plus size={20} /> Nuevo Producto
+                            <Link href="/admin/product/new" className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-md font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm hover:shadow-md transition-all">
+                                <Plus size={16} /> Agregar Item
                             </Link>
                         </header>
 
-                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:gap-4 sticky top-20 md:top-0 z-10">
+                        {/* BARRA DE HERRAMIENTAS */}
+                        <div className="bg-gray-50 p-1 rounded-lg border border-gray-200 mb-8 flex flex-col md:flex-row gap-2">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-3 focus:ring-2 focus:ring-black/5 outline-none font-medium text-black" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input type="text" placeholder="Buscar referencia..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
+                                    className="w-full bg-white border border-gray-200 rounded-md pl-10 pr-4 py-2.5 focus:ring-1 focus:ring-black focus:border-black outline-none text-sm font-medium placeholder:text-gray-400" />
                             </div>
-                            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-1">
                                 {categories.map(cat => (
-                                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold transition-all ${selectedCategory === cat ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{cat}</button>
+                                    <button key={cat} onClick={() => setSelectedCategory(cat)} 
+                                        className={`whitespace-nowrap px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border ${selectedCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                        {cat}
+                                    </button>
                                 ))}
                             </div>
                         </div>
 
                         {filteredProducts.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <div className="text-center py-32 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
                                 <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                                <p className="text-gray-500 font-medium">No se encontraron productos.</p>
+                                <p className="text-gray-500 text-sm font-medium">Inventario vacío o sin resultados.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                                {filteredProducts.map((product, index) => (
-                                    <div key={product.id} className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative">
-                                        <div className="aspect-square bg-gray-100 rounded-xl mb-3 relative overflow-hidden">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                {filteredProducts.map((product) => (
+                                    <div key={product.id} className="group bg-white border border-gray-200 hover:border-black transition-colors rounded-lg overflow-hidden flex flex-col">
+                                        
+                                        <div className="aspect-square bg-gray-50 relative border-b border-gray-100 p-4">
                                             {product.image_url ? (
-                                                <Image src={product.image_url} fill className="object-cover group-hover:scale-105 transition-transform duration-500" alt={product.name} sizes="(max-width: 768px) 100vw, 33vw" priority={index < 4} />
+                                                <Image src={product.image_url} fill className="object-contain mix-blend-multiply p-4" alt={product.name} sizes="200px" />
                                             ) : (
-                                                <div className="flex items-center justify-center h-full text-gray-300"><LayoutGrid size={24} /></div>
+                                                <div className="flex items-center justify-center h-full text-gray-200 font-bold text-2xl">P.</div>
                                             )}
-                                            {product.category && <span className="absolute top-2 left-2 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md font-bold">{product.category}</span>}
+                                            {product.category && (
+                                                <div className="absolute top-2 left-2 bg-white border border-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gray-500 rounded-sm">
+                                                    {normalizeCategory(product.category)}
+                                                </div>
+                                            )}
                                         </div>
-                                        <h3 className="font-bold text-gray-900 truncate mb-1">{product.name}</h3>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-green-600 font-black">${product.price}</span>
-                                            <div className="flex gap-1">
-                                                <Link href={`/admin/product/edit/${product.id}`} className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg"><Edit2 size={16} /></Link>
-                                                <button onClick={() => handleDelete(product.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg"><Trash2 size={16} /></button>
+
+                                        <div className="p-3 flex flex-col flex-1 gap-2">
+                                            <h3 className="font-bold text-sm leading-tight text-gray-900 line-clamp-2 min-h-[2.5em]">{product.name}</h3>
+                                            
+                                            <div className="mt-auto pt-3 border-t border-dashed border-gray-100 flex items-center justify-between">
+                                                <span className="font-mono text-sm font-medium text-gray-900">
+                                                    ${product.usd_cash_price || product.price || 0}
+                                                </span>
+                                                
+                                                <div className="flex gap-1">
+                                                    <Link href={`/admin/product/edit/${product.id}`} className="p-1.5 bg-gray-50 hover:bg-black hover:text-white rounded text-gray-600 border border-gray-200 transition-colors" title="Editar">
+                                                        <Edit2 size={14} />
+                                                    </Link>
+                                                    <button onClick={() => handleDelete(product.id)} className="p-1.5 bg-gray-50 hover:bg-red-500 hover:text-white rounded text-gray-600 border border-gray-200 transition-colors" title="Eliminar">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -351,142 +395,141 @@ export default function AdminPage() {
 
                 {/* === CONFIGURACIÓN === */}
                 {activeTab === 'settings' && profile && (
-                    <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                    <div className="max-w-3xl mx-auto animate-in fade-in duration-500 space-y-8">
+                        
+                        <header className="mb-8 border-b border-gray-100 pb-6">
+                             <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-black uppercase leading-none">Configuración</h1>
+                             <p className="text-xs font-mono text-gray-400 mt-2">ID Tienda: {profile.id.slice(0,8)}</p>
+                        </header>
 
-                        {/* 1. COMPARTIR TIENDA */}
-                        <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 md:p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl"></div>
-                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><ExternalLink size={20} /> Tu Tienda Online</h2>
-                            <div className="flex flex-col md:flex-row gap-4 items-center">
-                                <div className="flex-1 bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 w-full border border-white/10 flex items-center gap-3">
-                                    <div className={`w-3 h-3 rounded-full ${profile.store_name ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500'}`}></div>
-                                    <span className="font-mono text-sm truncate opacity-90">
-                                        {profile.store_name ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${profile.store_name}` : 'Asigna un nombre URL abajo'}
-                                    </span>
+                        {/* LINK CARD */}
+                        <div className="bg-[#0f0f0f] text-white p-6 rounded-lg shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-gray-800">
+                            <div className="flex flex-col gap-1 w-full">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Tu Enlace Público</label>
+                                {/* SOLUCIÓN: Ahora es un enlace real <a> */}
+                                <a 
+                                    href={`${origin}/${profile.store_name}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 font-mono text-sm text-gray-300 break-all hover:text-white transition-colors cursor-pointer group"
+                                >
+                                    <ExternalLink size={14} className="text-green-500 shrink-0 group-hover:scale-110 transition-transform"/>
+                                    {origin}/{profile.store_name}
+                                </a>
+                            </div>
+                            <button onClick={copyLink} className="shrink-0 bg-white text-black px-5 py-2.5 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-gray-200 transition-colors w-full md:w-auto">
+                                Copiar Link
+                            </button>
+                        </div>
+
+                        {/* 2. DATOS GENERALES */}
+                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
+                            <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
+                                <Store size={16}/> Datos de la Empresa
+                            </h2>
+
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Slug (URL)</label>
+                                    <div className="flex items-center bg-white border border-gray-200 rounded-md overflow-hidden">
+                                        <span className="pl-3 text-xs text-gray-400 font-mono">/</span>
+                                        <input type="text" value={profile.store_name || ''} 
+                                            onChange={(e) => setProfile({ ...profile, store_name: e.target.value.toLowerCase().replace(/\s+/g, '-') })} 
+                                            className="w-full py-2.5 px-2 text-sm font-bold outline-none" />
+                                    </div>
                                 </div>
-                                <button onClick={copyLink} className="bg-white text-black px-6 py-3 rounded-xl font-bold hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg w-full md:w-auto justify-center">
-                                    <Copy size={18} /> Copiar Link
-                                </button>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Nombre Visible</label>
+                                    <input type="text" value={profile.display_name || ''} 
+                                        onChange={(e) => setProfile({ ...profile, display_name: e.target.value })} 
+                                        className="w-full bg-white border border-gray-200 rounded-md py-2.5 px-3 text-sm font-bold outline-none focus:border-black transition-colors" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">WhatsApp Contacto</label>
+                                    <input type="text" value={profile.phone || ''} placeholder="58412..."
+                                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })} 
+                                        className="w-full bg-white border border-gray-200 rounded-md py-2.5 px-3 text-sm font-mono outline-none focus:border-black transition-colors" />
+                                </div>
+                            </div>
+
+                            {/* LOGO */}
+                            <div className="mt-6 border-t border-dashed border-gray-200 pt-6">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 block">Identidad Visual (Logo)</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 bg-white border border-gray-200 rounded-md flex items-center justify-center overflow-hidden relative">
+                                        {profile.logo_url ? (
+                                            <Image src={profile.logo_url} fill className="object-cover" alt="Logo" />
+                                        ) : (
+                                            <div className="text-gray-200 text-xs">N/A</div>
+                                        )}
+                                        {uploadingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="animate-spin text-white" size={16}/></div>}
+                                    </div>
+                                    <label className="cursor-pointer bg-white border border-gray-200 hover:border-black text-black px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all">
+                                        Subir Imagen
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
-                        {/* 2. DATOS DE LA TIENDA */}
-                        <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                        {/* 3. FINANZAS (TASAS) */}
+                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
+                            <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
+                                <Coins size={16}/> Tasas de Cambio
+                            </h2>
+
                             <div className="flex items-center gap-4 mb-6">
-                                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Store size={24} /></div>
-                                <h2 className="text-xl font-bold text-black">Datos Generales</h2>
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Moneda Base:</span>
+                                <div className="flex bg-gray-100 p-1 rounded-md">
+                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '$' })} 
+                                        className={`px-3 py-1 rounded text-xs font-bold transition-all ${profile.currency_symbol === '$' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>USD ($)</button>
+                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '€' })} 
+                                        className={`px-3 py-1 rounded text-xs font-bold transition-all ${profile.currency_symbol === '€' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>EUR (€)</button>
+                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Tienda (URL)</label>
-                                        <input type="text" value={profile.store_name || ''} onChange={(e) => setProfile({ ...profile, store_name: e.target.value.toLowerCase().replace(/\s+/g, '-') })} placeholder="ej: mi-tienda" className="w-full bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-black/5 rounded-xl px-4 py-3 font-medium transition-all text-black" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Visible (Título)</label>
-                                        <input type="text" value={profile.display_name || ''} onChange={(e) => setProfile({ ...profile, display_name: e.target.value })} placeholder="Ej: Zapatos Caracas" className="w-full bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-black/5 rounded-xl px-4 py-3 font-medium transition-all text-black" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono (WhatsApp)</label>
-                                    <input type="text" value={profile.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="+58 412..." className="w-full bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-black/5 rounded-xl px-4 py-3 font-medium transition-all text-black" />
-                                </div>
-
-                                {/* LOGO UPLOAD */}
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Logo de la Tienda</label>
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative w-20 h-20 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                            {profile.logo_url ? <Image
-                                                src={profile.logo_url}
-                                                fill
-                                                className="object-cover"
-                                                alt="Logo"
-                                                sizes="100px"
-                                            /> : <div className="flex items-center justify-center h-full text-gray-400"><Store size={24} /></div>}
-                                            {uploadingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="animate-spin text-white" size={20} /></div>}
-                                        </div>
-                                        <div className="flex-1">
-                                            <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
-                                            <label htmlFor="logo-upload" className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 rounded-xl p-4 text-gray-500 font-bold cursor-pointer hover:border-black hover:text-black transition-all ${uploadingLogo ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                                <Upload size={20} /> {uploadingLogo ? 'Subiendo...' : 'Subir Imagen'}
-                                            </label>
-                                        </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tasa Dólar (Manual)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                                        <input type="number" value={profile.usd_price || ''} 
+                                            onChange={(e) => setProfile({ ...profile, usd_price: parseFloat(e.target.value) || 0 })}
+                                            placeholder="0 = Auto"
+                                            className="w-full bg-white border border-gray-200 rounded-md py-2.5 pl-6 pr-3 text-sm font-mono font-bold outline-none focus:border-green-500" />
                                     </div>
                                 </div>
-
-                                {/* MONEDA Y TASAS */}
-                                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-4">
-                                    <div className="flex items-center gap-2 mb-4 text-gray-700 font-bold"><Coins size={18} /> Configuración de Moneda</div>
-
-                                    <div className="flex items-center justify-between mb-6 bg-white p-3 rounded-xl border border-gray-100">
-                                        <span className="text-sm font-medium pl-2">Moneda Principal:</span>
-                                        <div className="flex bg-gray-100 p-1 rounded-lg">
-                                            <button onClick={() => setProfile({ ...profile, currency_symbol: '$' })} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${profile.currency_symbol === '$' ? 'bg-white shadow-sm text-green-600' : 'text-gray-400'}`}>USD ($)</button>
-                                            <button onClick={() => setProfile({ ...profile, currency_symbol: '€' })} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${profile.currency_symbol === '€' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400'}`}>EUR (€)</button>
-                                        </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tasa Euro (Manual)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">€</span>
+                                        <input type="number" value={profile.eur_price || ''} 
+                                            onChange={(e) => setProfile({ ...profile, eur_price: parseFloat(e.target.value) || 0 })}
+                                            placeholder="0 = Auto"
+                                            className="w-full bg-white border border-gray-200 rounded-md py-2.5 pl-6 pr-3 text-sm font-mono font-bold outline-none focus:border-blue-500" />
                                     </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {/* TASA DÓLAR */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tasa Dólar (BCV)</label>
-                                            <input
-                                                type="number"
-                                                // TRUCO: Si es 0, mostramos '' (vacío)
-                                                value={profile.usd_price || ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value
-                                                    setProfile({
-                                                        ...profile,
-                                                        // Si borran todo, guardamos 0
-                                                        usd_price: val === '' ? 0 : parseFloat(val)
-                                                    })
-                                                }}
-                                                placeholder="Auto (0)"
-                                                className="w-full bg-white border border-gray-200 focus:border-green-500 rounded-xl px-4 py-2 font-bold text-black outline-none placeholder:font-normal placeholder:text-gray-400"
-                                            />
-                                        </div>
-
-                                        {/* TASA EURO */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tasa Euro (BCV)</label>
-                                            <input
-                                                type="number"
-                                                // TRUCO: Si es 0, mostramos '' (vacío)
-                                                value={profile.eur_price || ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value
-                                                    setProfile({
-                                                        ...profile,
-                                                        // Si borran todo, guardamos 0
-                                                        eur_price: val === '' ? 0 : parseFloat(val)
-                                                    })
-                                                }}
-                                                placeholder="Auto (0)"
-                                                className="w-full bg-white border border-gray-200 focus:border-blue-500 rounded-xl px-4 py-2 font-bold text-black outline-none placeholder:font-normal placeholder:text-gray-400"
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-2 text-center">Dejar en vacío o 0 para usar la tasa automática del sistema.</p>
                                 </div>
-
-                                <button onClick={handleSaveProfile} disabled={savingProfile} className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 mt-4">
-                                    {savingProfile ? 'Guardando...' : <><Save size={18} /> Guardar Datos de Tienda</>}
-                                </button>
                             </div>
+                            <p className="text-[10px] text-gray-400 mt-2">* Si dejas el valor en 0, se usará la tasa del Banco Central (BCV).</p>
                         </div>
 
-                        {/* 3. MÉTODOS DE PAGO */}
-                        <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="p-3 bg-green-50 text-green-600 rounded-xl"><CreditCard size={24} /></div>
-                                <h2 className="text-xl font-bold text-black">Métodos de Pago</h2>
-                            </div>
+                        {/* 4. MÉTODOS DE PAGO */}
+                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
+                            <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
+                                <CreditCard size={16}/> Pasarela
+                            </h2>
                             {user && <PaymentSettings userId={user.id} initialData={profile.payment_config} />}
                         </div>
+
+                        {/* ACTION BAR */}
+                        <div className="sticky bottom-4 bg-white/80 backdrop-blur border border-gray-200 p-4 rounded-lg shadow-2xl flex justify-end">
+                            <button onClick={handleSaveProfile} disabled={savingProfile} 
+                                className="bg-black text-white px-8 py-3 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50 transition-all flex items-center gap-2">
+                                {savingProfile ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>}
+                                Guardar Cambios
+                            </button>
+                        </div>
+
                     </div>
                 )}
             </main>

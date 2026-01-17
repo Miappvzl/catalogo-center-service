@@ -4,32 +4,31 @@ import { ShoppingCart, Plus, Minus } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 
-export default function AddToCartBtn({ product }: { product: any }) {
-  // Obtenemos items, addItem y removeItem del store
+interface Props {
+  product: any
+  iconOnly?: boolean
+}
+
+export default function AddToCartBtn({ product, iconOnly = false }: Props) {
   const { items, addItem, removeItem } = useCart()
 
-  // Buscamos si este producto ya está en el carrito para saber su cantidad
   const existingItem = items.find((item) => item.id === product.id)
   const quantity = existingItem ? existingItem.quantity : 0
 
   const handleAdd = () => {
     addItem(product)
-    
-    // Solo mostramos la alerta si es el PRIMER producto agregado (cantidad era 0)
-    // Para no spammear alertas cuando le das al "+"
     if (quantity === 0) {
-        const Toast = Swal.mixin({
+      const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
         timer: 1500,
         timerProgressBar: true,
-        })
-        
-        Toast.fire({
+      })
+      Toast.fire({
         icon: 'success',
         title: 'Agregado al carrito'
-        })
+      })
     }
   }
 
@@ -37,22 +36,46 @@ export default function AddToCartBtn({ product }: { product: any }) {
     removeItem(product.id)
   }
 
-  // Si ya hay cantidad, mostramos el CONTADOR
+  // --- MODO 1: CONTADOR ACTIVO ---
   if (quantity > 0) {
-    return (
-        <div className="flex items-center justify-between w-full bg-black text-white rounded-xl font-bold shadow-md animate-in fade-in zoom-in duration-200">
+    if (iconOnly) {
+       return (
+         <div className="flex items-center bg-black text-white rounded-full shadow-xl animate-in fade-in zoom-in duration-200 overflow-hidden">
             <button 
                 onClick={(e) => { e.stopPropagation(); handleRemove() }}
-                className="p-3 px-5 hover:bg-gray-800 rounded-l-xl transition-colors active:scale-90"
+                // Reducido de w-8 h-8 a w-6 h-6
+                className="w-6 h-6 flex items-center justify-center hover:bg-gray-800 transition-colors active:bg-gray-700"
+            >
+                <Minus size={12} />
+            </button>
+            
+            <span className="text-[10px] font-bold w-5 text-center">{quantity}</span>
+            
+            <button 
+                onClick={(e) => { e.stopPropagation(); handleAdd() }}
+                className="w-6 h-6 flex items-center justify-center hover:bg-gray-800 transition-colors active:bg-gray-700"
+            >
+                <Plus size={12} />
+            </button>
+         </div>
+       )
+    }
+
+    return (
+        <div className="flex items-center justify-between w-full bg-black text-white rounded-lg font-bold shadow-md animate-in fade-in zoom-in duration-200">
+            <button 
+                onClick={(e) => { e.stopPropagation(); handleRemove() }}
+                // Reducido de p-3 px-5 a p-1.5 px-3
+                className="p-3 px-5 hover:bg-gray-800 rounded-l-lg transition-colors active:scale-90"
             >
                 <Minus size={16} />
             </button>
             
-            <span className="text-sm min-w-[20px] text-center">{quantity}</span>
+            <span className="text-xs min-w-[15px] text-center">{quantity}</span>
             
             <button 
                 onClick={(e) => { e.stopPropagation(); handleAdd() }}
-                className="p-3 px-5 hover:bg-gray-800 rounded-r-xl transition-colors active:scale-90"
+                className="p-3 px-5 hover:bg-gray-800 rounded-r-lg transition-colors active:scale-90"
             >
                 <Plus size={16} />
             </button>
@@ -60,13 +83,27 @@ export default function AddToCartBtn({ product }: { product: any }) {
     )
   }
 
-  // Si no hay cantidad, mostramos el botón NORMAL de Agregar
+  // --- MODO 2: BOTÓN DE AGREGAR ---
+  if (iconOnly) {
+     return (
+        <button 
+          onClick={(e) => { e.stopPropagation(); handleAdd() }}
+          // Reducido de w-10 h-10 a w-8 h-8
+          className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 hover:bg-gray-900 transition-all duration-300"
+          title="Agregar al carrito"
+        >
+          <ShoppingCart size={14} />
+        </button>
+     )
+  }
+
   return (
     <button 
       onClick={(e) => { e.stopPropagation(); handleAdd() }}
-      className="w-full bg-black text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95 shadow-sm hover:shadow-lg"
+      // Reducido de py-3 a py-1.5
+      className="w-full bg-black text-white py-1.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
     >
-      <ShoppingCart size={18} />
+      <ShoppingCart size={14} />
       Agregar
     </button>
   )
