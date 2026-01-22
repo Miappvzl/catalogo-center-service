@@ -4,107 +4,83 @@ import { ShoppingCart, Plus, Minus } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 
-interface Props {
-  product: any
-  iconOnly?: boolean
-}
+export default function AddToCartBtn({ product, iconOnly = false }: { product: any, iconOnly?: boolean }) {
+  const { addItem, items, updateQuantity, removeItem } = useCart()
 
-export default function AddToCartBtn({ product, iconOnly = false }: Props) {
-  const { items, addItem, removeItem } = useCart()
-
-  const existingItem = items.find((item) => item.id === product.id)
+  // Buscar si este producto ya existe en el carrito
+  const existingItem = items.find((item) => item.productId === product.id || item.id === `${product.id}`)
   const quantity = existingItem ? existingItem.quantity : 0
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     addItem(product)
+    
+    // Feedback visual sutil solo la primera vez
     if (quantity === 0) {
-      const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500,
-        timerProgressBar: true,
-      })
-      Toast.fire({
-        icon: 'success',
-        title: 'Agregado al carrito'
-      })
+        const Toast = Swal.mixin({
+            toast: true, position: 'top', showConfirmButton: false, timer: 1000,
+            customClass: { popup: 'bg-black text-white rounded-none' }
+        })
+        Toast.fire({ icon: 'success', title: 'AGREGADO' })
     }
   }
 
-  const handleRemove = () => {
-    removeItem(product.id)
+  const handleIncrease = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if(existingItem) updateQuantity(existingItem.id, 1)
   }
 
-  // --- MODO 1: CONTADOR ACTIVO ---
+  const handleDecrease = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (quantity > 1 && existingItem) {
+        updateQuantity(existingItem.id, -1)
+    } else if (existingItem) {
+        removeItem(existingItem.id)
+    }
+  }
+
+  // --- ESTADO 1: YA ESTÁ EN EL CARRITO (MOSTRAR CONTADOR) ---
   if (quantity > 0) {
     if (iconOnly) {
-       return (
-         <div className="flex items-center bg-black text-white rounded-full shadow-xl animate-in fade-in zoom-in duration-200 overflow-hidden">
-            <button 
-                onClick={(e) => { e.stopPropagation(); handleRemove() }}
-                // Reducido de w-8 h-8 a w-6 h-6
-                className="w-6 h-6 flex items-center justify-center hover:bg-gray-800 transition-colors active:bg-gray-700"
-            >
-                <Minus size={12} />
-            </button>
-            
-            <span className="text-[10px] font-bold w-5 text-center">{quantity}</span>
-            
-            <button 
-                onClick={(e) => { e.stopPropagation(); handleAdd() }}
-                className="w-6 h-6 flex items-center justify-center hover:bg-gray-800 transition-colors active:bg-gray-700"
-            >
-                <Plus size={12} />
-            </button>
-         </div>
-       )
+        return (
+            <div className="bg-black text-white p-1 rounded-lg flex flex-col items-center justify-between h-[100px] w-[40px] shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                <button onClick={handleIncrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Plus size={14}/></button>
+                <span className="font-mono text-xs font-bold">{quantity}</span>
+                <button onClick={handleDecrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Minus size={14}/></button>
+            </div>
+        )
     }
 
     return (
-        <div className="flex items-center justify-between w-full bg-black text-white rounded-lg font-bold shadow-md animate-in fade-in zoom-in duration-200">
-            <button 
-                onClick={(e) => { e.stopPropagation(); handleRemove() }}
-                // Reducido de p-3 px-5 a p-1.5 px-3
-                className="p-3 px-5 hover:bg-gray-800 rounded-l-lg transition-colors active:scale-90"
-            >
-                <Minus size={16} />
-            </button>
-            
-            <span className="text-xs min-w-[15px] text-center">{quantity}</span>
-            
-            <button 
-                onClick={(e) => { e.stopPropagation(); handleAdd() }}
-                className="p-3 px-5 hover:bg-gray-800 rounded-r-lg transition-colors active:scale-90"
-            >
-                <Plus size={16} />
-            </button>
+        <div className="w-full bg-black text-white h-[46px] rounded-xl flex items-center justify-between px-4 shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <button onClick={handleDecrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Minus size={18}/></button>
+            <span className="font-mono font-bold text-sm">{quantity}</span>
+            <button onClick={handleIncrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Plus size={18}/></button>
         </div>
     )
   }
 
-  // --- MODO 2: BOTÓN DE AGREGAR ---
+  // --- ESTADO 2: NO ESTÁ EN EL CARRITO (BOTÓN NORMAL) ---
   if (iconOnly) {
-     return (
-        <button 
-          onClick={(e) => { e.stopPropagation(); handleAdd() }}
-          // Reducido de w-10 h-10 a w-8 h-8
-          className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 hover:bg-gray-900 transition-all duration-300"
-          title="Agregar al carrito"
-        >
-          <ShoppingCart size={14} />
-        </button>
-     )
+    return (
+      <button 
+        onClick={handleAdd}
+        className="bg-black text-white p-2.5 rounded-lg hover:bg-gray-800 transition-colors shadow-sm active:scale-95"
+        title="Agregar al carrito"
+      >
+        <ShoppingCart size={16} strokeWidth={2.5} />
+      </button>
+    )
   }
 
   return (
     <button 
-      onClick={(e) => { e.stopPropagation(); handleAdd() }}
-      // Reducido de py-3 a py-1.5
-      className="w-full bg-black text-white py-1.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
+      onClick={handleAdd}
+      className="w-full bg-black text-white py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
     >
-      <ShoppingCart size={14} />
-      Agregar
+      <ShoppingCart size={18} />
+      Agregar al Carrito
     </button>
   )
 }

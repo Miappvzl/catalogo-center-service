@@ -98,7 +98,10 @@ export default function AdminPage() {
                     usd_price: storeData.usd_price,
                     eur_price: storeData.eur_price,
                     payment_config: storeData.payment_methods,
-                    shipping_config: storeData.shipping_config
+                    shipping_config: storeData.shipping_config || { 
+        methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: false },
+        pickup_locations: [] 
+    }
                 })
             } else {
                 router.push('/admin/setup')

@@ -11,12 +11,15 @@ import Swal from 'sweetalert2'
 import { supabase } from '@/lib/supabase'
 
 // Corrección 1: Eliminé 'props' de los argumentos (era basura/typo)
-export default function FloatingCheckout({ rate, currency, phone, storeName, paymentMethods, storeId, shippingConfig }: any) {
-    const config = shippingConfig || {
-    methods: { pickup: false, mrw: false, zoom: false, tealca: false, delivery: false },
-    pickup_locations: []
-  }
+export default function FloatingCheckout({ 
+    rate, currency, phone, storeName, paymentMethods, storeId, 
+    shippingConfig // <--- La prop que viene de la DB
+}: any) {
   const { items, removeItem, clearCart, totalItems } = useCart()
+  
+  // --- CORRECCIÓN: Asegurar que config existe aunque venga null ---
+  const config = shippingConfig || { methods: {}, pickup_locations: [] }
+  const methods = config.methods || {} // Shortcut seguro
   const [isOpen, setIsOpen] = useState(false)
   const [step, setStep] = useState(1) // 1: Cart, 2: Form & Shipping, 3: Payment
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -232,36 +235,38 @@ console.log("DEBUG ENVÍOS:", shippingConfig);
                                <h3 className="text-xs font-black text-gray-400 uppercase flex items-center gap-2"><Truck size={14}/> Método de Entrega</h3>
                                
                                <div className="grid grid-cols-2 gap-2">
-                                   {/* PICKUP */}
-                                   {config?.methods?.pickup && (
-                                       <button 
-                                            onClick={() => setFormData({...formData, shippingMethod: 'pickup', shippingDetails: ''})}
-                                            className={`p-3 rounded-lg border text-left text-xs font-bold transition-all ${formData.shippingMethod === 'pickup' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
-                                        >
-                                           Retiro Personal
-                                       </button>
-                                   )}
-                                   {/* NACIONALES */}
-                                   {['mrw', 'zoom', 'tealca'].map(m => (
-                                       shippingConfig?.methods?.[m] && (
-                                           <button 
-                                                key={m}
-                                                onClick={() => setFormData({...formData, shippingMethod: m, shippingDetails: ''})}
-                                                className={`p-3 rounded-lg border text-left text-xs font-bold uppercase transition-all ${formData.shippingMethod === m ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
-                                            >
-                                               Envío {m}
-                                           </button>
-                                       )
-                                   ))}
-                                   {/* DELIVERY */}
-                                   {shippingConfig?.methods?.delivery && (
-                                       <button 
-                                            onClick={() => setFormData({...formData, shippingMethod: 'delivery', shippingDetails: ''})}
-                                            className={`p-3 rounded-lg border text-left text-xs font-bold transition-all ${formData.shippingMethod === 'delivery' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
-                                        >
-                                           Delivery Moto
-                                       </button>
-                                   )}
+                                 {/* PICKUP */}
+{methods.pickup && (
+    <button 
+        onClick={() => setFormData({...formData, shippingMethod: 'pickup', shippingDetails: ''})}
+        className={`p-3 rounded-lg border text-left text-xs font-bold transition-all ${formData.shippingMethod === 'pickup' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+    >
+        Retiro Personal
+    </button>
+)}
+
+{/* NACIONALES */}
+{['mrw', 'zoom', 'tealca'].map(m => (
+    methods[m] && ( // <--- USAR LA VARIABLE SEGURA
+        <button 
+            key={m}
+            onClick={() => setFormData({...formData, shippingMethod: m, shippingDetails: ''})}
+            className={`p-3 rounded-lg border text-left text-xs font-bold uppercase transition-all ${formData.shippingMethod === m ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+        >
+            Envío {m}
+        </button>
+    )
+))}
+
+{/* DELIVERY */}
+{methods.delivery && (
+    <button 
+        onClick={() => setFormData({...formData, shippingMethod: 'delivery', shippingDetails: ''})}
+        className={`p-3 rounded-lg border text-left text-xs font-bold transition-all ${formData.shippingMethod === 'delivery' ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
+    >
+        Delivery Moto
+    </button>
+)}
                                </div>
 
                                {/* DETALLE SEGÚN SELECCIÓN */}
