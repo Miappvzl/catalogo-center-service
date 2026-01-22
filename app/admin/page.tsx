@@ -85,7 +85,9 @@ export default function AdminPage() {
 
             const storeData = stores?.[0] || null
 
-            if (storeData) {
+          
+                if (storeData) {
+                console.log("DEBUG ADMIN - Store ID Real:", storeData.id); // <--- Verificación
                 setProfile({
                     id: storeData.id, // <--- CORRECCIÓN CLAVE (Usamos el ID real de la tienda)
                     store_name: storeData.slug,

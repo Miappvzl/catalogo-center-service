@@ -102,7 +102,7 @@ export const useCart = create<CartStore>()(
       totalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),
     }),
     {
-      name: 'shopping-cart-elite', // Cambiamos el nombre para resetear la cache vieja
+      name: 'cart-storage-v2', // Cambiamos el nombre para resetear la cache vieja
     }
   )
 )
