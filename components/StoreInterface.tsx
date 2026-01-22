@@ -5,6 +5,7 @@ import { ShoppingBag, RefreshCw, Tag, Search, X, Plus } from "lucide-react";
 import Link from "next/link";
 import AddToCartBtn from "@/components/AddToCartBtn";
 import FloatingCheckout from "@/components/FloatingCheckout";
+import NumberTicker from "@/components/NumberTicker";
 
 interface Props {
   store: any;
@@ -18,7 +19,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
 
   // --- LÓGICA MAESTRA DE MONEDA ---
   const currencyMode = store.currency_symbol === "€" ? "eur" : "usd";
-  const symbol = "$"; 
+  const symbol = "$";
 
   const activeRate =
     currencyMode === "eur"
@@ -57,80 +58,122 @@ export default function StoreInterface({ store, products, rates }: Props) {
   return (
     <div className="min-h-screen bg-white pb-32 font-sans relative">
       {/* HEADER INDUSTRIAL / TÉCNICO */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {store.logo_url ? (
-              <img
-                src={store.logo_url}
-                className="w-10 h-10 md:w-12 md:h-12 object-contain rounded-md border border-gray-100"
-                alt="Logo"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-black rounded-md flex items-center justify-center shadow-sm">
-                <ShoppingBag className="text-white w-5 h-5" />
-              </div>
-            )}
-            <div className="flex flex-col">
-              {/* TÍTULO SÓLIDO Y ROBUSTO */}
-              <h1 className="text-lg md:text-xl font-black tracking-tight text-gray-900 uppercase leading-none">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200 supports-[backdrop-filter]:bg-white/60">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 md:h-24 flex items-center justify-between transition-all duration-300">
+          
+          {/* --- IZQUIERDA: IDENTIDAD --- */}
+          <div className="flex items-center gap-3 md:gap-4 group cursor-default">
+            <div className="relative">
+                {store.logo_url ? (
+                <img
+                    src={store.logo_url}
+                    className="w-9 h-9 md:w-14 md:h-14 object-contain rounded-lg border border-gray-100 bg-white shadow-sm group-hover:scale-105 transition-transform duration-500"
+                    alt="Logo"
+                />
+                ) : (
+                <div className="w-9 h-9 md:w-14 md:h-14 bg-gray-900 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-gray-900/20 transition-all duration-500">
+                    <ShoppingBag className="text-white w-4 h-4 md:w-6 md:h-6" />
+                </div>
+                )}
+                {/* Dot de estado "Online" en el logo */}
+                <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>
+            </div>
+            
+            <div className="flex flex-col justify-center">
+              <h1 className="text-base md:text-2xl font-black tracking-tighter text-gray-900 uppercase leading-none">
                 {store.name}
               </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                  Catálogo Digital
+              <div className="hidden md:flex items-center gap-1.5 mt-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">
+                  Official Store
                 </p>
               </div>
             </div>
           </div>
 
-          {/* DATA FINANCIERA (Estilo Terminal) */}
-          <div className="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-md flex flex-col items-end">
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-              Tasa BCV
-            </span>
-            <div className="font-mono text-sm md:text-base font-bold text-gray-900 leading-none mt-0.5">
-              {activeRate} <span className="text-xs text-gray-500">Bs/$</span>
+          {/* --- DERECHA: DATA FINANCIERA (ADAPTATIVA) --- */}
+          
+          {/* 1. VERSIÓN MÓVIL: "The Pill" (Minimalista, una sola línea) */}
+          <div className="md:hidden flex items-center gap-2 bg-gray-50 border border-gray-200/80 rounded-full pl-1 pr-3 py-1 shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+            </div>
+            <div className="flex items-baseline gap-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">BCV</span>
+                <span className="font-mono text-xs font-black text-gray-900 tracking-tight tabular-nums">
+                    <NumberTicker value={activeRate} />
+                </span>
+                <span className="text-[9px] font-bold text-gray-400">Bs</span>
             </div>
           </div>
+
+          {/* 2. VERSIÓN DESKTOP: "The Terminal" (Full Data, Estilo Hacker) */}
+          <div className="hidden md:flex flex-col items-end relative group">
+            <div className="bg-gray-50/50 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 px-5 py-2.5 rounded-xl transition-all duration-300 flex items-center gap-4 cursor-help backdrop-blur-sm">
+                
+                {/* Indicador de Estado */}
+                <div className="flex items-center gap-2 border-r border-gray-200 pr-4">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Feed</span>
+                </div>
+
+                {/* El Valor */}
+                <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase mb-0.5 tracking-wider">Tasa Oficial</span>
+                    <div className="flex items-baseline gap-1 leading-none">
+                        <span className="font-mono text-xl font-black text-gray-900 tracking-tighter tabular-nums">
+                             <NumberTicker value={activeRate} />
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-500">Bs/$</span>
+                    </div>
+                </div>
+            </div>
+            {/* Sombra suave inferior para profundidad */}
+            <div className="absolute -bottom-2 right-2 w-[90%] h-2 bg-gray-200/50 rounded-full blur-md -z-10 group-hover:bg-gray-300/50 transition-colors"></div>
+          </div>
+
         </div>
 
-        {/* BUSCADOR */}
-        <div className="max-w-6xl mx-auto px-4 py-3 border-t border-gray-50">
+        {/* BUSCADOR INTEGRADO (Sin cambios visuales drásticos, solo limpieza) */}
+        <div className="max-w-6xl mx-auto px-4 py-2 md:py-4 border-t border-gray-100">
+           {/* ... (Mantén tu código del buscador aquí, ese estaba bien) ... */}
            <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
+                <div className="relative flex-1 group">
                     <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={16}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors"
+                    size={18}
                     />
                     <input
                     type="text"
-                    placeholder="Buscar por código o nombre..."
+                    placeholder="Buscar producto..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-0 rounded-lg pl-9 pr-8 py-2 text-sm font-medium transition-all outline-none"
+                    className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 rounded-2xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none placeholder:text-gray-400"
                     />
-                    {searchTerm && (
+                     {searchTerm && (
                     <button
                         onClick={() => setSearchTerm("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
                     >
-                        <X size={14} />
+                        <X size={14} className="text-gray-500" />
                     </button>
                     )}
                 </div>
                 
-                 {/* CHIPS (Scroll horizontal) */}
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center">
+                 {/* CHIPS */}
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center mask-linear-fade">
                     {categories.map((cat) => (
                     <button
                         key={cat}
                         onClick={() => setSelectedCategory(cat as string)}
-                        className={`whitespace-nowrap px-3 py-1.5 rounded-md text-xs font-bold transition-all border uppercase tracking-wide ${
+                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
                         selectedCategory === cat
-                            ? "bg-black text-white border-black"
-                            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-black"
+                            ? "bg-black text-white border-black scale-105"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-black hover:shadow-md"
                         }`}
                     >
                         {cat as string}
@@ -231,10 +274,10 @@ export default function StoreInterface({ store, products, rates }: Props) {
                     <div className="pt-3 border-t border-dashed border-gray-100 flex items-end justify-between gap-2">
                       <div className="flex flex-col">
                         <div className="flex items-center">
-                           <span className="text-sm font-bold text-gray-400 mr-0.5">$</span>
-                           <span className="text-xl font-black text-gray-900 tracking-tight">
-                             {product.usd_cash_price}
-                           </span>
+                          <span className="text-sm font-bold text-gray-400 mr-0.5">$</span>
+                          <span className="text-xl font-black text-gray-900 tracking-tight">
+                            {product.usd_cash_price}
+                          </span>
                         </div>
                         {activeRate > 0 && (
                           <span className="font-mono text-[10px] text-gray-500 font-medium">
@@ -247,7 +290,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
 
                       {/* Botón Integrado en la Fila (Más ergonómico) */}
                       <div className="shrink-0">
-                         <AddToCartBtn product={product} iconOnly={true} />
+                        <AddToCartBtn product={product} iconOnly={true} />
                       </div>
                     </div>
                   </div>
@@ -259,12 +302,14 @@ export default function StoreInterface({ store, products, rates }: Props) {
       </main>
 
       <FloatingCheckout
-        rate={activeRate}
-        currency={currencyMode}
-        phone={store.phone || "584120000000"}
-        storeName={store.name}
-        paymentMethods={store.payment_methods}
-      />
+  rate={activeRate}
+  currency={currencyMode}
+  phone={store.phone || "584120000000"}
+  storeName={store.name}
+  paymentMethods={store.payment_methods}
+  storeId={store.id}  // <--- AGREGA ESTA LÍNEA OBLIGATORIAMENTE
+  shippingConfig={store.shipping_config}
+/>
 
       <footer className="py-8 text-center text-xs text-gray-400 bg-white border-t border-gray-100">
         <p>
@@ -282,7 +327,8 @@ export default function StoreInterface({ store, products, rates }: Props) {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-      `}</style>
+      `}
+      </style>
     </div>
   );
 }

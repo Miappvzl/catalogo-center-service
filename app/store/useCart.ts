@@ -2,21 +2,24 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface CartItem {
-  id: number
+  id: string // Ahora será un ID compuesto: "prodID-variantID"
+  productId: number // ID original del producto
+  variantId?: string // ID de la variante (si tiene)
   name: string
-  basePrice: number    // Precio Base (Cash/Zelle)
-  penalty: number      // El sobreprecio (para Pago Móvil)
+  basePrice: number
+  penalty: number
   image?: string
   quantity: number
+  variantInfo?: string // Texto para mostrar: "Rojo / 42"
 }
 
 interface CartStore {
   items: CartItem[]
-  addItem: (product: any) => void
-  removeItem: (id: number) => void
+  addItem: (product: any, variant?: any) => void
+  removeItem: (id: string) => void
+  updateQuantity: (id: string, delta: number) => void // Nueva función útil
   clearCart: () => void
   totalItems: () => number
-  // Nota: Quitamos totalAmount de aquí porque ahora el cálculo es dinámico en el componente
 }
 
 export const useCart = create<CartStore>()(
@@ -24,14 +27,35 @@ export const useCart = create<CartStore>()(
     (set, get) => ({
       items: [],
 
-      addItem: (product) => {
+      addItem: (product, variant) => {
         const currentItems = get().items
-        const existingItem = currentItems.find((item) => item.id === product.id)
+        
+        // Generamos un ID único para esta combinación
+        const uniqueId = variant 
+            ? `${product.id}-${variant.id}` 
+            : `${product.id}`
+
+        const existingItem = currentItems.find((item) => item.id === uniqueId)
+
+        // Definir precio (La variante puede tener un precio distinto en el futuro)
+        // Por ahora usamos el del producto padre
+        const finalBasePrice = product.usd_cash_price
+        const finalPenalty = product.usd_penalty || 0
+
+        // Definir Imagen (Si la variante tiene foto, usamos esa. Si no, la del padre)
+        const finalImage = (variant && variant.variant_image) 
+            ? variant.variant_image 
+            : product.image_url
+
+        // Texto descriptivo de la variante
+        const variantText = variant 
+            ? `${variant.color_name} / ${variant.size}` 
+            : undefined
 
         if (existingItem) {
           set({
             items: currentItems.map((item) =>
-              item.id === product.id
+              item.id === uniqueId
                 ? { ...item, quantity: item.quantity + 1 }
                 : item
             ),
@@ -41,12 +65,15 @@ export const useCart = create<CartStore>()(
             items: [
               ...currentItems,
               {
-                id: product.id,
+                id: uniqueId,
+                productId: product.id,
+                variantId: variant?.id,
                 name: product.name,
-                basePrice: product.usd_cash_price, // Guardamos la base pura
-                penalty: product.usd_penalty || 0, // Guardamos el penalty aparte
-                image: product.image_url,
+                basePrice: finalBasePrice,
+                penalty: finalPenalty,
+                image: finalImage,
                 quantity: 1,
+                variantInfo: variantText
               },
             ],
           })
@@ -54,20 +81,20 @@ export const useCart = create<CartStore>()(
       },
 
       removeItem: (id) => {
-        const currentItems = get().items
-        const existingItem = currentItems.find((item) => item.id === id)
+        set({ items: get().items.filter((item) => item.id !== id) })
+      },
 
-        if (existingItem && existingItem.quantity > 1) {
-          set({
-            items: currentItems.map((item) =>
-              item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-            ),
-          })
-        } else {
-          set({
-            items: currentItems.filter((item) => item.id !== id),
-          })
-        }
+      updateQuantity: (id, delta) => {
+         const currentItems = get().items
+         set({
+            items: currentItems.map(item => {
+                if (item.id === id) {
+                    const newQty = item.quantity + delta
+                    return newQty > 0 ? { ...item, quantity: newQty } : item
+                }
+                return item
+            })
+         })
       },
 
       clearCart: () => set({ items: [] }),
@@ -75,7 +102,7 @@ export const useCart = create<CartStore>()(
       totalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),
     }),
     {
-      name: 'shopping-cart',
+      name: 'shopping-cart-elite', // Cambiamos el nombre para resetear la cache vieja
     }
   )
 )

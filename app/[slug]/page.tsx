@@ -22,7 +22,7 @@ async function getExchangeRates() {
 async function getStoreOwner(slug: string) {
   const { data: store } = await supabase
     .from('stores')
-    .select('user_id, name, currency_type, currency_symbol, usd_price, eur_price, phone, payment_methods, logo_url') 
+.select('id, user_id, name, currency_type, currency_symbol, usd_price, eur_price, phone, payment_methods, shipping_config, logo_url')
     .eq('slug', slug)
     .single()
   return store

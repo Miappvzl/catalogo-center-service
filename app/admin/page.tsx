@@ -12,6 +12,7 @@ import {
     ShieldCheck
 } from 'lucide-react'
 import PaymentSettings from '@/components/PaymentSettings'
+import ShippingSettings from '@/components/admin/ShippingSettings'
 import { uploadImageToSupabase } from '@/utils/supabaseStorage'
 import Swal from 'sweetalert2'
 
@@ -34,6 +35,7 @@ interface StoreProfile {
     usd_price?: number
     eur_price?: number
     payment_config?: any
+    shipping_config?: any
 }
 
 const normalizeCategory = (cat: string | undefined | null) => {
@@ -63,10 +65,10 @@ export default function AdminPage() {
     )
     const router = useRouter()
 
-    useEffect(() => { 
+    useEffect(() => {
         // Guardamos el dominio actual (ej: preziso.vercel.app)
         setOrigin(window.location.origin)
-        fetchData() 
+        fetchData()
     }, [])
 
     const fetchData = async () => {
@@ -85,7 +87,7 @@ export default function AdminPage() {
 
             if (storeData) {
                 setProfile({
-                    id: user.id,
+                    id: storeData.id, // <--- CORRECCIÓN CLAVE (Usamos el ID real de la tienda)
                     store_name: storeData.slug,
                     display_name: storeData.name,
                     currency_symbol: storeData.currency_symbol || '$',
@@ -93,7 +95,8 @@ export default function AdminPage() {
                     logo_url: storeData.logo_url,
                     usd_price: storeData.usd_price,
                     eur_price: storeData.eur_price,
-                    payment_config: storeData.payment_methods
+                    payment_config: storeData.payment_methods,
+                    shipping_config: storeData.shipping_config
                 })
             } else {
                 router.push('/admin/setup')
@@ -130,9 +133,10 @@ export default function AdminPage() {
     }, [products, searchTerm, selectedCategory])
 
     const handleDelete = async (id: string) => {
+
         Swal.fire({
             title: '¿Eliminar ítem?',
-            text: "Esta acción no se puede deshacer.",
+            text: 'Esta acción no se puede deshacer.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#000',
@@ -168,6 +172,7 @@ export default function AdminPage() {
                     currency_symbol: profile.currency_symbol,
                     usd_price: profile.usd_price,
                     eur_price: profile.eur_price,
+
                 })
                 .eq('user_id', user.id)
 
@@ -197,9 +202,9 @@ export default function AdminPage() {
 
     // --- LÓGICA DE COPIADO ROBUSTA ---
     const copyLink = () => {
-        if(!profile?.store_name) return;
+        if (!profile?.store_name) return;
         const url = `${origin}/${profile.store_name}`
-        
+
         // Función auxiliar para éxito
         const onSuccess = () => {
             Swal.fire({
@@ -266,11 +271,11 @@ export default function AdminPage() {
 
                 <nav className="flex-1 p-4 space-y-1">
                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Principal</p>
-                    <button onClick={() => setActiveTab('inventory')} 
+                    <button onClick={() => setActiveTab('inventory')}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide transition-all rounded-md ${activeTab === 'inventory' ? 'bg-white border border-gray-200 text-black shadow-sm' : 'text-gray-500 hover:text-black hover:bg-gray-100'}`}>
                         <Package size={16} /> Inventario
                     </button>
-                    <button onClick={() => setActiveTab('settings')} 
+                    <button onClick={() => setActiveTab('settings')}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide transition-all rounded-md ${activeTab === 'settings' ? 'bg-white border border-gray-200 text-black shadow-sm' : 'text-gray-500 hover:text-black hover:bg-gray-100'}`}>
                         <Settings size={16} /> Configuración
                     </button>
@@ -306,9 +311,9 @@ export default function AdminPage() {
             </div>
             {isMobileMenuOpen && (
                 <div className="md:hidden fixed inset-0 top-14 bg-white z-20 p-4 space-y-2 border-t border-gray-100">
-                    <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Package size={16}/> Inventario</button>
-                    <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Settings size={16}/> Configuración</button>
-                    <button onClick={handleSignOut} className="w-full p-4 bg-red-50 text-red-600 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><LogOut size={16}/> Salir</button>
+                    <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Package size={16} /> Inventario</button>
+                    <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false) }} className="w-full p-4 border border-gray-200 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><Settings size={16} /> Configuración</button>
+                    <button onClick={handleSignOut} className="w-full p-4 bg-red-50 text-red-600 rounded-md flex items-center gap-3 font-bold text-xs uppercase tracking-wide"><LogOut size={16} /> Salir</button>
                 </div>
             )}
 
@@ -332,12 +337,12 @@ export default function AdminPage() {
                         <div className="bg-gray-50 p-1 rounded-lg border border-gray-200 mb-8 flex flex-col md:flex-row gap-2">
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                <input type="text" placeholder="Buscar referencia..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
+                                <input type="text" placeholder="Buscar referencia..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded-md pl-10 pr-4 py-2.5 focus:ring-1 focus:ring-black focus:border-black outline-none text-sm font-medium placeholder:text-gray-400" />
                             </div>
                             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-1">
                                 {categories.map(cat => (
-                                    <button key={cat} onClick={() => setSelectedCategory(cat)} 
+                                    <button key={cat} onClick={() => setSelectedCategory(cat)}
                                         className={`whitespace-nowrap px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all border ${selectedCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
                                         {cat}
                                     </button>
@@ -354,7 +359,7 @@ export default function AdminPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredProducts.map((product) => (
                                     <div key={product.id} className="group bg-white border border-gray-200 hover:border-black transition-colors rounded-lg overflow-hidden flex flex-col">
-                                        
+
                                         <div className="aspect-square bg-gray-50 relative border-b border-gray-100 p-4">
                                             {product.image_url ? (
                                                 <Image src={product.image_url} fill className="object-contain mix-blend-multiply p-4" alt={product.name} sizes="200px" />
@@ -370,12 +375,12 @@ export default function AdminPage() {
 
                                         <div className="p-3 flex flex-col flex-1 gap-2">
                                             <h3 className="font-bold text-sm leading-tight text-gray-900 line-clamp-2 min-h-[2.5em]">{product.name}</h3>
-                                            
+
                                             <div className="mt-auto pt-3 border-t border-dashed border-gray-100 flex items-center justify-between">
                                                 <span className="font-mono text-sm font-medium text-gray-900">
                                                     ${product.usd_cash_price || product.price || 0}
                                                 </span>
-                                                
+
                                                 <div className="flex gap-1">
                                                     <Link href={`/admin/product/edit/${product.id}`} className="p-1.5 bg-gray-50 hover:bg-black hover:text-white rounded text-gray-600 border border-gray-200 transition-colors" title="Editar">
                                                         <Edit2 size={14} />
@@ -396,10 +401,10 @@ export default function AdminPage() {
                 {/* === CONFIGURACIÓN === */}
                 {activeTab === 'settings' && profile && (
                     <div className="max-w-3xl mx-auto animate-in fade-in duration-500 space-y-8">
-                        
+
                         <header className="mb-8 border-b border-gray-100 pb-6">
-                             <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-black uppercase leading-none">Configuración</h1>
-                             <p className="text-xs font-mono text-gray-400 mt-2">ID Tienda: {profile.id.slice(0,8)}</p>
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-black uppercase leading-none">Configuración</h1>
+                            <p className="text-xs font-mono text-gray-400 mt-2">ID Tienda: {profile.id.slice(0, 8)}</p>
                         </header>
 
                         {/* LINK CARD */}
@@ -407,13 +412,13 @@ export default function AdminPage() {
                             <div className="flex flex-col gap-1 w-full">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Tu Enlace Público</label>
                                 {/* SOLUCIÓN: Ahora es un enlace real <a> */}
-                                <a 
-                                    href={`${origin}/${profile.store_name}`} 
-                                    target="_blank" 
+                                <a
+                                    href={`${origin}/${profile.store_name}`}
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 font-mono text-sm text-gray-300 break-all hover:text-white transition-colors cursor-pointer group"
                                 >
-                                    <ExternalLink size={14} className="text-green-500 shrink-0 group-hover:scale-110 transition-transform"/>
+                                    <ExternalLink size={14} className="text-green-500 shrink-0 group-hover:scale-110 transition-transform" />
                                     {origin}/{profile.store_name}
                                 </a>
                             </div>
@@ -423,9 +428,10 @@ export default function AdminPage() {
                         </div>
 
                         {/* 2. DATOS GENERALES */}
+
                         <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
                             <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
-                                <Store size={16}/> Datos de la Empresa
+                                <Store size={16} /> Datos de la Empresa
                             </h2>
 
                             <div className="grid md:grid-cols-2 gap-6">
@@ -433,21 +439,21 @@ export default function AdminPage() {
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Slug (URL)</label>
                                     <div className="flex items-center bg-white border border-gray-200 rounded-md overflow-hidden">
                                         <span className="pl-3 text-xs text-gray-400 font-mono">/</span>
-                                        <input type="text" value={profile.store_name || ''} 
-                                            onChange={(e) => setProfile({ ...profile, store_name: e.target.value.toLowerCase().replace(/\s+/g, '-') })} 
+                                        <input type="text" value={profile.store_name || ''}
+                                            onChange={(e) => setProfile({ ...profile, store_name: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
                                             className="w-full py-2.5 px-2 text-sm font-bold outline-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Nombre Visible</label>
-                                    <input type="text" value={profile.display_name || ''} 
-                                        onChange={(e) => setProfile({ ...profile, display_name: e.target.value })} 
+                                    <input type="text" value={profile.display_name || ''}
+                                        onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
                                         className="w-full bg-white border border-gray-200 rounded-md py-2.5 px-3 text-sm font-bold outline-none focus:border-black transition-colors" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">WhatsApp Contacto</label>
                                     <input type="text" value={profile.phone || ''} placeholder="58412..."
-                                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })} 
+                                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                                         className="w-full bg-white border border-gray-200 rounded-md py-2.5 px-3 text-sm font-mono outline-none focus:border-black transition-colors" />
                                 </div>
                             </div>
@@ -462,7 +468,7 @@ export default function AdminPage() {
                                         ) : (
                                             <div className="text-gray-200 text-xs">N/A</div>
                                         )}
-                                        {uploadingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="animate-spin text-white" size={16}/></div>}
+                                        {uploadingLogo && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="animate-spin text-white" size={16} /></div>}
                                     </div>
                                     <label className="cursor-pointer bg-white border border-gray-200 hover:border-black text-black px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all">
                                         Subir Imagen
@@ -475,15 +481,15 @@ export default function AdminPage() {
                         {/* 3. FINANZAS (TASAS) */}
                         <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
                             <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
-                                <Coins size={16}/> Tasas de Cambio
+                                <Coins size={16} /> Tasas de Cambio
                             </h2>
 
                             <div className="flex items-center gap-4 mb-6">
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Moneda Base:</span>
                                 <div className="flex bg-gray-100 p-1 rounded-md">
-                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '$' })} 
+                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '$' })}
                                         className={`px-3 py-1 rounded text-xs font-bold transition-all ${profile.currency_symbol === '$' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>USD ($)</button>
-                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '€' })} 
+                                    <button onClick={() => setProfile({ ...profile, currency_symbol: '€' })}
                                         className={`px-3 py-1 rounded text-xs font-bold transition-all ${profile.currency_symbol === '€' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>EUR (€)</button>
                                 </div>
                             </div>
@@ -493,7 +499,7 @@ export default function AdminPage() {
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tasa Dólar (Manual)</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                                        <input type="number" value={profile.usd_price || ''} 
+                                        <input type="number" value={profile.usd_price || ''}
                                             onChange={(e) => setProfile({ ...profile, usd_price: parseFloat(e.target.value) || 0 })}
                                             placeholder="0 = Auto"
                                             className="w-full bg-white border border-gray-200 rounded-md py-2.5 pl-6 pr-3 text-sm font-mono font-bold outline-none focus:border-green-500" />
@@ -503,7 +509,7 @@ export default function AdminPage() {
                                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tasa Euro (Manual)</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">€</span>
-                                        <input type="number" value={profile.eur_price || ''} 
+                                        <input type="number" value={profile.eur_price || ''}
                                             onChange={(e) => setProfile({ ...profile, eur_price: parseFloat(e.target.value) || 0 })}
                                             placeholder="0 = Auto"
                                             className="w-full bg-white border border-gray-200 rounded-md py-2.5 pl-6 pr-3 text-sm font-mono font-bold outline-none focus:border-blue-500" />
@@ -516,16 +522,21 @@ export default function AdminPage() {
                         {/* 4. MÉTODOS DE PAGO */}
                         <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
                             <h2 className="text-sm font-black uppercase tracking-wide mb-6 flex items-center gap-2">
-                                <CreditCard size={16}/> Pasarela
+                                <CreditCard size={16} /> Pasarela
                             </h2>
+                            {/* 3. LOGÍSTICA (ENVÍOS) */}
+                            <div className="border border-gray-200 rounded-lg p-6 bg-gray-50/30">
+                                {/* No necesitamos header aquí porque el componente ya tiene uno interno */}
+                                {profile?.id && <ShippingSettings storeId={profile.id} />}
+                            </div>
                             {user && <PaymentSettings userId={user.id} initialData={profile.payment_config} />}
                         </div>
 
                         {/* ACTION BAR */}
                         <div className="sticky bottom-4 bg-white/80 backdrop-blur border border-gray-200 p-4 rounded-lg shadow-2xl flex justify-end">
-                            <button onClick={handleSaveProfile} disabled={savingProfile} 
+                            <button onClick={handleSaveProfile} disabled={savingProfile}
                                 className="bg-black text-white px-8 py-3 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50 transition-all flex items-center gap-2">
-                                {savingProfile ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>}
+                                {savingProfile ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                                 Guardar Cambios
                             </button>
                         </div>
