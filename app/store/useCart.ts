@@ -1,108 +1,96 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
+// 1. DEFINICIÓN DE TIPOS (El Contrato)
+// Aquí le decimos a TypeScript exactamente qué lleva un item del carrito
 export interface CartItem {
-  id: string // Ahora será un ID compuesto: "prodID-variantID"
-  productId: number // ID original del producto
-  variantId?: string // ID de la variante (si tiene)
+  id: string
+  productId: string
+  variantId: string | null
   name: string
+  price: number        // <--- Aquí definimos que SIEMPRE habrá un precio
   basePrice: number
   penalty: number
-  image?: string
+  image: string
   quantity: number
-  variantInfo?: string // Texto para mostrar: "Rojo / 42"
+  variantInfo: string | null
 }
 
-interface CartStore {
+interface CartState {
   items: CartItem[]
-  addItem: (product: any, variant?: any) => void
-  removeItem: (id: string) => void
-  updateQuantity: (id: string, delta: number) => void // Nueva función útil
+  addItem: (product: any, variant?: any, quantity?: number) => void
+  removeItem: (itemId: string) => void
+  updateQuantity: (itemId: string, quantity: number) => void
   clearCart: () => void
-  totalItems: () => number
 }
 
-export const useCart = create<CartStore>()(
+export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
 
-      addItem: (product, variant) => {
-        const currentItems = get().items
-        
-        // Generamos un ID único para esta combinación
-        const uniqueId = variant 
-            ? `${product.id}-${variant.id}` 
-            : `${product.id}`
+      addItem: (product, variant = null, quantity = 1) => {
+        set((state) => {
+          const variantId = variant ? variant.id : null
+          const productId = product.id
+          
+          // Generamos ID único combinando producto y variante
+          const uniqueId = `${productId}-${variantId || 'base'}`
 
-        const existingItem = currentItems.find((item) => item.id === uniqueId)
+          // Verificamos si ya existe
+          const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId)
 
-        // Definir precio (La variante puede tener un precio distinto en el futuro)
-        // Por ahora usamos el del producto padre
-        const finalBasePrice = product.usd_cash_price
-        const finalPenalty = product.usd_penalty || 0
+          if (existingItemIndex > -1) {
+            // SI EXISTE: Sumamos la cantidad nueva
+            const newItems = [...state.items]
+            newItems[existingItemIndex].quantity += quantity
+            return { items: newItems }
+          } else {
+            // SI ES NUEVO: Creamos el objeto CartItem completo
+            const newItem: CartItem = {
+              id: uniqueId,
+              productId: productId,
+              variantId: variantId,
+              name: product.name,
+              // Lógica de Precio: Si la variante tuviera precio propio lo usaríamos, sino el del producto
+              price: Number(product.usd_cash_price), 
+              basePrice: Number(product.usd_cash_price),
+              penalty: Number(product.usd_penalty || 0),
+              // Lógica de Imagen: Prioridad Variante > Producto
+              image: variant?.variant_image || product.image_url,
+              quantity: quantity,
+              variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null
+            }
 
-        // Definir Imagen (Si la variante tiene foto, usamos esa. Si no, la del padre)
-        const finalImage = (variant && variant.variant_image) 
-            ? variant.variant_image 
-            : product.image_url
-
-        // Texto descriptivo de la variante
-        const variantText = variant 
-            ? `${variant.color_name} / ${variant.size}` 
-            : undefined
-
-        if (existingItem) {
-          set({
-            items: currentItems.map((item) =>
-              item.id === uniqueId
-                ? { ...item, quantity: item.quantity + 1 }
-                : item
-            ),
-          })
-        } else {
-          set({
-            items: [
-              ...currentItems,
-              {
-                id: uniqueId,
-                productId: product.id,
-                variantId: variant?.id,
-                name: product.name,
-                basePrice: finalBasePrice,
-                penalty: finalPenalty,
-                image: finalImage,
-                quantity: 1,
-                variantInfo: variantText
-              },
-            ],
-          })
-        }
+            return { items: [...state.items, newItem] }
+          }
+        })
       },
 
-      removeItem: (id) => {
-        set({ items: get().items.filter((item) => item.id !== id) })
+      removeItem: (itemId) => {
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== itemId),
+        }))
       },
 
-      updateQuantity: (id, delta) => {
-         const currentItems = get().items
-         set({
-            items: currentItems.map(item => {
-                if (item.id === id) {
-                    const newQty = item.quantity + delta
-                    return newQty > 0 ? { ...item, quantity: newQty } : item
-                }
-                return item
-            })
-         })
+      updateQuantity: (itemId, quantity) => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id === itemId) {
+              // Evitamos cantidades negativas o cero
+              const newQuantity = Math.max(1, quantity)
+              return { ...item, quantity: newQuantity }
+            }
+            return item
+          }),
+        }))
       },
 
       clearCart: () => set({ items: [] }),
-
-      totalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),
     }),
     {
-      name: 'cart-storage-v2', // Cambiamos el nombre para resetear la cache vieja
+      name: 'shopping-cart-storage',
+      storage: createJSONStorage(() => localStorage),
     }
   )
 )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Truck, MapPin, Save, Loader2, Info } from 'lucide-react'
-import { createBrowserClient } from '@supabase/ssr' // <--- CAMBIO CLAVE: Usamos el cliente moderno
+import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 
 export default function ShippingSettings({ storeId }: { storeId: string }) {
@@ -22,10 +22,8 @@ export default function ShippingSettings({ storeId }: { storeId: string }) {
   const [newLocation, setNewLocation] = useState('')
 
   // INSTANCIAMOS EL CLIENTE CORRECTO (CON SESIÓN)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = getSupabase()
+  
 
   // Cargar Configuración Actual
   useEffect(() => {
