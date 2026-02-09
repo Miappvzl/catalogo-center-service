@@ -1,51 +1,27 @@
-import LandingPage from './landing/page' // Importamos la Landing que ya creaste
-import { supabase } from '@/lib/supabase'; // Importamos la conexión nueva\
+import LandingClient from '@/components/LandingClient';
+import { Metadata } from 'next';
 
+// --- METADATOS SEO (CRUCIAL PARA GOOGLE) ---
+export const metadata: Metadata = {
+  title: 'Preziso | Automatización de Tasa BCV para E-commerce en Venezuela',
+  description: 'Olvídate de calcular la tasa. Preziso actualiza tus precios automáticamente según el BCV y organiza tus pedidos de WhatsApp.',
+  keywords: ['tasa bcv', 'ecommerce venezuela', 'tienda online venezuela', 'automatizacion ventas', 'catalogo digital'],
+  openGraph: {
+    title: 'Preziso - Vende en Dólares, Cobra en Bs (Automático)',
+    description: 'Sistema operativo para comercios en Venezuela. Sincronización BCV 24/7.',
+    type: 'website',
+    // images: ['/og-image.jpg'], // Recuerda agregar una imagen luego
+  }
+};
 
+// Optimizamos para que sea una página estática ultra rápida (SEO Friendly)
+// Si necesitas que sea dinámica por alguna razón, cambia a 'force-dynamic'
+export const dynamic = 'force-static'; 
 
-
-// Evitamos caché para que si cambias el precio, se vea al instante
-export const dynamic = 'force-dynamic';
-
-export default async function Home() {
-  // 1. Pedir Productos y Dólar a Supabase en paralelo (Súper rápido)
- // ... imports y setup anterior ...
-
-  const shopOwnerId = process.env.NEXT_PUBLIC_SHOP_OWNER_ID;
- 
-
-  // Si no hay ID configurado, lanzamos error en consola para avisarte
-  if (!shopOwnerId) console.warn("⚠️ ALERTA: No se ha configurado el ID del dueño de la tienda.");
-
-  // 1. Pedir Productos (FILTRADO POR DUEÑO)
-  const productsPromise = supabase
-    .from('products')
-    .select('*')
-    .eq('user_id', shopOwnerId) 
-    .order('id', { ascending: true });
-
+export default function Home() {
+  // NOTA: Hemos eliminado la lógica de Supabase (productos y dólar) 
+  // porque esta es la página de Marketing del Software, no la tienda de un cliente.
+  // La carga de productos se hará en las rutas de las tiendas (ej: /[slug]).
   
-  const configPromise = supabase.from('config').select('value').eq('key', 'dolar_rate').single();
-
-  const [productsRes, configRes] = await Promise.all([productsPromise, configPromise]);
-
-  // 2. Mapear los datos de SQL a tu formato visual
-  // Nota: En la DB las columnas son minusculas (usd_cash_price), pero tu UI espera Mayusculas (USD_Cash_Price)
-  // Vamos a transformar los datos aquí para no romper tu componente Store.
-  
-  const products = (productsRes.data || []).map(p => ({
-    Name: p.name,
-    Category: p.category,
-    Image_Url: p.image_url,
-    USD_Cash_Price: p.usd_cash_price?.toString() || '0',
-    USD_Penalty: p.usd_penalty?.toString() || '0', // Aquí viaja tu lógica de penalización
-    Sizes: p.sizes
-  }));
-
-  const dolarRate = configRes.data?.value || 0;
-
-  // 3. Renderizar
-
-   return <LandingPage />
-  
+  return <LandingClient />;
 }
