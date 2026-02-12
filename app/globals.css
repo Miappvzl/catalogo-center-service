@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* --- ESTA LÍNEA ES LA CLAVE PARA QUE EL BOTÓN FUNCIONE EN V4 --- */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   input, textarea, select {
     @apply bg-gray-50/50 border-0 ring-1 ring-gray-200 transition-all duration-300;
@@ -15,14 +18,12 @@
 }
 
 :root {
-  :root {
   /* INDUSTRIAL PALETTE */
   --background: #ffffff; /* Blanco puro, clínico */
   --foreground: #09090b; /* Zinc-950 (Negro técnico) */
   
   --card-bg: #ffffff;
   --border-subtle: #e4e4e7; /* Zinc-200 (Gris frío y nítido) */
-}
 }
 
 /* FIX AUTOCOMPLETADO */
@@ -40,12 +41,12 @@ input:-webkit-autofill:active {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-serif); /* AÑADIR ESTO */
+  --font-serif: var(--font-serif); 
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, sans-serif;
-  -webkit-font-smoothing: antialiased; /* Crucial para que la fuente se vea delgada y premium */
+  -webkit-font-smoothing: antialiased; 
 }
