@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* --- ESTA LÍNEA ES LA CLAVE PARA QUE EL BOTÓN FUNCIONE EN V4 --- */
+/* --- ESTA LÍNEA HACE FUNCIONAR EL MODO OSCURO CON EL BOTÓN --- */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
@@ -19,11 +19,10 @@
 
 :root {
   /* INDUSTRIAL PALETTE */
-  --background: #ffffff; /* Blanco puro, clínico */
-  --foreground: #09090b; /* Zinc-950 (Negro técnico) */
-  
+  --background: #ffffff;
+  --foreground: #09090b;
   --card-bg: #ffffff;
-  --border-subtle: #e4e4e7; /* Zinc-200 (Gris frío y nítido) */
+  --border-subtle: #e4e4e7;
 }
 
 /* FIX AUTOCOMPLETADO */
@@ -32,7 +31,7 @@ input:-webkit-autofill:hover,
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
     -webkit-text-fill-color: #0C0A09 !important;
-    -webkit-box-shadow: 0 0 0 30px #FAFAF9 inset !important;
+    -webkit-box-shadow: 0 0 0 30px #2b2b2b inset !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 

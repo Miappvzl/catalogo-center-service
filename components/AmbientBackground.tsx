@@ -4,64 +4,68 @@ import { motion } from 'framer-motion'
 
 export default function AmbientBackground() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+    <div className="fixed inset-0 -z-50 overflow-hidden pointer-events-none">
+      {/* 1. LIENZO BASE (Blanco Puro / Negro Profundo) */}
+      <div className="absolute inset-0 bg-white dark:bg-[#020202] transition-colors duration-300"></div>
+
+      {/* 2. SPOTLIGHTS (Paleta: Emerald - Indigo - Violet) */}
       
-      {/* --- ORBE 1: HERO (Arriba Izquierda) --- 
-          Claro: Verde Menta Suave | Oscuro: Verde Neón Profundo 
+      {/* Foco 1: Hero - EL DINERO (Verde Esmeralda / Teal) 
+          Transmite: Crecimiento, Dólares, Éxito.
       */}
       <motion.div 
         animate={{ 
           scale: [1, 1.1, 1],
-          opacity: [0.3, 0.5, 0.3],
-          x: [0, 20, 0],
-          y: [0, -20, 0]
+          x: [0, 30, 0],
+          y: [0, -30, 0],
         }}
-        transition={{ 
-          duration: 10, 
-          repeat: Infinity, 
-          ease: "easeInOut" 
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -top-[50px] -left-[50px] w-[500px] h-[500px] md:w-[600px] md:h-[600px] opacity-70 dark:opacity-40"
+        style={{
+          // Light: Un verde azulado fresco. Dark: Un esmeralda intenso.
+          background: 'radial-gradient(circle at center, rgba(16, 185, 129, 0.8) 0%, rgba(16, 185, 129, 0) 60%)', 
+          filter: 'blur(60px)',
         }}
-        className="absolute -top-[10%] -left-[10%] w-[500px] h-[500px] md:w-[800px] md:h-[800px] rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] md:blur-[120px] bg-green-200/50 dark:bg-green-900/20"
       />
 
-      {/* --- ORBE 2: FEATURES (Medio Derecha) --- 
-          Claro: Azul Cielo | Oscuro: Azul Eléctrico 
+      {/* Foco 2: Features - LA TECNOLOGÍA (Azul Índigo / Cian)
+          Transmite: Seguridad, Software, Nube.
       */}
       <motion.div 
         animate={{ 
           scale: [1, 1.2, 1],
-          opacity: [0.3, 0.4, 0.3],
-          x: [0, -30, 0]
+          x: [0, -40, 0],
         }}
-        transition={{ 
-          duration: 15, 
-          repeat: Infinity, 
-          ease: "easeInOut",
-          delay: 2
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        className="absolute top-[35%] -right-[100px] w-[450px] h-[450px] md:w-[600px] md:h-[600px] opacity-60 dark:opacity-30"
+        style={{
+          // Light: Azul cielo corporativo. Dark: Azul eléctrico.
+          background: 'radial-gradient(circle at center, rgba(59, 130, 246, 0.8) 0%, rgba(59, 130, 246, 0) 60%)',
+          filter: 'blur(70px)',
         }}
-        className="absolute top-[40%] -right-[20%] md:-right-[10%] w-[400px] h-[400px] md:w-[600px] md:h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] md:blur-[100px] bg-blue-100/60 dark:bg-blue-900/20"
       />
 
-      {/* --- ORBE 3: PRICING (Abajo Izquierda) --- 
-          Claro: Violeta Lavanda | Oscuro: Violeta Cyberpunk 
+      {/* Foco 3: Pricing - LO PREMIUM (Violeta / Magenta)
+          Transmite: Exclusividad, Modernidad, Magia.
       */}
       <motion.div 
         animate={{ 
           scale: [1, 1.15, 1],
-          opacity: [0.2, 0.4, 0.2],
-          y: [0, 40, 0]
+          y: [0, 40, 0],
         }}
-        transition={{ 
-          duration: 12, 
-          repeat: Infinity, 
-          ease: "easeInOut",
-          delay: 4
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        className="absolute -bottom-[50px] left-[10%] w-[550px] h-[550px] opacity-50 dark:opacity-25"
+        style={{
+          // Light: Lavanda suave. Dark: Violeta profundo.
+          background: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.8) 0%, rgba(139, 92, 246, 0) 60%)',
+          filter: 'blur(80px)',
         }}
-        className="absolute bottom-[10%] -left-[10%] w-[600px] h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] bg-purple-200/50 dark:bg-purple-900/20"
       />
 
-      {/* --- Malla de Ruido (Opcional: da textura premium) --- */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 dark:opacity-10 brightness-100 dark:brightness-50 contrast-150 mix-blend-overlay"></div>
+      {/* 3. MALLA DE RUIDO (Noise) 
+          Esto es clave para que no se vea "barato". Le da textura de papel moneda/film.
+      */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 dark:opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
     </div>
   )
 }

@@ -9,38 +9,8 @@ import {
   Moon, Sun
 } from 'lucide-react'
 
-// --- 0. ESTILOS GLOBALES Y LOGICA DE MODO OSCURO ---
-// Asegúrate de que en tu tailwind.config.js tengas: darkMode: 'class'
+// --- COMPONENTES PEQUEÑOS ---
 
-// --- 1. COMPONENTES PEQUEÑOS ---
-
-const BcvTicker = () => (
-  <div className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800 py-2 overflow-hidden relative z-50 backdrop-blur-sm">
-    <div className="whitespace-nowrap flex animate-ticker w-max">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-8 mx-6 text-[10px] font-mono tracking-widest">
-          <span className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold">
-             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            BCV: EN VIVO
-          </span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">CUPO LIMITADO</span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">ACCESO BETA</span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">VENDE EN $ • COBRA EN BS</span>
-        </div>
-      ))}
-    </div>
-    <style jsx>{`
-      @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-      .animate-ticker { animation: ticker 40s linear infinite; }
-    `}</style>
-  </div>
-)
 
 const WaitlistForm = () => {
     const [form, setForm] = useState({ name: '', instagram: '', email: '' })
@@ -59,7 +29,7 @@ const WaitlistForm = () => {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xl dark:shadow-black/50 flex flex-col gap-2 mt-8 relative z-20 transition-colors duration-300">
+        <form onSubmit={handleSubmit} className="relative bg-gray-50/60 dark:bg-zinc-900/70 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-[1.6rem] p-2 rounded-2xl shadow-xl dark:shadow-black/50 flex flex-col gap-2 mt-8 relative z-20 transition-colors duration-300">
             <div className="absolute -top-3 left-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-green-200 dark:border-green-800/50">
                 Lista de Espera Abierta
             </div>
@@ -72,7 +42,7 @@ const WaitlistForm = () => {
                         placeholder="Tu Nombre"
                         value={form.name}
                         onChange={e => setForm({...form, name: e.target.value})}
-                        className="w-full bg-gray-50 dark:bg-zinc-950 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
                     />
                 </div>
                 <div className="relative">
@@ -82,7 +52,7 @@ const WaitlistForm = () => {
                         placeholder="@tu_negocio"
                         value={form.instagram}
                         onChange={e => setForm({...form, instagram: e.target.value})}
-                        className="w-full bg-gray-50 dark:bg-zinc-950 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
                     />
                 </div>
             </div>
@@ -96,7 +66,7 @@ const WaitlistForm = () => {
                         placeholder="tu@correo.com"
                         value={form.email}
                         onChange={e => setForm({...form, email: e.target.value})}
-                        className="w-full bg-gray-50 dark:bg-zinc-950 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
                     />
                 </div>
                 <button 
@@ -119,13 +89,13 @@ const PainAlert = () => (
     initial={{ opacity: 0, y: 20, x: 20 }}
     animate={{ opacity: 1, y: 0, x: 0 }}
     transition={{ delay: 1, duration: 0.8 }}
-    className="absolute -top-6 -right-6 z-20 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 p-4 rounded-2xl shadow-xl max-w-[200px] hidden md:block backdrop-blur-md"
+    className="absolute -top-6 -right-6 z-20 bg-[rgba(255,255,255,0.49)] dark:bg-[#0a0c0bb3] border border-red-100 dark:border-[#ffc85547] p-4 rounded-2xl shadow-xl max-w-[200px] hidden md:block backdrop-blur-md"
   >
     <div className="flex items-start gap-3">
-      <AlertTriangle size={16} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+      <AlertTriangle size={16} className="text-red-500 dark:text-[#ffc855d1] shrink-0 mt-0.5" />
       <div>
-        <p className="text-[10px] font-bold text-red-800 dark:text-red-200 leading-tight mb-1">ALERTA DE MARGEN</p>
-        <p className="text-[10px] text-red-600 dark:text-red-300 leading-relaxed">
+        <p className="text-[10px] font-bold text-red-800 dark:text-[#ffc855d4] leading-tight mb-1">ALERTA DE MARGEN</p>
+        <p className="text-[10px] text-red-600 dark:text-[#ffc855d4] leading-relaxed">
           Si el dólar sube hoy y tardas 1h en cambiar precios, pierdes el <span className="font-black">5% de tu ganancia</span>.
         </p>
       </div>
@@ -144,10 +114,10 @@ const InteractiveDemo = () => {
     return (
         <div className="relative group w-full max-w-[340px] mx-auto perspective-1000">
              <PainAlert />
-             {/* Glow */}
-            <div className="absolute -inset-1 bg-gradient-to-tr from-gray-200 to-gray-100 dark:from-zinc-800 dark:to-zinc-900 rounded-[2rem] blur-xl opacity-50"></div>
+             {/* Glow Trasero */}
+            <div className="absolute -inset-1 bg-gradient-to-tr from-gray-200 to-gray-100 dark:from-zinc-800 dark:to-[#3000ffed] rounded-[2rem] blur-xl opacity-50"></div>
             
-            <div className="relative bg-white dark:bg-zinc-900 rounded-[1.8rem] border border-gray-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 transition-colors duration-300">
+            <div className="relative bg-white/90 dark:bg-[#000000a8] backdrop-blur-xl rounded-[1.8rem] border border-gray-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 transition-colors duration-300">
                 {/* Header Mockup */}
                 <div className="flex justify-between items-center mb-6 border-b border-gray-100 dark:border-zinc-800 pb-4">
                     <div className="flex items-center gap-3">
@@ -225,17 +195,15 @@ const InteractiveDemo = () => {
     )
 }
 
-// --- 2. COMPONENTES ESTRATÉGICOS ---
-
 const VariantShowcase = () => {
     const [color, setColor] = useState('black')
     const [size, setSize] = useState('42')
 
     return (
-        <section className="py-24 bg-white dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-900 transition-colors duration-300">
+        <section className="py-24 bg-transparent border-t border-gray-100 dark:border-zinc-900 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
                 <div className="order-2 lg:order-1">
-                    <div className="relative bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden transition-colors duration-300">
+                    <div className="relative bg-gray-50/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden transition-colors duration-300">
                         {/* Fake Browser Header */}
                         <div className="flex gap-2 mb-8">
                             <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
@@ -297,7 +265,7 @@ const VariantShowcase = () => {
                     </span>
                     <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6 dark:text-white">
                         No vendas productos.<br/>
-                        <span className="text-gray-400 dark:text-zinc-600">Vende opciones.</span>
+                        <span className="text-black dark:text-white">Vende opciones.</span>
                     </h2>
                     <p className="text-lg text-gray-500 dark:text-zinc-400 mb-8 leading-relaxed">
                         El cliente venezolano es exigente. Quiere ver la foto exacta del color que le gusta y saber si hay su talla. 
@@ -330,15 +298,15 @@ const FAQ = () => {
     ]
 
     return (
-        <section className="py-24 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-200 dark:border-zinc-800 transition-colors duration-300">
+        <section className="py-24 bg-transparent border-t border-gray-200 dark:border-zinc-800 transition-colors duration-300">
             <div className="max-w-3xl mx-auto px-6">
                 <h2 className="text-3xl font-black text-center mb-12 dark:text-white">Preguntas Frecuentes</h2>
                 <div className="space-y-4">
                     {faqs.map((faq, i) => (
-                        <div key={i} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden transition-colors duration-300">
+                        <div key={i} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden transition-colors duration-300">
                             <button 
                                 onClick={() => setOpen(open === i ? null : i)}
-                                className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
+                                className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors"
                             >
                                 <span className="font-bold text-gray-900 dark:text-white">{faq.q}</span>
                                 <ChevronDown 
@@ -368,7 +336,7 @@ const FAQ = () => {
 }
 
 const Testimonials = () => (
-    <section className="py-24 bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-900 transition-colors duration-300">
+    <section className="py-24 bg-transparent border-t border-gray-200 dark:border-zinc-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 text-center">
             <h2 className="text-3xl font-black mb-16 dark:text-white">Ya confían en nosotros</h2>
             <div className="grid md:grid-cols-3 gap-8">
@@ -377,7 +345,7 @@ const Testimonials = () => (
                     { name: "Andrea M.", role: "Moda & Calzado", text: "Mis clientes aman que el carrito les diga exactamente cuánto es en Bolívares. Cierro el doble de ventas por WhatsApp." },
                     { name: "Luis R.", role: "Repuestos Auto", text: "Lo mejor es el control de stock. Si vendo una pieza por mostrador, se descuenta de la web al instante." }
                 ].map((t, i) => (
-                    <div key={i} className="p-8 rounded-[2rem] bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 hover:shadow-xl transition-all duration-300">
+                    <div key={i} className="p-8 rounded-[2rem] bg-gray-50/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-100 dark:border-zinc-800 hover:shadow-xl transition-all duration-300">
                         <div className="flex justify-center mb-4 text-green-500">★★★★★</div>
                         <p className="text-gray-600 dark:text-zinc-300 font-medium mb-6 italic">"{t.text}"</p>
                         <div>
@@ -391,7 +359,7 @@ const Testimonials = () => (
     </section>
 )
 
-// --- 3. LANDING PRINCIPAL ---
+// --- LANDING PRINCIPAL ---
 
 export default function LandingClient() {
     const [isDarkMode, setIsDarkMode] = useState(false)
@@ -413,13 +381,15 @@ export default function LandingClient() {
     }
 }
 
+    // AQUI ES DONDE OCURRE LA MAGIA DEL FONDO: "relative z-0" y bg-transparent
     return (
-        <div className={`min-h-screen bg-white dark:bg-zinc-950 font-sans text-gray-900 dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
+        <div className={`min-h-screen relative z-0 bg-transparent font-sans text-gray-900 dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
+            
             <AmbientBackground />
-            <BcvTicker />
+            
 
             {/* NAVBAR */}
-            <nav className="sticky top-0 w-full z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
+            <nav className="relative top-2 w-[98%] left-1/2 -translate-x-1/2 rounded-[25px] z-40 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2 font-black text-xl tracking-tighter cursor-pointer dark:text-white">
                         <div className="bg-black dark:bg-white text-white dark:text-black p-2 rounded-xl">
@@ -449,20 +419,15 @@ export default function LandingClient() {
                 </div>
             </nav>
 
-            {/* HERO */}
-            <section className="pt-24 pb-20 lg:pt-32 lg:pb-32 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-                    {/* Blobs de fondo adaptativos */}
-                    <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-gray-100 dark:bg-zinc-900 rounded-full blur-[100px] opacity-70 transition-colors duration-300"></div>
-                </div>
-
+            {/* HERO - bg-transparent */}
+            <section className="pt-24 pb-20 lg:pt-32 lg:pb-32 relative overflow-hidden bg-transparent">
                 <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center">
                     <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left">
                         <motion.div 
                             id="formulario-registro"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-full px-4 py-1.5 mb-8 shadow-sm transition-colors duration-300"
+                            className="inline-flex items-center gap-2 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-full px-4 py-1.5 mb-8 shadow-sm transition-colors duration-300"
                         >
                             <span className="flex h-2 w-2 relative">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -478,7 +443,7 @@ export default function LandingClient() {
                             className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[0.9] text-gray-900 dark:text-white transition-colors duration-300"
                         >
                             Vende en Dólares.<br/>
-                            <span className="text-gray-300 dark:text-zinc-700">Cobra en Bs.</span><br/>
+                            <span className="text-[#101828] dark:text-white">Cobra en Bs.</span><br/>
                             <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-500 dark:from-white dark:to-zinc-500">Automático.</span>
                         </motion.h1>
                         
@@ -491,7 +456,6 @@ export default function LandingClient() {
                             Olvídate de calcular la tasa cada mañana. Preziso actualiza tus precios con el BCV, organiza tus pedidos de WhatsApp y protege tu margen.
                         </motion.p>
                         
-                        {/* AQUI ESTA EL FORMULARIO INTEGRADO */}
                         <motion.div
                              initial={{ opacity: 0, y: 20 }}
                              animate={{ opacity: 1, y: 0 }}
@@ -512,11 +476,11 @@ export default function LandingClient() {
                 </div>
             </section>
 
-            {/* SECCIÓN NUEVA: VARIANTES (Tallas y Colores) */}
+            {/* SECCIÓN VARIANTES - bg-transparent */}
             <VariantShowcase />
 
-            {/* FEATURES GRID (BENTO) */}
-            <section id="features" className="py-24 bg-gray-50 dark:bg-zinc-900/50 border-t border-gray-200 dark:border-zinc-800 transition-colors duration-300">
+            {/* FEATURES GRID - bg-transparent */}
+            <section id="features" className="py-24 bg-transparent border-t border-gray-200/50 dark:border-zinc-800/50 transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl font-black mb-4 dark:text-white">El fin del caos manual.</h2>
@@ -525,7 +489,7 @@ export default function LandingClient() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(200px,auto)]">
                         {/* Card BCV */}
-                        <div className="md:col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg relative overflow-hidden group transition-colors duration-300">
+                        <div className="md:col-span-2 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg relative overflow-hidden group transition-colors duration-300 hover:bg-white/80 dark:hover:bg-zinc-900/80">
                             <div className="absolute -right-10 -top-10 opacity-5 dark:opacity-[0.02] group-hover:scale-110 transition-transform duration-500">
                                 <RefreshCw size={200} />
                             </div>
@@ -563,7 +527,7 @@ export default function LandingClient() {
                         </div>
 
                         {/* Card Web */}
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
+                        <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
                              <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400">
                                 <Globe size={28} />
                             </div>
@@ -574,7 +538,7 @@ export default function LandingClient() {
                         </div>
 
                          {/* Card WhatsApp */}
-                         <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
+                         <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
                              <div className="w-14 h-14 bg-purple-50 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center mb-6 text-purple-600 dark:text-purple-400">
                                 <MessageCircle size={28} />
                             </div>
@@ -587,14 +551,14 @@ export default function LandingClient() {
                 </div>
             </section>
 
-            {/* TESTIMONIOS */}
+            {/* TESTIMONIOS - bg-transparent */}
             <Testimonials />
 
-            {/* FAQ */}
+            {/* FAQ - bg-transparent */}
             <FAQ />
 
-            {/* CTA FINAL (REEMPLAZADO POR FORMULARIO) */}
-            <section id="pricing" className="py-32 bg-white dark:bg-zinc-950 relative overflow-hidden transition-colors duration-300">
+            {/* CTA FINAL - bg-transparent */}
+            <section id="pricing" className="py-32 bg-transparent relative overflow-hidden transition-colors duration-300">
                 <div className="max-w-4xl mx-auto px-6 text-center relative z-10 flex flex-col items-center">
                     <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 dark:text-white">
                         Únete al club.
@@ -603,15 +567,14 @@ export default function LandingClient() {
                         Estamos abriendo cupos gradualmente. Regístrate ahora para asegurar tu precio de lanzamiento.
                     </p>
                     
-                    {/* Reutilizamos el formulario aquí también */}
                     <div className="w-full flex justify-center">
                         <WaitlistForm />
                     </div>
                 </div>
             </section>
 
-            {/* FOOTER */}
-            <footer className="py-12 bg-white dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-900 text-center transition-colors duration-300">
+            {/* FOOTER - bg-transparent */}
+            <footer className="py-12 bg-transparent border-t border-gray-200/50 dark:border-zinc-900 text-center transition-colors duration-300">
                  <div className="flex items-center justify-center gap-2 font-black text-xl mb-6 opacity-40 dark:text-white">
                     <Zap size={20} fill="currentColor" />
                     <span>Preziso.</span>
