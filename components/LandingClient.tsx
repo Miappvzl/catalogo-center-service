@@ -230,7 +230,7 @@ const VariantShowcase = () => {
 
     return (
         <section className="py-24 bg-transparent border-t border-gray-100 dark:border-zinc-900 transition-colors duration-300">
-            <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
+            <div className="max-w-7xl flex justify-center mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
                 <div className="order-2 lg:order-1">
                     <div className="relative bg-gray-50/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden transition-colors duration-300">
                         {/* Fake Browser Header */}
@@ -296,7 +296,7 @@ const VariantShowcase = () => {
                         No vendas productos.<br/>
                         <span className="text-gray-400 dark:text-zinc-600">Vende opciones.</span>
                     </h2>
-                    <p className="text-lg text-gray-500 dark:text-zinc-400 mb-8 leading-relaxed">
+                    <p className="text-lg text-gray-500 pr-4 dark:text-zinc-400 mb-8 leading-relaxed">
                         El cliente venezolano es exigente. Quiere ver la foto exacta del color que le gusta y saber si hay su talla. 
                         Preziso gestiona <strong>variantes complejas, stock por talla</strong> y categorías ilimitadas.
                     </p>
