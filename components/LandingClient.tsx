@@ -11,6 +11,35 @@ import {
 
 // --- COMPONENTES PEQUEÑOS ---
 
+const BcvTicker = () => (
+  // Optimization: 'will-change-transform' ayuda al navegador a priorizar esta animación
+  <div className="bg-gray-50/90 dark:bg-zinc-900/90 border-b border-gray-200 dark:border-zinc-800 py-2 overflow-hidden relative z-50 backdrop-blur-sm">
+    <div className="whitespace-nowrap flex animate-ticker w-max will-change-transform">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex items-center gap-8 mx-6 text-[10px] font-mono tracking-widest">
+          <span className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold">
+             <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            BCV: EN VIVO
+          </span>
+          <span className="text-gray-400 dark:text-zinc-500">|</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">CUPO LIMITADO</span>
+          <span className="text-gray-400 dark:text-zinc-500">|</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">ACCESO BETA</span>
+          <span className="text-gray-400 dark:text-zinc-500">|</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">VENDE EN $ • COBRA EN BS</span>
+        </div>
+      ))}
+    </div>
+    <style jsx>{`
+      /* Optimization: translate3d forces GPU acceleration */
+      @keyframes ticker { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-50%,0,0); } }
+      .animate-ticker { animation: ticker 40s linear infinite; }
+    `}</style>
+  </div>
+)
 
 const WaitlistForm = () => {
     const [form, setForm] = useState({ name: '', instagram: '', email: '' })
@@ -29,7 +58,7 @@ const WaitlistForm = () => {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="relative bg-gray-50/60 dark:bg-zinc-900/70 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-[1.6rem] p-2 rounded-2xl shadow-xl dark:shadow-black/50 flex flex-col gap-2 mt-8 relative z-20 transition-colors duration-300">
+        <form onSubmit={handleSubmit} className="w-full max-w-md bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-gray-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xl dark:shadow-black/50 flex flex-col gap-2 mt-8 relative z-20 transition-colors duration-300">
             <div className="absolute -top-3 left-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-green-200 dark:border-green-800/50">
                 Lista de Espera Abierta
             </div>
@@ -89,7 +118,7 @@ const PainAlert = () => (
     initial={{ opacity: 0, y: 20, x: 20 }}
     animate={{ opacity: 1, y: 0, x: 0 }}
     transition={{ delay: 1, duration: 0.8 }}
-    className="absolute -top-6 -right-6 z-20 bg-[rgba(255,255,255,0.49)] dark:bg-[#0a0c0bb3] border border-red-100 dark:border-[#ffc85547] p-4 rounded-2xl shadow-xl max-w-[200px] hidden md:block backdrop-blur-md"
+    className="absolute -top-6 -right-6 z-20 bg-[rgba(255,255,255,0.8)] dark:bg-[#0a0c0bb3] border border-red-100 dark:border-[#ffc85547] p-4 rounded-2xl shadow-xl max-w-[200px] hidden md:block backdrop-blur-md"
   >
     <div className="flex items-start gap-3">
       <AlertTriangle size={16} className="text-red-500 dark:text-[#ffc855d1] shrink-0 mt-0.5" />
@@ -265,7 +294,7 @@ const VariantShowcase = () => {
                     </span>
                     <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6 dark:text-white">
                         No vendas productos.<br/>
-                        <span className="text-black dark:text-white">Vende opciones.</span>
+                        <span className="text-gray-400 dark:text-zinc-600">Vende opciones.</span>
                     </h2>
                     <p className="text-lg text-gray-500 dark:text-zinc-400 mb-8 leading-relaxed">
                         El cliente venezolano es exigente. Quiere ver la foto exacta del color que le gusta y saber si hay su talla. 
@@ -386,7 +415,7 @@ export default function LandingClient() {
         <div className={`min-h-screen relative z-0 bg-transparent font-sans text-gray-900 dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
             
             <AmbientBackground />
-            
+            <BcvTicker />
 
             {/* NAVBAR */}
             <nav className="relative top-2 w-[98%] left-1/2 -translate-x-1/2 rounded-[25px] z-40 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
@@ -443,8 +472,8 @@ export default function LandingClient() {
                             className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[0.9] text-gray-900 dark:text-white transition-colors duration-300"
                         >
                             Vende en Dólares.<br/>
-                            <span className="text-[#101828] dark:text-white">Cobra en Bs.</span><br/>
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-500 dark:from-white dark:to-zinc-500">Automático.</span>
+                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-[#2a6544] dark:from-white dark:to-zinc-500">Cobra en Bs.</span><br/>
+                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#2a6544] to-black dark:from-white dark:to-zinc-500">Automático.</span>
                         </motion.h1>
                         
                         <motion.p 
