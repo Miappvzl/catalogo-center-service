@@ -33,6 +33,24 @@ export const metadata: Metadata = {
     locale: "es_VE",
     type: "website",
   },
+
+icons: {
+    icon: [
+      // Cuando el navegador está en modo CLARO (fondo blanco), usa la Z NEGRA
+      {
+        media: '(prefers-color-scheme: light)',
+        url: '/favicon-light.png',
+        href: '/favicon-light.png',
+      },
+      // Cuando el navegador está en modo OSCURO (fondo negro), usa la Z BLANCA
+      {
+        media: '(prefers-color-scheme: dark)',
+        url: '/favicon-dark.png',
+        href: '/favicon-dark.png',
+      },
+    ],
+  },
+
   // 1. PRIMERA DEFENSA: Metaetiqueta específica para Google
   other: {
     google: "notranslate",

@@ -417,15 +417,29 @@ export default function LandingClient() {
             <AmbientBackground />
             <BcvTicker />
 
-            {/* NAVBAR */}
-            <nav className="relative top-2 w-[98%] left-1/2 -translate-x-1/2 rounded-[25px] z-40 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-black text-xl tracking-tighter cursor-pointer dark:text-white">
-                        <div className="bg-black dark:bg-white text-white dark:text-black p-2 rounded-xl">
-                            <Zap size={18} fill="currentColor" />
-                        </div>
-                        <span>Preziso.</span>
-                    </div>
+         
+           
+                    {/* NAVBAR */}
+<nav className="relative top-2 w-[98%] left-1/2 -translate-x-1/2 rounded-[25px] z-40 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
+    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        
+        {/* ZONA DEL LOGO MODIFICADA */}
+        <div className="flex items-center gap-2 cursor-pointer">
+            {/* Logo para Modo Claro (Se oculta en dark mode) */}
+            {/* mix-blend-multiply ayuda a que el fondo gris del JPG se fusione con el header */}
+            <img 
+                src="/pezisologo.png" 
+                alt="Preziso Logo" 
+                className="h-13 w-auto object-contain block dark:hidden mix-blend-multiply" 
+            />
+            
+            {/* Logo para Modo Oscuro (Se muestra solo en dark mode) */}
+            <img 
+                src="/pezisologow.png" 
+                alt="Preziso Logo" 
+                className="h-13 w-auto object-contain hidden dark:block" 
+            />
+        </div>
                     
                     <div className="hidden md:flex items-center gap-8">
                         <a href="#features" className="text-xs font-bold text-gray-500 hover:text-black dark:hover:text-white uppercase tracking-wide">Características</a>
@@ -603,11 +617,14 @@ export default function LandingClient() {
             </section>
 
             {/* FOOTER - bg-transparent */}
-            <footer className="py-12 bg-transparent border-t border-gray-200/50 dark:border-zinc-900 text-center transition-colors duration-300">
-                 <div className="flex items-center justify-center gap-2 font-black text-xl mb-6 opacity-40 dark:text-white">
-                    <Zap size={20} fill="currentColor" />
-                    <span>Preziso.</span>
-                 </div>
+           
+                <footer className="py-12 bg-transparent border-t border-gray-200/50 dark:border-zinc-900 text-center transition-colors duration-300">
+     <div className="flex items-center justify-center gap-2 mb-6 opacity-60 hover:opacity-100 transition-opacity">
+        {/* Logo Light Footer */}
+        <img src="/pezisologo.png" alt="Preziso" className="h-15 block dark:hidden mix-blend-multiply grayscale" />
+        {/* Logo Dark Footer */}
+        <img src="/pezisologow.png" alt="Preziso" className="h-15 hidden dark:block" />
+     </div>
                  <p className="text-gray-400 dark:text-zinc-600 text-xs font-bold uppercase tracking-widest mb-4">
                      Hecho en Venezuela 🇻🇪
                  </p>
