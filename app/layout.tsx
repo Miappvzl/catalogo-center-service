@@ -32,7 +32,26 @@ export const metadata: Metadata = {
     siteName: "Preziso",
     locale: "es_VE",
     type: "website",
+    images: [
+      {
+        url: '/opengraph-image.jpg', // La imagen que guardaste en la carpeta public
+        width: 1200,
+        height: 630,
+        alt: 'Preziso Dashboard Preview',
+      },
+    ],
   },
+
+  // Configuración para Twitter/X
+  twitter: {
+    card: 'summary_large_image', // Esto hace que la imagen se vea grande
+    title: 'Preziso - Sistema Operativo para Venezuela',
+    description: 'Automatiza tu tienda con tasa BCV en tiempo real.',
+    images: ['/og-preziso.jpg'], // La misma imagen
+  
+  },
+
+
 
 icons: {
     icon: [
