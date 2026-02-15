@@ -39,14 +39,14 @@ icons: {
       // Cuando el navegador está en modo CLARO (fondo blanco), usa la Z NEGRA
       {
         media: '(prefers-color-scheme: light)',
-        url: '/favicon-light.png',
-        href: '/favicon-light.png',
+       url: '/favicon-dark.png',
+        href: '/favicon-dark.png',
       },
       // Cuando el navegador está en modo OSCURO (fondo negro), usa la Z BLANCA
       {
         media: '(prefers-color-scheme: dark)',
-        url: '/favicon-dark.png',
-        href: '/favicon-dark.png',
+         url: '/favicon-light.png',
+        href: '/favicon-light.png',
       },
     ],
   },
