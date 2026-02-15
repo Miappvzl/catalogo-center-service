@@ -20,21 +20,25 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://preziso.vercel.app'),
+  
   title: {
     default: "Preziso | E-commerce Automatizado para Venezuela",
     template: "%s | Preziso"
   },
   description: "Sistema de ventas inteligente que actualiza tus precios a Tasa BCV automáticamente. Vende en dólares, cobra en bolívares y gestiona pedidos por WhatsApp.",
   keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
+  
+  // --- CONFIGURACIÓN DE REDES SOCIALES (WhatsApp, Facebook, LinkedIn) ---
   openGraph: {
     title: "Preziso - Deja de ser esclavo de la tasa",
     description: "Tu tienda online que calcula el dólar sola. Prueba gratis hoy.",
     siteName: "Preziso",
     locale: "es_VE",
     type: "website",
+    url: 'https://preziso.vercel.app',
     images: [
       {
-        url: '/opengraph-image.jpg', // La imagen que guardaste en la carpeta public
+        url: '/opengraph-image.jpg', // AQUI estaba el error, ahora coinciden
         width: 1200,
         height: 630,
         alt: 'Preziso Dashboard Preview',
@@ -42,35 +46,33 @@ export const metadata: Metadata = {
     ],
   },
 
-  // Configuración para Twitter/X
+  // --- CONFIGURACIÓN PARA TWITTER / X ---
   twitter: {
-    card: 'summary_large_image', // Esto hace que la imagen se vea grande
+    card: 'summary_large_image',
     title: 'Preziso - Sistema Operativo para Venezuela',
     description: 'Automatiza tu tienda con tasa BCV en tiempo real.',
-    images: ['/og-preziso.jpg'], // La misma imagen
-  
+    images: ['/opengraph-image.jpg'], // Coincide con la de arriba
   },
 
-
-
-icons: {
+  // --- CONFIGURACIÓN DE ICONOS (FAVICON) ---
+  icons: {
     icon: [
-      // Cuando el navegador está en modo CLARO (fondo blanco), usa la Z NEGRA
+      // MODO CLARO (Navegador Blanco) -> Necesitas la Z NEGRA (favicon-light.png)
       {
         media: '(prefers-color-scheme: light)',
-       url: '/favicon-dark.png',
-        href: '/favicon-dark.png',
+        url: '/favicon-light.png',
+        href: '/favicon-light.png',
       },
-      // Cuando el navegador está en modo OSCURO (fondo negro), usa la Z BLANCA
+      // MODO OSCURO (Navegador Negro) -> Necesitas la Z BLANCA (favicon-dark.png)
       {
         media: '(prefers-color-scheme: dark)',
-         url: '/favicon-light.png',
-        href: '/favicon-light.png',
+        url: '/favicon-dark.png',
+        href: '/favicon-dark.png',
       },
     ],
   },
 
-  // 1. PRIMERA DEFENSA: Metaetiqueta específica para Google
+  // Bloqueo de traducción automática (Correcto)
   other: {
     google: "notranslate",
   },
