@@ -213,7 +213,7 @@ export default function InventoryPage() {
             </div>
 
             {/* TABLA ELITE */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-3xl overflow-x-auto shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
                     <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300"/></div>
                 ) : filteredItems.length === 0 ? (
