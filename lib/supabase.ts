@@ -1,7 +1,5 @@
-// ⚠️ Fíjate bien: Empieza con ARROBA (@), NO con punto (.)
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// En lugar de crear un cliente nuevo con createClient(),
+// reutilizamos la instancia única que ya creamos en el otro archivo.
+export const supabase = getSupabase()

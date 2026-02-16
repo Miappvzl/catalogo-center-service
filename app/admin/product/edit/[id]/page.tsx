@@ -1,10 +1,35 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import ProductEditor from '@/components/ProductEditor'
 
-// En Next.js 15, params es una Promise
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  // 1. Desempaquetamos el ID con await
-  const { id } = await params 
+  const { id } = await params
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() } } }
+  )
 
-  // 2. Se lo pasamos al editor
-  return <ProductEditor productId={id} /> 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div>No autorizado</div>
+
+  const [configRes, storeRes] = await Promise.all([
+    supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single(),
+    supabase.from('stores').select('id, currency_type').eq('user_id', user.id).single()
+  ])
+
+  return (
+    <ProductEditor 
+        productId={id} 
+        rates={{ 
+            usd: configRes.data?.usd_rate || 0, 
+            eur: configRes.data?.eur_rate || 0 
+        }}
+        storeSettings={{
+            id: storeRes.data?.id || '',
+            currency: storeRes.data?.currency_type || 'usd'
+        }}
+    />
+  )
 }

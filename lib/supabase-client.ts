@@ -1,18 +1,27 @@
-// lib/supabase-client.ts
 import { createBrowserClient } from '@supabase/ssr'
 
-// Variable para guardar la conexión única
-let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
+// Definimos el tipo global para evitar errores de TypeScript
+declare global {
+  var __supabaseInstance: ReturnType<typeof createBrowserClient> | undefined
+}
 
 export const getSupabase = () => {
-  // Si ya existe una conexión, la reutilizamos (Singleton)
-  if (supabaseInstance) return supabaseInstance
+  // 1. En el servidor (SSR), siempre creamos una nueva instancia limpia.
+  if (typeof window === 'undefined') {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
 
-  // Si no existe, creamos una nueva
-  supabaseInstance = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  // 2. En el cliente (Navegador), usamos una variable global única.
+  // Si no existe, la creamos. Si ya existe, la reutilizamos.
+  if (!globalThis.__supabaseInstance) {
+    globalThis.__supabaseInstance = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
 
-  return supabaseInstance
+  return globalThis.__supabaseInstance
 }

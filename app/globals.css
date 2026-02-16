@@ -4,13 +4,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  input, textarea, select {
+   textarea, select {
     @apply bg-gray-50/50 border-0 ring-1 ring-gray-200 transition-all duration-300;
     color: #0a0a0a;
   }
+
+ 
   
   input:focus, textarea:focus, select:focus {
-    @apply ring-black ring-offset-0 bg-white shadow-lg;
+    @apply ring-black ring-offset-0 border-[1.2px] border-[rgba(0,0,0,0.55)] bg-white shadow-lg;
     outline: none;
   }
 
@@ -30,10 +32,17 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
+    /* Color del texto (Negro/Oscuro) */
     -webkit-text-fill-color: #0C0A09 !important;
-    -webkit-box-shadow: 0 0 0 30px #2b2b2b inset !important;
+
+    /* Fondo Blanco: Se logra con una sombra interna (inset) de color #ffffff */
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+
+    /* Mantiene el fondo blanco evitando que el navegador lo cambie */
     transition: background-color 5000s ease-in-out 0s;
 }
+
 
 @theme inline {
   --color-background: var(--background);
