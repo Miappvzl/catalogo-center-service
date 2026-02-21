@@ -1,56 +1,158 @@
 'use client'
-import AmbientBackground from './AmbientBackground'
+
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Variants } from 'framer-motion'
+import Link from 'next/link'
 import { 
-  ShoppingBag, Zap, MessageCircle, ArrowRight, CheckCircle2, 
+  Zap, ArrowRight, CheckCircle2, 
   Globe, RefreshCw, Menu, X, TrendingUp, 
-  Layers, AlertTriangle, ChevronDown, Lock, Instagram, Mail, User,
-  Moon, Sun
+  Layers, AlertTriangle, ChevronDown, Lock, Instagram, User,
+  Smartphone, Check, Activity
 } from 'lucide-react'
 
-// --- COMPONENTES PEQUEÑOS ---
+// --- ESTILOS VISUALES (DOT MATRIX & WEBILD UI) ---
+const globalStyles = `
+  body {
+    background-color: #000000;
+  }
+  
+  /* Fondo de Puntitos (Dot Matrix) Elegante */
+  .bg-dot-matrix {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 50%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 50%, transparent 100%);
+  }
+  
+  /* Tarjetas Cristalinas Premium */
+  .webild-card {
+    background: #050505;
+    background-image: radial-gradient(ellipse at top, rgba(255,255,255,0.03) 0%, transparent 80%);
+    border: 1px solid #1A1A1A;
+    border-top: 1px solid #222; 
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.8);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
+  .webild-card:hover {
+    border-color: #333;
+    background-image: radial-gradient(ellipse at top, rgba(34,197,94,0.04) 0%, transparent 80%);
+  }
+
+  /* Animaciones Suaves */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  .animate-float { animation: float 6s ease-in-out infinite; }
+
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-ticker { animation: ticker 40s linear infinite; }
+
+  /* Inputs Fantasma */
+  .webild-input {
+    background: #0A0A0A;
+    border: 1px solid #1A1A1A;
+    color: #fff;
+    transition: all 0.2s ease;
+  }
+  .webild-input:focus {
+    border-color: #444;
+    background: #111;
+  }
+`
+
+// --- VARIANTES DE ANIMACIÓN PARA SCROLL (CORREGIDAS PARA TYPESCRIPT) ---
+const fadeUpVariant: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+        opacity: 1, 
+        y: 0, 
+        transition: { 
+            type: "spring",
+            damping: 25,
+            stiffness: 120
+        } 
+    }
+};
+
+const staggerContainer: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: { staggerChildren: 0.15 }
+    }
+};
+
+// --- TICKER DE AUTORIDAD ---
 const BcvTicker = () => (
-  // Optimization: 'will-change-transform' ayuda al navegador a priorizar esta animación
-  <div className="bg-gray-50/90 dark:bg-zinc-900/90 border-b border-gray-200 dark:border-zinc-800 py-2 overflow-hidden relative z-50 backdrop-blur-sm">
+  <div className="bg-black border-b border-[#1A1A1A] py-2 overflow-hidden relative z-50">
     <div className="whitespace-nowrap flex animate-ticker w-max will-change-transform">
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-8 mx-6 text-[10px] font-mono tracking-widest">
-          <span className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold">
-             <span className="relative flex h-2 w-2">
+        <div key={i} className="flex items-center gap-10 mx-5 text-[10px] font-mono tracking-widest uppercase">
+          <span className="flex items-center gap-2 text-green-500 font-semibold">
+             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
             </span>
-            BCV: EN VIVO
+            TASA BCV CONECTADA
           </span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">CUPO LIMITADO</span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">ACCESO BETA</span>
-          <span className="text-gray-400 dark:text-zinc-500">|</span>
-          <span className="text-gray-600 dark:text-gray-300 font-medium">VENDE EN $ • COBRA EN BS</span>
+          <span className="text-[#333]">|</span>
+          <span className="text-[#888] font-medium">CATÁLOGO MULTIMONEDA</span>
+          <span className="text-[#333]">|</span>
+          <span className="text-[#888] font-medium">PEDIDOS POR WHATSAPP</span>
         </div>
       ))}
     </div>
-    <style jsx>{`
-      /* Optimization: translate3d forces GPU acceleration */
-      @keyframes ticker { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-50%,0,0); } }
-      .animate-ticker { animation: ticker 40s linear infinite; }
-    `}</style>
   </div>
 )
 
+// --- CONTADOR DE COMUNIDAD ---
+const LiveCounter = () => {
+    const [count, setCount] = useState(0)
+    
+    useEffect(() => {
+        let start = 80
+        const end = 124 
+        const duration = 2000
+        const incrementTime = duration / (end - start)
+
+        const timer = setInterval(() => {
+            start += 1
+            setCount(start)
+            if (start >= end) clearInterval(timer)
+        }, incrementTime)
+
+        return () => clearInterval(timer)
+    }, [])
+
+    return (
+        <div className="inline-flex items-center gap-2 bg-[#0A0A0A] border border-[#222] rounded-full pl-3 pr-4 py-1.5 mb-8 shadow-sm">
+            <div className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-50"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </div>
+            <span className="text-[#888] text-xs font-medium tracking-wide">
+                <span className="text-white font-mono font-bold">{count}</span> tiendas en lista de espera
+            </span>
+        </div>
+    )
+}
+
+// --- FORMULARIO PERSUASIVO ---
 const WaitlistForm = () => {
-    const [form, setForm] = useState({ name: '', instagram: '', email: '' })
+    const [form, setForm] = useState({ name: '', phone: '', instagram: '' })
     const [loading, setLoading] = useState(false)
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setTimeout(() => {
-            const message = `🚀 *SOLICITUD PREZISO*\n\nHola, quiero unirme a la lista.\n\n👤 *Nombre:* ${form.name}\n📸 *Instagram:* ${form.instagram}\n📧 *Correo:* ${form.email}`
-            const myNumber = "584145811936" 
+            const message = `🚀 *ACCESO A PREZISO*\n\nHola, quiero dejar de calcular la tasa a mano y unirme a la lista.\n\n👤 *Nombre:* ${form.name}\n📱 *WhatsApp:* ${form.phone}\n📸 *Instagram:* ${form.instagram}\n\nQuedo atento a mi cupo.`
+            const myNumber = "584145811936" // TU NÚMERO
             const url = `https://wa.me/${myNumber}?text=${encodeURIComponent(message)}`
             window.open(url, '_blank')
             setLoading(false)
@@ -58,82 +160,84 @@ const WaitlistForm = () => {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="w-full max-w-md bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-gray-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xl dark:shadow-black/50 flex flex-col gap-2 mt-8 relative z-20 transition-colors duration-300">
-            <div className="absolute -top-3 left-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-green-200 dark:border-green-800/50">
-                Lista de Espera Abierta
+        <form onSubmit={handleSubmit} className="w-full max-w-md bg-[#050505] border border-[#1A1A1A] p-4 rounded-2xl shadow-2xl flex flex-col gap-3 mt-8 relative z-20">
+            <div className="absolute -top-3 left-6 bg-[#0A0A0A] text-green-500 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-[#222]">
+                Acceso Anticipado
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="relative">
-                    <User size={14} className="absolute top-3.5 left-3 text-gray-400"/>
+                    <User size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
                     <input 
                         required
                         placeholder="Tu Nombre"
                         value={form.name}
                         onChange={e => setForm({...form, name: e.target.value})}
-                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
                     />
                 </div>
                 <div className="relative">
-                    <Instagram size={14} className="absolute top-3.5 left-3 text-gray-400"/>
+                    <Instagram size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
                     <input 
                         required
-                        placeholder="@tu_negocio"
+                        placeholder="@tu_tienda"
                         value={form.instagram}
                         onChange={e => setForm({...form, instagram: e.target.value})}
-                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
                     />
                 </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-2 px-2 pb-2">
+            <div className="flex flex-col sm:flex-row gap-3">
                  <div className="relative flex-1">
-                    <Mail size={14} className="absolute top-3.5 left-3 text-gray-400"/>
+                    <Smartphone size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
                     <input 
                         required
-                        type="email"
-                        placeholder="tu@correo.com"
-                        value={form.email}
-                        onChange={e => setForm({...form, email: e.target.value})}
-                        className="w-full bg-gray-50/50 dark:bg-zinc-950/50 border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-gray-200 dark:focus:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm outline-none transition-all font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-600"
+                        type="tel"
+                        placeholder="WhatsApp (0412...)"
+                        value={form.phone}
+                        onChange={e => setForm({...form, phone: e.target.value})}
+                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
                     />
                 </div>
                 <button 
                     type="submit"
                     disabled={loading}
-                    className="bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-800 dark:hover:bg-gray-200 transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="bg-white text-black px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-70"
                 >
-                    {loading ? '...' : <>Unirme <ArrowRight size={14}/></>}
+                    {loading ? 'Procesando...' : <>Quiero mi acceso <ArrowRight size={14}/></>}
                 </button>
             </div>
-            <p className="text-[10px] text-gray-400 dark:text-zinc-500 text-center pb-2 flex items-center justify-center gap-1">
-                <Lock size={10}/> Tus datos se envían encriptados a WhatsApp.
+            <p className="text-[10px] text-[#555] text-center pt-1 pb-1 flex items-center justify-center gap-1 font-medium">
+                <Lock size={10}/> Tus datos viajan directo a nuestro WhatsApp. Sin intermediarios.
             </p>
         </form>
     )
 }
 
+// --- ALERTA DE DOLOR (PSICOLOGÍA DE VENTAS) ---
 const PainAlert = () => (
   <motion.div 
     initial={{ opacity: 0, y: 20, x: 20 }}
     animate={{ opacity: 1, y: 0, x: 0 }}
     transition={{ delay: 1, duration: 0.8 }}
-    className="absolute -top-6 -right-6 z-20 bg-[rgba(255,255,255,0.8)] dark:bg-[#0a0c0bb3] border border-red-100 dark:border-[#ffc85547] p-4 rounded-2xl shadow-xl max-w-[200px] hidden md:block backdrop-blur-md"
+    className="absolute -top-6 -right-6 z-20 bg-[#0A0A0A] border border-red-900/30 p-4 rounded-2xl shadow-2xl max-w-55 hidden md:block"
   >
     <div className="flex items-start gap-3">
-      <AlertTriangle size={16} className="text-red-500 dark:text-[#ffc855d1] shrink-0 mt-0.5" />
+      <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
       <div>
-        <p className="text-[10px] font-bold text-red-800 dark:text-[#ffc855d4] leading-tight mb-1">ALERTA DE MARGEN</p>
-        <p className="text-[10px] text-red-600 dark:text-[#ffc855d4] leading-relaxed">
-          Si el dólar sube hoy y tardas 1h en cambiar precios, pierdes el <span className="font-black">5% de tu ganancia</span>.
+        <p className="text-[10px] font-bold text-red-500 leading-tight mb-1 uppercase tracking-widest">Alerta de Margen</p>
+        <p className="text-[10px] text-[#888] leading-relaxed font-medium">
+          Si la tasa sube y no tienes tiempo de cambiar tus precios manuales, <span className="text-gray-300 font-bold">pierdes dinero en cada venta</span>.
         </p>
       </div>
     </div>
   </motion.div>
 )
 
+// --- DEMO INTERACTIVO: EL CORAZÓN DE LA LANDING ---
 const InteractiveDemo = () => {
-    const [method, setMethod] = useState('zelle')
+    const [method, setMethod] = useState('pago_movil')
     const rate = 60.25
     const price = 45.00
     const penalty = 2.00 
@@ -141,64 +245,62 @@ const InteractiveDemo = () => {
     const finalBs = finalUSD * rate
 
     return (
-        <div className="relative group w-full max-w-[340px] mx-auto perspective-1000">
+        <div className="relative group w-full max-w-85 mx-auto animate-float z-10">
              <PainAlert />
-             {/* Glow Trasero */}
-            <div className="absolute -inset-1 bg-gradient-to-tr from-gray-200 to-gray-100 dark:from-zinc-800 dark:to-[#3000ffed] rounded-[2rem] blur-xl opacity-50"></div>
             
-            <div className="relative bg-white/90 dark:bg-[#000000a8] backdrop-blur-xl rounded-[1.8rem] border border-gray-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 transition-colors duration-300">
-                {/* Header Mockup */}
-                <div className="flex justify-between items-center mb-6 border-b border-gray-100 dark:border-zinc-800 pb-4">
+            <div className="absolute -inset-1 bg-linear-to-b from-green-500/10 to-transparent rounded-4xl blur-2xl opacity-50"></div>
+            
+            <div className="relative bg-[#050505] rounded-3xl border border-[#1A1A1A] shadow-2xl overflow-hidden p-6 transition-colors duration-300">
+                <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-[#333] to-transparent"></div>
+
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1A1A1A]">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-black dark:bg-white rounded-xl flex items-center justify-center text-white dark:text-black shadow-lg">
-                            <ShoppingBag size={16} />
+                        <div className="w-8 h-8 bg-[#0A0A0A] border border-[#222] rounded-lg flex items-center justify-center text-gray-500">
+                            <span className="font-bold text-white text-xs">P.</span>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase leading-none mb-0.5">Checkout</p>
-                            <p className="text-sm font-black text-gray-900 dark:text-white">Preziso Store</p>
+                            <p className="text-[9px] font-semibold text-[#666] uppercase tracking-wider mb-0.5">Vista del Cliente</p>
+                            <p className="text-xs font-semibold text-white">Tu Tienda Online</p>
                         </div>
                     </div>
-                    <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1">
-                        <RefreshCw size={10} className="animate-spin-slow"/> BCV: {rate}
+                    <div className="bg-[#0A0A0A] border border-[#222] text-green-500 px-2 py-1 rounded-md text-[9px] font-mono font-bold flex items-center gap-1.5">
+                        <Activity size={10} className="animate-pulse"/> BCV {rate}
                     </div>
                 </div>
 
-                {/* Producto */}
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-2xl">👟</div>
+                <div className="flex items-center gap-4 mb-6 p-2 -mx-2 rounded-xl bg-[#0A0A0A]/50 border border-transparent hover:border-[#1A1A1A] transition-colors">
+                    <div className="w-10 h-10 bg-[#111] rounded-lg border border-[#222] flex items-center justify-center text-xl shadow-sm">👟</div>
                     <div>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">Nike Air Force 1</p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Blanco • Talla 42</p>
+                        <p className="text-xs font-semibold text-white">Nike Air Force 1</p>
+                        <p className="text-[10px] text-[#666] font-medium">Blanco • Talla 42</p>
                     </div>
-                    <div className="ml-auto font-black text-sm text-gray-900 dark:text-white">${price}</div>
+                    <div className="ml-auto font-semibold text-xs text-white">${price}</div>
                 </div>
 
-                {/* Selectores */}
-                <div className="bg-gray-50 dark:bg-zinc-950 p-1 rounded-xl grid grid-cols-2 gap-1 mb-6 border border-transparent dark:border-zinc-800">
+                <div className="bg-[#0A0A0A] border border-[#1A1A1A] p-1 rounded-lg grid grid-cols-2 gap-1 mb-6">
                     <button 
                         onClick={() => setMethod('pago_movil')}
-                        className={`py-2 rounded-lg text-[10px] font-bold transition-all ${method === 'pago_movil' ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                        className={`py-2 px-2 rounded-md text-[10px] font-semibold transition-all ${method === 'pago_movil' ? 'bg-[#1A1A1A] text-white shadow-sm border border-[#333]' : 'text-[#666] hover:text-[#888]'}`}
                     >
-                        Pago Móvil (Bs)
+                        Pago Móvil
                     </button>
                     <button 
                         onClick={() => setMethod('zelle')}
-                        className={`py-2 rounded-lg text-[10px] font-bold transition-all ${method === 'zelle' ? 'bg-green-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                        className={`py-2 px-2 rounded-md text-[10px] font-semibold transition-all ${method === 'zelle' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'text-[#666] hover:text-[#888]'}`}
                     >
-                        Zelle (-${penalty})
+                        Divisas (-${penalty})
                     </button>
                 </div>
 
-                {/* Total */}
-                <div className="bg-[#0A0A0A] dark:bg-black rounded-2xl p-5 text-white relative overflow-hidden border border-transparent dark:border-zinc-800">
+                <div className="bg-[#0A0A0A] rounded-xl p-5 relative overflow-hidden border border-[#1A1A1A]">
                     <div className="flex justify-between items-end relative z-10">
                         <div>
-                             <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Total a Pagar</p>
+                             <p className="text-[9px] text-[#666] font-medium mb-1 uppercase tracking-widest">A pagar</p>
                              <motion.p 
                                 key={finalUSD}
                                 initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-3xl font-black tracking-tight"
+                                className="text-3xl font-semibold text-white tracking-tighter"
                              >
                                 ${finalUSD.toFixed(2)}
                              </motion.p>
@@ -206,432 +308,377 @@ const InteractiveDemo = () => {
                         <div className="text-right">
                              {method === 'pago_movil' ? (
                                 <>
-                                    <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Referencia BCV</p>
-                                    <p className="text-sm font-mono text-green-400 font-bold border-b border-green-500/30 pb-0.5">
+                                    <p className="text-[9px] text-[#666] font-medium mb-1 uppercase tracking-widest">En Bolívares</p>
+                                    <p className="text-xs font-mono text-green-400 font-medium border-b border-[#333] pb-0.5 inline-block">
                                         Bs {finalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                     </p>
                                 </>
                              ) : (
-                                <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px] font-bold">
-                                    Descuento Aplicado
+                                <span className="bg-[#111] border border-[#222] text-[#888] px-2 py-1 rounded text-[9px] font-medium">
+                                    Monto Exacto
                                 </span>
                              )}
                         </div>
                     </div>
                 </div>
+                
+                <p className="text-center text-[9px] text-[#555] mt-4 font-medium">
+                    Así de fácil compran en tu tienda. Sin preguntar precios.
+                </p>
             </div>
         </div>
     )
 }
-
-const VariantShowcase = () => {
-    const [color, setColor] = useState('black')
-    const [size, setSize] = useState('42')
-
-    return (
-        <section className="py-24 bg-transparent border-t border-gray-100 dark:border-zinc-900 transition-colors duration-300">
-            <div className="max-w-7xl flex justify-center mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
-                <div className="order-2 lg:order-1">
-                    <div className="relative bg-gray-50/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden transition-colors duration-300">
-                        {/* Fake Browser Header */}
-                        <div className="flex gap-2 mb-8">
-                            <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                        </div>
-
-                        <div className="flex gap-8">
-                             {/* Product Image Placeholder */}
-                            <motion.div 
-                                key={color}
-                                initial={{ opacity: 0.5, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className={`w-32 h-32 md:w-48 md:h-48 rounded-2xl flex items-center justify-center text-4xl shadow-inner ${color === 'black' ? 'bg-gray-900 text-white dark:bg-black' : (color === 'green' ? 'bg-green-600 text-white' : 'bg-white border border-gray-200 dark:border-zinc-700 text-black')}`}
-                            >
-                                👟
-                            </motion.div>
-
-                            <div className="flex-1 space-y-6">
-                                <div>
-                                    <h4 className="font-black text-xl mb-1 dark:text-white">Urban Kicks V2</h4>
-                                    <p className="text-sm text-gray-500 dark:text-zinc-400 font-mono">$120.00 USD</p>
-                                </div>
-                                
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase text-gray-400 mb-2">Color</p>
-                                    <div className="flex gap-2">
-                                        {['black', 'white', 'green'].map(c => (
-                                            <button 
-                                                key={c} 
-                                                onClick={() => setColor(c)}
-                                                className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-black dark:border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'} ${c === 'black' ? 'bg-black' : (c === 'green' ? 'bg-green-600' : 'bg-white border-gray-200 dark:border-zinc-700 shadow-sm')}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase text-gray-400 mb-2">Talla</p>
-                                    <div className="flex gap-2">
-                                        {['40', '41', '42'].map(s => (
-                                            <button 
-                                                key={s}
-                                                onClick={() => setSize(s)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${size === s ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:border-gray-400'}`}
-                                            >
-                                                {s}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="order-1 lg:order-2">
-                    <span className="inline-block px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 text-black dark:text-white text-[10px] font-bold uppercase tracking-widest mb-6">
-                        Gestión de Catálogo V2
-                    </span>
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6 dark:text-white">
-                        No vendas productos.<br/>
-                        <span className="text-gray-400 dark:text-zinc-600">Vende opciones.</span>
-                    </h2>
-                    <p className="text-lg text-gray-500 pr-4 dark:text-zinc-400 mb-8 leading-relaxed">
-                        El cliente venezolano es exigente. Quiere ver la foto exacta del color que le gusta y saber si hay su talla. 
-                        Preziso gestiona <strong>variantes complejas, stock por talla</strong> y categorías ilimitadas.
-                    </p>
-                    <ul className="space-y-4">
-                        <li className="flex items-center gap-3 font-medium dark:text-zinc-300">
-                            <CheckCircle2 size={18} className="text-black dark:text-white"/> Control de Stock por Talla/Color
-                        </li>
-                        <li className="flex items-center gap-3 font-medium dark:text-zinc-300">
-                            <CheckCircle2 size={18} className="text-black dark:text-white"/> Fotos específicas por Variante
-                        </li>
-                        <li className="flex items-center gap-3 font-medium dark:text-zinc-300">
-                            <CheckCircle2 size={18} className="text-black dark:text-white"/> Precios distintos según material
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-    )
-}
-
-const FAQ = () => {
-    const [open, setOpen] = useState<number | null>(null)
-    const faqs = [
-        { q: "¿Cuándo tendré acceso?", a: "Estamos liberando cupos semanalmente para garantizar que la sincronización con el BCV sea perfecta para cada tienda nueva. Al registrarte te notificaremos por WhatsApp." },
-        { q: "¿Necesito tarjeta internacional?", a: "No. Preziso está hecho para Venezuela. Podrás pagar tu mensualidad con Pago Móvil o Binance." },
-        { q: "¿El dinero pasa por ustedes?", a: "Nunca. Preziso es una herramienta de cálculo y catálogo. El dinero de tus ventas va directo de tu cliente a tu banco." },
-        { q: "¿Funciona en teléfonos viejos?", a: "Sí. La tienda que ven tus clientes es ultra ligera y carga rápido incluso con datos móviles inestables." }
-    ]
-
-    return (
-        <section className="py-24 bg-transparent border-t border-gray-200 dark:border-zinc-800 transition-colors duration-300">
-            <div className="max-w-3xl mx-auto px-6">
-                <h2 className="text-3xl font-black text-center mb-12 dark:text-white">Preguntas Frecuentes</h2>
-                <div className="space-y-4">
-                    {faqs.map((faq, i) => (
-                        <div key={i} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden transition-colors duration-300">
-                            <button 
-                                onClick={() => setOpen(open === i ? null : i)}
-                                className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors"
-                            >
-                                <span className="font-bold text-gray-900 dark:text-white">{faq.q}</span>
-                                <ChevronDown 
-                                    className={`text-gray-400 transition-transform duration-300 ${open === i ? 'rotate-180' : ''}`}
-                                />
-                            </button>
-                            <AnimatePresence>
-                                {open === i && (
-                                    <motion.div 
-                                        initial={{ height: 0 }}
-                                        animate={{ height: 'auto' }}
-                                        exit={{ height: 0 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <p className="p-6 pt-0 text-gray-500 dark:text-zinc-400 leading-relaxed text-sm">
-                                            {faq.a}
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-    )
-}
-
-const Testimonials = () => (
-    <section className="py-24 bg-transparent border-t border-gray-200 dark:border-zinc-900 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-black mb-16 dark:text-white">Ya confían en nosotros</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-                {[
-                    { name: "Carlos D.", role: "Tech Store VE", text: "Antes pasaba 2 horas cada mañana cambiando etiquetas. Ahora me levanto y los precios ya están al día." },
-                    { name: "Andrea M.", role: "Moda & Calzado", text: "Mis clientes aman que el carrito les diga exactamente cuánto es en Bolívares. Cierro el doble de ventas por WhatsApp." },
-                    { name: "Luis R.", role: "Repuestos Auto", text: "Lo mejor es el control de stock. Si vendo una pieza por mostrador, se descuenta de la web al instante." }
-                ].map((t, i) => (
-                    <div key={i} className="p-8 rounded-[2rem] bg-gray-50/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-100 dark:border-zinc-800 hover:shadow-xl transition-all duration-300">
-                        <div className="flex justify-center mb-4 text-green-500">★★★★★</div>
-                        <p className="text-gray-600 dark:text-zinc-300 font-medium mb-6 italic">"{t.text}"</p>
-                        <div>
-                            <p className="font-black text-gray-900 dark:text-white">{t.name}</p>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{t.role}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    </section>
-)
 
 // --- LANDING PRINCIPAL ---
 
 export default function LandingClient() {
-    const [isDarkMode, setIsDarkMode] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
 
-    // Lógica de Modo Oscuro Manual
-    useEffect(() => {
-        if (isDarkMode) {
-            document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
+    const scrollToForm = () => {
+        const formElement = document.getElementById('formulario-registro') 
+        if (formElement) {
+            formElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
-    }, [isDarkMode])
-
-   const scrollToForm = () => {
-    const formElement = document.getElementById('formulario-registro') 
-    if (formElement) {
-        formElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-}
 
-    // AQUI ES DONDE OCURRE LA MAGIA DEL FONDO: "relative z-0" y bg-transparent
     return (
-        <div className={`min-h-screen relative z-0 bg-transparent font-sans text-gray-900 dark:text-zinc-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden transition-colors duration-300 ${isDarkMode ? 'dark' : ''}`}>
+        <div className="min-h-screen bg-black font-sans text-gray-300 selection:bg-[#222] selection:text-white overflow-x-hidden">
+            <style>{globalStyles}</style>
             
-            <AmbientBackground />
-            <BcvTicker />
+            {/* FONDO DOT MATRIX */}
+            <div className="fixed inset-0 z-0 pointer-events-none bg-dot-matrix opacity-60"></div>
+            {/* Brillo suave de fondo */}
+            <div className="fixed top-0 left-1/2 -translate-x-1/2 w-200 h-125 bg-green-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
 
-         
-           
-                    {/* NAVBAR */}
-<nav className="relative top-2 w-[98%] left-1/2 -translate-x-1/2 rounded-[25px] z-40 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 transition-colors duration-300">
-    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        
-        {/* ZONA DEL LOGO MODIFICADA */}
-        <div className="flex items-center gap-2 cursor-pointer">
-            {/* Logo para Modo Claro (Se oculta en dark mode) */}
-            {/* mix-blend-multiply ayuda a que el fondo gris del JPG se fusione con el header */}
-            <img 
-                src="/pezisologo.png" 
-                alt="Preziso Logo" 
-                className="h-13 w-auto object-contain block dark:hidden mix-blend-multiply" 
-            />
-            
-            {/* Logo para Modo Oscuro (Se muestra solo en dark mode) */}
-            <img 
-                src="/pezisologow.png" 
-                alt="Preziso Logo" 
-                className="h-13 w-auto object-contain hidden dark:block" 
-            />
-        </div>
-                    
-                    <div className="hidden md:flex items-center gap-8">
-                        <a href="#features" className="text-xs font-bold text-gray-500 hover:text-black dark:hover:text-white uppercase tracking-wide">Características</a>
-                        <a href="#demo" className="text-xs font-bold text-gray-500 hover:text-black dark:hover:text-white uppercase tracking-wide">Demo</a>
+            <div className="relative z-10">
+                <BcvTicker />
+
+                {/* NAVBAR */}
+                <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#1A1A1A]">
+                    <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between relative z-50">
+                        
+                        <div className="flex items-center gap-2 cursor-pointer">
+                            <img 
+                                src="/pezisologow.png" 
+                                alt="Preziso Logo" 
+                                className="h-10 w-auto object-contain block" 
+                            />
+                        </div>
+                                    
+                        <div className="hidden md:flex items-center gap-8">
+                            <a href="#solucion" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">La Solución</a>
+                            <a href="#beneficios" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">Beneficios</a>
+                            <a href="#faq" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">Preguntas</a>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                           
+                            <button onClick={scrollToForm} className="bg-white text-black px-4 py-2 rounded-lg text-[11px] font-bold hover:bg-gray-200 transition-all flex items-center gap-2">
+                                Solicitar Acceso
+                            </button>
+                            <button className="md:hidden text-white" onClick={() => setMenuOpen(!menuOpen)}>
+                                {menuOpen ? <X size={20}/> : <Menu size={20}/>}
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Botón Dark Mode */}
-                        <button 
-                            onClick={() => setIsDarkMode(!isDarkMode)}
-                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                        >
-                            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
+                    {/* MENÚ MÓVIL ANIMADO */}
+                    <AnimatePresence>
+                        {menuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} 
+                                className="absolute top-16 left-0 w-full bg-[#050505]/95 backdrop-blur-xl border-b border-[#1A1A1A] md:hidden overflow-hidden"
+                            >
+                                <div className="flex flex-col px-6 py-8 gap-6">
+                                    <a 
+                                        href="#solucion" 
+                                        onClick={() => setMenuOpen(false)} 
+                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
+                                    >
+                                        La Solución
+                                    </a>
+                                    <a 
+                                        href="#beneficios" 
+                                        onClick={() => setMenuOpen(false)} 
+                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
+                                    >
+                                        Beneficios
+                                    </a>
+                                    <a 
+                                        href="#faq" 
+                                        onClick={() => setMenuOpen(false)} 
+                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
+                                    >
+                                        Preguntas
+                                    </a>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </nav>
 
-                        <button onClick={scrollToForm} className="bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-lg flex items-center gap-2">
-                            Unirse a la Lista <ArrowRight size={14}/>
-                        </button>
-                    </div>
-                </div>
-            </nav>
+                {/* HERO SECTION */}
+                <section className="pt-16 pb-24 lg:pt-24 lg:pb-32 relative overflow-hidden min-h-[calc(100vh-100px)] flex items-center">
+                    <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center w-full">
+                        <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left relative z-10">
+                            
+                            <motion.div id="formulario-registro" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                                <LiveCounter />
+                            </motion.div>
 
-            {/* HERO - bg-transparent */}
-            <section className="pt-24 pb-20 lg:pt-32 lg:pb-32 relative overflow-hidden bg-transparent">
-                <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center">
-                    <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left">
+                            <motion.h1 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="text-5xl md:text-6xl lg:text-[5rem] font-semibold tracking-tighter mb-6 leading-[1.05] text-white"
+                            >
+                                Vende en dólares.<br/>
+                                <span className="text-[#888]">Cobra en bolívares.</span><br/>
+                                Cero estrés.
+                            </motion.h1>
+                            
+                            <motion.p 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-base md:text-lg text-[#888] mb-8 leading-relaxed font-medium max-w-xl"
+                            >
+                                Preziso conecta tu catálogo al Banco Central de Venezuela. Tus clientes compran sin preguntar, tú recibes el pedido exacto en WhatsApp. <strong className="text-gray-300 font-medium">Adiós a la calculadora.</strong>
+                            </motion.p>
+                            
+                            <motion.div
+                                 initial={{ opacity: 0, y: 20 }}
+                                 animate={{ opacity: 1, y: 0 }}
+                                 transition={{ delay: 0.3 }}
+                                 className="w-full flex justify-center lg:justify-start"
+                            >
+                                <WaitlistForm />
+                            </motion.div>
+                        </div>
+
                         <motion.div 
-                            id="formulario-registro"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border border-gray-200 dark:border-zinc-800 rounded-full px-4 py-1.5 mb-8 shadow-sm transition-colors duration-300"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.4, duration: 0.6 }}
+                            className="lg:col-span-5 relative flex justify-center lg:justify-end mt-8 lg:mt-0 w-full"
                         >
-                            <span className="flex h-2 w-2 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            <span className="text-[10px] font-black text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Sistema Operativo para Venezuela</span>
+                            <InteractiveDemo />
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* EL PROBLEMA VS LA SOLUCIÓN */}
+                <section id="solucion" className="py-24 border-t border-[#1A1A1A] relative">
+                    <div className="max-w-7xl mx-auto px-6">
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={fadeUpVariant}
+                            className="mb-16 text-center lg:text-left"
+                        >
+                            <h2 className="text-3xl font-semibold tracking-tight text-white mb-4">¿Por qué necesitas Preziso hoy?</h2>
+                            <p className="text-[#888] text-base max-w-2xl">Vender en Venezuela tiene reglas únicas. Las herramientas tradicionales no entienden nuestro mercado. Nosotros sí.</p>
                         </motion.div>
 
-                        <motion.h1 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[0.9] text-gray-900 dark:text-white transition-colors duration-300"
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={staggerContainer}
+                            className="grid md:grid-cols-3 gap-6"
                         >
-                            Vende en Dólares.<br/>
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-[#2a6544] dark:from-white dark:to-zinc-500">Cobra en Bs.</span><br/>
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#2a6544] to-black dark:from-white dark:to-zinc-500">Automático.</span>
-                        </motion.h1>
-                        
-                        <motion.p 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-xl text-gray-500 dark:text-zinc-400 mb-6 leading-relaxed font-medium max-w-xl"
+                            {/* Card 1 */}
+                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
+                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
+                                    <RefreshCw size={18} />
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-3">Tasa BCV Automática</h3>
+                                <p className="text-sm text-[#888] leading-relaxed">
+                                    Tu inventario se guarda en dólares, pero el cliente siempre ve el precio exacto en bolívares actualizado en tiempo real. Proteges tu ganancia automáticamente.
+                                </p>
+                            </motion.div>
+
+                            {/* Card 2 */}
+                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
+                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
+                                    <Smartphone size={18} />
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-3">Pedidos Limpios por WhatsApp</h3>
+                                <p className="text-sm text-[#888] leading-relaxed">
+                                    Se acabaron los chats de horas respondiendo "precio y disponibilidad". El cliente arma su carrito web y te envía el pedido listo para despachar.
+                                </p>
+                            </motion.div>
+
+                            {/* Card 3 */}
+                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
+                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
+                                    <Layers size={18} />
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-3">Control de Variantes</h3>
+                                <p className="text-sm text-[#888] leading-relaxed">
+                                    ¿Vendes zapatos o ropa? Gestiona fácilmente tallas, colores y fotos específicas. Si se acaba la talla 42 en negro, desaparece de la web al instante.
+                                </p>
+                            </motion.div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* SOCIAL PROOF / TESTIMONIOS */}
+                <section id="beneficios" className="py-24 border-t border-[#1A1A1A] relative bg-[#020202]">
+                    <div className="max-w-7xl mx-auto px-6">
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={fadeUpVariant}
+                            className="mb-16 text-center"
                         >
-                            Olvídate de calcular la tasa cada mañana. Preziso actualiza tus precios con el BCV, organiza tus pedidos de WhatsApp y protege tu margen.
-                        </motion.p>
-                        
-                        <motion.div
-                             initial={{ opacity: 0, y: 20 }}
-                             animate={{ opacity: 1, y: 0 }}
-                             transition={{ delay: 0.3 }}
-                             className="w-full flex justify-center lg:justify-start"
-                        >
-                            <WaitlistForm />
+                            <h2 className="text-3xl font-semibold tracking-tight text-white mb-4">Diseñado para el comerciante venezolano</h2>
+                            <p className="text-[#888] text-base">La plataforma que convierte tu Instagram en un negocio ordenado.</p>
                         </motion.div>
 
-                        <p className="mt-4 text-[10px] text-gray-400 dark:text-zinc-600 font-bold uppercase tracking-widest">
-                            * Cupos limitados para garantizar estabilidad
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={staggerContainer}
+                            className="grid md:grid-cols-2 gap-6"
+                        >
+                            <motion.div variants={fadeUpVariant} className="webild-card rounded-4xl p-10 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex text-[#444] mb-6"><Zap size={20} fill="currentColor"/></div>
+                                    <p className="text-lg text-gray-300 font-medium leading-relaxed mb-8">
+                                        "Antes de Preziso, pasaba 2 horas cada mañana calculando precios y cambiando historias de Instagram. Ahora me levanto y mi tienda ya está vendiendo con la tasa correcta."
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4 border-t border-[#1A1A1A] pt-6">
+                                    <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-sm font-medium text-[#888]">C</div>
+                                    <div>
+                                        <p className="text-sm font-medium text-white">Carlos Domínguez</p>
+                                        <p className="text-[11px] text-[#666] tracking-widest uppercase">Dueño de Tech Store</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            <motion.div variants={fadeUpVariant} className="webild-card rounded-4xl p-10 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex text-[#444] mb-6"><Zap size={20} fill="currentColor"/></div>
+                                    <p className="text-lg text-gray-300 font-medium leading-relaxed mb-8">
+                                        "El hecho de que el cliente vea exactamente cuánto debe pagar en Pago Móvil o Zelle ha reducido mis tiempos de atención a la mitad. Cierro ventas mucho más rápido."
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4 border-t border-[#1A1A1A] pt-6">
+                                    <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-sm font-medium text-[#888]">A</div>
+                                    <div>
+                                        <p className="text-sm font-medium text-white">Andrea Martínez</p>
+                                        <p className="text-[11px] text-[#666] tracking-widest uppercase">Boutique de Moda</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* FAQ */}
+                <section id="faq" className="py-24 border-t border-[#1A1A1A] relative">
+                    <div className="max-w-3xl mx-auto px-6">
+                        <motion.h2 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={fadeUpVariant}
+                            className="text-2xl font-semibold tracking-tight text-center mb-12 text-white"
+                        >
+                            Preguntas Frecuentes
+                        </motion.h2>
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, margin: "-50px" }}
+                            variants={staggerContainer}
+                            className="space-y-4"
+                        >
+                            {[
+                                { q: "¿Necesito tarjeta de crédito en dólares?", a: "No. Sabemos cómo funcionan las cosas aquí. Podrás pagar tu suscripción mensual en Bolívares (Pago Móvil) o USDT (Binance)." },
+                                { q: "¿El dinero de mis ventas pasa por Preziso?", a: "Nunca. Nosotros solo organizamos tu catálogo y calculamos los totales. El cliente te paga directamente a tus cuentas bancarias o Zelle." },
+                                { q: "¿Cuándo podré usar la plataforma?", a: "Estamos dando acceso por lotes a los inscritos en la lista de espera para garantizar que la conexión con el BCV sea perfecta. Si te anotas hoy, asegurarás prioridad y precio de lanzamiento." }
+                            ].map((faq, i) => (
+                                <motion.div variants={fadeUpVariant} key={i} className="bg-[#050505] rounded-2xl border border-[#1A1A1A] overflow-hidden">
+                                    <div className="p-6 text-left">
+                                        <h4 className="font-medium text-sm text-white mb-2">{faq.q}</h4>
+                                        <p className="text-[#888] text-sm leading-relaxed">{faq.a}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* CTA FINAL */}
+                <section className="py-32 border-t border-[#1A1A1A] relative overflow-hidden bg-black">
+                    <motion.div 
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true, margin: "-50px" }}
+                        variants={fadeUpVariant}
+                        className="max-w-3xl mx-auto px-6 text-center relative z-10 flex flex-col items-center"
+                    >
+                        <h2 className="text-4xl md:text-5xl font-semibold text-white mb-6 tracking-tighter">
+                            El momento es ahora.
+                        </h2>
+                        <p className="text-[#888] text-lg mb-10 max-w-lg">
+                            Deja que tu competencia siga usando calculadoras de bolsillo. Profesionaliza tu negocio hoy mismo.
+                        </p>
+                        
+                        <div className="bg-[#0A0A0A] border border-[#222] inline-flex flex-col sm:flex-row items-center gap-6 px-8 py-5 rounded-2xl mb-8 shadow-2xl">
+                            <div className="text-center sm:text-left">
+                                <p className="text-[10px] text-[#666] uppercase font-semibold tracking-widest mb-1">Precio de Lanzamiento</p>
+                                <div className="flex items-baseline justify-center sm:justify-start gap-1">
+                                    <span className="text-3xl font-mono font-medium text-white">$10</span>
+                                    <span className="text-sm text-[#666]">/mensual</span>
+                                </div>
+                            </div>
+                            <div className="h-px w-full sm:w-px sm:h-10 bg-[#222]"></div>
+                            <div className="text-center sm:text-left">
+                                <ul className="text-left space-y-1.5">
+                                    <li className="flex items-center gap-2 text-xs text-[#888] font-medium"><Check size={12} className="text-green-500"/> Productos ilimitados</li>
+                                    <li className="flex items-center gap-2 text-xs text-[#888] font-medium"><Check size={12} className="text-green-500"/> Sin contratos</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="w-full flex justify-center">
+                            <button onClick={scrollToForm} className="bg-white text-black px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                Quiero asegurar mi acceso
+                            </button>
+                        </div>
+                    </motion.div>
+                </section>
+
+                {/* FOOTER */}
+                <footer className="border-t border-[#1A1A1A] py-12 bg-black">
+                    <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+                        <div className="flex items-center gap-2 cursor-pointer">
+                            <img 
+                                src="/pezisologow.png" 
+                                alt="Preziso Logo" 
+                                className="h-8 w-auto object-contain block opacity-80" 
+                            />
+                        </div>
+                        <p className="text-[11px] text-[#555] font-medium max-w-xs">
+                            Construido con tecnología moderna para resolver problemas reales del comercio en Venezuela.
+                        </p>
+                        <p className="text-[10px] text-[#444] font-mono">
+                            &copy; {new Date().getFullYear()} PREZISO INC.
                         </p>
                     </div>
-
-                    <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
-                        <InteractiveDemo />
-                    </div>
-                </div>
-            </section>
-
-            {/* SECCIÓN VARIANTES - bg-transparent */}
-            <VariantShowcase />
-
-            {/* FEATURES GRID - bg-transparent */}
-            <section id="features" className="py-24 bg-transparent border-t border-gray-200/50 dark:border-zinc-800/50 transition-colors duration-300">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl font-black mb-4 dark:text-white">El fin del caos manual.</h2>
-                        <p className="text-gray-500 dark:text-zinc-400 text-lg">Reemplazamos tu Excel y tu calculadora.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(200px,auto)]">
-                        {/* Card BCV */}
-                        <div className="md:col-span-2 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg relative overflow-hidden group transition-colors duration-300 hover:bg-white/80 dark:hover:bg-zinc-900/80">
-                            <div className="absolute -right-10 -top-10 opacity-5 dark:opacity-[0.02] group-hover:scale-110 transition-transform duration-500">
-                                <RefreshCw size={200} />
-                            </div>
-                            <div className="w-14 h-14 bg-green-50 dark:bg-green-900/20 rounded-2xl flex items-center justify-center mb-6 text-green-600 dark:text-green-400">
-                                <TrendingUp size={28} />
-                            </div>
-                            <h3 className="text-2xl font-black mb-3 dark:text-white">Sincronización BCV Automática</h3>
-                            <p className="text-gray-500 dark:text-zinc-400 font-medium max-w-md">
-                                Si el dólar sube a las 9:00 AM, tus precios en Bs suben a las 9:01 AM. 
-                                Protección total contra la devaluación sin mover un dedo.
-                            </p>
-                        </div>
-
-                        {/* Card CRM */}
-                        <div className="md:row-span-2 bg-[#0A0A0A] dark:bg-black text-white rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col justify-between group shadow-2xl border border-transparent dark:border-zinc-800">
-                             <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-b from-green-500/10 to-transparent pointer-events-none"></div>
-                             <div>
-                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-6 text-white border border-white/10">
-                                    <Layers size={28} />
-                                </div>
-                                <h3 className="text-2xl font-black mb-3">CRM de Pedidos</h3>
-                                <p className="text-gray-400 text-sm font-medium mb-8">
-                                    De "Pendiente" a "Pagado" con un clic. Organiza tus ventas de WhatsApp en un tablero Kanban.
-                                </p>
-                             </div>
-                             {/* Mini UI */}
-                             <div className="space-y-2 font-mono text-[10px] opacity-80">
-                                <div className="flex justify-between border-b border-white/10 pb-2">
-                                    <span>#1044 Angel</span> <span className="text-green-400">PAGADO</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/10 pb-2">
-                                    <span>#1045 Maria</span> <span className="text-yellow-400">PENDIENTE</span>
-                                </div>
-                             </div>
-                        </div>
-
-                        {/* Card Web */}
-                        <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
-                             <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400">
-                                <Globe size={28} />
-                            </div>
-                            <h3 className="text-xl font-black mb-2 dark:text-white">Tu Web .app</h3>
-                            <p className="text-gray-500 dark:text-zinc-400 text-sm font-medium">
-                                Tu tienda en <code>preziso.app/tu-marca</code>. Carga instantánea en 4G.
-                            </p>
-                        </div>
-
-                         {/* Card WhatsApp */}
-                         <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-[2.5rem] p-10 border border-gray-100 dark:border-zinc-800 shadow-lg group hover:-translate-y-1 transition-all duration-300">
-                             <div className="w-14 h-14 bg-purple-50 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center mb-6 text-purple-600 dark:text-purple-400">
-                                <MessageCircle size={28} />
-                            </div>
-                            <h3 className="text-xl font-black mb-2 dark:text-white">Pedidos a WhatsApp</h3>
-                            <p className="text-gray-500 dark:text-zinc-400 text-sm font-medium">
-                                El cliente arma el carrito y te llega un mensaje listo con el total y los datos.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* TESTIMONIOS - bg-transparent */}
-            <Testimonials />
-
-            {/* FAQ - bg-transparent */}
-            <FAQ />
-
-            {/* CTA FINAL - bg-transparent */}
-            <section id="pricing" className="py-32 bg-transparent relative overflow-hidden transition-colors duration-300">
-                <div className="max-w-4xl mx-auto px-6 text-center relative z-10 flex flex-col items-center">
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 dark:text-white">
-                        Únete al club.
-                    </h2>
-                    <p className="text-gray-500 dark:text-zinc-400 text-xl mb-12 max-w-lg">
-                        Estamos abriendo cupos gradualmente. Regístrate ahora para asegurar tu precio de lanzamiento.
-                    </p>
-                    
-                    <div className="w-full flex justify-center">
-                        <WaitlistForm />
-                    </div>
-                </div>
-            </section>
-
-            {/* FOOTER - bg-transparent */}
-           
-                <footer className="py-12 bg-transparent border-t border-gray-200/50 dark:border-zinc-900 text-center transition-colors duration-300">
-     <div className="flex items-center justify-center gap-2 mb-6 opacity-60 hover:opacity-100 transition-opacity">
-        {/* Logo Light Footer */}
-        <img src="/pezisologo.png" alt="Preziso" className="h-15 block dark:hidden mix-blend-multiply grayscale" />
-        {/* Logo Dark Footer */}
-        <img src="/pezisologow.png" alt="Preziso" className="h-15 hidden dark:block" />
-     </div>
-                 <p className="text-gray-400 dark:text-zinc-600 text-xs font-bold uppercase tracking-widest mb-4">
-                     Hecho en Venezuela 🇻🇪
-                 </p>
-                 <p className="text-gray-300 dark:text-zinc-700 text-xs">
-                     © {new Date().getFullYear()} Preziso Inc.
-                 </p>
-            </footer>
+                </footer>
+            </div>
         </div>
     )
 }
