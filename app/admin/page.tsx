@@ -62,10 +62,7 @@ export default async function AdminDashboard() {
     <div className="min-h-screen bg-[#F0F2F5] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
       
 {/* FONDO AMBIENTAL (Pastel concentrado) */}
-<div className="fixed inset-0 pointer-events-none z-0">
-  <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[60%] bg-[rgba(0,0,0,0.08)] rounded-full blur-[80px]"></div>
-  <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-purple-300/50 rounded-full blur-[80px]"></div>
-</div>
+
 
       {/* HEADER INTERACTIVO (Nuevo Componente) */}
       <AdminHeader store={store} />

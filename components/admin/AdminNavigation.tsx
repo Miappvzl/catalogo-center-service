@@ -17,7 +17,7 @@ const NAV_LINKS = [
 
 // 2. COMPONENTE DE ESCRITORIO EXTRAÍDO (Aisla el ciclo de vida de React)
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => (
-  <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200/60 bg-white/80 backdrop-blur-xl z-50 p-6 shadow-2xl shadow-black/[0.03]">
+  <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200/60 bg-white/80 z-50 p-6 shadow-2xl shadow-black/[0.03]">
     <div className="mb-10 flex items-center gap-3 px-2">
       <div className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center shadow-md">
           <Store size={18} />

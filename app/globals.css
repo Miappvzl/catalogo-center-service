@@ -12,7 +12,7 @@
  
   
   input:focus, textarea:focus, select:focus {
-    @apply ring-black ring-offset-0 border-[1.2px] border-[rgba(0,0,0,0.32)] bg-white shadow-lg;
+    @apply ring-black ring-offset-0 border-[1.2px] border-[rgba(0,0,0,0.55)] bg-white shadow-lg;
     outline: none;
   }
 

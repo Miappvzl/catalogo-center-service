@@ -44,7 +44,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
       </div>
       <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-        <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white border-2 border-white shadow-lg flex items-center justify-center overflow-hidden hover:scale-105 transition-all">
+        <div className="w-13 h-13 md:w-14 md:h-14 rounded-full bg-white border-2 border-[rgba(15,15,15,0.9)] flex items-center justify-center overflow-hidden hover:scale-105 transition-all">
           {uploading ? <Loader2 className="animate-spin text-gray-400" /> : store?.logo_url ? <img src={store.logo_url} className="w-full h-full object-contain" alt="Logo" /> : <ShoppingBag size={20} className="text-gray-300" />}
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={16} className="text-white"/></div>
         </div>
