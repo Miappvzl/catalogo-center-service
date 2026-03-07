@@ -76,7 +76,7 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto px-4 md:px-6 space-y-8">
         
         {/* 2. SECCIÓN IDENTIDAD (Gestionada aquí mismo) */}
-        <section className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-white shadow-sm">
+        <section className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-xl border border-gray-200 ">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
                     <Globe size={20} className="text-blue-600"/> Identidad
@@ -84,7 +84,7 @@ export default function SettingsPage() {
                 <button 
                     onClick={saveIdentity} 
                     disabled={savingIdentity} 
-                    className="bg-black text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-gray-800 disabled:opacity-50 transition-all shadow-lg shadow-black/10 active:scale-95"
+                    className="bg-[#151515] text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-gray-800 disabled:opacity-50 transition-all active:scale-95"
                 >
                     {savingIdentity ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} 
                     Guardar
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                     <input 
                         value={identity.name} 
                         onChange={e => setIdentity({...identity, name: e.target.value})} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-900 focus:border-black focus:bg-white outline-none transition-all shadow-sm"
+                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-900 focus:border-black focus:bg-white outline-none transition-all"
                     />
                 </div>
                 <div>
@@ -110,7 +110,7 @@ export default function SettingsPage() {
                         value={identity.phone} 
                         onChange={e => setIdentity({...identity, phone: e.target.value})} 
                         placeholder="Ej: 58412..." 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-mono font-medium text-gray-900 focus:border-black focus:bg-white outline-none transition-all shadow-sm"
+                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-mono font-medium text-gray-900 focus:border-black focus:bg-white outline-none transition-all"
                     />
                     <p className="text-[9px] text-gray-400 mt-1.5 ml-1">
                         Número donde recibirás los pedidos (Formato: 58...)

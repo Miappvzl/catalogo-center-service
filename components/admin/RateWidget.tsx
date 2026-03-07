@@ -51,13 +51,13 @@ export default function RateWidget({
   }
 
   return (
-    <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full flex flex-col justify-between relative overflow-hidden group hover:border-blue-200 transition-colors">
+    <section className="bg-white p-6 rounded-xl border-1 border-[#60606057] h-full flex flex-col justify-between relative overflow-hidden group hover:border-blue-200 transition-colors">
         {/* Fondo decorativo sutil */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -mr-10 -mt-10 z-0 pointer-events-none group-hover:bg-blue-50 transition-colors" />
 
         <div className="relative z-10">
-            <header className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-2xl bg-gray-900 text-white shadow-lg shadow-gray-900/20">
+            <header className="flex items-center gap-1 mb-6">
+                <div className="p-3 pl-[1.5px] text-black">
                     <Wallet size={24} strokeWidth={2} />
                 </div>
                 <div>
@@ -92,15 +92,15 @@ export default function RateWidget({
         </div>
 
         {/* Selector de Moneda (Switch) */}
-        <div className="relative z-10 bg-gray-50 p-1.5 rounded-2xl flex border border-gray-100">
+        <div className="relative z-10 bg-black p-1.5 rounded-full flex border-1 border-[#151515]">
             <button
                 type="button" // Importante: type="button" para evitar submit accidental fuera del form
                 onClick={() => handleCurrencyChange('usd')}
                 disabled={isPending}
                 className={clsx(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer",
+                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer",
                     optimisticCurrency === 'usd'
-                        ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5"
+                        ? "bg-[#7fff00] text-gray-900 shadow-sm ring-1 ring-black/5"
                         : "text-gray-400 hover:text-gray-600"
                 )}
             >

@@ -487,7 +487,7 @@ export default function InventoryPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar por nombre, color, talla..." 
-                        className="w-full bg-white border-none rounded-2xl pl-11 pr-4 py-4 font-medium shadow-sm focus:ring-2 focus:ring-black/5 outline-none placeholder:text-gray-300 transition-all"
+                        className="w-full bg-white border-1 border-gray-200 rounded-full pl-11 pr-4 py-4 font-medium focus:ring-2 focus:ring-black/5 outline-none placeholder:text-gray-200 transition-all"
                     />
                 </div>
                 {/* Filtros */}

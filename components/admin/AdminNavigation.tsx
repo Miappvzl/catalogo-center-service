@@ -83,7 +83,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
 // 3. COMPONENTE MÓVIL EXTRAÍDO (Acelerado por GPU)
 const MobileBottomBar = ({ pathname }: { pathname: string }) => (
   <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
-    <div className="flex justify-between items-end px-2 pt-2 pb-3 max-w-md mx-auto">
+    <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
       {NAV_LINKS.map((link) => {
         const isActive = pathname === link.href
         
@@ -91,7 +91,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
           return (
             <div key={link.href} className="flex-shrink-0 relative -top-6 px-2">
               <Link href={link.href} className="block group">
-                <div className="w-14 h-14 bg-black text-white rounded-full flex items-center justify-center shadow-xl shadow-black/20 ring-4 ring-white group-active:scale-95 transition-transform duration-200">
+                <div className="w-12 h-12 bg-[#151515] text-white rounded-full flex items-center justify-center shadow-xl shadow-black/20 ring-4 ring-white group-active:scale-65 transition-transform duration-200">
                   <PlusCircle size={26} strokeWidth={2.5} />
                 </div>
               </Link>
@@ -104,7 +104,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
               key={link.href} 
               href={link.href} 
               prefetch={true}
-              className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors duration-200 active:scale-95 ${
+              className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${
                   isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'
               }`}
           >

@@ -46,12 +46,12 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+    <div className="bg-white p-6 rounded-xl border border-gray-200">
       <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
             <CreditCard size={20} /> Métodos de Pago
           </h3>
-          <button onClick={handleSave} disabled={saving} className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-800 transition-all">
+          <button onClick={handleSave} disabled={saving} className="bg-[#151515] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-gray-800 transition-all">
              {saving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Guardar
           </button>
       </div>
@@ -59,7 +59,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* PAGO MÓVIL */}
-        <div className={`p-4 rounded-xl border-2 transition-all ${methods.pago_movil.active ? 'border-blue-500 bg-blue-50/30' : 'border-gray-100 bg-white'}`}>
+        <div className={`p-4 rounded-xl border-1 transition-all ${methods.pago_movil.active ? 'border-blue-300 bg-blue-50/30' : 'border-gray-100 bg-white'}`}>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2 font-bold text-gray-800"><Smartphone size={18} className="text-blue-600"/> Pago Móvil</div>
             <input type="checkbox" checked={methods.pago_movil.active} onChange={(e) => handleChange('pago_movil', 'active', e.target.checked)} className="accent-black w-5 h-5"/>
@@ -75,7 +75,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* ZELLE */}
-        <div className={`p-4 rounded-xl border-2 transition-all ${methods.zelle.active ? 'border-purple-500 bg-purple-50/30' : 'border-gray-100 bg-white'}`}>
+        <div className={`p-4 rounded-xl border-1 transition-all ${methods.zelle.active ? 'border-purple-300 bg-purple-50/30' : 'border-gray-100 bg-white'}`}>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2 font-bold text-gray-800"><DollarSign size={18} className="text-purple-600"/> Zelle</div>
             <input type="checkbox" checked={methods.zelle.active} onChange={(e) => handleChange('zelle', 'active', e.target.checked)} className="accent-black w-5 h-5"/>
@@ -91,7 +91,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* BINANCE */}
-        <div className={`p-4 rounded-xl border-2 transition-all ${methods.binance.active ? 'border-yellow-500 bg-yellow-50/30' : 'border-gray-100 bg-white'}`}>
+        <div className={`p-4 rounded-xl border-1 transition-all ${methods.binance.active ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100 bg-white'}`}>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2 font-bold text-gray-800"><Bitcoin size={18} className="text-yellow-600"/> Binance</div>
             <input type="checkbox" checked={methods.binance.active} onChange={(e) => handleChange('binance', 'active', e.target.checked)} className="accent-black w-5 h-5"/>
@@ -107,7 +107,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* CASH */}
-        <div className={`p-4 rounded-xl border-2 transition-all ${methods.cash.active ? 'border-green-600 bg-green-50/30' : 'border-gray-100 bg-white'}`}>
+        <div className={`p-4 rounded-xl border-1 transition-all ${methods.cash.active ? 'border-green-300 bg-green-50/30' : 'border-gray-100 bg-white'}`}>
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2 font-bold text-gray-800"><Banknote size={18} className="text-green-700"/> Efectivo</div>
             <input type="checkbox" checked={methods.cash.active} onChange={(e) => handleChange('cash', 'active', e.target.checked)} className="accent-black w-5 h-5"/>

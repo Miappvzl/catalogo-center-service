@@ -200,20 +200,20 @@ export default function InventoryPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar por nombre, color, talla..." 
-                        className="w-full bg-white border-none rounded-2xl pl-11 pr-4 py-4 font-medium shadow-sm focus:ring-2 focus:ring-black/5 outline-none placeholder:text-gray-300 transition-all"
+                        className="w-full bg-white border-1 border-gray-200 rounded-full pl-11 pr-4 py-4 font-medium focus:ring-2 focus:ring-black/5 outline-none placeholder:text-gray-200 transition-all"
                     />
                 </div>
 
                 {/* Filtros */}
-                <div className="flex bg-gray-200/50 p-1 rounded-2xl">
-                    <button onClick={() => setFilterStatus('all')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterStatus === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Todos</button>
-                    <button onClick={() => setFilterStatus('low')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterStatus === 'low' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Poco Stock</button>
-                    <button onClick={() => setFilterStatus('out')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterStatus === 'out' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Agotados</button>
+                <div className="flex bg-gray-200/50 p-1 rounded-full gap-1">
+                    <button onClick={() => setFilterStatus('all')} className={`px-4 py-2 rounded-full border-1 border-gray-200 text-xs font-bold transition-all ${filterStatus === 'all' ? 'bg-white text-black' : 'text-gray-500 hover:text-gray-700'}`}>Todos</button>
+                    <button onClick={() => setFilterStatus('low')} className={`px-4 py-2 rounded-full border-1 border-gray-200 text-xs font-bold transition-all ${filterStatus === 'low' ? 'bg-white text-[#ceb424]' : 'text-gray-500 hover:text-gray-700'}`}>Poco Stock</button>
+                    <button onClick={() => setFilterStatus('out')} className={`px-4 py-2 rounded-full border-1 border-gray-200 text-xs font-bold transition-all ${filterStatus === 'out' ? 'bg-white text-red-600' : 'text-gray-500 hover:text-gray-700'}`}>Agotados</button>
                 </div>
             </div>
 
             {/* TABLA ELITE */}
-            <div className="bg-white rounded-3xl overflow-x-auto shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl overflow-x-auto border border-gray-200 overflow-hidden">
                 {loading ? (
                     <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300"/></div>
                 ) : filteredItems.length === 0 ? (
@@ -297,7 +297,7 @@ export default function InventoryPage() {
                                                         className={`w-full text-center font-mono font-bold text-lg py-2 rounded-xl border-2 outline-none transition-all ${
                                                             isPending 
                                                                 ? 'border-black bg-white shadow-lg text-black' 
-                                                                : 'border-transparent bg-gray-100 text-gray-600 group-hover:bg-white group-hover:border-gray-200'
+                                                                : 'border-transparent text-gray-600 group-hover:bg-white group-hover:border-gray-200'
                                                         }`}
                                                     />
                                                     

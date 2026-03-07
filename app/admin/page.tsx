@@ -61,11 +61,11 @@ export default async function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
       
-      {/* FONDO AMBIENTAL (Mesh Gradient Sutil) */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-200/20 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/20 rounded-full blur-[120px]"></div>
-      </div>
+{/* FONDO AMBIENTAL (Pastel concentrado) */}
+<div className="fixed inset-0 pointer-events-none z-0">
+  <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[60%] bg-[rgba(0,0,0,0.08)] rounded-full blur-[80px]"></div>
+  <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-purple-300/50 rounded-full blur-[80px]"></div>
+</div>
 
       {/* HEADER INTERACTIVO (Nuevo Componente) */}
       <AdminHeader store={store} />
@@ -86,9 +86,9 @@ export default async function AdminDashboard() {
             </div>
 
             {/* 2. VENTAS HOY (Financial Card) */}
-            <div className="md:col-span-1 lg:col-span-1 bg-white/70 backdrop-blur-lg p-6 rounded-[2rem] shadow-sm border border-white/50 flex flex-col justify-between group hover:border-green-200 transition-all hover:shadow-green-100/50 hover:-translate-y-1">
+            <div className="md:col-span-1 lg:col-span-1 bg-white/70 backdrop-blur-lg p-6 rounded-xl border-1 border-gray-200 flex flex-col justify-between group hover:border-green-200 transition-all hover:shadow-green-100/50 hover:-translate-y-1">
                 <div className="flex justify-between items-start">
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/50 text-green-600 shadow-inner">
+                    <div className="p-3.5 pl-[1.5px] text-black">
                         <DollarSign size={24} strokeWidth={2.5}/>
                     </div>
                     <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-full uppercase tracking-wide border border-green-200/50">
@@ -107,12 +107,12 @@ export default async function AdminDashboard() {
             </div>
 
             {/* 3. PEDIDOS PENDIENTES (Triage Card - Dark Mode Style) */}
-            <Link href="/admin/orders" className="md:col-span-1 lg:col-span-1 bg-[#0A0A0A] text-white p-6 rounded-[2rem] shadow-2xl shadow-black/10 flex flex-col justify-between group relative overflow-hidden transition-all hover:scale-[1.02]">
+            <Link href="/admin/orders" className="md:col-span-1 lg:col-span-1 bg-[#0A0A0A] text-white gap-2 p-6 rounded-xl flex flex-col justify-between group relative overflow-hidden transition-all hover:scale-[1.02]">
                 {/* Decoración */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-white/20 transition-all"></div>
                 
                 <div className="flex justify-between items-start relative z-10">
-                    <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+                    <div className="p-3.5 pl-[1.5px] text-white">
                         <Clock size={24} strokeWidth={2.5}/>
                     </div>
                     {pendingOrdersCount > 0 && (
@@ -137,7 +137,7 @@ export default async function AdminDashboard() {
             </Link>
 
             {/* 4. ÚLTIMOS PEDIDOS (List Card - Grande) */}
-            <div className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white shadow-sm flex flex-col overflow-hidden relative">
+            <div className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-white/80 backdrop-blur-xl rounded-xl border-1 border-gray-200 flex flex-col overflow-hidden relative">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white/50">
                     <h3 className="font-black text-gray-900 flex items-center gap-2 text-lg">
                         <Truck size={20} className="text-gray-400"/> Actividad Reciente
@@ -157,10 +157,10 @@ export default async function AdminDashboard() {
                         </div>
                     ) : (
                         recentOrders.map((order) => (
-                            <div key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-transparent hover:border-gray-200 rounded-2xl transition-all shadow-sm hover:shadow-md cursor-default">
+                            <div key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-[#60606057] hover:border-gray-200 rounded-2xl transition-all hover:shadow-md cursor-default">
                                 <div className="flex items-center gap-4">
                                     {/* Icono de Estado */}
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg shadow-sm border ${
+                                    <div className={`w-13 h-13 flex items-center justify-center text-lg${
                                         order.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
                                         order.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                         'bg-gray-50 text-gray-400 border-gray-100'
@@ -183,7 +183,7 @@ export default async function AdminDashboard() {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-black text-base text-gray-900 tracking-tight">${order.total_usd}</p>
-                                    <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                    <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                                         order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-emerald-100 text-emerald-700'
                                     }`}>
                                         {order.status === 'pending' ? 'Pendiente' : 'Pagado'}
@@ -196,9 +196,9 @@ export default async function AdminDashboard() {
             </div>
 
             {/* 5. ALERTAS DE INVENTARIO */}
-            <Link href="/admin/inventory" className={`md:col-span-1 lg:col-span-1 bg-white/70 backdrop-blur-lg p-6 rounded-[2rem] shadow-sm border flex flex-col justify-between group transition-all hover:-translate-y-1 ${lowStockCount > 0 ? 'border-red-200 hover:border-red-300 hover:shadow-red-100/50' : 'border-white/50 hover:border-blue-200 hover:shadow-blue-100/50'}`}>
+            <Link href="/admin/inventory" className={`md:col-span-1 lg:col-span-1 bg-white/70 backdrop-blur-lg p-6 rounded-xl border-1 flex flex-col justify-between group transition-all hover:-translate-y-1 ${lowStockCount > 0 ? 'border-red-200 hover:border-red-300 hover:shadow-red-100/50' : 'border-white/50 hover:border-blue-200 hover:shadow-blue-100/50'}`}>
                 <div className="flex justify-between items-start">
-                    <div className={`p-3.5 rounded-2xl ${lowStockCount > 0 ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                    <div className={`p-3.5 pl-[1.5px] ${lowStockCount > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {lowStockCount > 0 ? <AlertTriangle size={24} strokeWidth={2.5} /> : <Box size={24} strokeWidth={2.5} />}
                     </div>
                 </div>
@@ -213,7 +213,7 @@ export default async function AdminDashboard() {
             </Link>
 
             {/* 6. ACCIÓN RÁPIDA: NUEVO PRODUCTO (Diseño Minimalista) */}
-            <Link href="/admin/product/new" className="md:col-span-1 lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-200 hover:border-gray-400 p-6 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:text-black transition-all group cursor-pointer hover:bg-white">
+            <Link href="/admin/product/new" className="md:col-span-1 lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 border-1 border-dashed border-gray-200 hover:border-gray-400 p-6 rounded-xl flex flex-col items-center justify-center gap-4 text-gray-400 hover:text-black transition-all group cursor-pointer hover:bg-white">
                 <div className="w-14 h-14 bg-white rounded-full shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-gray-100">
                     <Plus size={28} strokeWidth={3} className="text-gray-300 group-hover:text-black transition-colors"/>
                 </div>
