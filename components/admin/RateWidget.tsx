@@ -56,7 +56,7 @@ export default function RateWidget({
         <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -mr-10 -mt-10 z-0 pointer-events-none group-hover:bg-blue-50 transition-colors" />
 
         <div className="relative z-10">
-            <header className="flex items-center gap-1 mb-6">
+            <header className="flex items-center gap-1 mb-6 pb-[5px] border-b-1 border-b-gray-200">
                 <div className="p-3 pl-[1.5px] text-black">
                     <Wallet size={24} strokeWidth={2} />
                 </div>
@@ -100,7 +100,7 @@ export default function RateWidget({
                 className={clsx(
                     "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer",
                     optimisticCurrency === 'usd'
-                        ? "bg-[#7fff00] text-gray-900 shadow-sm ring-1 ring-black/5"
+                        ? "bg-[#66cc00] text-gray-900 shadow-sm ring-1 ring-black/5"
                         : "text-gray-400 hover:text-gray-600"
                 )}
             >
@@ -112,9 +112,9 @@ export default function RateWidget({
                 onClick={() => handleCurrencyChange('eur')}
                 disabled={isPending}
                 className={clsx(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer",
+                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer",
                     optimisticCurrency === 'eur'
-                        ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5"
+                        ? "bg-[#66cc00] text-gray-900 shadow-sm ring-1 ring-black/5"
                         : "text-gray-400 hover:text-gray-600"
                 )}
             >

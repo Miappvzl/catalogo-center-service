@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, PlusCircle, LogOut, ExternalLink, Store } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, PlusCircle, LogOut, Store, Copy, Check } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
 
@@ -16,73 +17,96 @@ const NAV_LINKS = [
 ]
 
 // 2. COMPONENTE DE ESCRITORIO EXTRAÍDO (Aisla el ciclo de vida de React)
-const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => (
-  <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200/60 bg-white/80 z-50 p-6 shadow-2xl shadow-black/[0.03]">
-    <div className="mb-10 flex items-center gap-3 px-2">
-      <div className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center shadow-md">
-          <Store size={18} />
-      </div>
-      <span className="font-black text-lg tracking-tight text-gray-900">Preziso</span>
-    </div>
+const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
+  const [copied, setCopied] = useState(false)
 
-    <nav className="flex-1 space-y-1.5 relative">
-      {NAV_LINKS.map((link) => {
-        if (link.isAction) return null
-        const isActive = pathname === link.href
-        return (
-          <Link 
-              key={link.href} 
-              href={link.href} 
-              className={`relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors duration-200 group ${
-                  isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900'
-              }`}
-          >
-            {isActive && (
-              <motion.div
-                layoutId="desktop-nav-indicator"
-                className="absolute inset-0 bg-gray-100 rounded-xl -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
-            <span className="relative z-10">{link.name}</span>
-          </Link>
-        )
-      })}
-      
-      <div className="pt-4">
-          <Link 
-              href="/admin/product/new" 
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all border border-dashed border-gray-300 hover:border-green-300"
-          >
-              <PlusCircle size={20} /> Nuevo Producto
-          </Link>
-      </div>
-    </nav>
+  const copyLink = () => {
+    if (!store?.slug) return
+    const url = `${window.location.origin}/${store.slug}`
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
-    <div className="mt-auto pt-6 border-t border-gray-200/80 space-y-2">
-      {store && (
-          <Link 
-              href={`/${store.slug}`} 
-              target="_blank" 
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all"
-          >
-              <ExternalLink size={16} /> Ver mi Tienda
-          </Link>
-      )}
-      <button 
-          onClick={onLogout} 
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
-      >
-          <LogOut size={16} /> Cerrar Sesión
-      </button>
-    </div>
-  </aside>
-)
+  return (
+    <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200 bg-white z-50 p-6">
+      <div className="mb-10 flex items-center gap-3 px-2">
+        <div className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center">
+            <Store size={18} />
+        </div>
+        <span className="font-black text-lg tracking-tight text-gray-900">Preziso</span>
+      </div>
+
+      <nav className="flex-1 space-y-1.5 relative">
+        {NAV_LINKS.map((link) => {
+          if (link.isAction) return null
+          const isActive = pathname === link.href
+          return (
+            <Link 
+                key={link.href} 
+                href={link.href} 
+                className={`relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors duration-200 group ${
+                    isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900'
+                }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="desktop-nav-indicator"
+                  className="absolute inset-0 bg-gray-100 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
+              <span className="relative z-10">{link.name}</span>
+            </Link>
+          )
+        })}
+        
+        <div className="pt-4">
+            <Link 
+                href="/admin/product/new" 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all border border-dashed border-gray-200 hover:border-gray-300"
+            >
+                <PlusCircle size={20} /> Nuevo Producto
+            </Link>
+        </div>
+      </nav>
+
+      {/* FOOTER WIDGET: ZONA ESTRATÉGICA DE LA TIENDA */}
+      <div className="mt-auto pt-6 border-t border-gray-200 space-y-3">
+        {store && (
+          <div className="flex items-center justify-between p-1 border border-gray-200 rounded-xl bg-white">
+            <Link 
+                href={`/${store.slug}`} 
+                target="_blank" 
+                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-50 transition-colors"
+            >
+                <Store size={15} /> Ver mi Tienda
+            </Link>
+            <div className="w-px h-5 bg-gray-200 mx-1"></div>
+            <button 
+                onClick={copyLink} 
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white hover:bg-gray-50 text-gray-600 transition-all active:scale-95"
+                title="Copiar enlace"
+            >
+                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+            </button>
+          </div>
+        )}
+        <button 
+            onClick={onLogout} 
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
+        >
+            <LogOut size={16} /> Cerrar Sesión
+        </button>
+      </div>
+    </aside>
+  )
+}
 
 // 3. COMPONENTE MÓVIL EXTRAÍDO (Acelerado por GPU)
 const MobileBottomBar = ({ pathname }: { pathname: string }) => (
-  <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
+  <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
     <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
       {NAV_LINKS.map((link) => {
         const isActive = pathname === link.href
@@ -91,7 +115,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
           return (
             <div key={link.href} className="flex-shrink-0 relative -top-6 px-2">
               <Link href={link.href} className="block group">
-                <div className="w-12 h-12 bg-[#151515] text-white rounded-full flex items-center justify-center shadow-xl shadow-black/20 ring-4 ring-white group-active:scale-65 transition-transform duration-200">
+                <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ring-4 ring-white group-active:scale-95 transition-transform duration-200">
                   <PlusCircle size={26} strokeWidth={2.5} />
                 </div>
               </Link>
