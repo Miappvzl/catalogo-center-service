@@ -155,13 +155,13 @@ export default async function AdminDashboard() {
                             const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : Package;
                             
                             return (
-                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-gray-100 hover:border-gray-200 rounded-2xl transition-all">
+                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border-b border-b-gray-100 hover:border-gray-200 rounded-2xl transition-all">
                                 <div className="flex items-center gap-4">
                                     {/* Icono de Estado Sustituto de Emojis */}
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 transition-colors ${
-                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-200 group-hover:border-yellow-300' :
-                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 group-hover:border-emerald-300' :
-                                        'bg-gray-50 text-gray-500 border-gray-200 group-hover:border-gray-300'
+                                    <div className={`w-12 h-12 flex items-center justify-center  shrink-0 transition-colors ${
+                                        order.status === 'pending' ? ' text-yellow-600  group-hover:text-yellow-500' :
+                                        order.status === 'paid' ? ' text-emerald-600  group-hover:text-emerald-500' :
+                                        ' text-gray-500  group-hover:text-gray-600'
                                     }`}>
                                         <StatusIcon size={20} strokeWidth={2.5} />
                                     </div>
@@ -170,7 +170,7 @@ export default async function AdminDashboard() {
                                             {order.customer_name}
                                         </p>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                            <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                                                 #{order.order_number}
                                             </span>
                                             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">
@@ -181,10 +181,10 @@ export default async function AdminDashboard() {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-black text-base text-gray-900 tracking-tight">${order.total_usd}</p>
-                                    <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 
-                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        'bg-gray-50 text-gray-600 border-gray-200'
+                                    <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 ' : 
+                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-700 ' :
+                                        'bg-gray-50 text-gray-600 '
                                     }`}>
                                         {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : 'Enviado'}
                                     </span>

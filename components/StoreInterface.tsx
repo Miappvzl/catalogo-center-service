@@ -299,12 +299,20 @@ export default function StoreInterface({ store, products, rates }: Props) {
             <div className="columns-2 gap-3 space-y-3 md:columns-auto md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-6 md:space-y-0">
               {displayedProducts.map(product => {
                 const pricing = getProductPricing(product)
+                
+                
+                // NUEVO: CÁLCULO DE INVENTARIO BLINDADO
+const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0 
+  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+  : (product.stock || 0) <= 0;
+
                 return (
                   <ProductCard
                     key={product.id}
                     product={product}
                     pricing={pricing}
                     onOpen={handleOpenProduct}
+                    isOutOfStock={isCompletelyOutOfStock} // NUEVO PROP A ENVIAR
                   />
                 )
               })}

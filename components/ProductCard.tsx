@@ -2,7 +2,6 @@
 
 import { ImageIcon, ShoppingCart, Flame } from 'lucide-react'
 
-// Interfaz para estandarizar los datos que recibe
 interface ProductCardProps {
   product: any;
   pricing: {
@@ -12,18 +11,17 @@ interface ProductCardProps {
     hasDiscount: boolean;
   };
   onOpen: (product: any) => void;
+  isOutOfStock?: boolean; // NUEVO PROP
 }
 
-export default function ProductCard({ product, pricing, onOpen }: ProductCardProps) {
-  // Calculamos el ahorro exacto basado en la penalidad guardada por el admin
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false }: ProductCardProps) {
   const exactSavings = Number(product.usd_penalty || 0);
 
   return (
     <div 
-      className="break-inside-avoid md:break-inside-auto w-full group cursor-pointer flex flex-col gap-0 relative transition-transform duration-200 md:hover:-translate-y-1"
-      onClick={() => onOpen(product)}
+      className={`break-inside-avoid md:break-inside-auto w-full group cursor-pointer flex flex-col gap-0 relative transition-all duration-300 md:hover:-translate-y-1 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+      onClick={() => { if (!isOutOfStock) onOpen(product) }}
     >
-      {/* Imagen Container: IMAGEN 100% LIMPIA (Sin overlays) */}
       <div className="relative w-full bg-gray-50 overflow-hidden border border-gray-200/60 rounded-[3px] md:aspect-[4/5]">
         {product.image_url ? (
           <img
@@ -37,34 +35,33 @@ export default function ProductCard({ product, pricing, onOpen }: ProductCardPro
             <ImageIcon size={24} strokeWidth={1.5} />
           </div>
         )}
+        
+        {/* OVERLAY AGOTADO GIGANTE (Opcional pero recomendado para UX) */}
+        {isOutOfStock && (
+             <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px] flex items-center justify-center z-10">
+                 <span className="bg-white/90 text-gray-900 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 border border-gray-200">Agotado</span>
+             </div>
+        )}
       </div>
 
-      {/* Apartado de Información Estructurada */}
       <div className="flex flex-col px-0.5 mt-3">
         
         {/* Badges Estilo Editorial */}
-        {(pricing.hasDiscount || product.stock <= 0) && (
+        {(pricing.hasDiscount || isOutOfStock) && (
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {pricing.hasDiscount && exactSavings > 0 && (
-              <span className=" text-emerald-700 text-[11px] font-bold tracking-wide flex items-center gap-1">
+            {pricing.hasDiscount && exactSavings > 0 && !isOutOfStock && (
+              <span className="text-emerald-700 text-[11px] font-bold tracking-wide flex items-center gap-1">
                 Ahorra ${exactSavings.toFixed(2)} pagando en USD 
                 <Flame size={14} className="text-emerald-600 fill-emerald-600/20" />
-              </span>
-            )}
-            {product.stock <= 0 && (
-              <span className="bg-white text-black border border-gray-200 text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm flex items-center">
-                Agotado
               </span>
             )}
           </div>
         )}
 
-        {/* Título del Producto */}
         <h3 className="text-xs md:text-sm font-bold text-gray-900 tracking-tight leading-snug group-hover:text-gray-600 transition-colors line-clamp-2">
           {product.name}
         </h3>
 
-        {/* Fila de Acción: Precios (Izquierda) + Botón Carrito (Derecha) */}
         <div className="flex items-end justify-between gap-3 mt-1.5">
           <div className="flex flex-col min-w-0">
             <span className="text-sm md:text-base font-black text-gray-900 leading-none">
@@ -78,15 +75,15 @@ export default function ProductCard({ product, pricing, onOpen }: ProductCardPro
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onOpen(product);
+              if(!isOutOfStock) onOpen(product);
             }}
-            className="bg-white text-gray-900 p-2 md:p-2.5 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 transition-colors active:scale-95 flex items-center justify-center shrink-0"
+            disabled={isOutOfStock}
+            className={`p-2 md:p-2.5 rounded-full border transition-colors flex items-center justify-center shrink-0 ${isOutOfStock ? 'bg-gray-100 text-gray-400 border-transparent cursor-not-allowed' : 'bg-white text-gray-900 border-gray-200 hover:border-black hover:bg-gray-50 active:scale-95'}`}
             aria-label="Ver producto"
           >
             <ShoppingCart className="w-4 h-4 md:w-[16px] md:h-[16px]" strokeWidth={2.5} />
           </button>
         </div>
-        
       </div>
     </div>
   )
