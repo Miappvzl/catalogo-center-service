@@ -83,6 +83,8 @@ export default function ProductPage() {
   }
 
   const handleAddToCart = () => {
+
+    
     if (variants.length > 0) {
         if (!selectedColor) return Swal.fire('Falta Color', 'Selecciona un color', 'warning')
         if (!selectedSize) return Swal.fire('Falta Talla', 'Selecciona tu talla', 'warning')
@@ -94,6 +96,7 @@ export default function ProductPage() {
         }
     } else {
         addItem(product)
+        
     }
 
     const Toast = Swal.mixin({

@@ -84,6 +84,7 @@ export default function InventoryPage() {
     }
     fetchInventory()
   }, [])
+  
 
   // 2. ACTUALIZAR STOCK
   const handleStockChange = (id: string, newVal: string) => {

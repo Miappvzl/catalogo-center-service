@@ -8,7 +8,7 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   const { slug } = await params
   const supabase = await createClient()
 
-  // 1. OBTENER TIENDA
+  // 1. OBTENER TIENDA (Ahora traerá automáticamente hero_url)
   const { data: store } = await supabase
     .from('stores')
     .select('*, payment_config, shipping_config') 
@@ -26,9 +26,9 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     .eq('user_id', store.user_id)
     .order('created_at', { ascending: false })
 
-  // 3. OBTENER TASAS (CORREGIDO: Usando 'app_config')
+  // 3. OBTENER TASAS
   const { data: rates } = await supabase
-    .from('app_config') // <--- AQUÍ ESTABA EL ERROR
+    .from('app_config')
     .select('*')
     .limit(1)
     .single()

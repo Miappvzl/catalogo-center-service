@@ -2,18 +2,18 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 // 1. DEFINICIÓN DE TIPOS (El Contrato)
-// Aquí le decimos a TypeScript exactamente qué lleva un item del carrito
 export interface CartItem {
   id: string
   productId: string
   variantId: string | null
   name: string
-  price: number        // <--- Aquí definimos que SIEMPRE habrá un precio
+  price: number
   basePrice: number
   penalty: number
   image: string
   quantity: number
   variantInfo: string | null
+  category?: string // <--- Contrato actualizado
 }
 
 interface CartState {
@@ -52,14 +52,13 @@ export const useCart = create<CartState>()(
               productId: productId,
               variantId: variantId,
               name: product.name,
-              // Lógica de Precio: Si la variante tuviera precio propio lo usaríamos, sino el del producto
               price: Number(product.usd_cash_price), 
               basePrice: Number(product.usd_cash_price),
               penalty: Number(product.usd_penalty || 0),
-              // Lógica de Imagen: Prioridad Variante > Producto
               image: variant?.variant_image || product.image_url,
               quantity: quantity,
-              variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null
+              variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
+              category: product.category // <--- 🚀 AQUÍ ESTABA EL ERROR: Faltaba guardar la categoría
             }
 
             return { items: [...state.items, newItem] }
@@ -77,7 +76,6 @@ export const useCart = create<CartState>()(
         set((state) => ({
           items: state.items.map((item) => {
             if (item.id === itemId) {
-              // Evitamos cantidades negativas o cero
               const newQuantity = Math.max(1, quantity)
               return { ...item, quantity: newQuantity }
             }

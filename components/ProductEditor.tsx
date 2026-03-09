@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Package, Box, Tag, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
+import { compressImage } from '@/utils/imageOptimizer' // IMPORTANTE: El nuevo optimizador
 import Swal from 'sweetalert2'
 
 interface ProductEditorProps {
@@ -22,8 +23,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
   const [loading, setLoading] = useState(!!productId)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false) 
+  const [isDirty, setIsDirty] = useState(false) // ESTADO UX: Control de cambios
 
-  // LOGICA DE MONEDA
   const isEur = storeSettings.currency === 'eur'
   const activeRate = isEur ? rates.eur : rates.usd
   const rateLabel = isEur ? 'Tasa Euro' : 'Tasa BCV'
@@ -33,8 +34,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     category: '',
     description: '',
     image_url: '',
-    price: 0,    // Precio Cash (Divisa)
-    penalty: 0,  // Margen para Bs
+    price: '' as number | '',    
+    penalty: '' as number | '',  
     status: 'active'
   })
 
@@ -45,30 +46,41 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     colorName: '',
     colorHex: '#000000',
     sizes: '',
-    defaultStock: 10,
+    defaultStock: 10 as number | '',
     images: [] as string[]
   })
 
-  // --- MOTOR DE CÁLCULO DE DESCUENTOS ---
+  // Helpers para actualizar estado y marcar como "Sucio"
+  const updateForm = (field: string, value: any) => {
+      setFormData(prev => ({ ...prev, [field]: value }))
+      setIsDirty(true)
+  }
+  const updateVariantInput = (field: string, value: any) => {
+      setVariantInput(prev => ({ ...prev, [field]: value }))
+      setIsDirty(true)
+  }
+
   const math = useMemo(() => {
       const cashPrice = Number(formData.price) || 0
       const markup = Number(formData.penalty) || 0
-      
-      // 1. Precio de Lista (Full)
       const listPrice = cashPrice + markup
-
-      // 2. Porcentaje de Descuento (Para el Badge)
-      // Fórmula: (Markup / ListPrice) * 100
       const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
-
-      // 3. Referencia en Bolívares
-      // Siempre se calcula sobre el Precio de Lista * Tasa Seleccionada
       const refBs = listPrice * activeRate
-
       return { listPrice, discountPercent, refBs }
   }, [formData.price, formData.penalty, activeRate])
 
-  // CARGA INICIAL
+  // PREVENCIÓN DE CIERRE ACCIDENTAL EN EL NAVEGADOR
+  useEffect(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+          if (isDirty) {
+              e.preventDefault()
+              e.returnValue = ''
+          }
+      }
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
+
   useEffect(() => {
     if (productId) {
       const fetchProduct = async () => {
@@ -98,6 +110,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
            setVariants(product.product_variants.sort((a: any, b: any) => a.created_at.localeCompare(b.created_at)))
         }
         setLoading(false)
+        setIsDirty(false) // Inicializamos limpio
       }
       fetchProduct()
     } else {
@@ -105,70 +118,130 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     }
   }, [productId])
 
-  // SUBIDA DE IMÁGENES
-  const handleImageUpload = async (file: File, target: 'main' | 'variant') => {
+  // UX FIX: FUNCIÓN DE SALIDA SEGURA
+  const handleExit = (e?: React.MouseEvent) => {
+      if (e) e.preventDefault()
+      if (!isDirty) {
+          router.back()
+          return
+      }
+
+      Swal.fire({
+          title: '¿Salir sin guardar?',
+          text: 'Tienes cambios pendientes. Si sales ahora, se perderán.',
+          icon: 'warning',
+          showCancelButton: true,
+          showDenyButton: true,
+          confirmButtonText: 'Sí, descartar',
+          denyButtonText: 'Guardar producto',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#ef4444', // Rojo peligro
+          denyButtonColor: '#000000', // Negro principal
+          customClass: { popup: 'rounded-full' }
+      }).then((result) => {
+          if (result.isConfirmed) {
+              setIsDirty(false)
+              router.back()
+          } else if (result.isDenied) {
+              handleSave()
+          }
+      })
+  }
+
+  // RENDIMIENTO Y UX: SUBIDA MÚLTIPLE OPTIMIZADA
+  const handleImageUpload = async (files: FileList | File[], target: 'main' | 'variant') => {
+      const fileArray = Array.from(files)
+      if (fileArray.length === 0) return
+
       try {
           setUploading(true)
-          if (!file.type.startsWith('image/')) throw new Error('Solo imágenes')
-          if (file.size > 5 * 1024 * 1024) throw new Error('Máx 5MB')
-
-          const fileExt = file.name.split('.').pop()
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-          const filePath = `${fileName}`
-
-          const { error } = await supabase.storage.from('variants').upload(filePath, file)
-          if (error) throw error
-
-          const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(filePath)
-
+          
           if (target === 'main') {
-              setFormData(prev => ({ ...prev, image_url: publicUrl }))
+              const file = fileArray[0]
+              if (!file.type.startsWith('image/')) throw new Error('Solo imágenes permitidas')
+              
+              const compressedFile = await compressImage(file, 1080, 0.8) // Optimizamos a 1080p máximo
+              const fileName = `main-${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`
+              
+              const { error } = await supabase.storage.from('variants').upload(fileName, compressedFile)
+              if (error) throw error
+
+              const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
+              updateForm('image_url', publicUrl)
+
           } else {
-              if (variantInput.images.length >= 3) return Swal.fire('Límite', 'Máx 3 fotos', 'warning')
-              setVariantInput(prev => ({ ...prev, images: [...prev.images, publicUrl] }))
+              // LÓGICA DE MÚLTIPLES IMÁGENES DE VARIANTE
+              const currentSlots = 3 - variantInput.images.length
+              if (currentSlots <= 0) return Swal.fire('Límite alcanzado', 'Máximo 3 fotos por variante', 'warning')
+              
+              const filesToUpload = fileArray.slice(0, currentSlots)
+              const newUrls: string[] = []
+
+              for (const file of filesToUpload) {
+                  if (!file.type.startsWith('image/')) continue
+                  
+                  const compressedFile = await compressImage(file, 800, 0.7) // Optimizamos variantes un poco más
+                  const fileName = `var-${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`
+                  
+                  const { error } = await supabase.storage.from('variants').upload(fileName, compressedFile)
+                  if (!error) {
+                      const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
+                      newUrls.push(publicUrl)
+                  }
+              }
+              
+              setVariantInput(prev => ({ ...prev, images: [...prev.images, ...newUrls] }))
+              setIsDirty(true)
           }
       } catch (error: any) {
           Swal.fire('Error', error.message, 'error')
       } finally {
           setUploading(false)
+          if (target === 'main' && mainImageInputRef.current) mainImageInputRef.current.value = ''
+          if (target === 'variant' && variantImageInputRef.current) variantImageInputRef.current.value = ''
       }
   }
 
   const removeImageFromVariantInput = (index: number) => {
       const newImages = [...variantInput.images]
       newImages.splice(index, 1)
-      setVariantInput({ ...variantInput, images: newImages })
+      updateVariantInput('images', newImages)
   }
 
   const addVariantGroup = () => {
-     if (!variantInput.colorName) return Swal.fire('Falta Color', 'Define un nombre', 'warning')
-     if (!variantInput.sizes) return Swal.fire('Faltan Tallas', 'Ingresa tallas', 'warning')
-     
-     const sizeList = variantInput.sizes.split(',').map(s => s.trim()).filter(Boolean)
-     
-     const newVariants = sizeList.map(s => ({
-         id: `temp-${crypto.randomUUID()}`, 
-         color_name: variantInput.colorName,
-         color_hex: variantInput.colorHex,
-         size: s, 
-         stock: variantInput.defaultStock,
-         gallery: variantInput.images, 
-         variant_image: variantInput.images[0] || '' 
-     }))
+      if (!variantInput.colorName) return Swal.fire('Falta Color', 'Define un nombre para el color', 'warning')
+      if (!variantInput.sizes) return Swal.fire('Faltan Tallas', 'Ingresa al menos una talla', 'warning')
+      
+      const sizeList = variantInput.sizes.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+      const stockToApply = Number(variantInput.defaultStock) || 0
+      
+      const newVariants = sizeList.map(s => ({
+          id: `temp-${crypto.randomUUID()}`, 
+          color_name: variantInput.colorName,
+          color_hex: variantInput.colorHex,
+          size: s, 
+          stock: stockToApply,
+          gallery: variantInput.images, 
+          variant_image: variantInput.images[0] || '' 
+      }))
 
-     setVariants([...variants, ...newVariants])
-     setVariantInput({ ...variantInput, sizes: '', defaultStock: 10, images: [] }) 
-     Swal.fire({ icon: 'success', title: 'Agregado', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 })
+      setVariants([...variants, ...newVariants])
+      setVariantInput({ ...variantInput, sizes: '', defaultStock: 10, images: [] }) 
+      setIsDirty(true)
+      
+      const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' }})
+      Toast.fire({ icon: 'success', title: 'Variantes Generadas' })
   }
 
   const removeVariant = (id: string) => {
       if (!id.startsWith('temp-')) setDeletedVariantIds(prev => [...prev, id])
       setVariants(variants.filter(v => v.id !== id))
+      setIsDirty(true)
   }
 
   const handleSave = async () => {
-      if (!formData.name) return Swal.fire('Error', 'Falta el nombre', 'warning')
-      if (formData.price <= 0) return Swal.fire('Error', 'Precio inválido', 'warning')
+      if (!formData.name) return Swal.fire('Falta información', 'El producto debe tener un nombre', 'warning')
+      if (Number(formData.price) <= 0) return Swal.fire('Error', 'El precio base debe ser mayor a 0', 'warning')
       
       setSaving(true)
       try {
@@ -180,8 +253,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
               category: formData.category,
               description: formData.description,
               image_url: formData.image_url,
-              usd_cash_price: formData.price, 
-              usd_penalty: formData.penalty,
+              usd_cash_price: Number(formData.price) || 0, 
+              usd_penalty: Number(formData.penalty) || 0,
               status: formData.status,
               user_id: user.id,    
               store_id: storeSettings.id
@@ -224,7 +297,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
               if (toUpdate.length > 0) await supabase.from('product_variants').upsert(toUpdate)
           }
 
-          Swal.fire({ title: '¡Guardado!', icon: 'success', confirmButtonColor: '#000'})
+          setIsDirty(false) // Limpiamos el estado
+          Swal.fire({ title: '¡Guardado con éxito!', icon: 'success', confirmButtonColor: '#000', customClass: { popup: 'rounded-full' }})
           router.push('/admin/inventory')
 
       } catch (error: any) {
@@ -236,215 +310,278 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]"><Loader2 className="animate-spin text-gray-400" size={32}/></div>
 
-  return (
+ return (
     <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white">
       
-      {/* HEADER */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-30 px-4 md:px-6 py-4 flex justify-between items-center transition-all shadow-sm">
-        <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors group">
-                <ArrowLeft size={20} className="text-gray-500 group-hover:text-black"/>
+      {/* HEADER LIMPIO CON ESPACIO RESPIRABLE Y RESPONSIVE OPTIMIZADO */}
+      <div className="bg-white/90 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-all">
+        
+        {/* Lado Izquierdo: Controles de navegación y títulos */}
+        <div className="flex items-center gap-3 md:gap-6 min-w-0">
+            <button onClick={handleExit} className="p-2 shrink-0 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full transition-colors group" title="Volver">
+                <ArrowLeft className="text-gray-500 group-hover:text-black transition-colors w-4 h-4 md:w-5 md:h-5"/>
             </button>
-            <div>
-                <h1 className="font-black text-lg md:text-xl leading-none">{productId ? 'Editar' : 'Nuevo Producto'}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Inventario</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isEur ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                        Calculando en {isEur ? 'Euros' : 'Dólares'}
+            <div className="min-w-0">
+                <h1 className="font-black text-lg md:text-2xl leading-none truncate">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
+                <div className="flex items-center gap-2 mt-1.5 md:mt-2 overflow-hidden">
+                    <span className="hidden sm:block text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">Catálogo</span>
+                    <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
+                    <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase border whitespace-nowrap ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                        {isEur ? 'EUR' : 'USD'} <span className="hidden sm:inline">Base</span>
                     </span>
                 </div>
             </div>
         </div>
-        <div className="flex items-center gap-2">
-             <button onClick={() => router.back()} className="hidden md:block px-4 py-2 text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase tracking-wide">Cancelar</button>
-             <button onClick={handleSave} disabled={saving} className="bg-black text-white px-5 py-2.5 rounded-xl font-bold text-xs md:text-sm shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70">
-                {saving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} strokeWidth={2.5}/>}
-                <span>Guardar</span>
+
+        {/* Lado Derecho: Acciones (Adaptativas) */}
+        <div className="flex items-center gap-2 md:gap-5 shrink-0 pl-2">
+             <button onClick={handleExit} className="hidden md:block px-4 py-2 text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase tracking-wide">Cancelar</button>
+             <button onClick={handleSave} disabled={saving} className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full font-bold text-xs md:text-sm hover:bg-gray-800 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70">
+                {saving ? <Loader2 className="animate-spin w-3.5 h-3.5 md:w-4 md:h-4"/> : <Save strokeWidth={2.5} className="w-3.5 h-3.5 md:w-4 md:h-4"/>}
+                <span className="hidden sm:block">Guardar Producto</span>
+                <span className="sm:hidden">Guardar</span>
              </button>
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6 md:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6 md:py-10">
+        
+        {/* AVISO DE CAMBIOS SIN GUARDAR (Estética Premium Clean Look) */}
+        {isDirty && (
+             <div className="mb-6 md:mb-8 bg-yellow-50/80 border border-yellow-200/80 p-4 rounded-xl flex items-start sm:items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                 <div className="bg-yellow-100 p-2 md:p-2.5 rounded-xl shrink-0 mt-0.5 sm:mt-0 border border-yellow-200">
+                     <AlertTriangle className="text-yellow-600 w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5}/>
+                 </div>
+                 <div>
+                     <p className="text-sm font-black text-yellow-800 leading-tight">Cambios sin guardar</p>
+                     <p className="text-xs font-medium text-yellow-700/80 mt-1">No olvides presionar <span className="font-bold">Guardar</span> antes de salir para no perder tu progreso.</p>
+                 </div>
+             </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
 
             {/* IZQUIERDA (INPUTS & MATRIZ) */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-8 space-y-8">
                 
                 {/* 1. INFO PRINCIPAL */}
-                <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 md:gap-8">
-                    {/* FOTO */}
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-gray-200 flex flex-col md:flex-row gap-6 md:gap-8">
+                    {/* FOTO PRINCIPAL OPTIMIZADA */}
                     <div className="w-full md:w-1/3 shrink-0">
-                        <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'main')}/>
-                        <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-gray-50 rounded-2xl border-2 border-dashed ${uploading ? 'border-blue-400 animate-pulse' : 'border-gray-200 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
+                        {/* Se usa handleImageUpload para delegar la conversion a Array */}
+                        <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'main')}/>
+                        <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-gray-50 rounded-2xl border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
                             {formData.image_url ? (
-                                <img src={formData.image_url} className="w-full h-full object-contain p-4 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
+                                <img src={formData.image_url} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" alt="Producto" />
                             ) : (
-                                <div className="text-center p-4">
-                                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 text-gray-400 shadow-sm border border-gray-100">
-                                        {uploading ? <Loader2 className="animate-spin"/> : <Upload size={20}/>}
+                                <div className="text-center p-4 flex flex-col items-center">
+                                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 text-gray-400 border border-gray-200 group-hover:text-black group-hover:border-gray-300 transition-colors">
+                                        {uploading ? <Loader2 className="animate-spin"/> : <ImageIcon size={20}/>}
                                     </div>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-black">Subir Foto</p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-black transition-colors">Subir Foto Base</p>
                                 </div>
                             )}
                         </div>
                     </div>
-                    {/* INPUTS TEXTO */}
-                    <div className="flex-1 space-y-4">
+                    
+                    {/* INPUTS TEXTO LIMPIOS */}
+                    <div className="flex-1 space-y-5">
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Nombre</label>
-                            <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej: Nike Air Force 1" className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-xl px-4 py-3 font-bold text-base text-gray-900 placeholder:text-gray-300 transition-all outline-none"/>
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Nombre del Producto</label>
+                            <input value={formData.name} onChange={e => updateForm('name', e.target.value)} placeholder="Ej: Nike Air Force 1" className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-bold text-base text-gray-900 placeholder:text-gray-400 transition-all outline-none"/>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Categoría</label>
-                                <input value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} placeholder="Ej: Zapatos" className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-xl px-4 py-3 font-bold text-gray-900 outline-none"/>
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Categoría</label>
+                                <input value={formData.category} onChange={e => updateForm('category', e.target.value)} placeholder="Ej: Zapatos" className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-bold text-gray-900 placeholder:text-gray-400 transition-all outline-none"/>
                             </div>
                              <div>
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Estado</label>
-                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-xl px-4 py-3 font-bold text-gray-900 outline-none cursor-pointer">
-                                    <option value="active">Activo</option>
-                                    <option value="draft">Borrador</option>
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Estado en Tienda</label>
+                                <select value={formData.status} onChange={e => updateForm('status', e.target.value)} className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-bold text-gray-900 transition-all outline-none cursor-pointer appearance-none">
+                                    <option value="active">Activo (Visible)</option>
+                                    <option value="draft">Borrador (Oculto)</option>
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Descripción</label>
-                            <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Detalles..." className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-xl px-4 py-3 font-medium text-sm text-gray-900 min-h-[80px] resize-none outline-none"/>
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Descripción</label>
+                            <textarea value={formData.description} onChange={e => updateForm('description', e.target.value)} placeholder="Añade detalles, materiales, cuidados..." className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-medium text-sm text-gray-900 placeholder:text-gray-400 min-h-[120px] resize-none transition-all outline-none"/>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. MATRIZ DE VARIANTES */}
-                <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-gray-200">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Box size={20}/> Variantes</h3>
-                        <span className="bg-gray-100 px-3 py-1 rounded-full text-[10px] font-bold text-gray-500">{variants.length} SKU</span>
+                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Box size={20}/> Matriz de Variantes</h3>
+                        <span className="bg-gray-100 border border-gray-200 px-3 py-1 rounded-full text-[10px] font-bold text-gray-600">{variants.length} SKUs Generados</span>
                     </div>
 
-                    <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-200">
-                        <input type="file" ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'variant')}/>
+                    {/* CREADOR RÁPIDO DE VARIANTES */}
+                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200 mb-8">
+                        {/* MULTIPLE ACTIVADO PARA LAS FOTOS DE VARIANTE */}
+                        <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')}/>
 
                         <div className="flex flex-col gap-6">
+                            {/* Fila 1: Color y Fotos */}
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="flex-1">
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 block">1. Color</label>
-                                    <div className="flex items-center gap-3 bg-white p-2 rounded-xl border-2 border-gray-200 focus-within:border-black transition-all">
-                                        <input type="color" value={variantInput.colorHex} onChange={e => setVariantInput({...variantInput, colorHex: e.target.value})} className="w-10 h-10 rounded-lg border-none cursor-pointer bg-transparent"/>
-                                        <input type="text" placeholder="Ej: Negro" value={variantInput.colorName} onChange={e => setVariantInput({...variantInput, colorName: e.target.value})} className="flex-1 bg-transparent border-none text-sm font-bold outline-none text-gray-900 -mt-0.5"/>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">1. Color (O Modelo)</label>
+                                    <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+                                        <input type="color" value={variantInput.colorHex} onChange={e => updateVariantInput('colorHex', e.target.value)} className="w-10 h-10 rounded-lg border-none cursor-pointer bg-transparent shrink-0"/>
+                                        <input type="text" placeholder="Ej: Negro Matte" value={variantInput.colorName} onChange={e => updateVariantInput('colorName', e.target.value)} className="flex-1 bg-transparent border-none text-sm font-bold outline-none text-gray-900 min-w-0"/>
                                     </div>
                                 </div>
                                 <div className="flex-1">
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 flex justify-between">
-                                        <span>2. Fotos ({variantInput.images.length}/3)</span>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex justify-between">
+                                        <span>2. Fotos de Variante (Max 3)</span>
+                                        <span>{variantInput.images.length}/3</span>
                                     </label>
-                                    <div className="flex gap-2 h-14">
-                                        <button onClick={() => variantImageInputRef.current?.click()} disabled={variantInput.images.length >= 3 || uploading} className="w-14 h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-black hover:bg-white transition-all disabled:opacity-50 text-gray-400 hover:text-black">
-                                            {uploading ? <Loader2 className="animate-spin" size={16}/> : <Plus size={20}/>}
+                                    <div className="flex gap-2 h-[56px]">
+                                        <button onClick={() => variantImageInputRef.current?.click()} disabled={variantInput.images.length >= 3 || uploading} className="w-[56px] h-full rounded-xl border border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400 hover:bg-white transition-all disabled:opacity-50 text-gray-400 hover:text-black shrink-0 bg-gray-50">
+                                            {uploading ? <Loader2 className="animate-spin" size={18}/> : <Plus size={22}/>}
                                         </button>
                                         {variantInput.images.map((img, idx) => (
-                                            <div key={idx} className="relative w-14 h-full rounded-xl border border-gray-200 overflow-hidden group bg-white">
+                                            <div key={idx} className="relative w-[56px] h-full rounded-xl border border-gray-200 overflow-hidden group bg-white shrink-0">
                                                 <img src={img} className="w-full h-full object-cover"/>
-                                                <button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white"><X size={16}/></button>
+                                                <button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity"><X size={16}/></button>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Fila 2: Tallas y Stock */}
                             <div className="flex flex-col md:flex-row gap-6 items-end">
                                 <div className="flex-[2] w-full">
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 block">3. Tallas (Separar con coma)</label>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">3. Tallas (Separadas por coma)</label>
                                     <input 
-                                        placeholder="S, M, L, XL" 
+                                        placeholder="Ej: S, M, L, XL" 
                                         value={variantInput.sizes} 
-                                        onChange={e => setVariantInput({...variantInput, sizes: e.target.value.toUpperCase()})} 
-                                        className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-900 focus:border-black outline-none shadow-sm text-sm placeholder:text-gray-300"
+                                        onChange={e => updateVariantInput('sizes', e.target.value)} 
+                                        className="w-full bg-white border border-gray-200 focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-bold text-gray-900 outline-none text-sm placeholder:text-gray-400 transition-all"
                                     />
                                 </div>
                                 <div className="flex-1 w-full">
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase mb-2 block">4. Stock</label>
-                                    <input type="number" min="0" value={variantInput.defaultStock} onChange={e => setVariantInput({...variantInput, defaultStock: parseInt(e.target.value) || 0})} className="w-full bg-white border-2 border-gray-200 focus:border-black rounded-xl px-4 py-3 font-black text-gray-900 outline-none shadow-sm text-center"/>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">4. Stock Inicial</label>
+                                    <input 
+                                        type="number" 
+                                        min="0" 
+                                        value={variantInput.defaultStock} 
+                                        onChange={e => updateVariantInput('defaultStock', e.target.value === '' ? '' : parseInt(e.target.value))} 
+                                        className="w-full bg-white border border-gray-200 focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 font-black text-gray-900 outline-none text-center transition-all"
+                                    />
                                 </div>
                             </div>
 
-                            <button onClick={addVariantGroup} className="w-full bg-black text-white p-3 rounded-xl hover:bg-gray-800 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
-                                <Plus size={16} strokeWidth={3}/> Agregar
+                            <button onClick={addVariantGroup} className="w-full bg-white border border-gray-200 hover:border-black text-black py-3.5 rounded-full hover:bg-gray-50 active:bg-gray-100 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-2">
+                                <Plus size={16} strokeWidth={3}/> Generar SKUs
                             </button>
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        {variants.map((v, i) => (
-                            <div key={i} className="flex items-center justify-between bg-white border border-gray-100 p-3 rounded-xl hover:border-gray-300 transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 shrink-0">
-                                        {v.variant_image ? <img src={v.variant_image} className="w-full h-full object-cover"/> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex }}></div>}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color_hex }}></div>
-                                            <p className="font-bold text-sm text-gray-900">{v.color_name}</p>
+                    {/* LISTA DE VARIANTES GENERADAS */}
+                    {variants.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                            <Box size={32} className="mx-auto text-gray-300 mb-3"/>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Sin variantes generadas</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {variants.map((v, i) => (
+                                <div key={i} className="flex items-center justify-between bg-white border border-gray-200 p-3 md:p-4 rounded-xl hover:border-gray-300 transition-colors">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center">
+                                            {v.variant_image ? <img src={v.variant_image} className="w-full h-full object-cover"/> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex }}></div>}
                                         </div>
-                                        <p className="text-xs text-gray-500">Talla: <span className="font-bold text-black">{v.size}</span></p>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: v.color_hex }}></div>
+                                                <p className="font-bold text-sm text-gray-900 truncate">{v.color_name}</p>
+                                            </div>
+                                            <div className="flex items-center mt-1">
+                                                <span className="text-[10px] font-mono font-bold bg-gray-50 border border-gray-200 text-gray-600 px-2 py-1 rounded-md leading-none">Talla: {v.size}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 shrink-0 pl-4">
+                                        <div className="text-right">
+                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Stock</p>
+                                            <p className="font-mono font-black text-sm text-gray-900 leading-none">{v.stock}</p>
+                                        </div>
+                                        <div className="w-px h-8 bg-gray-200 hidden md:block mx-1"></div>
+                                        <button onClick={() => removeVariant(v.id)} className="p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors" title="Eliminar SKU">
+                                            <Trash2 size={18}/>
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-right"><p className="text-[9px] font-bold text-gray-400 uppercase">Stock</p><p className="font-mono font-bold text-sm">{v.stock}</p></div>
-                                    <button onClick={() => removeVariant(v.id)} className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50"><Trash2 size={16}/></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* COLUMNA DERECHA (ESTRATEGIA PRECIOS) */}
-            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24 h-fit">
-                <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100">
+            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-28 h-fit">
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-gray-200">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><DollarSign size={20} className="text-green-600"/> Precios</h3>
+                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><DollarSign size={20} className="text-gray-400"/> Estrategia de Precio</h3>
                     </div>
                     
-                    <div className="space-y-5">
+                    <div className="space-y-6">
                         {/* INPUTS DE PRECIO */}
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Precio Cash (Divisa)</label>
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base)</label>
                             <div className="relative group">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-green-600">$</span>
-                                <input type="number" value={formData.price === 0 ? '' : formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value) || 0})} placeholder="0.00" className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-green-500 rounded-xl pl-8 pr-4 py-3 font-black text-xl text-gray-900 outline-none"/>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    value={formData.price} 
+                                    onChange={e => updateForm('price', e.target.value === '' ? '' : parseFloat(e.target.value))} 
+                                    placeholder="0.00" 
+                                    className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl pl-8 pr-4 py-3.5 font-black text-xl text-gray-900 outline-none transition-all"
+                                />
                             </div>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Margen / Recargo</label>
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen por Conversión (Opcional)</label>
                             <div className="relative group">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500">$</span>
-                                <input type="number" value={formData.penalty === 0 ? '' : formData.penalty} onChange={e => setFormData({...formData, penalty: parseFloat(e.target.value) || 0})} placeholder="0.00" className="w-full bg-gray-50 border-2 border-transparent focus:bg-white focus:border-red-500 rounded-xl pl-8 pr-4 py-3 font-bold text-lg text-gray-900 outline-none"/>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    value={formData.penalty} 
+                                    onChange={e => updateForm('penalty', e.target.value === '' ? '' : parseFloat(e.target.value))} 
+                                    placeholder="0.00" 
+                                    className="w-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl pl-8 pr-4 py-3.5 font-bold text-lg text-gray-900 outline-none transition-all"
+                                />
                             </div>
                         </div>
 
-                        {/* TARJETA NEGRA DE SIMULACIÓN */}
-                        <div className="bg-[#1A1D24] rounded-2xl p-5 text-center shadow-xl relative overflow-hidden mt-4">
+                        {/* TARJETA NEGRA DE SIMULACIÓN (Flat Design) */}
+                        <div className="bg-[#0A0A0A] rounded-2xl p-6 text-center relative overflow-hidden mt-8 border border-[#222]">
                             <div className="relative z-10 flex flex-col items-center gap-4">
-                                <span className="bg-white/10 text-white/70 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-white/5">
-                                    {rateLabel}: {activeRate.toFixed(2)}
+                                <span className="bg-white/10 text-white/70 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider border border-white/10">
+                                    {rateLabel} Actual: {activeRate.toFixed(2)}
                                 </span>
 
                                 {/* SIMULACIÓN DEL BADGE */}
                                 {math.discountPercent > 0 && (
-                                    <div className="bg-white text-black px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-lg transform -rotate-2">
+                                    <div className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transform -rotate-2 border border-gray-200 mt-2">
                                         PAGA EN DIVISA -{math.discountPercent}%
                                     </div>
                                 )}
 
-                                <div className="w-full border-t border-white/10 pt-4 mt-2">
-                                    <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">
-                                        Precio Visible (Bs)
+                                <div className="w-full border-t border-white/10 pt-5 mt-2">
+                                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1.5">
+                                        Precio Visible al Público
                                     </p>
-                                    <p className="font-black text-3xl text-white tracking-tight leading-none">
+                                    <p className="font-black text-4xl text-white tracking-tight leading-none mb-2">
                                         Bs {math.refBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                     </p>
-                                    <p className="text-[9px] text-white/30 mt-2">
-                                        Equivale a ${math.listPrice.toFixed(2)} (Full)
+                                    <p className="text-[10px] text-white/40 font-medium">
+                                        Equivale a ${math.listPrice.toFixed(2)} Divisa Full
                                     </p>
                                 </div>
                             </div>

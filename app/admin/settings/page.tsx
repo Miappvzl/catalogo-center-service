@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Save, Loader2, Phone, Globe, Store } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Save, Loader2, Phone, Globe, Store, Image as ImageIcon, Upload } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
+import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 
-// IMPORTAMOS LOS COMPONENTES QUE CONTIENEN LA LÓGICA PESADA
 import PaymentSettings from '@/components/admin/PaymentSettings'
 import ShippingSettings from '@/components/admin/ShippingSettings'
 import AdminHeader from '@/components/admin/AdminHeader'
@@ -15,11 +15,11 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [store, setStore] = useState<any>(null)
   
-  // Estado exclusivo para esta página: Identidad de la Tienda
-  const [identity, setIdentity] = useState({ phone: '', name: '' })
+  const [identity, setIdentity] = useState({ phone: '', name: '', hero_url: '' })
   const [savingIdentity, setSavingIdentity] = useState(false)
+  const [uploadingHero, setUploadingHero] = useState(false)
+  const heroInputRef = useRef<HTMLInputElement>(null)
 
-  // Carga inicial de datos
   useEffect(() => {
     const fetchSettings = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -33,15 +33,42 @@ export default function SettingsPage() {
         
       if (data) {
         setStore(data)
-        // Pre-llenamos los campos de identidad
-        setIdentity({ phone: data.phone || '', name: data.name })
+        setIdentity({ phone: data.phone || '', name: data.name, hero_url: data.hero_url || '' })
       }
       setLoading(false)
     }
     fetchSettings()
   }, [])
 
-  // Función para guardar SOLO la identidad (Nombre y WhatsApp)
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return
+      const file = e.target.files[0]
+      if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'error')
+
+      setUploadingHero(true)
+      try {
+          // Comprimimos la imagen del hero a un ancho máximo de 1920px
+          const compressedFile = await compressImage(file, 1920, 0.8)
+          const fileName = `hero-${store.id}-${Date.now()}.jpg`
+          
+          const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressedFile)
+          if (uploadError) throw uploadError
+          
+          const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
+          
+          setIdentity(prev => ({ ...prev, hero_url: publicUrl }))
+          
+          // Guardado automático del hero para mejor UX
+          await supabase.from('stores').update({ hero_url: publicUrl }).eq('id', store.id)
+          
+      } catch (error) {
+          Swal.fire('Error', 'No se pudo subir la imagen', 'error')
+      } finally {
+          setUploadingHero(false)
+          if (heroInputRef.current) heroInputRef.current.value = ''
+      }
+  }
+
   const saveIdentity = async () => {
     setSavingIdentity(true)
     const { error } = await supabase
@@ -56,75 +83,94 @@ export default function SettingsPage() {
     } else {
         const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
-            customClass: { popup: 'bg-black text-white' }
+            customClass: { popup: 'bg-black text-white rounded-xl text-sm font-bold' }
         })
         Toast.fire({ icon: 'success', title: 'Identidad Guardada' })
     }
   }
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-gray-400" size={32}/>
-    </div>
-  )
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={32}/></div>
 
   return (
     <div className="pb-20">
-      {/* 1. HEADER (Con lógica de cambio de logo incluida) */}
       <AdminHeader store={store} title="Configuración" />
       
       <div className="max-w-4xl mx-auto px-4 md:px-6 space-y-8">
         
-        {/* 2. SECCIÓN IDENTIDAD (Gestionada aquí mismo) */}
-        <section className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-xl border border-gray-200 ">
+        {/* SECCIÓN IDENTIDAD & APARIENCIA */}
+        <section className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                    <Globe size={20} className="text-blue-600"/> Identidad
+                    <Globe size={20} className="text-blue-600"/> Identidad de Marca
                 </h3>
                 <button 
                     onClick={saveIdentity} 
                     disabled={savingIdentity} 
-                    className="bg-[#151515] text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-gray-800 disabled:opacity-50 transition-all active:scale-95"
+                    className="bg-[#151515] text-white px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-gray-800 disabled:opacity-50 transition-all active:scale-95"
                 >
-                    {savingIdentity ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} 
+                    {savingIdentity ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} 
                     Guardar
                 </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block ml-1 flex items-center gap-1">
-                        <Store size={10}/> Nombre de la Tienda
+                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1 flex items-center gap-1">
+                        <Store size={12}/> Nombre de la Tienda
                     </label>
                     <input 
                         value={identity.name} 
                         onChange={e => setIdentity({...identity, name: e.target.value})} 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-900 focus:border-black focus:bg-white outline-none transition-all"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-900 focus:ring-1 focus:ring-black focus:bg-white outline-none transition-all"
                     />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block ml-1 flex items-center gap-1">
-                        <Phone size={10}/> WhatsApp Oficial
+                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1 flex items-center gap-1">
+                        <Phone size={12}/> WhatsApp Oficial
                     </label>
                     <input 
                         value={identity.phone} 
                         onChange={e => setIdentity({...identity, phone: e.target.value})} 
                         placeholder="Ej: 58412..." 
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 font-mono font-medium text-gray-900 focus:border-black focus:bg-white outline-none transition-all"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-mono font-medium text-gray-900 focus:ring-1 focus:ring-black focus:bg-white outline-none transition-all"
                     />
-                    <p className="text-[9px] text-gray-400 mt-1.5 ml-1">
-                        Número donde recibirás los pedidos (Formato: 58...)
+                    <p className="text-[9px] font-medium text-gray-400 mt-2 ml-1">
+                        Formato internacional (Ej: 58...)
                     </p>
                 </div>
             </div>
+
+            {/* SECCIÓN HERO BANNER */}
+            <div className="border-t border-gray-100 pt-6">
+                <label className="text-[10px] font-bold text-gray-400 uppercase mb-3 flex items-center gap-1">
+                    <ImageIcon size={12}/> Banner Principal (Hero)
+                </label>
+                <input type="file" ref={heroInputRef} className="hidden" accept="image/*" onChange={handleHeroUpload}/>
+                
+                {identity.hero_url ? (
+                    <div className="relative w-full h-40 md:h-48 rounded-xl overflow-hidden group border border-gray-200">
+                        <img src={identity.hero_url} className="w-full h-full object-cover" alt="Hero Banner" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => heroInputRef.current?.click()} className="bg-white text-black px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
+                                {uploadingHero ? <Loader2 className="animate-spin" size={14}/> : <Upload size={14}/>} Cambiar Banner
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div onClick={() => heroInputRef.current?.click()} className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingHero ? 'border-gray-300 animate-pulse bg-gray-50' : 'border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'}`}>
+                        {uploadingHero ? (
+                            <Loader2 className="animate-spin text-gray-400 mb-2" size={24}/>
+                        ) : (
+                            <Upload className="text-gray-400 mb-2" size={24}/>
+                        )}
+                        <span className="text-xs font-bold text-gray-500">Haz clic para subir un Banner</span>
+                        <span className="text-[10px] font-medium text-gray-400 mt-1">Recomendado: 1920x1080px (Horizontal)</span>
+                    </div>
+                )}
+            </div>
         </section>
 
-        {/* 3. COMPONENTE DE PAGOS (Importado) */}
-        {/* Le pasamos la config inicial para que no cargue vacío */}
         <PaymentSettings storeId={store.id} initialData={store.payment_config} />
-
-        {/* 4. COMPONENTE DE ENVÍOS (Importado) */}
-        {/* Este componente hace su propio fetch, así que solo necesita el ID */}
         <ShippingSettings storeId={store.id} />
         
       </div>
