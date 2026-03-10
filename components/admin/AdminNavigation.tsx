@@ -7,7 +7,6 @@ import { LayoutGrid, ShoppingBag, Package, Settings, PlusCircle, LogOut, Store, 
 import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
 
-// 1. EXTRAEMOS LA DATA ESTÁTICA PARA NO RECREARLA EN CADA RENDER
 const NAV_LINKS = [
   { name: 'Inicio', href: '/admin', icon: LayoutGrid },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
@@ -16,7 +15,6 @@ const NAV_LINKS = [
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 
-// 2. COMPONENTE DE ESCRITORIO EXTRAÍDO (Aisla el ciclo de vida de React)
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
   const [copied, setCopied] = useState(false)
 
@@ -72,7 +70,6 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
         </div>
       </nav>
 
-      {/* FOOTER WIDGET: ZONA ESTRATÉGICA DE LA TIENDA */}
       <div className="mt-auto pt-6 border-t border-gray-200 space-y-3">
         {store && (
           <div className="flex items-center justify-between p-1 border border-gray-200 rounded-xl bg-white">
@@ -104,7 +101,6 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   )
 }
 
-// 3. COMPONENTE MÓVIL EXTRAÍDO (Acelerado por GPU)
 const MobileBottomBar = ({ pathname }: { pathname: string }) => (
   <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
     <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
@@ -115,7 +111,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
           return (
             <div key={link.href} className="flex-shrink-0 relative -top-6 px-2">
               <Link href={link.href} className="block group">
-                <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ring-4 ring-white group-active:scale-95 transition-transform duration-200">
+                <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center border-4 border-white group-active:scale-95 transition-transform duration-200">
                   <PlusCircle size={26} strokeWidth={2.5} />
                 </div>
               </Link>
@@ -155,10 +151,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
   </div>
 )
 
-// 4. MAIN COMPONENT (Ahora es súper ligero)
-interface NavProps {
-  store: any
-}
+interface NavProps { store: any }
 
 export default function AdminNavigation({ store }: NavProps) {
   const pathname = usePathname()

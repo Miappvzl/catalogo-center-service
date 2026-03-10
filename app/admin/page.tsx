@@ -3,19 +3,15 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { 
-  Plus, 
-  Package, 
-  TrendingUp, 
-  AlertTriangle, 
-  ArrowRight, 
-  Clock, 
-  DollarSign,
-  Truck,
-  Box,
-  ChevronRight
+  Plus, Package, TrendingUp, AlertTriangle, ArrowRight, 
+  Clock, DollarSign, Truck, Box, ChevronRight
 } from 'lucide-react'
+
+// COMPONENTES IMPORTADOS
 import RateWidget from '@/components/admin/RateWidget'
-import AdminHeader from '@/components/admin/AdminHeader' // <--- IMPORTANTE
+import AdminHeader from '@/components/admin/AdminHeader'
+import AnalyticsChart from '@/components/admin/AnalyticsChart'
+import TopPerformers from '@/components/admin/TopPerformers'
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies()
@@ -25,18 +21,18 @@ export default async function AdminDashboard() {
     { cookies: { getAll() { return cookieStore.getAll() } } }
   )
 
-  // 1. Auth Check
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 2. Data Fetching (Paralelo)
   const today = new Date().toISOString().split('T')[0]
   
-  const [storeRes, productsRes, variantsRes, ordersRes, configRes, recentOrdersRes] = await Promise.all([
+  // PARALELIZACIÓN EXTREMA
+  const [storeRes, productsRes, variantsRes, pendingRes, todayOrdersRes, configRes, recentOrdersRes] = await Promise.all([
     supabase.from('stores').select('*').eq('user_id', user.id).single(),
     supabase.from('products').select('id', { count: 'exact', head: true }),
     supabase.from('product_variants').select('stock').lte('stock', 3),
-    supabase.from('orders').select('status, total_usd, total_bs, created_at'),
+    supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('orders').select('total_usd, total_bs, exchange_rate').gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled'),
     supabase.from('app_config').select('usd_rate, eur_rate, updated_at').eq('id', 1).single(),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5)
   ])
@@ -44,13 +40,11 @@ export default async function AdminDashboard() {
   const store = storeRes.data
   const totalProducts = productsRes.count || 0
   const lowStockCount = variantsRes.data?.length || 0
+  const pendingOrdersCount = pendingRes.count || 0
   
-  // KPIs Calculados
-  const todayOrders = ordersRes.data?.filter(o => o.created_at.startsWith(today) && o.status !== 'cancelled') || []
+  const todayOrders = todayOrdersRes.data || []
   const salesTodayUSD = todayOrders.reduce((acc, o) => acc + Number(o.total_usd || 0), 0)
-  const pendingOrdersCount = ordersRes.data?.filter(o => o.status === 'pending').length || 0
 
-  // Widget Data
   const usdRate = configRes.data?.usd_rate ?? 0
   const eurRate = configRes.data?.eur_rate ?? 0
   const lastUpdated = configRes.data?.updated_at ?? null
@@ -61,16 +55,14 @@ export default async function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
       
-      {/* HEADER INTERACTIVO */}
       <AdminHeader store={store} />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
         
-        {/* --- BENTO GRID SYSTEM --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-[minmax(160px,auto)]">
-            
-            {/* 1. RATE WIDGET (Control Maestro) */}
-            <div className="md:col-span-1 lg:col-span-1 row-span-2">
+        {/* --- BENTO GRID SYSTEM 2.0 --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* 1. RATE WIDGET (Control Maestro - AHORA DE PRIMERO) */}
+            <div className="col-span-1 min-h-[160px]">
                 <RateWidget 
                     storeCurrency={storeCurrency} 
                     usdRate={usdRate} 
@@ -78,14 +70,14 @@ export default async function AdminDashboard() {
                     lastUpdated={lastUpdated} 
                 />
             </div>
-
-            {/* 2. VENTAS HOY (Financial Card) */}
-            <div className="md:col-span-1 lg:col-span-1 bg-white p-6 rounded-xl border border-gray-200 flex flex-col justify-between group hover:border-green-300 transition-all hover:-translate-y-1">
+            
+            {/* 1. VENTAS HOY */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 flex flex-col justify-between group transition-colors hover:border-black min-h-[160px]">
                 <div className="flex justify-between items-start">
                     <div className="p-3.5 pl-[1.5px] text-black">
                         <DollarSign size={24} strokeWidth={2.5}/>
                     </div>
-                    <span className="text-[10px] font-bold bg-green-50 text-green-700 px-2.5 py-1 rounded-full uppercase tracking-wide border border-green-200">
+                    <span className="text-[10px] font-bold bg-green-50 text-green-700 px-2.5 py-1 rounded-md uppercase tracking-wide border border-green-200">
                         Hoy
                     </span>
                 </div>
@@ -100,22 +92,20 @@ export default async function AdminDashboard() {
                 </div>
             </div>
 
-            {/* 3. PEDIDOS PENDIENTES (Triage Card - Dark Mode Style) */}
-            <Link href="/admin/orders" className="md:col-span-1 lg:col-span-1 bg-[#0A0A0A] text-white gap-2 p-6 rounded-xl flex flex-col justify-between group relative overflow-hidden transition-all hover:-translate-y-1">
-                {/* Decoración sutil */}
+            {/* 2. PEDIDOS PENDIENTES */}
+            <Link href="/admin/orders" className="bg-black text-white p-6 rounded-2xl flex flex-col justify-between group relative overflow-hidden transition-all active:scale-[0.98] min-h-[160px]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-white/10 transition-all"></div>
-                
                 <div className="flex justify-between items-start relative z-10">
                     <div className="p-3.5 pl-[1.5px] text-white">
                         <Clock size={24} strokeWidth={2.5}/>
                     </div>
                     {pendingOrdersCount > 0 && (
-                        <div className="flex items-center gap-2 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20">
+                        <div className="flex items-center gap-2 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/20">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                             </span>
-                            <span className="text-[9px] font-bold text-red-300 uppercase">Acción</span>
+                            <span className="text-[9px] font-bold text-red-300 uppercase tracking-wide">Acción</span>
                         </div>
                     )}
                 </div>
@@ -130,61 +120,83 @@ export default async function AdminDashboard() {
                 </div>
             </Link>
 
-            {/* 4. ÚLTIMOS PEDIDOS (List Card - Grande) */}
-            <div className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden relative">
-                <div className="p-5 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h3 className="font-black text-gray-900 flex items-center gap-2 text-lg">
-                        <Truck size={18} className="text-gray-400"/> Actividad Reciente
+            {/* 3. ALERTAS DE INVENTARIO */}
+            <Link href="/admin/inventory" className={`bg-white p-6 rounded-2xl border flex flex-col justify-between group transition-colors active:scale-[0.98] min-h-[160px] ${lowStockCount > 0 ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-black'}`}>
+                <div className="flex justify-between items-start">
+                    <div className={`p-3.5 pl-[1.5px] ${lowStockCount > 0 ? 'text-red-500' : 'text-gray-900'}`}>
+                        {lowStockCount > 0 ? <AlertTriangle size={24} strokeWidth={2.5} /> : <Box size={24} strokeWidth={2.5} />}
+                    </div>
+                </div>
+                <div>
+                    <p className={`text-4xl font-black tracking-tighter ${lowStockCount > 0 ? 'text-red-500' : 'text-gray-900'}`}>
+                        {lowStockCount > 0 ? lowStockCount : totalProducts}
+                    </p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 group-hover:text-gray-900 transition-colors">
+                        {lowStockCount > 0 ? 'Stock Crítico' : 'Productos Activos'}
+                    </p>
+                </div>
+            </Link>
+
+           
+
+            {/* --- FILA 2: GRÁFICO GIGANTE --- */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 min-h-[350px]">
+                {store?.id ? <AnalyticsChart storeId={store.id} /> : null}
+            </div>
+
+            {/* --- FILA 3: INTELIGENCIA Y ACTIVIDAD --- */}
+            {/* Top Performers (Mejor Cliente y Producto) */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-2">
+                {store?.id ? <TopPerformers storeId={store.id} /> : null}
+            </div>
+
+            {/* ÚLTIMOS PEDIDOS */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden relative">
+                <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h3 className="font-black text-gray-900 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <Truck size={16} className="text-gray-400"/> Actividad Reciente
                     </h3>
-                    <Link href="/admin/orders" className="text-xs font-bold text-gray-400 hover:text-black transition-colors uppercase tracking-wide flex items-center gap-1">
-                        Ver Todo <ChevronRight size={14}/>
+                    <Link href="/admin/orders" className="text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase tracking-wide flex items-center gap-1 bg-white border border-gray-200 px-2.5 py-1 rounded-md">
+                        Ver Todo <ChevronRight size={12}/>
                     </Link>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
                     {recentOrders.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3 min-h-[200px]">
-                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
-                                <Package size={24} className="opacity-30"/>
+                        <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3 min-h-[150px]">
+                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center border border-gray-200">
+                                <Package size={20} className="opacity-30"/>
                             </div>
-                            <p className="text-xs font-bold uppercase tracking-wider opacity-50">Sin pedidos recientes</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sin pedidos recientes</p>
                         </div>
                     ) : (
                         recentOrders.map((order) => {
-                            // Asignación de iconos dinámicos
                             const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : Package;
-                            
                             return (
-                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border-b border-b-gray-100 hover:border-gray-200 rounded-2xl transition-all">
+                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl transition-all">
                                 <div className="flex items-center gap-4">
-                                    {/* Icono de Estado Sustituto de Emojis */}
-                                    <div className={`w-12 h-12 flex items-center justify-center  shrink-0 transition-colors ${
-                                        order.status === 'pending' ? ' text-yellow-600  group-hover:text-yellow-500' :
-                                        order.status === 'paid' ? ' text-emerald-600  group-hover:text-emerald-500' :
-                                        ' text-gray-500  group-hover:text-gray-600'
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
+                                        order.status === 'pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-600' :
+                                        order.status === 'paid' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' :
+                                        'bg-gray-50 border-gray-200 text-gray-500'
                                     }`}>
-                                        <StatusIcon size={20} strokeWidth={2.5} />
+                                        <StatusIcon size={18} strokeWidth={2.5} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-sm text-gray-900 leading-none mb-1.5 group-hover:text-black">
-                                            {order.customer_name}
-                                        </p>
+                                        <p className="font-bold text-sm text-gray-900 leading-none mb-1.5 truncate max-w-[120px] sm:max-w-[200px]">{order.customer_name}</p>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                            <span className="text-[10px] font-mono font-bold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded">
                                                 #{order.order_number}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">
-                                                {new Date(order.created_at).toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-black text-base text-gray-900 tracking-tight">${order.total_usd}</p>
-                                    <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 ' : 
-                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-700 ' :
-                                        'bg-gray-50 text-gray-600 '
+                                    <p className="font-black text-sm text-gray-900">${order.total_usd}</p>
+                                    <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                        order.status === 'pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 
+                                        order.status === 'paid' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                                        'bg-gray-50 border-gray-200 text-gray-600'
                                     }`}>
                                         {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : 'Enviado'}
                                     </span>
@@ -194,31 +206,6 @@ export default async function AdminDashboard() {
                     )}
                 </div>
             </div>
-
-            {/* 5. ALERTAS DE INVENTARIO */}
-            <Link href="/admin/inventory" className={`md:col-span-1 lg:col-span-1 bg-white p-6 rounded-xl border flex flex-col justify-between group transition-all hover:-translate-y-1 ${lowStockCount > 0 ? 'border-red-200 hover:border-red-300' : 'border-gray-200 hover:border-blue-300'}`}>
-                <div className="flex justify-between items-start">
-                    <div className={`p-3.5 pl-[1.5px] ${lowStockCount > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                        {lowStockCount > 0 ? <AlertTriangle size={24} strokeWidth={2.5} /> : <Box size={24} strokeWidth={2.5} />}
-                    </div>
-                </div>
-                <div>
-                    <p className={`text-4xl font-black tracking-tighter ${lowStockCount > 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                        {lowStockCount > 0 ? lowStockCount : totalProducts}
-                    </p>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 group-hover:text-gray-600 transition-colors">
-                        {lowStockCount > 0 ? 'Stock Crítico' : 'Productos Activos'}
-                    </p>
-                </div>
-            </Link>
-
-            {/* 6. ACCIÓN RÁPIDA: NUEVO PRODUCTO (Diseño Minimalista) */}
-            <Link href="/admin/product/new" className="md:col-span-1 lg:col-span-1 bg-gray-50 border border-dashed border-gray-200 hover:border-gray-300 p-6 rounded-xl flex flex-col items-center justify-center gap-4 text-gray-400 hover:text-black transition-all group cursor-pointer hover:bg-white">
-                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-gray-200">
-                    <Plus size={28} strokeWidth={3} className="text-gray-300 group-hover:text-black transition-colors"/>
-                </div>
-                <p className="font-bold text-xs uppercase tracking-widest">Crear Producto</p>
-            </Link>
 
         </div>
       </main>

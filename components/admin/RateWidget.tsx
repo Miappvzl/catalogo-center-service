@@ -3,47 +3,36 @@
 import { useOptimistic, useActionState, startTransition } from 'react'
 import { updateStoreCurrency, type ActionState } from '@/app/admin/actions'
 import { RefreshCw, DollarSign, Euro, Wallet } from 'lucide-react'
-import { clsx } from 'clsx'
 
 interface RateWidgetProps {
-  storeCurrency?: 'usd' | 'eur' // Opcional para evitar crash si falta
-  usdRate?: number              // Opcional
-  eurRate?: number              // Opcional
-  lastUpdated?: string | null   // Opcional
+  storeCurrency?: 'usd' | 'eur'
+  usdRate?: number
+  eurRate?: number
+  lastUpdated?: string | null
 }
 
-const initialState: ActionState = {
-  success: false,
-  message: '',
-}
+const initialState: ActionState = { success: false, message: '' }
 
 export default function RateWidget({ 
-  storeCurrency = 'usd', // Valor por defecto
-  usdRate = 0,           // Valor por defecto (Evita undefined)
-  eurRate = 0,           // Valor por defecto (Evita undefined)
-  lastUpdated = null     
+  storeCurrency = 'usd',
+  usdRate = 0,
+  eurRate = 0,
+  lastUpdated = null
 }: RateWidgetProps) {
   
-  // 1. Hook de Server Action (Manejo de estado del formulario)
   const [state, formAction, isPending] = useActionState(updateStoreCurrency, initialState)
-
-  // 2. Optimistic UI (Feedback instantáneo)
   const [optimisticCurrency, setOptimisticCurrency] = useOptimistic(
     storeCurrency,
     (current, newCurrency: 'usd' | 'eur') => newCurrency
   )
 
-  // 3. Lógica de Negocio Segura (Casteo a Número para evitar crash de .toFixed)
   const safeUsd = Number(usdRate) || 0
   const safeEur = Number(eurRate) || 0
-  
   const activeRate = optimisticCurrency === 'usd' ? safeUsd : safeEur
 
-  // Handler para el cambio de moneda
   const handleCurrencyChange = (currency: 'usd' | 'eur') => {
     startTransition(() => {
       setOptimisticCurrency(currency)
-      
       const formData = new FormData()
       formData.append('currency', currency)
       formAction(formData)
@@ -51,34 +40,30 @@ export default function RateWidget({
   }
 
   return (
-    <section className="bg-white p-6 rounded-xl border-1 border-[#60606057] h-full flex flex-col justify-between relative overflow-hidden group hover:border-blue-200 transition-colors">
-        {/* Fondo decorativo sutil */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -mr-10 -mt-10 z-0 pointer-events-none group-hover:bg-blue-50 transition-colors" />
-
+    <section className="bg-white p-6 rounded-2xl border border-gray-200 h-full flex flex-col justify-between relative overflow-hidden transition-colors hover:border-black group">
         <div className="relative z-10">
-            <header className="flex items-center gap-1 mb-6 pb-[5px] border-b-1 border-b-gray-200">
+            <header className="flex items-center gap-1 mb-6 pb-2 border-b border-gray-100">
                 <div className="p-3 pl-[1.5px] text-black">
-                    <Wallet size={24} strokeWidth={2} />
+                    <Wallet size={24} strokeWidth={2.5} />
                 </div>
                 <div>
                     <h2 className="text-lg font-black text-gray-900 leading-tight">
                         Tasa Activa
                     </h2>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                         {optimisticCurrency === 'usd' ? 'BCV / Paralelo' : 'Banco Central (EUR)'}
                     </p>
                 </div>
             </header>
 
-            {/* Display de la Tasa */}
             <div className="mb-8">
                 <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-gray-900 tracking-tight">
-                        Bs. {activeRate.toFixed(2)}
+                    <span className="text-4xl font-black text-gray-900 tracking-tighter">
+                        Bs {activeRate.toFixed(2)}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 mt-2 text-xs font-medium text-gray-400">
-                    <RefreshCw className={clsx("w-3 h-3", isPending && "animate-spin text-blue-600")} />
+                <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    <RefreshCw className={`w-3 h-3 ${isPending ? "animate-spin text-black" : ""}`} />
                     <span>
                         {isPending 
                             ? 'Actualizando...' 
@@ -91,35 +76,31 @@ export default function RateWidget({
             </div>
         </div>
 
-        {/* Selector de Moneda (Switch) */}
-        <div className="relative z-10 bg-black p-1.5 rounded-full flex border-1 border-[#151515]">
+        {/* SELECTOR SEGMENTADO (Clean Look Flat) */}
+        <div className="relative z-10 bg-gray-50 p-1.5 rounded-xl flex border border-gray-200">
             <button
-                type="button" // Importante: type="button" para evitar submit accidental fuera del form
+                type="button"
                 onClick={() => handleCurrencyChange('usd')}
                 disabled={isPending}
-                className={clsx(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer",
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'usd'
-                        ? "bg-[#66cc00] text-gray-900 shadow-sm ring-1 ring-black/5"
-                        : "text-gray-400 hover:text-gray-600"
-                )}
+                        ? "bg-[#74e700] text-black border border-gray-300"
+                        : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
+                }`}
             >
-                <DollarSign size={16} strokeWidth={3} />
-                USD
+                <DollarSign size={14} strokeWidth={3} /> USD
             </button>
             <button
                 type="button"
                 onClick={() => handleCurrencyChange('eur')}
                 disabled={isPending}
-                className={clsx(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer",
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'eur'
-                        ? "bg-[#66cc00] text-gray-900 shadow-sm ring-1 ring-black/5"
-                        : "text-gray-400 hover:text-gray-600"
-                )}
+                        ? "bg-[#74e700] text-black border border-gray-300"
+                        : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
+                }`}
             >
-                <Euro size={16} strokeWidth={3} />
-                EUR
+                <Euro size={14} strokeWidth={3} /> EUR
             </button>
         </div>
     </section>
