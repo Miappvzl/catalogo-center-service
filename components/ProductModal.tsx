@@ -403,10 +403,10 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                 <button 
                                     onClick={handleAddToCart} 
                                     disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)}
-                                    className="flex-1 bg-black text-white rounded-xl font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-black"
+                                    className="flex-1 bg-black text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-black"
                                 >
                                     <ShoppingBag size={18} className="pointer-events-none mb-0.5" /> 
-                                    <span>{isCompletelyOutOfStock ? 'Agotado' : (variants.length > 0 ? 'Agregar Selección' : 'Agregar a Bolsa')}</span>
+                                    <span>{isCompletelyOutOfStock ? 'Agotado' : (variants.length > 0 ? 'Agregar' : 'Agregar')}</span>
                                 </button>
 
                             </div>

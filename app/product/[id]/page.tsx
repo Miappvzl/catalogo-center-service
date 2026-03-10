@@ -251,7 +251,7 @@ export default function ProductPage() {
                 <div className="hidden md:flex pt-4">
                     <button 
                         onClick={handleAddToCart}
-                        className="w-full bg-black text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-gray-800 hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/10 flex items-center justify-center gap-3"
+                        className="w-full bg-black text-white py-5 rounded-full font-black uppercase tracking-widest text-sm hover:bg-gray-800 hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/10 flex items-center justify-center gap-3"
                     >
                         <ShoppingBag size={18} /> Agregar al Carrito — ${product.usd_cash_price}
                     </button>
@@ -294,7 +294,7 @@ export default function ProductPage() {
              </div>
              <button 
                 onClick={handleAddToCart}
-                className="flex-1 bg-black text-white h-12 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-2"
+                className="flex-1 bg-black text-white h-12 rounded-full font-black uppercase tracking-widest text-xs hover:bg-gray-800 active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-2"
              >
                 <ShoppingBag size={16} /> Agregar
              </button>

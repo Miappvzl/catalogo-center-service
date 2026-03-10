@@ -24,6 +24,7 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     .from('products')
     .select('*, product_variants(*)')
     .eq('user_id', store.user_id)
+    .eq('status', 'active')   // <--- ¡ESTA ES LA LÍNEA MÁGICA!
     .order('created_at', { ascending: false })
 
   // 3. OBTENER TASAS
