@@ -30,13 +30,28 @@ export default function InventoryPage() {
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
 
-    // 1. CARGAR INVENTARIO
+    // 1. CARGAR INVENTARIO (Blindado por Tienda)
     useEffect(() => {
         const fetchInventory = async () => {
             try {
+                // A. Obtenemos el usuario activo
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                // B. Obtenemos el ID de su tienda
+                const { data: store } = await supabase
+                    .from('stores')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .single()
+
+                if (!store) return
+
+                // C. Cargamos SOLO los productos de su tienda
                 const { data: products, error } = await supabase
                     .from('products')
                     .select('id, name, image_url, category, stock, product_variants(*)')
+                    .eq('store_id', store.id) // <--- EL CANDADO DE SEGURIDAD
                     .order('created_at', { ascending: false })
 
                 if (error) throw error
@@ -60,20 +75,19 @@ export default function InventoryPage() {
                             })
                         })
                     } else {
-            flatInventory.push({
-                rowId: prod.id,
-                productId: prod.id,
-                name: prod.name,
-                image: prod.image_url,
-                category: prod.category,
-                variantId: null,
-                color: 'Único',
-                hex: '#000000',
-                size: 'U',
-                // Cambia stock: 0 por esto:
-                stock: prod.stock || 0 
-            })
-          }
+                        flatInventory.push({
+                            rowId: prod.id,
+                            productId: prod.id,
+                            name: prod.name,
+                            image: prod.image_url,
+                            category: prod.category,
+                            variantId: null,
+                            color: 'Único',
+                            hex: '#000000',
+                            size: 'U',
+                            stock: prod.stock || 0 
+                        })
+                    }
                 })
 
                 setItems(flatInventory)
@@ -84,7 +98,7 @@ export default function InventoryPage() {
             }
         }
         fetchInventory()
-    }, [])
+    }, [supabase])
 
 
     // 2. ACTUALIZAR STOCK

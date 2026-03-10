@@ -21,29 +21,32 @@ export default async function AdminDashboard() {
     { cookies: { getAll() { return cookieStore.getAll() } } }
   )
 
+ // Ya no necesitamos validar auth ni redirecciones aquí, el Layout ya lo hizo.
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
   const today = new Date().toISOString().split('T')[0]
   
-  // PARALELIZACIÓN EXTREMA
-  const [storeRes, productsRes, variantsRes, pendingRes, todayOrdersRes, configRes, recentOrdersRes] = await Promise.all([
-    supabase.from('stores').select('*').eq('user_id', user.id).single(),
-    supabase.from('products').select('id', { count: 'exact', head: true }),
-    supabase.from('product_variants').select('stock').lte('stock', 3),
-    supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    supabase.from('orders').select('total_usd, total_bs, exchange_rate').gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled'),
+  // 1. Buscamos la tienda ESPECÍFICA de este usuario
+  const { data: store } = await supabase.from('stores').select('*').eq('user_id', user?.id).single()
+
+  // 2. PARALELIZACIÓN SEGURA (Todo filtrado por store.id)
+  const [productsRes, variantsRes, pendingRes, todayOrdersRes, configRes, recentOrdersRes] = await Promise.all([
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('store_id', store.id),
+    // Para las variantes, filtramos a través de la relación con products (inner join)
+    supabase.from('product_variants').select('stock, products!inner(store_id)').eq('products.store_id', store.id).lte('stock', 3),
+    supabase.from('orders').select('id', { count: 'exact', head: true }).eq('store_id', store.id).eq('status', 'pending'),
+    supabase.from('orders').select('total_usd, total_bs, exchange_rate').eq('store_id', store.id).gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled'),
     supabase.from('app_config').select('usd_rate, eur_rate, updated_at').eq('id', 1).single(),
-    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5)
+    supabase.from('orders').select('*').eq('store_id', store.id).order('created_at', { ascending: false }).limit(5)
   ])
 
-  const store = storeRes.data
   const totalProducts = productsRes.count || 0
   const lowStockCount = variantsRes.data?.length || 0
   const pendingOrdersCount = pendingRes.count || 0
   
   const todayOrders = todayOrdersRes.data || []
   const salesTodayUSD = todayOrders.reduce((acc, o) => acc + Number(o.total_usd || 0), 0)
+
+  // ... (El resto del código con los Widgets y el Return se mantiene igual)
 
   const usdRate = configRes.data?.usd_rate ?? 0
   const eurRate = configRes.data?.eur_rate ?? 0

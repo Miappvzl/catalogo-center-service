@@ -84,7 +84,7 @@ export default function RateWidget({
                 disabled={isPending}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'usd'
-                        ? "bg-[#74e700] text-black border border-gray-300"
+                        ? "bg-[#ffffff] text-black border border-gray-300"
                         : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
                 }`}
             >
@@ -96,7 +96,7 @@ export default function RateWidget({
                 disabled={isPending}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'eur'
-                        ? "bg-[#74e700] text-black border border-gray-300"
+                        ? "bg-[#ffffff] text-black border border-gray-300"
                         : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
                 }`}
             >

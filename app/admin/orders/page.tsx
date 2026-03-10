@@ -28,7 +28,7 @@ interface Order {
   payment_method: string
   shipping_method: string
   delivery_info: string | null
-  tracking_number?: string | null // NUEVO CAMPO LOGÍSTICO
+  tracking_number?: string | null
   order_items: OrderItem[]
 }
 
@@ -88,12 +88,31 @@ export default function OrdersPage() {
 
   const [kpiStats, setKpiStats] = useState({ total: 0, pending: 0, salesTodayUSD: 0, salesTodayBs: 0 })
 
+  // SEGURIDAD: ID de la tienda actual
+  const [storeId, setStoreId] = useState<string | null>(null)
+
+  // 0. OBTENER TIENDA (Inicializador Maestro)
+  useEffect(() => {
+      const initStore = async () => {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+              const { data: store } = await supabase.from('stores').select('id').eq('user_id', user.id).single()
+              if (store) setStoreId(store.id)
+          }
+      }
+      initStore()
+  }, [supabase])
+
+  // 1. KPIS BLINDADOS
   const fetchKPIs = useCallback(async () => {
+      if (!storeId) return
+
       const today = new Date().toISOString().split('T')[0]
-      const { data: allOrders } = await supabase.from('orders').select('id, status')
+      const { data: allOrders } = await supabase.from('orders').select('id, status').eq('store_id', storeId)
       const { data: todayOrders } = await supabase
         .from('orders')
         .select('status, total_usd, total_bs, exchange_rate')
+        .eq('store_id', storeId)
         .gte('created_at', `${today}T00:00:00Z`)
         .neq('status', 'cancelled')
 
@@ -105,9 +124,12 @@ export default function OrdersPage() {
               salesTodayBs: todayOrders.reduce((acc: number, o: any) => acc + getBsAmount(o), 0)
           })
       }
-  }, [supabase])
+  }, [supabase, storeId])
 
+  // 2. ÓRDENES BLINDADAS
   const fetchOrders = useCallback(async (pageNumber = 0, isRefresh = false) => {
+    if (!storeId) return
+
     if (isRefresh) { setLoading(true); setPage(0); }
     else setLoadingMore(true)
 
@@ -118,6 +140,7 @@ export default function OrdersPage() {
       const { data, error, count } = await supabase
         .from('orders')
         .select(`*, order_items (*)`, { count: 'exact' })
+        .eq('store_id', storeId)
         .order('created_at', { ascending: false })
         .range(from, to)
 
@@ -135,15 +158,20 @@ export default function OrdersPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [supabase])
+  }, [supabase, storeId])
 
+  // Inicializador de Fetch
   useEffect(() => {
-    fetchOrders(0, true)
-    fetchKPIs()
-  }, [fetchOrders, fetchKPIs])
+    if (storeId) {
+        fetchOrders(0, true)
+        fetchKPIs()
+    }
+  }, [fetchOrders, fetchKPIs, storeId])
 
-  // REALTIME ENGINE
+  // 3. REALTIME ENGINE BLINDADO
   useEffect(() => {
+      if (!storeId) return
+
       const playNotification = () => {
           try {
               const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
@@ -153,8 +181,13 @@ export default function OrdersPage() {
       }
 
       const channel = supabase
-          .channel('realtime-orders')
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload: any) => {
+          .channel(`realtime-orders-${storeId}`)
+          .on('postgres_changes', { 
+              event: 'INSERT', 
+              schema: 'public', 
+              table: 'orders',
+              filter: `store_id=eq.${storeId}` 
+          }, async (payload: any) => {
               const { data: newOrder } = await supabase.from('orders').select('*, order_items(*)').eq('id', payload.new.id).single()
               if (newOrder) {
                   playNotification()
@@ -164,7 +197,12 @@ export default function OrdersPage() {
                   fetchKPIs() 
               }
           })
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload: any) => {
+          .on('postgres_changes', { 
+              event: 'UPDATE', 
+              schema: 'public', 
+              table: 'orders',
+              filter: `store_id=eq.${storeId}` 
+          }, (payload: any) => {
               setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o))
               if (selectedOrder?.id === payload.new.id) {
                   setSelectedOrder(prev => prev ? { ...prev, ...payload.new } : null)
@@ -174,7 +212,7 @@ export default function OrdersPage() {
           .subscribe()
 
       return () => { supabase.removeChannel(channel) }
-  }, [supabase, fetchKPIs, selectedOrder])
+  }, [supabase, fetchKPIs, selectedOrder, storeId])
 
   // LÓGICA LOGÍSTICA: Actualizar Estado + Tracking
   const updateStatus = async (orderId: string, newStatus: string) => {
@@ -183,7 +221,6 @@ export default function OrdersPage() {
 
     try {
         const payload: any = { status: newStatus }
-        // Si el estado es "shipped" (Enviado), adjuntamos el número de guía
         if (newStatus === 'shipped') {
             payload.tracking_number = trackingInput.trim() || null
         }
@@ -492,7 +529,7 @@ export default function OrdersPage() {
                                 </div>
                             </div>
 
-                           {/* Lista de Productos y Acciones (Pegado) */}
+                           {/* Lista de Productos y Acciones */}
                             <div>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Artículos ({selectedOrder.order_items.length})</p>
                                 <div className="space-y-2 mb-6">

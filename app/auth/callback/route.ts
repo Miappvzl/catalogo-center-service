@@ -1,64 +1,37 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  // IMPORTANTE: Si es nuevo, lo mandamos al admin. El admin decidirá si lo manda al onboarding.
   const next = searchParams.get('next') ?? '/admin'
 
   if (code) {
-    // 1. Preparamos la respuesta vacía donde pegaremos las cookies
-    const response = NextResponse.redirect(`${origin}${next}`)
-
-    // 2. Usamos el adaptador MODERNO (getAll / setAll)
+    const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            // Leemos las cookies de la petición
-            const cookieHeader = request.headers.get('Cookie') ?? ''
-            return parseCookieHeader(cookieHeader)
-          },
+          getAll() { return cookieStore.getAll() },
           setAll(cookiesToSet) {
-            // AQUÍ ESTÁ EL TRUCO: Supabase nos da las cookies y las pegamos en la respuesta
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set({
-                name,
-                value,
-                ...options,
-              })
-            })
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+            } catch (error) {
+              // Manejo de error silencioso en rutas de servidor
+            }
           },
         },
       }
     )
 
-    // 3. Canjeamos el código. Esto disparará 'setAll' automáticamente.
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-
     if (!error) {
-      // Devolvemos la respuesta CON las cookies pegadas
-      return response
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Si falla, al login
-  return NextResponse.redirect(`${origin}/login?error=auth-code-error`)
-}
-
-// Pequeña utilidad para leer cookies manuales (necesaria para getAll)
-function parseCookieHeader(header: string) {
-  const list: any[] = []
-  if (!header) return list
-  header.split(';').forEach((cookie) => {
-    const parts = cookie.split('=')
-    if (parts.length >= 2) {
-      const name = parts.shift()?.trim()
-      const value = parts.join('=')
-      list.push({ name, value })
-    }
-  })
-  return list
+  return NextResponse.redirect(`${origin}/login?error=auth-error`)
 }

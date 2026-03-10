@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import {
-    ShoppingCart, X, Trash2, ArrowRight, MessageCircle, Loader2, Check,
+    ShoppingCart, X, Trash2, ArrowUpRight, MessageCircle, Loader2, Check,
     CreditCard, Copy, AlertCircle, Store, Truck, ChevronRight, Minus, Plus, MapPin, User, ArrowLeft, Smartphone, DollarSign, Bitcoin, Wallet, Banknote
 } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
@@ -331,9 +331,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                         <button
                             onClick={() => setIsOpen(true)}
-                            className="bg-black text-white px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wide flex items-center gap-2 active:scale-95 transition-transform"
+                            className="bg-black text-white px-5 py-2.5 pr-3 rounded-full font-bold text-xs uppercase tracking-wide flex items-center gap-1 active:scale-95 transition-transform"
                         >
-                            Pagar <ArrowRight size={14} />
+                            Pagar <ArrowUpRight size={18} />
                         </button>
                     </motion.div>
                 )}
