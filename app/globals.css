@@ -67,3 +67,39 @@ body {
 .animate-wiggle {
   animation: wiggle 1.5s ease-in-out infinite;
 }
+
+/* Animación para el Carrusel de Testimonios */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-50% - 12px)); } /* 12px es la mitad del gap */
+  }
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+    will-change: transform;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+  
+  /* Máscara de Desvanecimiento Lateral (Fade Edges) */
+  .fade-edges {
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+
+  /* EFECTO HOVER DEL FOOTER */
+  .footer-logo {
+    color: transparent;
+    -webkit-text-stroke: 1px #333333;
+    transition: all 0.4s ease-in-out;
+  }
+  @media (min-width: 768px) {
+    .footer-logo {
+      -webkit-text-stroke: 2px #333333;
+    }
+  }
+  .footer-logo:hover {
+    color: #00cd61;
+    -webkit-text-stroke: 2px #00cd61;
+    filter: drop-shadow(0px 0px 40px rgba(0, 205, 97, 0.4));
+  }
