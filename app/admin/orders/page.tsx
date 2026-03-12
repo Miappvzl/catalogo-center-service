@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
@@ -29,6 +29,9 @@ interface Order {
   shipping_method: string
   delivery_info: string | null
   tracking_number?: string | null
+  receipt_url?: string | null // <-- NUEVO
+  shipping_cost?: number // <-- NUEVO
+  discount_amount?: number // <-- NUEVO
   order_items: OrderItem[]
 }
 
@@ -279,10 +282,9 @@ export default function OrdersPage() {
                 <div>
                     <h1 className="font-black text-xl tracking-tight leading-none flex items-center gap-2">
                         Pedidos
-                        <span className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-black border border-green-200">
+                        <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            Live
-                        </span>
+                        </div>
                     </h1>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestión de Ventas</p>
                 </div>
@@ -477,6 +479,37 @@ export default function OrdersPage() {
                                 <XCircle size={20} strokeWidth={2}/>
                             </button>
                         </div>
+
+                        {/* VISOR DE COMPROBANTE (NUEVO) */}
+                            {selectedOrder.receipt_url && (
+                                <div className="animate-in fade-in pt-5 slide-in-from-bottom-2">
+                                    <p className="text-[10px] font-bold pl-2 text-gray-400 uppercase tracking-widest mb-2">Comprobante Adjunto</p>
+                                    <div className="bg-gray-50 border border-gray-200 pt-2 pb-2 flex items-center justify-between gap-3">
+                                        <div className="flex items-center pl-2 gap-3 overflow-hidden">
+                                            <div className="w-12 h-12 bg-white rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                                                <img 
+                                                    src={selectedOrder.receipt_url} 
+                                                    alt="Comprobante" 
+                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+                                                />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 truncate">Captura de Pago</p>
+                                                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedOrder.payment_method}</p>
+                                            </div>
+                                        </div>
+                                        <a 
+                                            href={selectedOrder.receipt_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-2.5 bg-white text-gray-700 hover:text-black hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-lg mr-2 transition-colors shrink-0 shadow-sm"
+                                            title="Ampliar comprobante"
+                                        >
+                                            <ArrowUpRight size={16} strokeWidth={2.5}/>
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
                             <div className="flex justify-between items-start">

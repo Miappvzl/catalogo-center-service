@@ -2,8 +2,66 @@ import { createClient } from '@/utils/supabaseServer'
 import StoreInterface from '@/components/StoreInterface'
 import { notFound } from 'next/navigation'
 import { Rocket, Sparkles } from 'lucide-react'
+import { Metadata } from 'next' // <-- IMPORTANTE: Tipado de Next.js para SEO
 
 export const dynamic = 'force-dynamic'
+
+// ------------------------------------------------------------------
+// 🚀 GENERADOR DINÁMICO DE OPENGRAPH Y METADATOS (SEO)
+// ------------------------------------------------------------------
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+
+  // Solo pedimos lo estrictamente necesario para el SEO (Súper rápido)
+  const { data: store } = await supabase
+    .from('stores')
+    .select('name, logo_url, hero_url')
+    .eq('slug', slug)
+    .single()
+
+  if (!store) {
+    return {
+      title: 'Tienda no encontrada | Preziso',
+      description: 'Esta tienda no existe o no está disponible.',
+    }
+  }
+
+  // Prioridad de imagen: 1. Banner (Hero) -> 2. Logo -> 3. Imagen por defecto de Preziso
+  const ogImage = store.hero_url || store.logo_url || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1200&auto=format&fit=crop'
+
+  return {
+    title: `${store.name} | Catálogo Oficial`,
+    description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida, segura y sin fricciones.`,
+    openGraph: {
+      title: `${store.name} | Catálogo Oficial`,
+      description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida y segura.`,
+      url: `https://preziso.com/${slug}`, // Sustituye por tu dominio real en producción
+      siteName: store.name,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `Catálogo de ${store.name}`,
+        },
+      ],
+      locale: 'es_VE',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${store.name} | Catálogo Oficial`,
+      description: `Explora el catálogo oficial de ${store.name}.`,
+      images: [ogImage],
+    },
+    icons: {
+      icon: store.logo_url || '/favicon.ico',
+    }
+  }
+}
+// ------------------------------------------------------------------
+
 
 export default async function StorePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -27,17 +85,12 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   const now = new Date()
   const isExpired = store.subscription_status === 'trial' && trialEnds < now
 
-  // Si está expirado, retornamos la pantalla del "OVNI/Cohete" y detenemos todo.
-  // Cero queries extra a productos o configuraciones.
   if (isExpired) {
     return (
       <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 text-center font-sans selection:bg-black selection:text-white relative overflow-hidden">
-        
-        {/* Fondo decorativo minimalista */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gray-200/40 rounded-full blur-3xl -z-10"></div>
 
-        <div className="bg-white p-10 md:p-14 rounded-3xl border border-gray-200 shadow-sm max-w-md w-full relative z-10">
-            {/* Animación del Cohete / OVNI */}
+        <div className="bg-white p-10 md:p-14 rounded-3xl border border-gray-200 max-w-md w-full relative z-10">
             <div className="w-20 h-20 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-8 relative">
                 <div className="absolute inset-0 bg-gray-100 rounded-2xl animate-ping opacity-50"></div>
                 <Rocket size={32} strokeWidth={2} className="text-black relative z-10 -mt-1 -mr-1" />
