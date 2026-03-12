@@ -1,684 +1,321 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import Link from 'next/link'
 import { 
-  Zap, ArrowRight, CheckCircle2, 
-  Globe, RefreshCw, Menu, X, TrendingUp, 
-  Layers, AlertTriangle, ChevronDown, Lock, Instagram, User,
-  Smartphone, Check, Activity
+  ArrowUpRight, Menu, X, 
+  Smartphone, Layers, RefreshCw, 
+  Image as ImageIcon, Check
 } from 'lucide-react'
 
-// --- ESTILOS VISUALES (DOT MATRIX & WEBILD UI) ---
+// --- ESTILOS GLOBALES (EDITORIAL NEO-BRUTALISM) ---
 const globalStyles = `
   body {
-    background-color: #000000;
+    background-color: #FFFFFF;
+    color: #000000;
+    ::selection {
+      background-color: #000000;
+      color: #FFFFFF;
+    }
   }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
-  /* Fondo de Puntitos (Dot Matrix) Elegante */
-  .bg-dot-matrix {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
-    background-size: 24px 24px;
-    mask-image: radial-gradient(ellipse at 50% 0%, black 50%, transparent 100%);
-    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 50%, transparent 100%);
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1.5px #000000;
   }
-  
-  /* Tarjetas Cristalinas Premium */
-  .webild-card {
-    background: #050505;
-    background-image: radial-gradient(ellipse at top, rgba(255,255,255,0.03) 0%, transparent 80%);
-    border: 1px solid #1A1A1A;
-    border-top: 1px solid #222; 
-    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.8);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  @media (min-width: 768px) {
+    .text-outline {
+      -webkit-text-stroke: 2px #000000;
+    }
   }
-
-  .webild-card:hover {
-    border-color: #333;
-    background-image: radial-gradient(ellipse at top, rgba(34,197,94,0.04) 0%, transparent 80%);
-  }
-
-  /* Animaciones Suaves */
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-  }
-  .animate-float { animation: float 6s ease-in-out infinite; }
-
-  @keyframes ticker {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  .animate-ticker { animation: ticker 40s linear infinite; }
-
-  /* Inputs Fantasma */
-  .webild-input {
-    background: #0A0A0A;
-    border: 1px solid #1A1A1A;
-    color: #fff;
-    transition: all 0.2s ease;
-  }
-  .webild-input:focus {
-    border-color: #444;
-    background: #111;
+  .text-outline-white {
+    color: transparent;
+    -webkit-text-stroke: 1px #333333;
   }
 `
 
-// --- VARIANTES DE ANIMACIÓN PARA SCROLL (CORREGIDAS PARA TYPESCRIPT) ---
-const fadeUpVariant: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-        opacity: 1, 
-        y: 0, 
-        transition: { 
-            type: "spring",
-            damping: 25,
-            stiffness: 120
-        } 
-    }
-};
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+}
 
 const staggerContainer: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: { staggerChildren: 0.15 }
-    }
-};
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
 
-// --- TICKER DE AUTORIDAD ---
-const BcvTicker = () => (
-  <div className="bg-black border-b border-[#1A1A1A] py-2 overflow-hidden relative z-50">
-    <div className="whitespace-nowrap flex animate-ticker w-max will-change-transform">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-10 mx-5 text-[10px] font-mono tracking-widest uppercase">
-          <span className="flex items-center gap-2 text-green-500 font-semibold">
-             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+// --- PASO 3: TIPOGRAFÍA CINÉTICA AL SCROLL (CORREGIDA PARA MÓVIL) ---
+const ScrollFeatureWords = () => {
+  const words = [
+    { text: "CATÁLOGO", outline: false, align: "text-left md:ml-10" },
+    { text: "MULTIMONEDA", outline: true, align: "text-left md:ml-20" },
+    { text: "TASA BCV", outline: false, align: "text-right md:mr-20" },
+    { text: "AUTOMÁTICA", outline: true, align: "text-right md:mr-10" },
+    { text: "CERO", outline: false, align: "text-center md:-ml-32" },
+    { text: "COMISIONES", outline: true, align: "text-center md:ml-32" },
+  ]
+
+  return (
+    <section className="py-24 md:py-48 overflow-hidden">
+      <div className="flex flex-col gap-1 md:gap-4 w-full">
+        {words.map((item, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: "0px" }} // MARGEN 0 PARA ASEGURAR ANIMACIÓN EN MÓVIL
+            transition={{ duration: 0.7, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+            className={`w-full px-4 md:px-6 ${item.align}`}
+          >
+            <span className={`text-[13vw] md:text-[8rem] lg:text-[9.5rem] font-black leading-[0.85] tracking-tighter uppercase whitespace-nowrap ${item.outline ? 'text-outline' : 'text-black'}`}>
+              {item.text}
             </span>
-            TASA BCV CONECTADA
-          </span>
-          <span className="text-[#333]">|</span>
-          <span className="text-[#888] font-medium">CATÁLOGO MULTIMONEDA</span>
-          <span className="text-[#333]">|</span>
-          <span className="text-[#888] font-medium">PEDIDOS POR WHATSAPP</span>
-        </div>
-      ))}
-    </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// --- COMPONENTE: PLACEHOLDER DE IMAGEN ---
+const ImagePlaceholder = ({ label, aspect = "aspect-[4/3]" }: { label: string, aspect?: string }) => (
+  <div className={`w-full ${aspect} bg-gray-50 border border-gray-200 rounded-[2rem] md:rounded-[3rem] flex flex-col items-center justify-center text-gray-400 overflow-hidden relative group`}>
+    <ImageIcon size={48} className="mb-3 opacity-30 group-hover:scale-110 transition-transform duration-500" strokeWidth={1.5} />
+    <span className="font-mono text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 z-10">{label}</span>
+    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[2rem] md:rounded-[3rem] pointer-events-none"></div>
   </div>
 )
 
-// --- CONTADOR DE COMUNIDAD ---
-const LiveCounter = () => {
-    const [count, setCount] = useState(0)
-    
-    useEffect(() => {
-        let start = 80
-        const end = 124 
-        const duration = 2000
-        const incrementTime = duration / (end - start)
-
-        const timer = setInterval(() => {
-            start += 1
-            setCount(start)
-            if (start >= end) clearInterval(timer)
-        }, incrementTime)
-
-        return () => clearInterval(timer)
-    }, [])
-
-    return (
-        <div className="inline-flex items-center gap-2 bg-[#0A0A0A] border border-[#222] rounded-full pl-3 pr-4 py-1.5 mb-8 shadow-sm">
-            <div className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-50"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </div>
-            <span className="text-[#888] text-xs font-medium tracking-wide">
-                <span className="text-white font-mono font-bold">{count}</span> tiendas en lista de espera
-            </span>
-        </div>
-    )
-}
-
-// --- FORMULARIO PERSUASIVO ---
-const WaitlistForm = () => {
-    const [form, setForm] = useState({ name: '', phone: '', instagram: '' })
-    const [loading, setLoading] = useState(false)
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setTimeout(() => {
-            const message = `🚀 *ACCESO A PREZISO*\n\nHola, quiero dejar de calcular la tasa a mano y unirme a la lista.\n\n👤 *Nombre:* ${form.name}\n📱 *WhatsApp:* ${form.phone}\n📸 *Instagram:* ${form.instagram}\n\nQuedo atento a mi cupo.`
-            const myNumber = "584145811936" // TU NÚMERO
-            const url = `https://wa.me/${myNumber}?text=${encodeURIComponent(message)}`
-            window.open(url, '_blank')
-            setLoading(false)
-        }, 800)
-    }
-
-    return (
-        <form onSubmit={handleSubmit} className="w-full max-w-md bg-[#050505] border border-[#1A1A1A] p-4 rounded-2xl shadow-2xl flex flex-col gap-3 mt-8 relative z-20">
-            <div className="absolute -top-3 left-6 bg-[#0A0A0A] text-green-500 px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-[#222]">
-                Acceso Anticipado
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="relative">
-                    <User size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
-                    <input 
-                        required
-                        placeholder="Tu Nombre"
-                        value={form.name}
-                        onChange={e => setForm({...form, name: e.target.value})}
-                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
-                    />
-                </div>
-                <div className="relative">
-                    <Instagram size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
-                    <input 
-                        required
-                        placeholder="@tu_tienda"
-                        value={form.instagram}
-                        onChange={e => setForm({...form, instagram: e.target.value})}
-                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
-                    />
-                </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-                 <div className="relative flex-1">
-                    <Smartphone size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-[#555]"/>
-                    <input 
-                        required
-                        type="tel"
-                        placeholder="WhatsApp (0412...)"
-                        value={form.phone}
-                        onChange={e => setForm({...form, phone: e.target.value})}
-                        className="w-full webild-input rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none font-medium placeholder:text-[#555]"
-                    />
-                </div>
-                <button 
-                    type="submit"
-                    disabled={loading}
-                    className="bg-white text-black px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-70"
-                >
-                    {loading ? 'Procesando...' : <>Quiero mi acceso <ArrowRight size={14}/></>}
-                </button>
-            </div>
-            <p className="text-[10px] text-[#555] text-center pt-1 pb-1 flex items-center justify-center gap-1 font-medium">
-                <Lock size={10}/> Tus datos viajan directo a nuestro WhatsApp. Sin intermediarios.
-            </p>
-        </form>
-    )
-}
-
-// --- ALERTA DE DOLOR (PSICOLOGÍA DE VENTAS) ---
-const PainAlert = () => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20, x: 20 }}
-    animate={{ opacity: 1, y: 0, x: 0 }}
-    transition={{ delay: 1, duration: 0.8 }}
-    className="absolute -top-6 -right-6 z-20 bg-[#0A0A0A] border border-red-900/30 p-4 rounded-2xl shadow-2xl max-w-55 hidden md:block"
-  >
-    <div className="flex items-start gap-3">
-      <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
-      <div>
-        <p className="text-[10px] font-bold text-red-500 leading-tight mb-1 uppercase tracking-widest">Alerta de Margen</p>
-        <p className="text-[10px] text-[#888] leading-relaxed font-medium">
-          Si la tasa sube y no tienes tiempo de cambiar tus precios manuales, <span className="text-gray-300 font-bold">pierdes dinero en cada venta</span>.
-        </p>
-      </div>
-    </div>
-  </motion.div>
-)
-
-// --- DEMO INTERACTIVO: EL CORAZÓN DE LA LANDING ---
-const InteractiveDemo = () => {
-    const [method, setMethod] = useState('pago_movil')
-    const rate = 60.25
-    const price = 45.00
-    const penalty = 2.00 
-    const finalUSD = method === 'pago_movil' ? price : (price - penalty)
-    const finalBs = finalUSD * rate
-
-    return (
-        <div className="relative group w-full max-w-85 mx-auto animate-float z-10">
-             <PainAlert />
-            
-            <div className="absolute -inset-1 bg-linear-to-b from-green-500/10 to-transparent rounded-4xl blur-2xl opacity-50"></div>
-            
-            <div className="relative bg-[#050505] rounded-3xl border border-[#1A1A1A] shadow-2xl overflow-hidden p-6 transition-colors duration-300">
-                <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-[#333] to-transparent"></div>
-
-                <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#1A1A1A]">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-[#0A0A0A] border border-[#222] rounded-lg flex items-center justify-center text-gray-500">
-                            <span className="font-bold text-white text-xs">P.</span>
-                        </div>
-                        <div>
-                            <p className="text-[9px] font-semibold text-[#666] uppercase tracking-wider mb-0.5">Vista del Cliente</p>
-                            <p className="text-xs font-semibold text-white">Tu Tienda Online</p>
-                        </div>
-                    </div>
-                    <div className="bg-[#0A0A0A] border border-[#222] text-green-500 px-2 py-1 rounded-md text-[9px] font-mono font-bold flex items-center gap-1.5">
-                        <Activity size={10} className="animate-pulse"/> BCV {rate}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 mb-6 p-2 -mx-2 rounded-xl bg-[#0A0A0A]/50 border border-transparent hover:border-[#1A1A1A] transition-colors">
-                    <div className="w-10 h-10 bg-[#111] rounded-lg border border-[#222] flex items-center justify-center text-xl shadow-sm">👟</div>
-                    <div>
-                        <p className="text-xs font-semibold text-white">Nike Air Force 1</p>
-                        <p className="text-[10px] text-[#666] font-medium">Blanco • Talla 42</p>
-                    </div>
-                    <div className="ml-auto font-semibold text-xs text-white">${price}</div>
-                </div>
-
-                <div className="bg-[#0A0A0A] border border-[#1A1A1A] p-1 rounded-lg grid grid-cols-2 gap-1 mb-6">
-                    <button 
-                        onClick={() => setMethod('pago_movil')}
-                        className={`py-2 px-2 rounded-md text-[10px] font-semibold transition-all ${method === 'pago_movil' ? 'bg-[#1A1A1A] text-white shadow-sm border border-[#333]' : 'text-[#666] hover:text-[#888]'}`}
-                    >
-                        Pago Móvil
-                    </button>
-                    <button 
-                        onClick={() => setMethod('zelle')}
-                        className={`py-2 px-2 rounded-md text-[10px] font-semibold transition-all ${method === 'zelle' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'text-[#666] hover:text-[#888]'}`}
-                    >
-                        Divisas (-${penalty})
-                    </button>
-                </div>
-
-                <div className="bg-[#0A0A0A] rounded-xl p-5 relative overflow-hidden border border-[#1A1A1A]">
-                    <div className="flex justify-between items-end relative z-10">
-                        <div>
-                             <p className="text-[9px] text-[#666] font-medium mb-1 uppercase tracking-widest">A pagar</p>
-                             <motion.p 
-                                key={finalUSD}
-                                initial={{ opacity: 0, y: 5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-3xl font-semibold text-white tracking-tighter"
-                             >
-                                ${finalUSD.toFixed(2)}
-                             </motion.p>
-                        </div>
-                        <div className="text-right">
-                             {method === 'pago_movil' ? (
-                                <>
-                                    <p className="text-[9px] text-[#666] font-medium mb-1 uppercase tracking-widest">En Bolívares</p>
-                                    <p className="text-xs font-mono text-green-400 font-medium border-b border-[#333] pb-0.5 inline-block">
-                                        Bs {finalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                    </p>
-                                </>
-                             ) : (
-                                <span className="bg-[#111] border border-[#222] text-[#888] px-2 py-1 rounded text-[9px] font-medium">
-                                    Monto Exacto
-                                </span>
-                             )}
-                        </div>
-                    </div>
-                </div>
-                
-                <p className="text-center text-[9px] text-[#555] mt-4 font-medium">
-                    Así de fácil compran en tu tienda. Sin preguntar precios.
-                </p>
-            </div>
-        </div>
-    )
-}
-
-// --- LANDING PRINCIPAL ---
-
 export default function LandingClient() {
-    const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
-    const scrollToForm = () => {
-        const formElement = document.getElementById('formulario-registro') 
-        if (formElement) {
-            formElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-    }
+  return (
+    <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
+      <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
 
-    return (
-        <div className="min-h-screen bg-black font-sans text-gray-300 selection:bg-[#222] selection:text-white overflow-x-hidden">
-            <style>{globalStyles}</style>
+      {/* NAVBAR */}
+      <div className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] md:w-[calc(100%-3rem)] max-w-7xl z-50">
+        <header className="bg-white/90 backdrop-blur-md border border-gray-200 rounded-full px-5 py-3 md:px-6 md:py-4 flex items-center justify-between shadow-sm">
+          <Link href="/" className="font-black text-lg md:text-xl tracking-tighter uppercase">
+            PREZISO.
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#solucion" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors">Solución</a>
+            <a href="#demo" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors">Plataforma</a>
+            <a href="#faq" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors">FAQ</a>
+          </nav>
+
+          <div className="flex items-center gap-3 md:gap-5">
+            <Link href="/login" className="hidden md:block text-[11px] font-bold uppercase tracking-widest text-gray-900 hover:text-gray-500 transition-colors">
+              Ingresar
+            </Link>
+            {/* BOTÓN RESPONSIVO: Más pequeño en móvil */}
+            <Link href="/register" className="bg-black text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-widest hover:bg-white hover:text-black border-2 border-transparent hover:border-black transition-all active:scale-95 flex items-center gap-1.5 group">
+              Crear Tienda <ArrowUpRight size={14} strokeWidth={3} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </Link>
+            <button className="md:hidden text-black p-1" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </header>
+
+        {/* MENÚ MÓVIL DESPLEGABLE */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-20 left-0 w-full bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-6 shadow-2xl"
+            >
+              <a href="#solucion" onClick={() => setMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter">Solución</a>
+              <a href="#demo" onClick={() => setMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter">Plataforma</a>
+              <a href="#faq" onClick={() => setMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter">Preguntas</a>
+              <Link href="/login" className="text-xs font-bold uppercase tracking-widest text-gray-500 pt-6 border-t border-gray-100 mt-2">Ingresar a mi cuenta</Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <main>
+        {/* MEGA HERO SECTION */}
+        <section className="pt-32 md:pt-48 pb-16 md:pb-20 px-4 md:px-6 max-w-7xl mx-auto flex flex-col gap-10 md:gap-20 min-h-[90vh] justify-center">
+          
+          <div className="w-full">
+            <motion.h1 initial="hidden" animate="visible" variants={fadeUp} className="text-[15vw] md:text-[8.5rem] lg:text-[9.5rem] font-black leading-[0.85] tracking-tighter uppercase text-black md:whitespace-normal">
+              VENDE EN <br className="hidden md:block"/> <span className="text-gray-300">DÓLARES.</span> <br/>
+              COBRA EN <br className="hidden md:block"/> BOLÍVARES.
+            </motion.h1>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10 lg:gap-8 w-full">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="max-w-md w-full shrink-0">
+              <p className="text-base md:text-xl font-medium text-gray-600 leading-relaxed mb-6 md:mb-8">
+                El catálogo inteligente diseñado para Venezuela. Conecta tu tienda al BCV y recibe pedidos exactos en WhatsApp.
+              </p>
+              {/* BOTÓN HERO RESPONSIVO */}
+              <Link href="/register" className="inline-flex items-center justify-center gap-3 bg-black text-white px-6 py-3.5 md:px-8 md:py-5 rounded-full text-sm md:text-base font-bold uppercase tracking-widest hover:bg-white hover:text-black border-2 border-transparent hover:border-black transition-all duration-300 active:scale-95 group">
+                Crear Tienda Gratis <ArrowUpRight size={20} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
+              </Link>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full lg:w-[55%] aspect-[4/3] md:aspect-[16/10] bg-gray-50 rounded-[2rem] md:rounded-[3rem] border border-gray-200 flex items-center justify-center relative overflow-hidden group">
+              <ImageIcon size={48} className="text-gray-300 group-hover:scale-110 transition-transform duration-700" strokeWidth={1}/>
+              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[2rem] md:rounded-[3rem] pointer-events-none"></div>
+              <span className="absolute bottom-4 left-4 md:bottom-8 md:left-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 bg-white/90 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-200 shadow-sm">
+                Dashboard Preview
+              </span>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* SCROLL CINÉTICO */}
+        <ScrollFeatureWords />
+
+        {/* BENTO GRID BRUTALISTA (LA SOLUCIÓN) */}
+        <section id="solucion" className="py-20 md:py-32 px-4 md:px-6 max-w-7xl mx-auto border-t border-gray-200">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="mb-12 md:mb-24">
+            <h2 className="text-[12vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase whitespace-nowrap md:whitespace-normal">
+              Diseñado <br className="hidden md:block"/> para la realidad.
+            </h2>
+            <p className="text-base md:text-xl font-medium text-gray-500 mt-6 md:mt-8 max-w-2xl">
+              Las plataformas gringas no entienden cómo se vende aquí. Nosotros sí. Esto es lo que resuelve Preziso.
+            </p>
+          </motion.div>
+
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
             
-            {/* FONDO DOT MATRIX */}
-            <div className="fixed inset-0 z-0 pointer-events-none bg-dot-matrix opacity-60"></div>
-            {/* Brillo suave de fondo */}
-            <div className="fixed top-0 left-1/2 -translate-x-1/2 w-200 h-125 bg-green-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+            <motion.article variants={fadeUp} className="md:col-span-2 bg-gray-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-14 border border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 md:gap-20 group hover:border-black transition-colors duration-500">
+              <div className="flex-1 flex flex-col items-start gap-6 md:gap-8 w-full">
+                <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-300 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 bg-white">
+                  01 // Automatización
+                </div>
+                <div>
+                  <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Tasa BCV <br/> En Vivo.</h3>
+                  <p className="text-gray-500 text-sm md:text-lg font-medium leading-relaxed max-w-md">
+                    Guarda tu inventario en dólares. El cliente ve el precio exacto en bolívares actualizado en tiempo real. Protege tu margen de ganancia sin mover un dedo.
+                  </p>
+                </div>
+              </div>
+              <div className="w-16 h-16 md:w-40 md:h-40 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-500">
+                <RefreshCw className="w-6 h-6 md:w-12 md:h-12 text-black" strokeWidth={1.5} />
+              </div>
+            </motion.article>
 
-            <div className="relative z-10">
-                <BcvTicker />
+            <motion.article variants={fadeUp} className="bg-gray-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-gray-200 flex flex-col justify-between group hover:border-black transition-colors duration-500 min-h-[300px] md:min-h-[400px]">
+              <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-300 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 bg-white w-fit mb-8 md:mb-12">
+                02 // Fricción Cero
+              </div>
+              <div>
+                <Smartphone className="w-8 h-8 md:w-10 md:h-10 text-black mb-4 md:mb-6 group-hover:-translate-y-2 transition-transform duration-500" strokeWidth={1.5} />
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Pedidos <br/> Directos.</h3>
+                <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
+                  Se acabaron los chats interminables. El cliente arma su carrito y te envía un ticket limpio y formateado directo a tu WhatsApp.
+                </p>
+              </div>
+            </motion.article>
 
-                {/* NAVBAR */}
-                <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#1A1A1A]">
-                    <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between relative z-50">
-                        
-                        <div className="flex items-center gap-2 cursor-pointer">
-                            <img 
-                                src="/pezisologow.png" 
-                                alt="Preziso Logo" 
-                                className="h-10 w-auto object-contain block" 
-                            />
-                        </div>
-                                    
-                        <div className="hidden md:flex items-center gap-8">
-                            <a href="#solucion" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">La Solución</a>
-                            <a href="#beneficios" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">Beneficios</a>
-                            <a href="#faq" className="text-[12px] font-medium text-[#888] hover:text-white transition-colors">Preguntas</a>
-                        </div>
+            <motion.article variants={fadeUp} className="bg-gray-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-gray-200 flex flex-col justify-between group hover:border-black transition-colors duration-500 min-h-[300px] md:min-h-[400px]">
+              <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-300 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-900 bg-white w-fit mb-8 md:mb-12">
+                03 // Control Total
+              </div>
+              <div>
+                <Layers className="w-8 h-8 md:w-10 md:h-10 text-black mb-4 md:mb-6 group-hover:-translate-y-2 transition-transform duration-500" strokeWidth={1.5} />
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Gestión de <br/> Variantes.</h3>
+                <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
+                  Tallas, colores y existencias precisas. Si se agota un modelo, desaparece de tu catálogo al instante sin tocar código.
+                </p>
+              </div>
+            </motion.article>
 
-                        <div className="flex items-center gap-4">
-                           
-                            <button onClick={scrollToForm} className="bg-white text-black px-4 py-2 rounded-lg text-[11px] font-bold hover:bg-gray-200 transition-all flex items-center gap-2">
-                                Solicitar Acceso
-                            </button>
-                            <button className="md:hidden text-white" onClick={() => setMenuOpen(!menuOpen)}>
-                                {menuOpen ? <X size={20}/> : <Menu size={20}/>}
-                            </button>
-                        </div>
-                    </div>
+          </motion.div>
+        </section>
 
-                    {/* MENÚ MÓVIL ANIMADO */}
-                    <AnimatePresence>
-                        {menuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} 
-                                className="absolute top-16 left-0 w-full bg-[#050505]/95 backdrop-blur-xl border-b border-[#1A1A1A] md:hidden overflow-hidden"
-                            >
-                                <div className="flex flex-col px-6 py-8 gap-6">
-                                    <a 
-                                        href="#solucion" 
-                                        onClick={() => setMenuOpen(false)} 
-                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
-                                    >
-                                        La Solución
-                                    </a>
-                                    <a 
-                                        href="#beneficios" 
-                                        onClick={() => setMenuOpen(false)} 
-                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
-                                    >
-                                        Beneficios
-                                    </a>
-                                    <a 
-                                        href="#faq" 
-                                        onClick={() => setMenuOpen(false)} 
-                                        className="text-base font-medium text-[#888] hover:text-white transition-colors"
-                                    >
-                                        Preguntas
-                                    </a>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </nav>
+        {/* PASO 5: DEMO VISUAL (EL SHOWCASE COLOSAL) */}
+        <section id="demo" className="py-20 md:py-32 px-4 md:px-6 max-w-7xl mx-auto border-t border-gray-200">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="mb-12 md:mb-20 text-center">
+            <h2 className="text-[12vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase">
+              La Experiencia.
+            </h2>
+            <p className="text-base md:text-xl font-medium text-gray-500 mt-4 md:mt-6">
+              Diseñado para que tu cliente compre rápido, y tú administres en paz.
+            </p>
+          </motion.div>
 
-                {/* HERO SECTION */}
-                <section className="pt-16 pb-24 lg:pt-24 lg:pb-32 relative overflow-hidden min-h-[calc(100vh-100px)] flex items-center">
-                    <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center w-full">
-                        <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left relative z-10">
-                            
-                            <motion.div id="formulario-registro" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                                <LiveCounter />
-                            </motion.div>
+          <div className="grid lg:grid-cols-12 gap-6 md:gap-8">
+            
+            {/* Tarjeta Cliente (Vertical) */}
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="lg:col-span-5 bg-gray-50 border border-gray-200 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col gap-6 md:gap-10">
+              <div>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que ve <br/>tu cliente.</h3>
+                <p className="text-sm md:text-base text-gray-500 font-medium">Catálogo móvil ultrarrápido y sin fricción.</p>
+              </div>
+              <div className="flex-1 flex items-end justify-center">
+                <div className="w-full max-w-[280px]">
+                  <ImagePlaceholder label="App Móvil Cliente" aspect="aspect-[9/16]" />
+                </div>
+              </div>
+            </motion.div>
 
-                            <motion.h1 
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="text-5xl md:text-6xl lg:text-[5rem] font-semibold tracking-tighter mb-6 leading-[1.05] text-white"
-                            >
-                                Vende en dólares.<br/>
-                                <span className="text-[#888]">Cobra en bolívares.</span><br/>
-                                Cero estrés.
-                            </motion.h1>
-                            
-                            <motion.p 
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="text-base md:text-lg text-[#888] mb-8 leading-relaxed font-medium max-w-xl"
-                            >
-                                Preziso conecta tu catálogo al Banco Central de Venezuela. Tus clientes compran sin preguntar, tú recibes el pedido exacto en WhatsApp. <strong className="text-gray-300 font-medium">Adiós a la calculadora.</strong>
-                            </motion.p>
-                            
-                            <motion.div
-                                 initial={{ opacity: 0, y: 20 }}
-                                 animate={{ opacity: 1, y: 0 }}
-                                 transition={{ delay: 0.3 }}
-                                 className="w-full flex justify-center lg:justify-start"
-                            >
-                                <WaitlistForm />
-                            </motion.div>
-                        </div>
+            {/* Tarjeta Admin (Horizontal) */}
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="lg:col-span-7 bg-gray-50 border border-gray-200 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col gap-6 md:gap-10">
+              <div>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que <br/>controlas tú.</h3>
+                <p className="text-sm md:text-base text-gray-500 font-medium">Panel de administración web robusto y analítico.</p>
+              </div>
+              <div className="flex-1 w-full">
+                <ImagePlaceholder label="Dashboard PC" aspect="aspect-[16/10]" />
+              </div>
+            </motion.div>
 
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.4, duration: 0.6 }}
-                            className="lg:col-span-5 relative flex justify-center lg:justify-end mt-8 lg:mt-0 w-full"
-                        >
-                            <InteractiveDemo />
-                        </motion.div>
-                    </div>
-                </section>
+          </div>
+        </section>
 
-                {/* EL PROBLEMA VS LA SOLUCIÓN */}
-                <section id="solucion" className="py-24 border-t border-[#1A1A1A] relative">
-                    <div className="max-w-7xl mx-auto px-6">
-                        <motion.div 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={fadeUpVariant}
-                            className="mb-16 text-center lg:text-left"
-                        >
-                            <h2 className="text-3xl font-semibold tracking-tight text-white mb-4">¿Por qué necesitas Preziso hoy?</h2>
-                            <p className="text-[#888] text-base max-w-2xl">Vender en Venezuela tiene reglas únicas. Las herramientas tradicionales no entienden nuestro mercado. Nosotros sí.</p>
-                        </motion.div>
+      </main>
 
-                        <motion.div 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={staggerContainer}
-                            className="grid md:grid-cols-3 gap-6"
-                        >
-                            {/* Card 1 */}
-                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
-                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
-                                    <RefreshCw size={18} />
-                                </div>
-                                <h3 className="text-lg font-medium text-white mb-3">Tasa BCV Automática</h3>
-                                <p className="text-sm text-[#888] leading-relaxed">
-                                    Tu inventario se guarda en dólares, pero el cliente siempre ve el precio exacto en bolívares actualizado en tiempo real. Proteges tu ganancia automáticamente.
-                                </p>
-                            </motion.div>
-
-                            {/* Card 2 */}
-                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
-                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
-                                    <Smartphone size={18} />
-                                </div>
-                                <h3 className="text-lg font-medium text-white mb-3">Pedidos Limpios por WhatsApp</h3>
-                                <p className="text-sm text-[#888] leading-relaxed">
-                                    Se acabaron los chats de horas respondiendo "precio y disponibilidad". El cliente arma su carrito web y te envía el pedido listo para despachar.
-                                </p>
-                            </motion.div>
-
-                            {/* Card 3 */}
-                            <motion.div variants={fadeUpVariant} className="webild-card rounded-2xl p-8">
-                                <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center mb-6 text-white">
-                                    <Layers size={18} />
-                                </div>
-                                <h3 className="text-lg font-medium text-white mb-3">Control de Variantes</h3>
-                                <p className="text-sm text-[#888] leading-relaxed">
-                                    ¿Vendes zapatos o ropa? Gestiona fácilmente tallas, colores y fotos específicas. Si se acaba la talla 42 en negro, desaparece de la web al instante.
-                                </p>
-                            </motion.div>
-                        </motion.div>
-                    </div>
-                </section>
-
-                {/* SOCIAL PROOF / TESTIMONIOS */}
-                <section id="beneficios" className="py-24 border-t border-[#1A1A1A] relative bg-[#020202]">
-                    <div className="max-w-7xl mx-auto px-6">
-                        <motion.div 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={fadeUpVariant}
-                            className="mb-16 text-center"
-                        >
-                            <h2 className="text-3xl font-semibold tracking-tight text-white mb-4">Diseñado para el comerciante venezolano</h2>
-                            <p className="text-[#888] text-base">La plataforma que convierte tu Instagram en un negocio ordenado.</p>
-                        </motion.div>
-
-                        <motion.div 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={staggerContainer}
-                            className="grid md:grid-cols-2 gap-6"
-                        >
-                            <motion.div variants={fadeUpVariant} className="webild-card rounded-4xl p-10 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex text-[#444] mb-6"><Zap size={20} fill="currentColor"/></div>
-                                    <p className="text-lg text-gray-300 font-medium leading-relaxed mb-8">
-                                        "Antes de Preziso, pasaba 2 horas cada mañana calculando precios y cambiando historias de Instagram. Ahora me levanto y mi tienda ya está vendiendo con la tasa correcta."
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-4 border-t border-[#1A1A1A] pt-6">
-                                    <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-sm font-medium text-[#888]">C</div>
-                                    <div>
-                                        <p className="text-sm font-medium text-white">Carlos Domínguez</p>
-                                        <p className="text-[11px] text-[#666] tracking-widest uppercase">Dueño de Tech Store</p>
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div variants={fadeUpVariant} className="webild-card rounded-4xl p-10 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex text-[#444] mb-6"><Zap size={20} fill="currentColor"/></div>
-                                    <p className="text-lg text-gray-300 font-medium leading-relaxed mb-8">
-                                        "El hecho de que el cliente vea exactamente cuánto debe pagar en Pago Móvil o Zelle ha reducido mis tiempos de atención a la mitad. Cierro ventas mucho más rápido."
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-4 border-t border-[#1A1A1A] pt-6">
-                                    <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-sm font-medium text-[#888]">A</div>
-                                    <div>
-                                        <p className="text-sm font-medium text-white">Andrea Martínez</p>
-                                        <p className="text-[11px] text-[#666] tracking-widest uppercase">Boutique de Moda</p>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    </div>
-                </section>
-
-                {/* FAQ */}
-                <section id="faq" className="py-24 border-t border-[#1A1A1A] relative">
-                    <div className="max-w-3xl mx-auto px-6">
-                        <motion.h2 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={fadeUpVariant}
-                            className="text-2xl font-semibold tracking-tight text-center mb-12 text-white"
-                        >
-                            Preguntas Frecuentes
-                        </motion.h2>
-                        <motion.div 
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true, margin: "-50px" }}
-                            variants={staggerContainer}
-                            className="space-y-4"
-                        >
-                            {[
-                                { q: "¿Necesito tarjeta de crédito en dólares?", a: "No. Sabemos cómo funcionan las cosas aquí. Podrás pagar tu suscripción mensual en Bolívares (Pago Móvil) o USDT (Binance)." },
-                                { q: "¿El dinero de mis ventas pasa por Preziso?", a: "Nunca. Nosotros solo organizamos tu catálogo y calculamos los totales. El cliente te paga directamente a tus cuentas bancarias o Zelle." },
-                                { q: "¿Cuándo podré usar la plataforma?", a: "Estamos dando acceso por lotes a los inscritos en la lista de espera para garantizar que la conexión con el BCV sea perfecta. Si te anotas hoy, asegurarás prioridad y precio de lanzamiento." }
-                            ].map((faq, i) => (
-                                <motion.div variants={fadeUpVariant} key={i} className="bg-[#050505] rounded-2xl border border-[#1A1A1A] overflow-hidden">
-                                    <div className="p-6 text-left">
-                                        <h4 className="font-medium text-sm text-white mb-2">{faq.q}</h4>
-                                        <p className="text-[#888] text-sm leading-relaxed">{faq.a}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    </div>
-                </section>
-
-                {/* CTA FINAL */}
-                <section className="py-32 border-t border-[#1A1A1A] relative overflow-hidden bg-black">
-                    <motion.div 
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, margin: "-50px" }}
-                        variants={fadeUpVariant}
-                        className="max-w-3xl mx-auto px-6 text-center relative z-10 flex flex-col items-center"
-                    >
-                        <h2 className="text-4xl md:text-5xl font-semibold text-white mb-6 tracking-tighter">
-                            El momento es ahora.
-                        </h2>
-                        <p className="text-[#888] text-lg mb-10 max-w-lg">
-                            Deja que tu competencia siga usando calculadoras de bolsillo. Profesionaliza tu negocio hoy mismo.
-                        </p>
-                        
-                        <div className="bg-[#0A0A0A] border border-[#222] inline-flex flex-col sm:flex-row items-center gap-6 px-8 py-5 rounded-2xl mb-8 shadow-2xl">
-                            <div className="text-center sm:text-left">
-                                <p className="text-[10px] text-[#666] uppercase font-semibold tracking-widest mb-1">Precio de Lanzamiento</p>
-                                <div className="flex items-baseline justify-center sm:justify-start gap-1">
-                                    <span className="text-3xl font-mono font-medium text-white">$10</span>
-                                    <span className="text-sm text-[#666]">/mensual</span>
-                                </div>
-                            </div>
-                            <div className="h-px w-full sm:w-px sm:h-10 bg-[#222]"></div>
-                            <div className="text-center sm:text-left">
-                                <ul className="text-left space-y-1.5">
-                                    <li className="flex items-center gap-2 text-xs text-[#888] font-medium"><Check size={12} className="text-green-500"/> Productos ilimitados</li>
-                                    <li className="flex items-center gap-2 text-xs text-[#888] font-medium"><Check size={12} className="text-green-500"/> Sin contratos</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div className="w-full flex justify-center">
-                            <button onClick={scrollToForm} className="bg-white text-black px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                                Quiero asegurar mi acceso
-                            </button>
-                        </div>
-                    </motion.div>
-                </section>
-
-                {/* FOOTER */}
-                <footer className="border-t border-[#1A1A1A] py-12 bg-black">
-                    <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
-                        <div className="flex items-center gap-2 cursor-pointer">
-                            <img 
-                                src="/pezisologow.png" 
-                                alt="Preziso Logo" 
-                                className="h-8 w-auto object-contain block opacity-80" 
-                            />
-                        </div>
-                        <p className="text-[11px] text-[#555] font-medium max-w-xs">
-                            Construido con tecnología moderna para resolver problemas reales del comercio en Venezuela.
-                        </p>
-                        <p className="text-[10px] text-[#444] font-mono">
-                            &copy; {new Date().getFullYear()} PREZISO INC.
-                        </p>
-                    </div>
-                </footer>
-            </div>
+      {/* PASO 6: FOOTER MAGNÉTICO E INVERTIDO (NEGRO PURO) */}
+      <footer className="bg-black text-white pt-24 md:pt-32 pb-8 px-4 md:px-6 mt-20 relative overflow-hidden">
+        {/* Patrón de puntos sutil oscuro */}
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
+        
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp}>
+            <p className="text-sm md:text-base font-bold text-gray-400 uppercase tracking-widest mb-6">¿Listo para el siguiente nivel?</p>
+            <Link href="/register" className="inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 md:px-12 md:py-6 rounded-full text-base md:text-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all duration-300 group">
+              Empezar por $10/mes <ArrowUpRight size={24} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
+            </Link>
+            
+            <ul className="mt-8 flex flex-wrap justify-center items-center gap-4 md:gap-8">
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-white"/> Sin Contratos</li>
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-white"/> Productos Ilimitados</li>
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-white"/> Cancela cuando quieras</li>
+            </ul>
+          </motion.div>
         </div>
-    )
+
+        {/* LOGO GIGANTE EN EL FOOTER */}
+        <div className="mt-24 md:mt-40 border-t border-[#222] pt-8 md:pt-12 w-full flex flex-col items-center">
+          <h2 className="text-[20vw] font-black leading-none tracking-tighter uppercase text-outline-white w-full text-center overflow-hidden">
+            PREZISO.
+          </h2>
+          <div className="flex flex-col md:flex-row justify-between w-full max-w-7xl mt-8 px-4 md:px-0 gap-4 text-center md:text-left">
+            <p className="text-[10px] md:text-xs text-gray-600 font-bold uppercase tracking-widest">
+              &copy; {new Date().getFullYear()} PREZISO INC. TODOS LOS DERECHOS RESERVADOS.
+            </p>
+            <div className="flex justify-center md:justify-end gap-6">
+              <a href="#" className="text-[10px] md:text-xs text-gray-600 font-bold uppercase tracking-widest hover:text-white transition-colors">Términos</a>
+              <a href="#" className="text-[10px] md:text-xs text-gray-600 font-bold uppercase tracking-widest hover:text-white transition-colors">Privacidad</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  )
 }

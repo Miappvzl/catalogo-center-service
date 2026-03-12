@@ -390,12 +390,12 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                         <div className="p-4 md:p-6 bg-white border-t border-gray-200 shrink-0 z-10">
                             <div className="flex gap-3 md:gap-4">
                                 
-                                <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200 shrink-0">
-                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-gray-900 hover:border-black hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <div className="flex items-center rounded-full p-1 border-[1.8px] border-[#1a1a1ad2] shrink-0">
+                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center  text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                         <Minus size={16} strokeWidth={2.5}/>
                                     </button>
-                                    <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-gray-900">{quantity}</span>
-                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black text-white rounded-lg border border-black hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-50 disabled:bg-gray-300 disabled:border-gray-300 disabled:cursor-not-allowed">
+                                    <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-[#1a1a1ad2]">{quantity}</span>
+                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center  text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
     <Plus size={16} strokeWidth={2.5}/>
 </button>
                                 </div>

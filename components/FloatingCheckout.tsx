@@ -465,10 +465,10 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                             Bs {itemTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="flex items-center rounded-full p-1 gap-3 border-[1.8px] border-[#1a1a1abe ]">
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-6 h-6 flex rounded-full items-center justify-center text-#1a1a1abe hover:bg-[#f4f4f4]disabled:opacity-50"><Minus size={15} /></button>
-                                                                        <span className="text-xs font-bold w-3 text-center text-gray-900">{item.quantity}</span>
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-6 h-6 flex rounded-full items-center justify-center text-#1a1a1abe hover:bg-[#f4f4f4]"><Plus size={15} /></button>
+                                                                    <div className="flex items-center p-1 gap-3 border-[1.8px] border-[#1a1a1ad2] rounded-[3px]">
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-6 h-6 flex rounded-full items-center justify-center text-[#1a1a1ad2] hover:bg-[#f4f4f4] disabled:opacity-50"><Minus size={15} /></button>
+                                                                        <span className="text-xs font-bold w-3 text-center text-[#1a1a1ad2]">{item.quantity}</span>
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-6 h-6 flex rounded-full items-center justify-center text-[#1a1a1ad2] hover:bg-[#f4f4f4]"><Plus size={15} /></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
