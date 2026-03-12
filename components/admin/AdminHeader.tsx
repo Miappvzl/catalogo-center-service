@@ -47,7 +47,9 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
   const copyLink = () => {
     if (!store?.slug) return
-    const url = `${window.location.origin}/${store.slug}`
+    // Lógica dinámica que funciona tanto en localhost como en producción
+    const host = window.location.host.replace('www.', '')
+    const url = `${window.location.protocol}//${store.slug}.${host}`
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

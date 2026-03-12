@@ -20,7 +20,9 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
 
   const copyLink = () => {
     if (!store?.slug) return
-    const url = `${window.location.origin}/${store.slug}`
+    // Lógica dinámica que funciona tanto en localhost como en producción
+    const host = window.location.host.replace('www.', '')
+    const url = `${window.location.protocol}//${store.slug}.${host}`
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -74,8 +76,13 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
         {store && (
           <div className="flex items-center justify-between p-1 border border-gray-200 rounded-xl bg-white">
             <Link 
-                href={`/${store.slug}`} 
-                target="_blank" 
+                // Usamos JS vainilla para forzar la navegación al subdominio real
+                href="#"
+                onClick={(e) => {
+                    e.preventDefault();
+                    const host = window.location.host.replace('www.', '');
+                    window.open(`${window.location.protocol}//${store.slug}.${host}`, '_blank');
+                }}
                 className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-50 transition-colors"
             >
                 <Store size={15} /> Ver mi Tienda

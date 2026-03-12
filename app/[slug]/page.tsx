@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title: `${store.name} | Catálogo Oficial`,
       description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida y segura.`,
-      url: `https://preziso.com/${slug}`, // Sustituye por tu dominio real en producción
+      url: `https://${slug}.preziso.shop`, // <-- SEO de Élite con el subdominio
       siteName: store.name,
       images: [
         {

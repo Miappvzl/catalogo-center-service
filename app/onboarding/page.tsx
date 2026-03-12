@@ -140,8 +140,8 @@ export default function OnboardingWizard() {
                 <div className={`transition-all duration-300 ${name ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Tu Enlace Público</label>
                   <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden px-4 py-3.5">
-                    <span className="text-gray-400 font-medium text-sm">preziso.app/</span>
-                    <span className="font-bold text-black text-sm truncate">{slug || '...'}</span>
+                    <span className="font-bold text-black text-sm truncate text-right w-fit max-w-[120px]">{slug || 'mitienda'}</span>
+                    <span className="text-gray-400 font-medium text-sm">.preziso.shop</span>
                   </div>
                 </div>
               </div>

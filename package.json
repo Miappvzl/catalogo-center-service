@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "context": "npx repomix --style xml --remove-empty-lines --ignore \"**/*.spec.ts,**/ui/**,public/**,node_modules/**,.git/**,estructura.txt\""
+     "repomix": "npx repomix --style xml --remove-empty-lines --ignore \"**/*.spec.ts,**/ui/**,public/**,node_modules/**,.git/**,estructura.txt\""
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.15.0",
