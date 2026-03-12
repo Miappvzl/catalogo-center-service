@@ -174,7 +174,7 @@ export default function LandingClient() {
             <Link href="/login" className="hidden md:block text-[11px] font-bold uppercase tracking-widest text-gray-900 hover:text-[#00cd61] transition-colors">
               Ingresar
             </Link>
-            <Link href="/register" className="bg-black text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-widest hover:bg-[#00cd61] hover:text-black transition-colors active:scale-95 flex items-center gap-1.5 group">
+            <Link href="/login" className="bg-black text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-widest hover:bg-[#00cd61] hover:text-black transition-colors active:scale-95 flex items-center gap-1.5 group">
               Crear Tienda <ArrowUpRight size={14} strokeWidth={3} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
             <button className="md:hidden text-black p-1 hover:text-[#00cd61] transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
@@ -217,7 +217,7 @@ export default function LandingClient() {
                 El catálogo inteligente diseñado para Venezuela. Conecta tu tienda al BCV y recibe pedidos exactos en WhatsApp.
               </p>
               {/* BOTÓN HERO CON EL NUEVO COLOR */}
-              <Link href="/register" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-6 py-3.5 md:px-8 md:py-5 rounded-full text-sm md:text-base font-black uppercase tracking-widest hover:bg-black hover:text-white border-2 border-black transition-all duration-300 active:scale-95 group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 hover:translate-x-1">
+              <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-6 py-3.5 md:px-8 md:py-5 rounded-full text-sm md:text-base font-black uppercase tracking-widest hover:bg-black hover:text-white border-2 border-black transition-all duration-300 active:scale-95 group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 hover:translate-x-1">
                 Crear Tienda Gratis <ArrowUpRight size={20} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
               </Link>
             </motion.div>
@@ -407,7 +407,7 @@ export default function LandingClient() {
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp}>
             <p className="text-sm md:text-base font-bold text-[#00cd61] uppercase tracking-widest mb-6">¿Listo para el siguiente nivel?</p>
-            <Link href="/register" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-8 py-4 md:px-12 md:py-6 rounded-full text-base md:text-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all duration-300 group shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] hover:shadow-none">
+            <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-8 py-4 md:px-12 md:py-6 rounded-full text-base md:text-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all duration-300 group shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] hover:shadow-none">
               Empezar por $10/mes <ArrowUpRight size={24} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
             </Link>
             
@@ -419,7 +419,7 @@ export default function LandingClient() {
           </motion.div>
         </div>
 
-        {/* LOGO GIGANTE EN EL FOOTER */}
+       
         {/* LOGO GIGANTE EN EL FOOTER */}
         <div className="mt-24 md:mt-40 border-t border-[#222] pt-8 md:pt-12 w-full flex flex-col items-center">
           <h2 className="footer-logo text-[20vw] font-black leading-none tracking-tighter uppercase w-full text-center overflow-hidden cursor-default">
