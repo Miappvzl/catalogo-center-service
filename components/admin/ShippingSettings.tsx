@@ -149,7 +149,7 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                 {/* GESTIÓN DE DIRECCIONES DE PICKUP */}
                 {config.methods.pickup && (
                     <div className="pt-2 animate-in slide-in-from-top-2 duration-300">
-                        <div className="bg-gray-50 p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
+                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
                                 <MapPin size={14}/> Puntos de entrega físicos
                             </label>
@@ -183,7 +183,7 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                 {/* GESTIÓN DE ZONAS DE DELIVERY */}
                 {config.methods.delivery && (
                     <div className="pt-2 animate-in slide-in-from-top-2 duration-300">
-                        <div className="bg-gray-50 p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
+                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
                             <div className="flex items-center justify-between">
                                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
                                     <Truck size={14}/> Tarifas por Zona

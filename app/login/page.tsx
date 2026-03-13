@@ -93,7 +93,7 @@ export default function LoginPage() {
   // RENDERIZADO CONDICIONAL: Sala de Espera
   if (waitingEmail) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA] p-4 font-sans relative">
+      <div className="min-h-screen flex items-center justify-center bg-[##F6F6F6] p-4 font-sans relative">
         <div className="bg-white p-10 rounded-3xl w-full max-w-md border border-gray-200 text-center relative z-10 shadow-sm">
           <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-6">
             <MailCheck size={32} className="text-white" strokeWidth={2.5} />
@@ -115,7 +115,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA] p-4 font-sans relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#F6F6F6] p-4 font-sans relative overflow-hidden">
       
       {/* BACKGROUND DECORATION FLAT */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-gray-200/50 rounded-full blur-3xl -z-10"></div>

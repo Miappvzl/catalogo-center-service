@@ -118,7 +118,7 @@ export default function SettingsPage() {
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={32}/></div>
 
   return (
-    <div className="pb-32 font-sans text-gray-900 bg-[#F8F9FA] min-h-screen">
+    <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen">
       <AdminHeader store={store} title="Configuración" />
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8 mt-6 md:mt-8">
@@ -137,7 +137,7 @@ export default function SettingsPage() {
                         <input 
                             value={identity.name} 
                             onChange={e => handleIdentityChange('name', e.target.value)} 
-                            className="w-full bg-gray-50 border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
+                            className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
                         />
                     </div>
                     <div>
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                             value={identity.phone} 
                             onChange={e => handleIdentityChange('phone', e.target.value.replace(/[^0-9]/g, ''))} 
                             placeholder="Ej: 584120000000" 
-                            className="w-full bg-gray-50 border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-medium text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
+                            className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-medium text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
                         />
                     </div>
                 </div>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Mayorista Gamificado */}
-                <div className="bg-gray-50 p-5 rounded-[var(--radius-card)] mb-6 border border-transparent">
+                <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] mb-6 border border-transparent">
                     <div 
                         className="flex items-center justify-between mb-4 cursor-pointer active:scale-[0.99] transition-transform"
                         onClick={() => handleWholesaleChange('active', !wholesale.active)}
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Comprobantes Estrictos */}
-                <div className="bg-gray-50 p-5 rounded-[var(--radius-card)] border border-transparent">
+                <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent">
                     <div 
                         className="flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform"
                         onClick={() => { setReceipt({ strict_mode: !receipt.strict_mode }); setIsDirty(true) }}

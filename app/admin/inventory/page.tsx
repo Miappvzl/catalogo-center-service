@@ -86,7 +86,7 @@ export default function InventoryPage() {
     const stats = useMemo(() => ({ total: items.length, low: items.filter(i => i.stock > 0 && i.stock <= 3).length, out: items.filter(i => i.stock === 0).length }), [items])
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans text-gray-900 flex flex-col">
+        <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-gray-900 flex flex-col">
             {/* HEADER STICKY */}
             <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-4">

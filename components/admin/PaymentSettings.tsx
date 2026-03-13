@@ -65,7 +65,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
         {/* PAGO MÓVIL */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.pago_movil.active ? 'border-transparent bg-blue-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.pago_movil.active ? 'border-transparent bg-[#b6d8ff]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('pago_movil', 'active', !methods.pago_movil.active)}
@@ -88,7 +88,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* ZELLE */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.zelle.active ? 'border-transparent bg-purple-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.zelle.active ? 'border-transparent bg-[#e5c6ff]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('zelle', 'active', !methods.zelle.active)}
@@ -111,7 +111,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* BINANCE */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.binance.active ? 'border-transparent bg-yellow-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.binance.active ? 'border-transparent bg-[#fff369de]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('binance', 'active', !methods.binance.active)}
@@ -134,7 +134,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         </div>
 
         {/* CASH */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.cash.active ? 'border-transparent bg-green-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.cash.active ? 'border-transparent bg-[#00ff008a]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('cash', 'active', !methods.cash.active)}
