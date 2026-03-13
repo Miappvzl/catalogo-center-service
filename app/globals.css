@@ -103,3 +103,31 @@ body {
     -webkit-text-stroke: 2px #00cd61;
     filter: drop-shadow(0px 0px 40px rgba(0, 205, 97, 0.4));
   }
+
+
+  
+
+/* --- SISTEMA DE DISEÑO (VARIABLES GLOBALES) --- */
+:root {
+  /* Control centralizado de bordes redondeados */
+  --radius-card: 1rem;       /* Para tarjetas principales (equivale a rounded-2xl) */
+  --radius-btn: 0.75rem;     /* Para botones y modales (equivale a rounded-xl) */
+  --radius-badge: 0.375rem;  /* Para etiquetas/tags (equivale a rounded-md) */
+}
+
+/* --- SOFT UI / BORDERLESS ARCHITECTURE --- */
+@layer utilities {
+  .shadow-subtle {
+    /* Sombra extremadamente difuminada: eleva sin ensuciar */
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+  
+  .card-interactive {
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .card-interactive:hover {
+    border-color: #2424242a;
+  }
+}

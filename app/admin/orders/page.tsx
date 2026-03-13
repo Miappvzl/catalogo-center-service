@@ -36,12 +36,13 @@ interface Order {
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
+  // ELIMINADOS LOS BORDES DUROS, MANTENIENDO EL SOFT UI
   const styles: Record<string, string> = {
-    pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    shipped: 'bg-blue-50 text-blue-700 border-blue-200',
-    completed: 'bg-gray-50 text-gray-600 border-gray-200',
-    cancelled: 'bg-red-50 text-red-700 border-red-200'
+    pending: 'bg-yellow-50 text-yellow-700',
+    paid: 'bg-emerald-50 text-emerald-700',
+    shipped: 'bg-blue-50 text-blue-700',
+    completed: 'bg-gray-100 text-gray-600',
+    cancelled: 'bg-red-50 text-red-700'
   }
   
   const labels: Record<string, string> = {
@@ -55,7 +56,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   const Icon = status === 'pending' ? Clock : status === 'paid' ? DollarSign : status === 'shipped' ? Truck : status === 'cancelled' ? XCircle : CheckCircle2
 
   return (
-    <span className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border shrink-0 ${styles[status] || styles.pending}`}>
+    <span className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${styles[status] || styles.pending}`}>
       <Icon size={12} strokeWidth={3} />
       {labels[status] || status}
     </span>
@@ -271,12 +272,12 @@ export default function OrdersPage() {
   }, [orders, search, filterStatus])
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans text-gray-900 flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans text-gray-900 flex flex-col">
         
-        {/* HEADER STICKY */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center">
+        {/* HEADER STICKY (BORDERLESS) */}
+        <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
             <div className="flex items-center gap-4">
-                <Link href="/admin" className="p-2 bg-gray-50 border border-gray-200 hover:border-black hover:bg-white rounded-full transition-all group shrink-0">
+                <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-[var(--radius-btn)] transition-all group shrink-0">
                     <ArrowLeft size={18} className="text-gray-500 group-hover:text-black"/>
                 </Link>
                 <div>
@@ -289,7 +290,7 @@ export default function OrdersPage() {
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestión de Ventas</p>
                 </div>
             </div>
-            <button onClick={() => { fetchOrders(0, true); fetchKPIs(); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors active:rotate-180 duration-500 shrink-0" title="Sincronizar Forzado">
+            <button onClick={() => { fetchOrders(0, true); fetchKPIs(); }} className="p-2 hover:bg-gray-100 rounded-[var(--radius-btn)] transition-colors active:rotate-180 duration-500 shrink-0" title="Sincronizar Forzado">
                 <Clock size={18} className="text-gray-400"/>
             </button>
         </div>
@@ -298,38 +299,38 @@ export default function OrdersPage() {
         <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
             <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8">
                 
-                {/* KPI CARDS FLAT */}
+                {/* KPI CARDS (BORDERLESS & SOFT UI) */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 min-w-0">
+                    <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Pendientes</p>
                         <div className="flex items-center gap-2">
                             <span className="text-2xl font-black text-yellow-600 truncate">{kpiStats.pending}</span>
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 flex flex-col justify-center min-w-0">
+                    <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-center min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Ventas Hoy</p>
                         <p className="text-2xl font-black text-gray-900 leading-none truncate">${kpiStats.salesTodayUSD.toFixed(2)}</p>
                         <p className="text-xs font-mono font-bold text-gray-400 mt-1 truncate">
                             Bs {kpiStats.salesTodayBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 col-span-2 md:col-span-1 min-w-0">
+                    <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive col-span-2 md:col-span-1 min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Total Histórico</p>
                         <p className="text-2xl font-black text-gray-900 truncate">{kpiStats.total} <span className="text-sm text-gray-400 font-medium">Pedidos</span></p>
                     </div>
                 </div>
 
-               {/* FILTERS & SEARCH FLAT */}
+               {/* FILTERS & SEARCH (SOFT UI) */}
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                     <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto no-scrollbar w-full lg:w-auto border border-gray-200 max-w-full">
+                     <div className="flex bg-gray-50 p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
                         {['all', 'pending', 'paid', 'shipped'].map(status => (
                             <button 
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
-                                className={`shrink-0 px-4 py-2 rounded-md text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                                className={`shrink-0 px-4 py-2 rounded-[var(--radius-badge)] text-xs font-bold capitalize transition-all whitespace-nowrap ${
                                     filterStatus === status 
-                                    ? 'bg-white text-black border border-gray-300 shadow-sm' 
-                                    : 'text-gray-500 hover:text-gray-900 border border-transparent'
+                                    ? 'bg-white text-black shadow-subtle border border-transparent' 
+                                    : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
                                 }`}
                             >
                                 {status === 'all' ? 'Todos' : status === 'pending' ? 'Pendientes' : status === 'paid' ? 'Pagados' : 'Enviados'}
@@ -343,7 +344,7 @@ export default function OrdersPage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar pedido o cliente..." 
-                            className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2.5 text-sm font-medium focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+                            className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-9 pr-4 py-2.5 text-sm font-medium outline-none transition-all"
                         />
                     </div>
                 </div>
@@ -352,16 +353,16 @@ export default function OrdersPage() {
                 {loading && orders.length === 0 ? (
                     <div className="text-center py-20"><Loader2 className="animate-spin text-gray-300 mx-auto" size={32}/></div>
                 ) : filteredOrders.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center mx-auto mb-4 text-gray-400"><Package size={24}/></div>
+                    <div className="text-center py-20 bg-white rounded-[var(--radius-card)] card-interactive">
+                        <div className="w-16 h-16 bg-gray-50 rounded-[var(--radius-btn)] flex items-center justify-center mx-auto mb-4 text-gray-400"><Package size={24}/></div>
                         <p className="text-gray-400 font-bold text-sm">No se encontraron pedidos.</p>
                     </div>
                 ) : (
                     <>
-                        {/* VISTA MÓVIL (Tarjetas Flat) */}
+                        {/* VISTA MÓVIL (Tarjetas Flat/Borderless) */}
                         <div className="md:hidden space-y-3 w-full">
                             {filteredOrders.map(order => (
-                                <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-xl border border-gray-200 p-4 active:bg-gray-50 transition-colors cursor-pointer w-full">
+                                <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-[var(--radius-card)] card-interactive p-4 active:bg-gray-50 transition-colors cursor-pointer w-full">
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="min-w-0 pr-2">
                                             <p className="text-xs font-black text-gray-900 truncate">#{order.order_number}</p>
@@ -372,7 +373,7 @@ export default function OrdersPage() {
                                     <p className="font-bold text-sm text-gray-900 truncate">{order.customer_name}</p>
                                     <div className="flex justify-between items-end mt-3">
                                         <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 pr-2">
-                                            <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase text-gray-600 border border-gray-200 truncate max-w-[120px]">{order.payment_method}</span>
+                                            <span className="bg-gray-50 px-2 py-1 rounded-[var(--radius-badge)] text-[10px] font-mono uppercase text-gray-600 truncate max-w-[120px]">{order.payment_method}</span>
                                         </div>
                                         <div className="text-right shrink-0">
                                             <p className="font-black text-base text-gray-900 leading-none">${order.total_usd}</p>
@@ -382,11 +383,11 @@ export default function OrdersPage() {
                             ))}
                         </div>
 
-                        {/* VISTA DESKTOP (Tabla de Alta Densidad Flat) */}
-                        <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden w-full max-w-full">
+                        {/* VISTA DESKTOP (Tabla de Alta Densidad Borderless) */}
+                        <div className="hidden md:block bg-white rounded-[var(--radius-card)] overflow-hidden w-full max-w-full">
                             <div className="overflow-x-auto w-full">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b border-gray-200 text-[10px] uppercase tracking-widest text-gray-500">
+                                    <thead className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase tracking-widest text-gray-500">
                                         <tr>
                                             <th className="px-6 py-4 font-bold">Pedido</th>
                                             <th className="px-6 py-4 font-bold">Fecha</th>
@@ -396,7 +397,7 @@ export default function OrdersPage() {
                                             <th className="px-6 py-4 font-bold text-right">Total</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                                    <tbody className="divide-y divide-gray-100">
                                         {filteredOrders.map(order => (
                                             <tr 
                                                 key={order.id} 
@@ -404,7 +405,7 @@ export default function OrdersPage() {
                                                 className="hover:bg-gray-50 transition-colors cursor-pointer group"
                                             >
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="font-black text-gray-900 group-hover:underline">#{order.order_number}</span>
+                                                    <span className="font-black text-gray-900 group-hover:text-black transition-colors">#{order.order_number}</span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 text-xs">
                                                     {new Date(order.created_at).toLocaleDateString()}
@@ -417,8 +418,8 @@ export default function OrdersPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex gap-2">
-                                                        <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] font-mono uppercase text-gray-600">{order.payment_method}</span>
-                                                        <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] font-mono uppercase text-gray-600">{order.shipping_method === 'pickup' ? 'Retiro' : 'Envío'}</span>
+                                                        <span className="bg-gray-50 px-2 py-1 rounded-[var(--radius-badge)] text-[10px] font-mono uppercase text-gray-600">{order.payment_method}</span>
+                                                        <span className="bg-gray-50 px-2 py-1 rounded-[var(--radius-badge)] text-[10px] font-mono uppercase text-gray-600">{order.shipping_method === 'pickup' ? 'Retiro' : 'Envío'}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -442,7 +443,7 @@ export default function OrdersPage() {
                                         fetchOrders(nextPage)
                                     }} 
                                     disabled={loadingMore}
-                                    className="bg-white border border-gray-200 text-gray-900 font-bold text-xs uppercase tracking-widest px-8 py-3 rounded-full hover:border-black hover:bg-gray-50 transition-all flex items-center gap-2 shrink-0"
+                                    className="bg-white shadow-subtle border border-transparent text-gray-900 font-bold text-xs uppercase tracking-widest px-8 py-3 rounded-[var(--radius-btn)] hover:border-black transition-all flex items-center gap-2 shrink-0"
                                 >
                                     {loadingMore ? <Loader2 size={16} className="animate-spin"/> : <ArrowLeft size={16} className="-rotate-90"/>}
                                     Cargar Más Pedidos
@@ -453,7 +454,6 @@ export default function OrdersPage() {
                 )}
             </div>
         </div>
-        {/* Fin Contenedor Anti-Desborde */}
 
         {/* --- CAJÓN LATERAL (SLIDE-OVER DRAWER) --- */}
         <AnimatePresence>
@@ -468,48 +468,48 @@ export default function OrdersPage() {
                     <motion.div 
                         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="relative w-full md:w-[450px] bg-white h-full border-l border-gray-200 flex flex-col"
+                        className="relative w-full md:w-[450px] bg-white h-full flex flex-col shadow-2xl"
                     >
-                        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white shrink-0">
                             <div className="min-w-0 pr-4">
                                 <h2 className="text-xl font-black text-gray-900 truncate">Pedido #{selectedOrder.order_number}</h2>
                                 <p className="text-xs font-mono text-gray-500 mt-1">{new Date(selectedOrder.created_at).toLocaleString()}</p>
                             </div>
-                            <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-100 hover:text-black text-gray-400 transition-colors shrink-0">
+                            <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-gray-50 rounded-[var(--radius-btn)] hover:bg-gray-100 hover:text-black text-gray-400 transition-colors shrink-0">
                                 <XCircle size={20} strokeWidth={2}/>
                             </button>
                         </div>
 
-                        {/* VISOR DE COMPROBANTE (NUEVO) */}
-                            {selectedOrder.receipt_url && (
-                                <div className="animate-in fade-in pt-5 slide-in-from-bottom-2">
-                                    <p className="text-[10px] font-bold pl-2 text-gray-400 uppercase tracking-widest mb-2">Comprobante Adjunto</p>
-                                    <div className="bg-gray-50 border border-gray-200 pt-2 pb-2 flex items-center justify-between gap-3">
-                                        <div className="flex items-center pl-2 gap-3 overflow-hidden">
-                                            <div className="w-12 h-12 bg-white rounded-lg border border-gray-200 overflow-hidden shrink-0">
-                                                <img 
-                                                    src={selectedOrder.receipt_url} 
-                                                    alt="Comprobante" 
-                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
-                                                />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-bold text-gray-900 truncate">Captura de Pago</p>
-                                                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedOrder.payment_method}</p>
-                                            </div>
+                        {/* VISOR DE COMPROBANTE */}
+                        {selectedOrder.receipt_url && (
+                            <div className="animate-in fade-in pt-5 slide-in-from-bottom-2 px-6">
+                                <p className="text-[10px] font-bold pl-2 text-gray-400 uppercase tracking-widest mb-2">Comprobante Adjunto</p>
+                                <div className="bg-gray-50 rounded-[var(--radius-card)] p-2 flex items-center justify-between gap-3">
+                                    <div className="flex items-center pl-2 gap-3 overflow-hidden">
+                                        <div className="w-12 h-12 bg-white rounded-[var(--radius-btn)] overflow-hidden shrink-0 shadow-sm">
+                                            <img 
+                                                src={selectedOrder.receipt_url} 
+                                                alt="Comprobante" 
+                                                className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+                                            />
                                         </div>
-                                        <a 
-                                            href={selectedOrder.receipt_url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="p-2.5 bg-white text-gray-700 hover:text-black hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-lg mr-2 transition-colors shrink-0 shadow-sm"
-                                            title="Ampliar comprobante"
-                                        >
-                                            <ArrowUpRight size={16} strokeWidth={2.5}/>
-                                        </a>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 truncate">Captura de Pago</p>
+                                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedOrder.payment_method}</p>
+                                        </div>
                                     </div>
+                                    <a 
+                                        href={selectedOrder.receipt_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="p-2.5 bg-white text-gray-700 hover:text-black hover:bg-gray-100 rounded-[var(--radius-btn)] mr-2 transition-colors shrink-0 shadow-subtle"
+                                        title="Ampliar comprobante"
+                                    >
+                                        <ArrowUpRight size={16} strokeWidth={2.5}/>
+                                    </a>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
                             <div className="flex justify-between items-start">
@@ -517,7 +517,7 @@ export default function OrdersPage() {
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cliente</p>
                                     <p className="font-bold text-lg text-gray-900 break-words">{selectedOrder.customer_name}</p>
                                     {selectedOrder.customer_phone && (
-                                        <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1.5 text-xs font-bold text-green-600 hover:text-green-700 mt-1 w-fit bg-green-50 px-2 py-1 rounded border border-green-200 truncate">
+                                        <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1.5 text-xs font-bold text-green-700 hover:text-green-800 mt-1 w-fit bg-green-50 px-2.5 py-1.5 rounded-[var(--radius-badge)] truncate transition-colors">
                                             <MessageCircle size={14} className="shrink-0"/> <span className="truncate">{selectedOrder.customer_phone}</span>
                                         </a>
                                     )}
@@ -529,16 +529,16 @@ export default function OrdersPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
+                            <div className="bg-gray-50 rounded-[var(--radius-card)] p-5 space-y-4">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dirección de Entrega</p>
-                                    <div className="flex items-start gap-3 bg-white p-3 border border-gray-200 rounded-lg">
+                                    <div className="flex items-start gap-3 bg-white p-3 rounded-[var(--radius-btn)] shadow-sm">
                                         <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5"/>
                                         <p className="text-sm font-medium text-gray-700 leading-snug flex-1 break-words">{selectedOrder.delivery_info || 'Retiro en Tienda'}</p>
                                         <button 
                                             onClick={() => handleCopyAddress(selectedOrder.delivery_info || '')}
                                             disabled={!selectedOrder.delivery_info}
-                                            className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded-md transition-colors disabled:opacity-30 shrink-0"
+                                            className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded-[var(--radius-badge)] transition-colors disabled:opacity-30 shrink-0"
                                         >
                                             {copiedAddress ? <Check size={16} className="text-green-600"/> : <Copy size={16}/>}
                                         </button>
@@ -552,7 +552,7 @@ export default function OrdersPage() {
                                         value={trackingInput}
                                         onChange={(e) => setTrackingInput(e.target.value)}
                                         placeholder="Ej: MRW-123456789" 
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+                                        className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] px-3 py-2.5 text-sm font-bold outline-none transition-all"
                                     />
                                 </div>
                             </div>
@@ -561,17 +561,17 @@ export default function OrdersPage() {
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Artículos ({selectedOrder.order_items.length})</p>
                                 <div className="space-y-2 mb-6">
                                     {selectedOrder.order_items.map((item) => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm bg-white p-3 rounded-lg border border-gray-200">
+                                        <div key={item.id} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-[var(--radius-btn)]">
                                             <div className="min-w-0 flex-1 pr-4">
                                                 <p className="font-bold text-gray-900 truncate">{item.product_name}</p>
                                                 {item.variant_info && <p className="text-xs text-gray-500 truncate">{item.variant_info}</p>}
                                             </div>
-                                            <p className="font-mono font-bold text-gray-900 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md shrink-0">x{item.quantity}</p>
+                                            <p className="font-mono font-bold text-gray-900 bg-white px-2 py-1 rounded-[var(--radius-badge)] shrink-0 shadow-sm">x{item.quantity}</p>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="pt-6 border-t border-gray-200">
+                                <div className="pt-6 border-t border-gray-100">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Actualizar Estado</p>
                                     <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1 w-full max-w-full">
                                         {['pending', 'paid', 'shipped', 'cancelled'].map(status => (
@@ -579,10 +579,10 @@ export default function OrdersPage() {
                                                 key={status}
                                                 onClick={() => updateStatus(selectedOrder.id, status)}
                                                 disabled={updatingId === selectedOrder.id || (selectedOrder.status === status && status !== 'shipped')}
-                                                className={`shrink-0 px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide border transition-all flex items-center justify-center gap-2 ${
+                                                className={`shrink-0 px-5 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 ${
                                                     selectedOrder.status === status 
-                                                        ? 'bg-black text-white border-black opacity-100' 
-                                                        : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black'
+                                                        ? 'bg-black text-white shadow-subtle opacity-100' 
+                                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-200 border border-transparent hover:text-black'
                                                 }`}
                                             >
                                                 {updatingId === selectedOrder.id ? <Loader2 size={14} className="animate-spin"/> : null}
@@ -600,6 +600,7 @@ export default function OrdersPage() {
             )}
         </AnimatePresence>
 
+        {/* Mantenemos tu estilo global de scrollbar intacto */}
         <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

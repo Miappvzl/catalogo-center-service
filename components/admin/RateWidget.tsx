@@ -19,7 +19,6 @@ export default function RateWidget({
   eurRate = 0,
   lastUpdated = null
 }: RateWidgetProps) {
-  
   const [state, formAction, isPending] = useActionState(updateStoreCurrency, initialState)
   const [optimisticCurrency, setOptimisticCurrency] = useOptimistic(
     storeCurrency,
@@ -40,7 +39,7 @@ export default function RateWidget({
   }
 
   return (
-    <section className="bg-white p-6 rounded-2xl border border-gray-200 h-full flex flex-col justify-between relative overflow-hidden transition-colors hover:border-black group">
+    <section className="bg-white p-6 rounded-[var(--radius-card)] card-interactive h-full flex flex-col justify-between relative overflow-hidden group">
         <div className="relative z-10">
             <header className="flex items-center gap-1 mb-6 pb-2 border-b border-gray-100">
                 <div className="p-3 pl-[1.5px] text-black">
@@ -55,7 +54,7 @@ export default function RateWidget({
                     </p>
                 </div>
             </header>
-
+            
             <div className="mb-8">
                 <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-black text-gray-900 tracking-tighter">
@@ -76,15 +75,15 @@ export default function RateWidget({
             </div>
         </div>
 
-        {/* SELECTOR SEGMENTADO (Clean Look Flat) */}
-        <div className="relative z-10 bg-gray-50 p-1.5 rounded-xl flex border border-gray-200">
+        {/* SELECTOR SEGMENTADO (Borderless & Shadow Subtle) */}
+        <div className="relative z-10 bg-gray-50 p-1 rounded-[var(--radius-btn)] flex">
             <button
                 type="button"
                 onClick={() => handleCurrencyChange('usd')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius-badge)] text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'usd'
-                        ? "bg-[#ffffff] text-black border border-gray-300"
+                        ? "bg-white text-black shadow-subtle border border-transparent"
                         : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
                 }`}
             >
@@ -94,9 +93,9 @@ export default function RateWidget({
                 type="button"
                 onClick={() => handleCurrencyChange('eur')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius-badge)] text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'eur'
-                        ? "bg-[#ffffff] text-black border border-gray-300"
+                        ? "bg-white text-black shadow-subtle border border-transparent"
                         : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
                 }`}
             >

@@ -24,7 +24,6 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
       const startDate = startOfDay(subDays(new Date(), days - 1))
       const endDate = endOfDay(new Date())
 
-      // 1. Traemos solo los datos financieros necesarios de ese rango
       const { data: orders, error } = await supabase
         .from('orders')
         .select('created_at, total_usd')
@@ -38,17 +37,15 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
         return
       }
 
-      // 2. Agrupamos las ventas por día matemáticamente
       const aggregatedData = Array.from({ length: days }).map((_, i) => {
         const date = subDays(new Date(), days - 1 - i)
         const dateString = format(date, 'yyyy-MM-dd')
         const displayDate = format(date, "d 'de' MMM", { locale: es })
         
-        // Sumamos los USD de las órdenes de este día en específico
-       // Sumamos los USD de las órdenes de este día en específico
         const dayTotal = orders
           .filter((o: any) => o.created_at.startsWith(dateString))
           .reduce((acc: number, curr: any) => acc + Number(curr.total_usd), 0)
+          
         return {
           date: displayDate,
           fullDate: dateString,
@@ -63,11 +60,10 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
     if (storeId) fetchAnalytics()
   }, [storeId, timeRange, supabase])
 
-  // Cálculo del total del periodo actual
   const totalPeriodo = useMemo(() => data.reduce((acc, curr) => acc + curr.ventas, 0), [data])
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 flex flex-col h-full w-full relative group transition-colors hover:border-black">
+    <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col h-full w-full relative group">
       
       {/* HEADER DEL GRÁFICO */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
@@ -83,17 +79,17 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
           </div>
         </div>
 
-        {/* SELECTOR DE TIEMPO (Flat Toggle) */}
-        <div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl w-fit">
+        {/* SELECTOR DE TIEMPO (Borderless) */}
+        <div className="flex bg-gray-50 p-1 rounded-[var(--radius-btn)] w-fit">
           <button
             onClick={() => setTimeRange('7d')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${timeRange === '7d' ? 'bg-white text-black border border-gray-200' : 'text-gray-400 hover:text-black border border-transparent'}`}
+            className={`px-4 py-1.5 text-xs font-bold rounded-[var(--radius-badge)] transition-all ${timeRange === '7d' ? 'bg-white text-black shadow-subtle border border-transparent' : 'text-gray-400 hover:text-black border border-transparent'}`}
           >
             7 Días
           </button>
           <button
             onClick={() => setTimeRange('30d')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${timeRange === '30d' ? 'bg-white text-black border border-gray-200' : 'text-gray-400 hover:text-black border border-transparent'}`}
+            className={`px-4 py-1.5 text-xs font-bold rounded-[var(--radius-badge)] transition-all ${timeRange === '30d' ? 'bg-white text-black shadow-subtle border border-transparent' : 'text-gray-400 hover:text-black border border-transparent'}`}
           >
             30 Días
           </button>
@@ -101,19 +97,16 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
       </div>
 
       {/* ÁREA DEL GRÁFICO */}
-     {/* ÁREA DEL GRÁFICO */}
-      <div className="flex-1 min-h-62.5 w-full relative">
+      <div className="flex-1 min-h-[250px] w-full relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
             <Loader2 className="animate-spin text-gray-300" size={32} />
           </div>
         ) : null}
-
+        
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-            {/* Cuadrícula limpia sin bordes externos */}
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-            
             <XAxis 
               dataKey="date" 
               axisLine={false} 
@@ -127,14 +120,12 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
               tick={{ fontSize: 10, fill: '#9CA3AF', fontWeight: 600 }}
               tickFormatter={(value) => `$${value}`}
             />
-            
-            {/* Tooltip Personalizado Nivel Enterprise (Cero Sombras) */}
             <Tooltip 
               cursor={{ stroke: '#E5E7EB', strokeWidth: 2, strokeDasharray: '4 4' }}
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-black text-white p-3 rounded-xl border border-[#333]">
+                    <div className="bg-black text-white p-3 rounded-[var(--radius-card)] border border-[#333] shadow-subtle">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
                       <p className="text-lg font-black flex items-center gap-1">
                         ${payload[0].value} <TrendingUp size={14} className="text-green-400"/>
@@ -145,8 +136,6 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
                 return null;
               }}
             />
-            
-            {/* Línea Negra Sólida con Relleno Gris Ultra Claro */}
             <Area 
               type="monotone" 
               dataKey="ventas" 

@@ -17,7 +17,7 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       const dateString = thirtyDaysAgo.toISOString()
 
-      // 1. Buscar Mejor Cliente (Órdenes de los últimos 30 días)
+      // 1. Buscar Mejor Cliente
       const { data: orders } = await supabase
         .from('orders')
         .select('customer_name, customer_phone, total_usd')
@@ -26,19 +26,16 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
         .neq('status', 'cancelled')
 
       if (orders && orders.length > 0) {
-        // Agrupar por cliente y sumar gastos
-     
         const customerMap: Record<string, { spent: number, phone: string | null }> = {}
         orders.forEach((o: any) => {
           if (!customerMap[o.customer_name]) customerMap[o.customer_name] = { spent: 0, phone: o.customer_phone }
           customerMap[o.customer_name].spent += Number(o.total_usd || 0)
         })
-        
         const bestCustomerName = Object.keys(customerMap).reduce((a, b) => customerMap[a].spent > customerMap[b].spent ? a : b)
         setTopCustomer({ name: bestCustomerName, spent: customerMap[bestCustomerName].spent, phone: customerMap[bestCustomerName].phone })
       }
 
-      // 2. Buscar Producto Estrella (Items de los últimos 30 días)
+      // 2. Buscar Producto Estrella
       const { data: items } = await supabase
         .from('order_items')
         .select('product_name, quantity, orders!inner(store_id, created_at, status)')
@@ -48,15 +45,13 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
 
       if (items && items.length > 0) {
         const productMap: Record<string, number> = {}
-       items.forEach((item: any) => {
+        items.forEach((item: any) => {
           if (!productMap[item.product_name]) productMap[item.product_name] = 0
           productMap[item.product_name] += Number(item.quantity)
         })
-        
         const bestProductName = Object.keys(productMap).reduce((a, b) => productMap[a] > productMap[b] ? a : b)
         setTopProduct({ name: bestProductName, qty: productMap[bestProductName] })
       }
-
       setLoading(false)
     }
 
@@ -64,7 +59,7 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
   }, [storeId, supabase])
 
   if (loading) return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 h-full flex items-center justify-center min-h-40">
+    <div className="bg-white p-6 rounded-[var(--radius-card)] h-full flex items-center justify-center min-h-[160px] border border-transparent">
       <Loader2 className="animate-spin text-gray-300" size={32}/>
     </div>
   )
@@ -73,12 +68,12 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
       
       {/* TARJETA: PRODUCTO ESTRELLA */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 flex flex-col justify-between group hover:border-black transition-colors">
+      <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-between group">
         <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-yellow-50 text-yellow-600 rounded-lg border border-yellow-200 group-hover:bg-yellow-100 transition-colors">
+            <div className="p-3 bg-yellow-50 text-yellow-600 rounded-[var(--radius-btn)] group-hover:bg-yellow-100 transition-colors">
                 <Star size={20} strokeWidth={2.5} />
             </div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md border border-gray-200">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-[var(--radius-badge)]">
                 Últimos 30 días
             </span>
         </div>
@@ -97,13 +92,13 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
       </div>
 
       {/* TARJETA: MEJOR CLIENTE */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 flex flex-col justify-between group hover:border-black transition-colors">
+      <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-between group">
         <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 group-hover:bg-blue-100 transition-colors">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-[var(--radius-btn)] group-hover:bg-blue-100 transition-colors">
                 <Crown size={20} strokeWidth={2.5} />
             </div>
             {topCustomer?.phone && (
-                <a href={`https://wa.me/${topCustomer.phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-md border border-green-200 transition-colors uppercase tracking-widest">
+                <a href={`https://wa.me/${topCustomer.phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-[var(--radius-badge)] transition-colors uppercase tracking-widest shadow-subtle hover:shadow-none">
                     <MessageCircle size={12}/> Fidelizar
                 </a>
             )}
