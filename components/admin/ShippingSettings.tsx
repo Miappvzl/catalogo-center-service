@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Truck, MapPin, Save, Loader2, AlertTriangle, Plus, Trash2, DollarSign } from 'lucide-react'
+import { Truck, MapPin, Save, Loader2, AlertTriangle, Plus, Trash2, DollarSign, Store } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
 import Swal from 'sweetalert2'
@@ -22,7 +22,7 @@ const FlatToggle = ({ active, label, subtitle, onClick }: { active: boolean, lab
             {subtitle && <span className={`text-[10px] font-medium uppercase tracking-widest mt-0.5 ${active ? 'text-gray-300' : 'text-gray-500'}`}>{subtitle}</span>}
         </div>
         <div className={`w-10 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${active ? 'bg-white border-white justify-end' : 'bg-white border-transparent justify-start shadow-sm'}`}>
-            <motion.div layout className={`w-4 h-4 rounded-full ${active ? 'bg-black' : 'bg-gray-300'}`}/>
+            <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${active ? 'bg-black' : 'bg-gray-300'}`}/>
         </div>
     </div>
 )
@@ -33,6 +33,7 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
   
   const [config, setConfig] = useState({
     methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true },
+    main_address: '', // NUEVO CAMPO: Dirección de la tienda física
     pickup_locations: [] as string[],
     delivery_zones: [] as {id: string, name: string, cost: number}[] 
   })
@@ -46,7 +47,9 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
             ...prev,
             ...initialData,
             methods: { ...prev.methods, ...initialData.methods },
-            delivery_zones: initialData.delivery_zones || []
+            main_address: initialData.main_address || '', // Cargar
+            delivery_zones: initialData.delivery_zones || [],
+            pickup_locations: initialData.pickup_locations || []
         }))
     }
   }, [initialData])
@@ -149,33 +152,52 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                 {/* GESTIÓN DE DIRECCIONES DE PICKUP */}
                 {config.methods.pickup && (
                     <div className="pt-2 animate-in slide-in-from-top-2 duration-300">
-                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
-                                <MapPin size={14}/> Puntos de entrega físicos
-                            </label>
-                            <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-6">
+                            
+                            {/* Dirección Principal */}
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                                    <Store size={14}/> Dirección de Tienda Principal
+                                </label>
                                 <input 
                                     type="text" 
-                                    placeholder="Ej: C.C. Free Market, Local B-20..."
-                                    className="flex-1 min-w-0 bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-medium focus:ring-1 focus:ring-black focus:border-black focus:shadow-subtle outline-none transition-all"
-                                    value={newLocation}
-                                    onChange={(e) => setNewLocation(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && addLocation()}
+                                    placeholder="¿Dónde queda tu tienda física? (Opcional)"
+                                    className="w-full bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-medium focus:ring-1 focus:ring-black focus:border-black focus:shadow-subtle outline-none transition-all"
+                                    value={config.main_address || ''}
+                                    onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, main_address: e.target.value })) }}
                                 />
-                                <button onClick={addLocation} className="shrink-0 bg-black text-white px-5 py-3 rounded-[var(--radius-btn)] text-xs font-bold uppercase tracking-wide hover:bg-gray-800 active:scale-95 shadow-subtle transition-all flex items-center justify-center gap-2">
-                                    <Plus size={16}/> Agregar
-                                </button>
                             </div>
-                            {config.pickup_locations.length > 0 && (
-                                <ul className="space-y-2 pt-2">
-                                    {config.pickup_locations.map((loc, idx) => (
-                                        <li key={idx} className="flex justify-between items-center gap-3 bg-white px-4 py-3 rounded-[var(--radius-btn)] border border-transparent hover:border-gray-200 text-sm animate-in fade-in duration-200">
-                                            <span className="flex-1 min-w-0 truncate font-bold text-gray-800">{loc}</span>
-                                            <button onClick={() => removeLocation(idx)} className="shrink-0 text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"><Trash2 size={16}/></button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+
+                            {/* Puntos Alternativos */}
+                            <div className="pt-4 border-t border-gray-200">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                                    <MapPin size={14}/> Puntos de entrega alternativos
+                                </label>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ej: C.C. Free Market, Plaza Altamira..."
+                                        className="flex-1 min-w-0 bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-medium focus:ring-1 focus:ring-black focus:border-black focus:shadow-subtle outline-none transition-all"
+                                        value={newLocation}
+                                        onChange={(e) => setNewLocation(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && addLocation()}
+                                    />
+                                    <button onClick={addLocation} className="shrink-0 bg-black text-white px-5 py-3 rounded-[var(--radius-btn)] text-xs font-bold uppercase tracking-wide hover:bg-gray-800 active:scale-95 shadow-subtle transition-all flex items-center justify-center gap-2">
+                                        <Plus size={16}/> Agregar
+                                    </button>
+                                </div>
+                                {config.pickup_locations.length > 0 && (
+                                    <ul className="space-y-2 pt-4">
+                                        {config.pickup_locations.map((loc, idx) => (
+                                            <li key={idx} className="flex justify-between items-center gap-3 bg-white px-4 py-3 rounded-[var(--radius-btn)] border border-transparent hover:border-gray-200 text-sm animate-in fade-in duration-200 shadow-sm">
+                                                <span className="flex-1 min-w-0 truncate font-bold text-gray-800">{loc}</span>
+                                                <button onClick={() => removeLocation(idx)} className="shrink-0 text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"><Trash2 size={16}/></button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
                         </div>
                     </div>
                 )}
@@ -199,7 +221,7 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                                     </div>
                                 ) : (
                                     config.delivery_zones.map((zone) => (
-                                        <div key={zone.id} className="flex items-center gap-3 bg-white p-2 rounded-[var(--radius-btn)] border border-transparent hover:border-gray-200 animate-in fade-in transition-colors">
+                                        <div key={zone.id} className="flex items-center gap-3 bg-white p-2 rounded-[var(--radius-btn)] border border-transparent hover:border-gray-200 animate-in fade-in transition-colors shadow-sm">
                                             <div className="flex-1">
                                                 <input 
                                                     value={zone.name} 

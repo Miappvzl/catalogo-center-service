@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-// 1. DEFINICIÓN DE TIPOS (El Contrato)
+// 1. DEFINICIÓN DE TIPOS (El Contrato Blindado)
 export interface CartItem {
   id: string
   productId: string
@@ -13,7 +13,8 @@ export interface CartItem {
   image: string
   quantity: number
   variantInfo: string | null
-  category?: string // <--- Contrato actualizado
+  category?: string 
+  maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
 }
 
 interface CartState {
@@ -34,19 +35,24 @@ export const useCart = create<CartState>()(
           const variantId = variant ? variant.id : null
           const productId = product.id
           
-          // Generamos ID único combinando producto y variante
+          // Capturamos el stock máximo de la variante o del producto general
+          const currentMaxStock = variant ? Number(variant.stock) : Number(product.stock || 0)
+          
           const uniqueId = `${productId}-${variantId || 'base'}`
-
-          // Verificamos si ya existe
           const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId)
 
           if (existingItemIndex > -1) {
-            // SI EXISTE: Sumamos la cantidad nueva
+            // SI EXISTE: Sumamos validando el límite máximo
             const newItems = [...state.items]
-            newItems[existingItemIndex].quantity += quantity
+            const currentItem = newItems[existingItemIndex]
+            
+            // Lógica blindada: No sumar más allá del stock disponible
+            const requestedQuantity = currentItem.quantity + quantity
+            currentItem.quantity = Math.min(requestedQuantity, currentMaxStock)
+            
             return { items: newItems }
           } else {
-            // SI ES NUEVO: Creamos el objeto CartItem completo
+            // SI ES NUEVO: Guardamos el maxStock en el objeto
             const newItem: CartItem = {
               id: uniqueId,
               productId: productId,
@@ -56,9 +62,10 @@ export const useCart = create<CartState>()(
               basePrice: Number(product.usd_cash_price),
               penalty: Number(product.usd_penalty || 0),
               image: variant?.variant_image || product.image_url,
-              quantity: quantity,
+              quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
               variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
-              category: product.category // <--- 🚀 AQUÍ ESTABA EL ERROR: Faltaba guardar la categoría
+              category: product.category,
+              maxStock: currentMaxStock // <--- 🚀 Se guarda en LocalStorage
             }
 
             return { items: [...state.items, newItem] }
@@ -76,7 +83,9 @@ export const useCart = create<CartState>()(
         set((state) => ({
           items: state.items.map((item) => {
             if (item.id === itemId) {
-              const newQuantity = Math.max(1, quantity)
+              // 🚀 LÓGICA BLINDADA: clamp entre 1 y el maxStock (o infinito si es un carrito viejo)
+              const limit = item.maxStock ?? 9999
+              const newQuantity = Math.min(Math.max(1, quantity), limit)
               return { ...item, quantity: newQuantity }
             }
             return item
