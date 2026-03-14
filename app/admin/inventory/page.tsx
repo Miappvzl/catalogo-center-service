@@ -122,7 +122,7 @@ export default function InventoryPage() {
                     {/* CONTROLES */}
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
                         {/* Filtros Estilo "Clean Look" */}
-                        <div className="flex bg-gray-50 p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full md:w-auto max-w-full">
+                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full md:w-auto max-w-full">
                             {[
                                 { id: 'all', label: 'Todos' },
                                 { id: 'low', label: 'Poco Stock' },
@@ -131,9 +131,9 @@ export default function InventoryPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setFilterStatus(tab.id)}
-                                    className={`shrink-0 px-4 py-2.5 rounded-[var(--radius-badge)] text-xs font-bold transition-all whitespace-nowrap ${
+                                    className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                                         filterStatus === tab.id
-                                            ? 'bg-white text-black shadow-subtle border border-transparent'
+                                            ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
                                             : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
                                         }`}
                                 >

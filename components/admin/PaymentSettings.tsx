@@ -65,15 +65,15 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
         {/* PAGO MÓVIL */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.pago_movil.active ? 'border-transparent bg-[#b6d8ff]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)]  border transition-all duration-300; ${methods.pago_movil.active ? 'border-transparent shadow-[0px_3px_2px_0px_#007bff0f]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('pago_movil', 'active', !methods.pago_movil.active)}
           >
-            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.pago_movil.active ? 'text-gray-900' : 'text-gray-500'}`}>
-              <Smartphone size={18} className={methods.pago_movil.active ? "text-blue-600" : "text-gray-400"}/> Pago Móvil
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.pago_movil.active ? 'text-[#155dfc]' : 'text-gray-400'}`}>
+              <Smartphone size={18} className={methods.pago_movil.active ? "text-[#155dfc]" : "text-gray-400"}/> Pago Móvil
             </div>
-            <AnimatedSwitch active={methods.pago_movil.active} activeColor="bg-blue-500" />
+            <AnimatedSwitch active={methods.pago_movil.active} activeColor="bg-[#155dfc]" />
           </div>
           {methods.pago_movil.active && (
              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -81,22 +81,22 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                  placeholder="Ej: 0412-1234567, CI 123456, Banesco" 
                  value={methods.pago_movil.details} 
                  onChange={e => handleChange('pago_movil', 'details', e.target.value)} 
-                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border border-transparent focus:bg-white focus:border-blue-500 focus:shadow-subtle outline-none bg-white transition-all"
+                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-blue-500 focus:shadow-subtle outline-none  transition-all"
                />
              </div>
           )}
         </div>
 
         {/* ZELLE */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.zelle.active ? 'border-transparent bg-[#e5c6ff]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)]  border transition-all duration-300 ${methods.zelle.active ? 'border-transparent shadow-[0px_3px_2px_0px_#6c1cd314]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('zelle', 'active', !methods.zelle.active)}
           >
-            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.zelle.active ? 'text-gray-900' : 'text-gray-500'}`}>
-              <DollarSign size={18} className={methods.zelle.active ? "text-purple-600" : "text-gray-400"}/> Zelle
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.zelle.active ? 'text-[#6c1cd3]' : 'text-gray-400'}`}>
+              <DollarSign size={18} className={methods.zelle.active ? "text-[#6c1cd3]" : "text-gray-400"}/> Zelle
             </div>
-            <AnimatedSwitch active={methods.zelle.active} activeColor="bg-purple-500" />
+            <AnimatedSwitch active={methods.zelle.active} activeColor="bg-[#6c1cd3]" />
           </div>
           {methods.zelle.active && (
              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -104,22 +104,22 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                  placeholder="Correo Zelle (Titular)" 
                  value={methods.zelle.details} 
                  onChange={e => handleChange('zelle', 'details', e.target.value)} 
-                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border border-transparent focus:bg-white focus:border-purple-500 focus:shadow-subtle outline-none bg-white transition-all"
+                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-purple-500 focus:shadow-subtle outline-none  transition-all"
                />
              </div>
           )}
         </div>
 
         {/* BINANCE */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.binance.active ? 'border-transparent bg-[#fff369de]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)]  border transition-all duration-300 ${methods.binance.active ? 'border-transparent shadow-[0px_3px_2px_0px_#0c0e120f]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('binance', 'active', !methods.binance.active)}
           >
-            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.binance.active ? 'text-gray-900' : 'text-gray-500'}`}>
-              <Bitcoin size={18} className={methods.binance.active ? "text-yellow-600" : "text-gray-400"}/> Binance
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.binance.active ? 'text-[#f4c317]' : 'text-gray-400'}`}>
+              <Bitcoin size={18} className={methods.binance.active ? "text-[#f4c317]" : "text-gray-400"}/> Binance
             </div>
-            <AnimatedSwitch active={methods.binance.active} activeColor="bg-yellow-500" />
+            <AnimatedSwitch active={methods.binance.active} activeColor="bg-[#f4c317]" />
           </div>
           {methods.binance.active && (
              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -127,22 +127,22 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                  placeholder="Email o Pay ID" 
                  value={methods.binance.details} 
                  onChange={e => handleChange('binance', 'details', e.target.value)} 
-                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border border-transparent focus:bg-white focus:border-yellow-500 focus:shadow-subtle outline-none bg-white transition-all"
+                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-yellow-500 focus:shadow-subtle outline-none  transition-all"
                />
              </div>
           )}
         </div>
 
         {/* CASH */}
-        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.cash.active ? 'border-transparent bg-[#00ff008a]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+        <div className={`p-4 rounded-[var(--radius-card)]  border transition-all duration-300 ${methods.cash.active ? 'border-transparent shadow-[0px_3px_2px_0px_#83b96426]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
           <div 
             className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleChange('cash', 'active', !methods.cash.active)}
           >
-            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.cash.active ? 'text-gray-900' : 'text-gray-500'}`}>
-              <Banknote size={18} className={methods.cash.active ? "text-green-700" : "text-gray-400"}/> Efectivo
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.cash.active ? 'text-[#85BB65]' : 'text-gray-400'}`}>
+              <Banknote size={18} className={methods.cash.active ? "text-[#85BB65]" : "text-gray-400"}/> Efectivo
             </div>
-            <AnimatedSwitch active={methods.cash.active} activeColor="bg-green-500" />
+            <AnimatedSwitch active={methods.cash.active} activeColor="bg-[#85BB65]" />
           </div>
           {methods.cash.active && (
              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -150,7 +150,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                  placeholder="Instrucciones (Ej: Solo billetes en buen estado)" 
                  value={methods.cash.details} 
                  onChange={e => handleChange('cash', 'details', e.target.value)} 
-                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border border-transparent focus:bg-white focus:border-green-600 focus:shadow-subtle outline-none bg-white transition-all"
+                 className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-green-600 focus:shadow-subtle outline-none  transition-all"
                />
              </div>
           )}

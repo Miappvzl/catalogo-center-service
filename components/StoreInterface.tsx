@@ -176,7 +176,7 @@ export default function StoreInterface({ store, products, rates }: Props) {
 
      {/* --- HERO SECTION WITH SMART HEADER --- */}
       {store.hero_url && (
-        <div className="w-full h-[35vh] md:h-[50vh] relative bg-gray-100 flex items-end border-b border-gray-100">
+        <div className="w-full h-[35vh] md:h-[25vh] relative bg-gray-100 flex items-end border-b border-gray-100">
           <img
             src={store.hero_url}
             alt={`Banner de ${store.name}`}

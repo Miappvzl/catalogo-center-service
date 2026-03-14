@@ -205,16 +205,16 @@ export default function LandingClient() {
         <section className="pt-32 md:pt-48 pb-16 md:pb-20 px-4 md:px-6 max-w-7xl mx-auto flex flex-col gap-10 md:gap-20 min-h-[90vh] justify-center">
           
           <div className="w-full">
-            <motion.h1 initial="hidden" animate="visible" variants={fadeUp} className="text-[15vw] md:text-[8.5rem] lg:text-[9.5rem] font-black leading-[0.85] tracking-tighter uppercase text-black md:whitespace-normal">
-              VENDE EN <br className="hidden md:block"/> <span className="text-[#00cd61]">DÓLARES.</span> <br/>
-              COBRA EN <br className="hidden md:block"/> BOLÍVARES.
+            <motion.h1 initial="hidden" animate="visible" variants={fadeUp} className="text-[15vw] md:text-[8.5rem] lg:text-[9.5rem] font-black leading-[0.79] tracking-tighter uppercase text-black md:whitespace-normal">
+              TU NEGOCIO <br className="hidden md:block"/> <span className="text-[#00cd61]">VENDE</span> <br/>
+              PREZISO<br className="hidden md:block"/> CALCULA.
             </motion.h1>
           </div>
 
           <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10 lg:gap-8 w-full">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="max-w-md w-full shrink-0">
               <p className="text-base md:text-xl font-medium text-gray-600 leading-relaxed mb-6 md:mb-8">
-                El catálogo inteligente diseñado para Venezuela. Conecta tu tienda al BCV y recibe pedidos exactos en WhatsApp.
+               Olvídate de actualizar tasas a mano y de los errores al cobrar. Automatiza el cambio de divisas de tu tienda y deja que las ventas fluyan sin pausas.
               </p>
               {/* BOTÓN HERO CON EL NUEVO COLOR */}
               <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-6 py-3.5 md:px-8 md:py-5 rounded-full text-sm md:text-base font-black uppercase tracking-widest hover:bg-black hover:text-white border-2 border-black transition-all duration-300 active:scale-95 group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 hover:translate-x-1">
@@ -332,8 +332,8 @@ export default function LandingClient() {
 
         {/* SECCIÓN: SOCIAL PROOF */}
         <section className="py-24 md:py-32 bg-white border-t border-gray-200 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 mb-16 md:mb-20">
-            <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase whitespace-nowrap md:whitespace-normal">
+          <div className="max-w-7xl mx-auto px-6 mb-13 md:mb-20">
+            <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase md:whitespace-normal">
               Ellos ya <br className="hidden md:block"/> lo probaron.
             </h2>
           </div>

@@ -322,14 +322,14 @@ export default function OrdersPage() {
 
                {/* FILTERS & SEARCH (SOFT UI) */}
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                     <div className="flex bg-gray-50 p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
+                     <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
                         {['all', 'pending', 'paid', 'shipped'].map(status => (
                             <button 
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
-                                className={`shrink-0 px-4 py-2 rounded-[var(--radius-badge)] text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                                className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold capitalize transition-all whitespace-nowrap ${
                                     filterStatus === status 
-                                    ? 'bg-white text-black shadow-subtle border border-transparent' 
+                                    ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent' 
                                     : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
                                 }`}
                             >
