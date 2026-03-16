@@ -58,9 +58,11 @@ export const useCart = create<CartState>()(
               productId: productId,
               variantId: variantId,
               name: product.name,
-              price: Number(product.usd_cash_price), 
-              basePrice: Number(product.usd_cash_price),
-              penalty: Number(product.usd_penalty || 0),
+              
+              // 🚀 LÓGICA DE OVERRIDE: Si la variante tiene precio propio, úsalo. Si no (??), usa el del producto.
+              price: Number(variant?.override_usd_price ?? product.usd_cash_price), 
+              basePrice: Number(variant?.override_usd_price ?? product.usd_cash_price),
+              penalty: Number(variant?.override_usd_penalty ?? product.usd_penalty ?? 0),
               image: variant?.variant_image || product.image_url,
               quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
               variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,

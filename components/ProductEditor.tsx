@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer' 
@@ -46,6 +46,20 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
     const [variants, setVariants] = useState<any[]>([])
     const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([])
+
+    // 🚀 NUEVO: Controla qué fila de variante está expandida para editar su precio
+    const [expandedVariantId, setExpandedVariantId] = useState<string | null>(null)
+    
+    // 🚀 NUEVO: Función para actualizar el override en el estado local
+    const updateVariantOverride = (id: string, field: string, value: string) => {
+        setVariants(variants.map(v => {
+            if (v.id === id) {
+                return { ...v, [field]: value === '' ? null : Number(value) }
+            }
+            return v
+        }))
+        setIsDirty(true)
+    }
 
     const [variantInput, setVariantInput] = useState({
         colorName: '',
@@ -429,6 +443,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 user_id: user.id,
                 store_id: storeSettings.id,
                 stock: hasVariants ? 0 : (Number(simpleStock) || 0)
+
+                
             }
 
             let currentId = productId
@@ -461,7 +477,10 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             size: v.size,
                             stock: v.stock,
                             variant_image: v.variant_image,
-                            gallery: v.gallery
+                            gallery: v.gallery,
+                            // 🚀 NUEVAS COLUMNAS FINANCIERAS
+                            override_usd_price: v.override_usd_price ?? null,
+                            override_usd_penalty: v.override_usd_penalty ?? null
                         }
                         if (v.id.startsWith('temp-')) toInsert.push(vPayload)
                         else toUpdate.push({ ...vPayload, id: v.id })
@@ -811,33 +830,96 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     ) : (
                                         <div className="space-y-2">
                                             {variants.map((v, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-white border border-transparent p-3 md:p-4 rounded-[var(--radius-btn)] hover:border-black transition-colors animate-in fade-in slide-in-from-bottom-2 shadow-sm">
-                                                    <div className="flex items-center gap-4 min-w-0">
-                                                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-[var(--radius-badge)] border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center">
-                                                            {v.variant_image ? <img src={v.variant_image} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex }}></div>}
+                                                <div key={i} className="flex flex-col bg-white border border-transparent hover:border-black rounded-[var(--radius-btn)] transition-colors animate-in fade-in slide-in-from-bottom-2 shadow-sm overflow-hidden">
+                                                    
+                                                    {/* Fila Principal */}
+                                                    <div className="flex items-center justify-between p-3 md:p-4">
+                                                        <div className="flex items-center gap-4 min-w-0">
+                                                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-[var(--radius-badge)] border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center">
+                                                                {v.variant_image ? <img src={v.variant_image} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex }}></div>}
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    {v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent' && (
+                                                                        <div className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0 shadow-sm" style={{ backgroundColor: v.color_hex }}></div>
+                                                                    )}
+                                                                    <p className="font-bold text-sm text-gray-900 truncate">{v.color_name}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1.5">
+                                                                    <span className="text-[10px] font-mono font-bold bg-gray-50 border border-gray-100 text-gray-600 px-2 py-0.5 rounded-[var(--radius-badge)] leading-none">{v.size}</span>
+                                                                    {/* 🚀 Etiqueta visual si tiene precio especial */}
+                                                                    {v.override_usd_price !== null && v.override_usd_price !== undefined && (
+                                                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><DollarSign size={10}/> Personalizado</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="min-w-0 flex-1">
-                                                           <div className="flex items-center gap-2">
-                                                                {v.color_hex && v.color_hex !== 'transparent' && (
-                                                                    <div className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0 shadow-sm" style={{ backgroundColor: v.color_hex }}></div>
-                                                                )}
-                                                                <p className="font-bold text-sm text-gray-900 truncate">{v.color_name}</p>
+                                                        
+                                                        <div className="flex items-center gap-2 md:gap-4 shrink-0 pl-2">
+                                                            <div className="text-right hidden sm:block">
+                                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Stock</p>
+                                                                <p className="font-mono font-black text-sm text-gray-900 leading-none">{v.stock}</p>
                                                             </div>
-                                                            <div className="flex items-center mt-1.5">
-                                                                <span className="text-[10px] font-mono font-bold bg-gray-50 border border-gray-100 text-gray-600 px-2 py-0.5 rounded-[var(--radius-badge)] leading-none">{v.size}</span>
-                                                            </div>
+                                                            
+                                                            <div className="w-px h-8 bg-gray-100 hidden md:block mx-1"></div>
+                                                            
+                                                            {/* Botón para Expandir Opciones de Precio */}
+                                                            <button 
+                                                                onClick={(e) => { e.preventDefault(); setExpandedVariantId(expandedVariantId === v.id ? null : v.id) }} 
+                                                                className={`p-2 rounded-[var(--radius-badge)] text-gray-500 hover:text-black hover:bg-gray-100 transition-colors flex items-center gap-1 ${expandedVariantId === v.id ? 'bg-gray-100 text-black' : ''}`}
+                                                                title="Editar Precio/Desc."
+                                                            >
+                                                                <span className="text-[10px] font-bold hidden sm:inline">Precio</span>
+                                                                {expandedVariantId === v.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                            </button>
+                                                            
+                                                            <button onClick={(e) => { e.preventDefault(); removeVariant(v.id) }} className="p-2 rounded-[var(--radius-badge)] text-gray-400 hover:text-red-500 hover:bg-red-50 border border-transparent transition-colors" title="Eliminar SKU">
+                                                                <Trash2 size={18} />
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-4 shrink-0 pl-4">
-                                                        <div className="text-right">
-                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Stock</p>
-                                                            <p className="font-mono font-black text-sm text-gray-900 leading-none">{v.stock}</p>
-                                                        </div>
-                                                        <div className="w-px h-8 bg-gray-100 hidden md:block mx-1"></div>
-                                                        <button onClick={() => removeVariant(v.id)} className="p-2 rounded-[var(--radius-badge)] text-gray-400 hover:text-red-500 hover:bg-red-50 border border-transparent transition-colors" title="Eliminar SKU">
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
+
+                                                    {/* 🚀 Panel Expandible de Override (Sutil y Clean Look) */}
+                                                    <AnimatePresence>
+                                                        {expandedVariantId === v.id && (
+                                                            <motion.div 
+                                                                initial={{ height: 0, opacity: 0 }} 
+                                                                animate={{ height: 'auto', opacity: 1 }} 
+                                                                exit={{ height: 0, opacity: 0 }} 
+                                                                className="border-t border-gray-100 bg-gray-50/50"
+                                                            >
+                                                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Precio Base Propio (Opcional)</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                placeholder="Heredar del producto"
+                                                                                value={v.override_usd_price ?? ''} 
+                                                                                onChange={(e) => updateVariantOverride(v.id, 'override_usd_price', e.target.value)}
+                                                                                className="w-full bg-white border border-gray-200 focus:border-black focus:ring-1 focus:ring-black rounded-lg pl-7 pr-3 py-2 text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Margen Divisa Propio (Opcional)</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                placeholder="Heredar del producto"
+                                                                                value={v.override_usd_penalty ?? ''} 
+                                                                                onChange={(e) => updateVariantOverride(v.id, 'override_usd_penalty', e.target.value)}
+                                                                                className="w-full bg-white border border-gray-200 focus:border-black focus:ring-1 focus:ring-black rounded-lg pl-7 pr-3 py-2 text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+
                                                 </div>
                                             ))}
                                         </div>

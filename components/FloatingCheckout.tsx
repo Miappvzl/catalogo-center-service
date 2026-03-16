@@ -649,7 +649,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             <Package size={20} className={clientData.deliveryType === 'courier' ? 'text-white mt-0.5' : 'text-gray-500 mt-0.5'}/>
                                                             <div>
                                                                 <p className="font-bold text-sm leading-tight">Envío Nacional</p>
-                                                                <p className={`text-xs mt-0.5 ${clientData.deliveryType === 'courier' ? 'text-gray-300' : 'text-gray-500'}`}>Envíos por agencia a todo el país. Cobro en destino.</p>
+                                                                <p className={`text-xs mt-0.5 ${clientData.deliveryType === 'courier' ? 'text-gray-300' : 'text-gray-500'}`}>Envíos por agencia a todo el país.</p>
                                                             </div>
                                                         </div>
                                                     )}
@@ -714,7 +714,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 pt-2 border-t border-gray-100">
                                                         <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg text-xs font-bold flex items-start gap-2">
                                                             <AlertCircle size={16} className="shrink-0 mt-0.5 text-blue-600" /> 
-                                                            <span>El costo del envío lo pagas al retirar en la agencia (Cobro en Destino).</span>
+                                                            <span>El costo del envío lo consultas con el vendedor.</span>
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block tracking-wider">Agencia de Envío *</label>

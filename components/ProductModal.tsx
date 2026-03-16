@@ -35,23 +35,38 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const currencySymbol = '$'
 
     const pricing = useMemo(() => {
-        if (!product) return { cashPrice: 0, priceInBs: 0, hasDiscount: false, discountPercent: 0, exactSavings: 0 }
+    if (!product) return { cashPrice: 0, priceInBs: 0, hasDiscount: false, discountPercent: 0, exactSavings: 0 }
 
-        const cashPrice = Number(product.usd_cash_price || 0)
-        const markup = Number(product.usd_penalty || 0)
-        const listPrice = cashPrice + markup
-        const priceInBs = listPrice * activeRate
-        const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
+    // 1. Asumimos los precios del producto padre por defecto
+    let targetCashPrice = Number(product.usd_cash_price || 0)
+    let targetPenalty = Number(product.usd_penalty || 0)
 
-        return {
-            cashPrice,
-            priceInBs,
-            discountPercent,
-            hasDiscount: markup > 0,
-            exactSavings: markup
-        }
-    }, [product, activeRate])
+    // 2. 🚀 LÓGICA DE OVERRIDE: Si hay una variante seleccionada, revisamos si tiene precio propio
+    if (selectedColor && selectedSize && variants.length > 0) {
+       const specificVariant = variants.find(v => v.color_name === selectedColor && v.size === selectedSize)
+       if (specificVariant) {
+           if (specificVariant.override_usd_price !== null && specificVariant.override_usd_price !== undefined) {
+               targetCashPrice = Number(specificVariant.override_usd_price)
+           }
+           if (specificVariant.override_usd_penalty !== null && specificVariant.override_usd_penalty !== undefined) {
+               targetPenalty = Number(specificVariant.override_usd_penalty)
+           }
+       }
+    }
 
+    // 3. Calculamos los totales basados en el precio ganador (Target)
+    const listPrice = targetCashPrice + targetPenalty
+    const priceInBs = listPrice * activeRate
+    const discountPercent = listPrice > 0 ? Math.round((targetPenalty / listPrice) * 100) : 0
+
+    return {
+        cashPrice: targetCashPrice,
+        priceInBs,
+        discountPercent,
+        hasDiscount: targetPenalty > 0,
+        exactSavings: targetPenalty 
+    }
+  }, [product, activeRate, selectedColor, selectedSize, variants])
     // --- FETCHING (AHORA TRAEMOS TODO, INCLUSO STOCK 0) ---
     useEffect(() => {
         if (isOpen && product) {
