@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
+import { useEditorGuard } from '@/app/store/useEditorGuard'
+import Swal from 'sweetalert2'
 
 const NAV_LINKS = [
   { name: 'Inicio', href: '/admin', icon: LayoutGrid },
@@ -14,6 +16,47 @@ const NAV_LINKS = [
   { name: 'Inventario', href: '/admin/inventory', icon: Package },
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
+
+// 🚀 ENVOLTORIO PROTEGIDO PARA LOS LINKS
+const GuardedLink = ({ href, children, className, isAction }: any) => {
+  const router = useRouter()
+  const pathname = usePathname()
+  const isDirty = useEditorGuard((state) => state.isDirty)
+  const setDirty = useEditorGuard((state) => state.setDirty)
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    if (pathname === href) return // Si ya estamos en la ruta, no hace nada
+
+    if (isDirty) {
+      Swal.fire({
+          title: '¿Salir sin guardar?',
+          text: 'Tienes cambios pendientes en el producto. Si sales ahora, se perderán.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444', 
+          cancelButtonColor: '#000000', 
+          confirmButtonText: 'Sí, salir',
+          cancelButtonText: 'Quedarme',
+          customClass: { popup: 'rounded-[var(--radius-card)]' }
+      }).then((result) => {
+          if (result.isConfirmed) {
+              setDirty(false) // Limpiamos el guardián
+              router.push(href)
+          }
+      })
+    } else {
+      router.push(href)
+    }
+  }
+
+  return (
+    <a href={href} onClick={handleClick} className={className}>
+      {children}
+    </a>
+  )
+}
 
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
   const [copied, setCopied] = useState(false)
@@ -40,7 +83,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
           const isActive = pathname === link.href
 
           return (
-            <Link 
+            <GuardedLink 
                 key={link.href} 
                 href={link.href} 
                 className={`relative flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-sm font-bold transition-colors duration-200 group ${
@@ -56,16 +99,16 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
               )}
               <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
               <span className="relative z-10">{link.name}</span>
-            </Link>
+            </GuardedLink>
           )
         })}
         <div className="pt-4">
-            <Link 
+            <GuardedLink 
                 href="/admin/product/new" 
                 className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all border border-transparent border-dashed hover:border-black"
             >
                 <Plus size={20} /> Nuevo Producto
-            </Link>
+            </GuardedLink>
         </div>
       </nav>
 
@@ -109,20 +152,19 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
         if (link.isAction) {
           return (
             <div key={link.href} className="flex-shrink-0 relative -top-2 px-2">
-              <Link href={link.href} className="block group shadow-subtle rounded-full">
+              <GuardedLink href={link.href} className="block group shadow-subtle rounded-full">
                 <div className="w-11 h-11 bg-[#070707f3] text-white rounded-full flex items-center justify-center group-active:scale-95 transition-transform duration-200">
                   <Plus size={26} strokeWidth={1.4} />
                 </div>
-              </Link>
+              </GuardedLink>
             </div>
           )
         }
 
         return (
-          <Link 
+          <GuardedLink 
               key={link.href} 
               href={link.href} 
-              prefetch={true}
               className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${
                   isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'
               }`}
@@ -142,7 +184,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
             <span className="text-[10px] font-bold tracking-wide">
               {link.name}
             </span>
-          </Link>
+          </GuardedLink>
         )
       })}
     </div>

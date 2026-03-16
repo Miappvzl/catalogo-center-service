@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import PaymentSettings from '@/components/admin/PaymentSettings'
 import ShippingSettings from '@/components/admin/ShippingSettings'
 import AdminHeader from '@/components/admin/AdminHeader'
+import SecuritySettings from '@/components/admin/SecuritySettings'
 
 // --- COMPONENTE TOGGLE ANIMADO (Soft UI) ---
 const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
@@ -265,7 +266,9 @@ export default function SettingsPage() {
         {/* MODULOS INDEPENDIENTES */}
         <PaymentSettings storeId={store.id} initialData={store.payment_config} />
         <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
-
+        
+{/* SEGURIDAD DE LA CUENTA */}
+        <SecuritySettings />
       </div>
     </div>
   )

@@ -516,7 +516,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             <div className="flex-1 overflow-y-auto scroll-smooth relative">
                                 <AnimatePresence mode="wait">
                                     {step === 1 ? (
-                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className=" md:p-6 ">
+                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className=" md:p-0 ">
                                             <div className="space-y-0">
                                                 {items.map((item) => {
                                                     const itemTotalNominal = item.basePrice * item.quantity;
@@ -571,7 +571,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             </div>
 
                                             {recommendedProducts.length > 0 && (
-                                                <div className="mt-8 border-t border-gray-200 pt-8 pb-4">
+                                                <div className="mt-8 border-t border-gray-200 pt-8 px-2 pb-4">
                                                     <div className="flex items-center justify-between mb-4">
                                                         <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Más como esto</h3>
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">Recomendado</span>
