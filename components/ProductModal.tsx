@@ -78,8 +78,9 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                     .eq('product_id', product.id)
                 // ELIMINADO: .gt('stock', 0) -> Ahora necesitamos saber cuáles están en 0 para tacharlos
 
-                setFullProduct(product)
-                setCurrentGallery([product.image_url])
+                // 🚀 LÓGICA CORREGIDA: Definimos la galería por defecto incluyendo las fotos extras
+                const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean)
+                setCurrentGallery(defaultGallery)
                 setGalleryIndex(0)
                 setQuantity(1)
 
@@ -93,13 +94,14 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                     let images = []
                     if (availableVar.gallery && availableVar.gallery.length > 0) images = availableVar.gallery
                     else if (availableVar.variant_image) images = [availableVar.variant_image]
-                    else images = [product.image_url]
+                    else images = defaultGallery
 
                     setCurrentGallery(images)
                 } else {
                     setVariants([])
                     setSelectedColor(null)
                     setSelectedSize(null)
+                    // Si no hay variantes, la galería ya se estableció correctamente con defaultGallery
                 }
                 setLoading(false)
             }
@@ -119,11 +121,10 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         if (!selectedColor || variants.length === 0) return
         const variant = variants.find(v => v.color_name === selectedColor)
         if (variant) {
-            let images = []
-            if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
-            else if (variant.variant_image) images = [variant.variant_image]
-            else images = [product.image_url]
-
+           let images = []
+        if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
+        else if (variant.variant_image) images = [variant.variant_image]
+        else images = [product.image_url, ...(product.gallery || [])].filter(Boolean)
             if (JSON.stringify(images) !== JSON.stringify(currentGallery)) {
                 setCurrentGallery(images)
                 setGalleryIndex(0)
@@ -316,7 +317,9 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                             <>
                                                 <div className="space-y-3">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">1. Color</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+    1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
+</span>
                                                         <span className="text-xs font-bold text-gray-900">{selectedColor}</span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-3">

@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import Link from 'next/link'
-import { 
-  ArrowUpRight, Menu, X, Plus, 
-  Smartphone, Layers, RefreshCw, 
+import {
+  ArrowUpRight, Menu, X, Plus,
+  Smartphone, Layers, RefreshCw,
   Image as ImageIcon, Check
 } from 'lucide-react'
 
@@ -78,8 +78,8 @@ const FaqItem = ({ question, answer }: { question: string, answer: string }) => 
 
   return (
     <div className="border-b border-gray-200">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
+      <button
+        onClick={() => setIsOpen(!isOpen)}
         className="w-full py-8 md:py-10 flex items-center justify-between text-left group active:scale-[0.99] transition-transform"
       >
         <span className="text-xl md:text-3xl font-black tracking-tight uppercase group-hover:text-[#00cd61] transition-colors pr-6">
@@ -91,10 +91,10 @@ const FaqItem = ({ question, answer }: { question: string, answer: string }) => 
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }} 
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
@@ -127,7 +127,7 @@ const ScrollFeatureWords = () => {
             key={i}
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true, margin: "0px" }} 
+            viewport={{ once: true, margin: "0px" }}
             transition={{ duration: 0.7, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
             className={`w-full px-4 md:px-6 ${item.align}`}
           >
@@ -203,32 +203,47 @@ export default function LandingClient() {
       <main>
         {/* MEGA HERO SECTION */}
         <section className="pt-32 md:pt-48 pb-16 md:pb-20 px-4 md:px-6 max-w-7xl mx-auto flex flex-col gap-10 md:gap-20 min-h-[90vh] justify-center">
-          
+
           <div className="w-full">
             <motion.h1 initial="hidden" animate="visible" variants={fadeUp} className="text-[15vw] md:text-[8.5rem] lg:text-[9.5rem] font-black leading-[0.79] tracking-tighter uppercase text-black md:whitespace-normal">
-              TU NEGOCIO <br className="hidden md:block"/> <span className="text-[#00cd61]">VENDE</span> <br/>
-              PREZISO<br className="hidden md:block"/> CALCULA.
+              TU NEGOCIO <br className="hidden md:block" /> <span className="text-[#00cd61]">VENDE</span> <br />
+              PREZISO<br className="hidden md:block" /> CALCULA.
             </motion.h1>
           </div>
 
           <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10 lg:gap-8 w-full">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="max-w-md w-full shrink-0">
               <p className="text-base md:text-xl font-medium text-gray-600 leading-relaxed mb-6 md:mb-8">
-               Olvídate de actualizar tasas a mano y de los errores al cobrar. Automatiza el cambio de divisas de tu tienda y deja que las ventas fluyan sin pausas.
+                Olvídate de actualizar tasas a mano y de los errores al cobrar. Automatiza el cambio de divisas de tu tienda y deja que las ventas fluyan sin pausas.
               </p>
               {/* BOTÓN HERO CON EL NUEVO COLOR */}
               <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-6 py-3.5 md:px-8 md:py-5 rounded-full text-sm md:text-base font-black uppercase tracking-widest hover:bg-black hover:text-white border-2 border-black transition-all duration-300 active:scale-95 group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 hover:translate-x-1">
-                Crear Tienda Gratis <ArrowUpRight size={20} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
+                Crear Tienda Gratis <ArrowUpRight size={20} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </Link>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full lg:w-[55%] aspect-[4/3] md:aspect-[16/10] bg-gray-50 rounded-[2rem] md:rounded-[3rem] border border-gray-200 flex items-center justify-center relative overflow-hidden group">
-              <ImageIcon size={48} className="text-gray-300 group-hover:text-[#00cd61] transition-colors duration-700" strokeWidth={1}/>
-              <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[2rem] md:rounded-[3rem] pointer-events-none"></div>
-              <span className="absolute bottom-4 left-4 md:bottom-8 md:left-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-black bg-[#00cd61] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full lg:w-[55%] aspect-[4/3] md:aspect-[16/10]  flex items-center justify-center relative  group"
+            >
+              {/* Imagen de fondo */}
+              <img
+                src="/dashboardpreview.webp"
+                alt="Dashboard Preview"
+                className="absolute inset-0 w-80% h-80% border-1 border-amber-50 rounded-[1rem] shadow-[0_0_20px_2px_rgba(0,0,0,0.3)] object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+<span className="absolute bottom-[6rem] left-4 md:bottom-8 md:left-8 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-black bg-[#00cd61] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">
                 Dashboard Preview
               </span>
+              {/* Overlay sutil o borde interno (opcional) */}
+              <div className="absolute inset-0   rounded-[2rem] md:rounded-[3rem] pointer-events-none"></div>
+
+              {/* Etiqueta flotante (se mantiene arriba por el flujo del DOM o añade z-10) */}
+              
             </motion.div>
+
           </div>
         </section>
 
@@ -239,7 +254,7 @@ export default function LandingClient() {
         <section id="solucion" className="py-20 md:py-32 px-4 md:px-6 max-w-7xl mx-auto border-t border-gray-200">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="mb-12 md:mb-24">
             <h2 className="text-[12vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase whitespace-nowrap md:whitespace-normal">
-              Diseñado <br className="hidden md:block"/> para la realidad.
+              Diseñado <br className="hidden md:block" /> para la realidad.
             </h2>
             <p className="text-base md:text-xl font-medium text-gray-500 mt-6 md:mt-8 max-w-2xl">
               Las plataformas gringas no entienden cómo se vende aquí. Nosotros sí. Esto es lo que resuelve Preziso.
@@ -247,14 +262,14 @@ export default function LandingClient() {
           </motion.div>
 
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-            
+
             <motion.article variants={fadeUp} className="md:col-span-2 bg-gray-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-14 border border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 md:gap-20 group hover:border-[#00cd61] transition-colors duration-500">
               <div className="flex-1 flex flex-col items-start gap-6 md:gap-8 w-full">
                 <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-black text-[9px] md:text-[10px] font-black uppercase tracking-widest text-black bg-[#00cd61]">
                   01 // Automatización
                 </div>
                 <div>
-                  <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Tasa BCV <br/> En Vivo.</h3>
+                  <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Tasa BCV <br /> En Vivo.</h3>
                   <p className="text-gray-500 text-sm md:text-lg font-medium leading-relaxed max-w-md group-hover:text-black transition-colors">
                     Guarda tu inventario en dólares. El cliente ve el precio exacto en bolívares actualizado en tiempo real. Protege tu margen de ganancia sin mover un dedo.
                   </p>
@@ -271,7 +286,7 @@ export default function LandingClient() {
               </div>
               <div>
                 <Smartphone className="w-8 h-8 md:w-10 md:h-10 text-black mb-4 md:mb-6 group-hover:-translate-y-2 group-hover:text-[#00cd61] transition-all duration-500" strokeWidth={1.5} />
-                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Pedidos <br/> Directos.</h3>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Pedidos <br /> Directos.</h3>
                 <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
                   Se acabaron los chats interminables. El cliente arma su carrito y te envía un ticket limpio y formateado directo a tu WhatsApp.
                 </p>
@@ -284,7 +299,7 @@ export default function LandingClient() {
               </div>
               <div>
                 <Layers className="w-8 h-8 md:w-10 md:h-10 text-black mb-4 md:mb-6 group-hover:-translate-y-2 group-hover:text-[#00cd61] transition-all duration-500" strokeWidth={1.5} />
-                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Gestión de <br/> Variantes.</h3>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-[0.9] mb-3 md:mb-4">Gestión de <br /> Variantes.</h3>
                 <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
                   Tallas, colores y existencias precisas. Si se agota un modelo, desaparece de tu catálogo al instante sin tocar código.
                 </p>
@@ -308,7 +323,7 @@ export default function LandingClient() {
           <div className="grid lg:grid-cols-12 gap-6 md:gap-8">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="lg:col-span-5 bg-gray-50 border border-gray-200 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col gap-6 md:gap-10">
               <div>
-                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que ve <br/>tu cliente.</h3>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que ve <br />tu cliente.</h3>
                 <p className="text-sm md:text-base text-gray-500 font-medium">Catálogo móvil ultrarrápido y sin fricción.</p>
               </div>
               <div className="flex-1 flex items-end justify-center">
@@ -320,7 +335,7 @@ export default function LandingClient() {
 
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp} className="lg:col-span-7 bg-gray-50 border border-gray-200 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 flex flex-col gap-6 md:gap-10">
               <div>
-                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que <br/>controlas tú.</h3>
+                <h3 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-2">Lo que <br />controlas tú.</h3>
                 <p className="text-sm md:text-base text-gray-500 font-medium">Panel de administración web robusto y analítico.</p>
               </div>
               <div className="flex-1 w-full">
@@ -334,7 +349,7 @@ export default function LandingClient() {
         <section className="py-24 md:py-32 bg-white border-t border-gray-200 overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 mb-13 md:mb-20">
             <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-black leading-[0.85] tracking-tighter uppercase md:whitespace-normal">
-              Ellos ya <br className="hidden md:block"/> lo probaron.
+              Ellos ya <br className="hidden md:block" /> lo probaron.
             </h2>
           </div>
 
@@ -352,8 +367,8 @@ export default function LandingClient() {
                 { q: "Manejar las tallas era un caos en Instagram. Con el catálogo, si no hay talla 40, no la pueden pedir y punto. Te ahorra dolores de cabeza.", name: "Ana F.", store: "Calzado Deportivo", initial: "A" },
                 { q: "Pagar $10 al mes se recupera con la primera venta que cierras rápido porque el cliente no tuvo que esperar a que le dieras el precio en bolívares.", name: "Carlos M.", store: "Minimarket", initial: "C" },
               ].map((testimonial, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={`w-[320px] md:w-[450px] shrink-0 bg-gray-50 border border-gray-200 rounded-[2rem] p-8 md:p-10 flex flex-col justify-between transition-colors hover:border-[#00cd61] ${i % 2 !== 0 ? 'mt-8 md:mt-16' : ''}`}
                 >
                   <p className="text-lg md:text-xl font-medium tracking-tight leading-snug mb-10 text-gray-900">
@@ -381,13 +396,13 @@ export default function LandingClient() {
             <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-start">
               <div className="lg:col-span-5 sticky top-32">
                 <h2 className="text-[10vw] md:text-[5rem] lg:text-[6.5rem] font-black leading-[0.85] tracking-tighter uppercase">
-                  Dudas. <br/> Resueltas.
+                  Dudas. <br /> Resueltas.
                 </h2>
                 <p className="text-base md:text-lg font-medium text-gray-500 mt-6 max-w-sm">
                   Transparencia total. Sin letras pequeñas ni condiciones engañosas.
                 </p>
               </div>
-              
+
               <div className="lg:col-span-7 flex flex-col border-t border-gray-200">
                 <FaqItem question="¿Necesito tarjeta internacional?" answer="No. Sabemos cómo funciona el mercado venezolano. Puedes pagar tu suscripción mensual de $10 en Bolívares (Pago Móvil) o usando USDT (Binance)." />
                 <FaqItem question="¿Cobran comisión por venta?" answer="Cero comisiones. Jamás tocaremos tu dinero. Pagas una tarifa plana al mes y puedes vender 10 o 10.000 productos. El 100% de la ganancia va directo a tus cuentas bancarias." />
@@ -403,23 +418,23 @@ export default function LandingClient() {
       {/* FOOTER */}
       <footer className="bg-black text-white pt-24 md:pt-32 pb-8 px-4 md:px-6 mt-20 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-        
+
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={fadeUp}>
             <p className="text-sm md:text-base font-bold text-[#00cd61] uppercase tracking-widest mb-6">¿Listo para el siguiente nivel?</p>
             <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-black px-8 py-4 md:px-12 md:py-6 rounded-full text-base md:text-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all duration-300 group shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)] hover:shadow-none">
-              Empezar por $10/mes <ArrowUpRight size={24} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
+              Empezar por $10/mes <ArrowUpRight size={24} strokeWidth={3} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </Link>
-            
+
             <ul className="mt-8 flex flex-wrap justify-center items-center gap-4 md:gap-8">
-              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]"/> Sin Contratos</li>
-              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]"/> Productos Ilimitados</li>
-              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]"/> Cancela cuando quieras</li>
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]" /> Sin Contratos</li>
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]" /> Productos Ilimitados</li>
+              <li className="flex items-center gap-2 text-xs md:text-sm text-gray-400 font-medium"><Check size={14} className="text-[#00cd61]" /> Cancela cuando quieras</li>
             </ul>
           </motion.div>
         </div>
 
-       
+
         {/* LOGO GIGANTE EN EL FOOTER */}
         <div className="mt-24 md:mt-40 border-t border-[#222] pt-8 md:pt-12 w-full flex flex-col items-center">
           <h2 className="footer-logo text-[20vw] font-black leading-none tracking-tighter uppercase w-full text-center overflow-hidden cursor-default">
