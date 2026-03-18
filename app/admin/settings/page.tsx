@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt } from 'lucide-react'
+import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
@@ -21,6 +22,7 @@ const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean,
 
 export default function SettingsPage() {
   const supabase = getSupabase()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [store, setStore] = useState<any>(null)
   
@@ -117,6 +119,11 @@ export default function SettingsPage() {
   }
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={32}/></div>
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen">
@@ -269,6 +276,13 @@ export default function SettingsPage() {
         
 {/* SEGURIDAD DE LA CUENTA */}
         <SecuritySettings />
+
+        <button 
+                    onClick={handleLogout} 
+                    className="flex items-center justify-center gap-3 px-4 py-3  rounded-[var(--radius-btn)] text-[0.9rem] font-bold bg-white active:bg-red-50 active:text-red-700  text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
+                >
+                    <LogOut size={18} /> Cerrar Sesión
+                </button>
       </div>
     </div>
   )

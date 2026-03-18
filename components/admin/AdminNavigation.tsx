@@ -66,7 +66,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
+  } 
 
   return (
     <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-6 border-r border-gray-100">
