@@ -403,8 +403,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                     <Truck size={16} className="text-gray-900" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wide">Envío Inmediato</span>
-                                                    <span className="text-[11px] font-medium text-gray-500">Disponible para despacho hoy</span>
+                                                    <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wide">Bajo Pedido</span>
+                                                    <span className="text-[11px] font-medium text-gray-500">Tiempo de entrega: de 2 a 7 días hábiles</span>
                                                 </div>
                                             </div>
                                         )}
