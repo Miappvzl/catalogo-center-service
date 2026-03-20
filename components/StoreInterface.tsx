@@ -58,11 +58,65 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
   const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
-  if (!store) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
-      <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  )
+ if (!store) return (
+    <div className="min-h-screen bg-white pb-32 font-sans w-full overflow-hidden pointer-events-none select-none">
+      {/* SKELETON: HERO SECTION */}
+      <div className="w-full h-[35vh] md:h-[25vh] bg-gray-100 animate-pulse relative flex items-start border-b border-gray-100/50">
+        <div className="max-w-[1500px] w-full mx-auto px-4 md:px-8 pt-5 md:pt-6 flex items-start justify-between">
+          {/* Logo & Info Skeleton */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200/80 rounded-full shrink-0"></div>
+            <div className="flex flex-col gap-2">
+              <div className="w-32 md:w-48 h-3.5 bg-gray-200/80 rounded-full"></div>
+              <div className="w-20 h-2 bg-gray-200/80 rounded-full"></div>
+            </div>
+          </div>
+          {/* Tasa Skeleton */}
+          <div className="w-24 h-4 bg-gray-200/80 rounded-full mt-2 md:mt-3"></div>
+        </div>
+      </div>
+
+      {/* SKELETON: NAVBAR (Buscador y Categorías) */}
+      <div className="bg-white border-b border-gray-100/80 pt-4 md:pt-6">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+            {/* Buscador Skeleton */}
+            <div className="w-full md:max-w-md h-11 bg-gray-100 animate-pulse rounded-full shrink-0"></div>
+            
+            {/* Categorías Skeleton */}
+            <div className="w-full md:flex-1 flex gap-2 overflow-hidden animate-pulse">
+              <div className="w-16 h-8 bg-gray-100 rounded-full shrink-0"></div>
+              <div className="w-24 h-8 bg-gray-100 rounded-full shrink-0"></div>
+              <div className="w-20 h-8 bg-gray-100 rounded-full shrink-0 hidden sm:block"></div>
+              <div className="w-28 h-8 bg-gray-100 rounded-full shrink-0 hidden md:block"></div>
+            </div>
+
+            {/* Gatillo Carrito Skeleton */}
+            <div className="hidden md:block w-11 h-11 bg-gray-100 animate-pulse rounded-full shrink-0"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* SKELETON: GRID DE PRODUCTOS */}
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          {/* Generamos 10 tarjetas fantasma en memoria dinámicamente */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              {/* Foto del producto */}
+              <div className="w-full aspect-square bg-gray-100 animate-pulse rounded-[var(--radius-card,1rem)]"></div>
+              {/* Textos */}
+              <div className="space-y-2 px-1">
+                <div className="w-3/4 h-3 bg-gray-100 animate-pulse rounded-full"></div>
+                <div className="w-1/2 h-2.5 bg-gray-100/70 animate-pulse rounded-full"></div>
+                <div className="w-1/3 h-4 bg-gray-200 animate-pulse rounded-full mt-1"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
 
   const { items } = useCart() // <--- TRAEMOS LOS ITEMS PARA EL GATILLO DESKTOP
   const hasItems = items.length > 0;
@@ -71,8 +125,19 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const isEur = store.currency_type === 'eur'
   const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
 
-  const [search, setSearch] = useState('')
+ const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('') // 🚀 NUEVO: Estado retrasado
   const [selectedCategory, setSelectedCategory] = useState('Todos')
+
+  // 🚀 NUEVO: Motor de Debounce (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+
+    // Función de limpieza: destruye el timer si el usuario teclea antes de los 300ms
+    return () => clearTimeout(timer)
+  }, [search])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
 
@@ -83,9 +148,9 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [visibleCount, setVisibleCount] = useState(12)
   const observerTarget = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+ useEffect(() => {
     setVisibleCount(12)
-  }, [search, selectedCategory])
+  }, [debouncedSearch, selectedCategory]) // Cambiamos 'search' por 'debouncedSearch'
 
   useEffect(() => {
       if (!store?.hero_url) return;
@@ -195,9 +260,10 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return ['Todos', ...Array.from(new Set(cats))]
   }, [products])
 
-  const filteredProducts = useMemo(() => {
+ const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
+      // Usamos debouncedSearch en lugar de search
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       const productCatClean = normalizeCategory(p.category)
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
       
@@ -208,7 +274,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
       
       return matchesSearch && matchesCategory && matchesPromo
     })
-  }, [products, search, selectedCategory, activePromo])
+  }, [products, debouncedSearch, selectedCategory, activePromo]) // Actualizamos las dependencias
 
   const displayedProducts = filteredProducts.slice(0, visibleCount)
 
@@ -231,65 +297,68 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
       
 
-     {/* --- HERO SECTION WITH SMART HEADER --- */}
+    {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
+      <div className="bg-white px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-gray-100">
+        
+        {/* Logo & Store Info */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="relative shrink-0">
+            {store.logo_url ? (
+              <img src={store.logo_url} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-gray-100 shadow-sm" alt="Logo" />
+            ) : (
+              <div className="w-10 h-10 md:w-11 md:h-11 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 border border-gray-100 shadow-sm">
+                <ShoppingBag size={18} strokeWidth={1.5} />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-base md:text-lg font-black text-gray-900 tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
+              {store.name}
+            </h1>
+            <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.15em] mt-1 text-gray-400">
+              Tienda Oficial
+            </span>
+          </div>
+        </div>
+
+        {/* Tasa BCV Minimalista */}
+        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 hidden sm:block">
+              {isEur ? 'Tasa EUR' : 'Tasa BCV'}
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 sm:hidden">
+              {isEur ? 'EUR' : 'BCV'}
+            </span>
+          </div>
+          <div className="h-3 w-[1px] bg-gray-300"></div>
+          <span className="font-mono text-xs font-bold tracking-tight text-gray-900">
+            <NumberTicker value={activeRate} />
+          </span>
+        </div>
+
+      </div>
+
+      {/* --- 2. HERO BANNER (BLUR-PAD TECHNIQUE) --- */}
       {store.hero_url && (
-        <div className="w-full h-[35vh] md:h-[25vh] relative bg-gray-100 flex items-end border-b border-gray-100">
+        <div className="w-full h-[22vh] md:h-[28vh] relative bg-gray-100 overflow-hidden flex items-center justify-center border-b border-gray-100">
+          
+          {/* Fondo difuminado (Rellena los vacíos con los colores de la marca) */}
+          <img
+            src={store.hero_url}
+            className="absolute inset-0 w-full h-full object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
+            crossOrigin="anonymous"
+            alt=""
+          />
+          
+          {/* Imagen real (Sin recortes agresivos) */}
           <img
             src={store.hero_url}
             alt={`Banner de ${store.name}`}
-            className="absolute inset-0 w-full h-full object-cover"
-            crossOrigin="anonymous" // Requisito para que el canvas lo pueda leer
+            className="relative z-10 w-full h-full object-contain pointer-events-none drop-shadow-sm"
+            crossOrigin="anonymous"
           />
-          {/* Un gradiente base muy sutil solo para que no muera la imagen si es 100% blanca */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10"></div>
-
-          {/* HEADER FLOTANTE INTELIGENTE */}
-          <div className="absolute top-0 left-0 right-0 z-20">
-            <div className="max-w-[1500px] mx-auto px-4 md:px-8 pt-5 md:pt-6 flex items-start justify-between">
-              
-              {/* Logo & Info */}
-              <div className="flex items-center gap-3 md:gap-4 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                <div className="relative shrink-0">
-                  {store.logo_url ? (
-                    <img src={store.logo_url} className="w-10 h-10 md:w-12 md:h-12 object-contain rounded-full bg-white/20 backdrop-blur-md border border-white/20 shadow-sm" alt="Logo" />
-                  ) : (
-                    <div className="w-10 h-10 md:w-12 md:h-12 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20">
-                      <ShoppingBag size={18} strokeWidth={1.5} />
-                    </div>
-                  )}
-                </div>
-                <div className={`flex flex-col transition-colors duration-500 drop-shadow-sm ${isDarkHero ? 'text-white' : 'text-gray-900'}`}>
-                  <h1 className="text-base md:text-lg font-black tracking-tight leading-none truncate max-w-[140px] md:max-w-[250px]">
-                    {store.name}
-                  </h1>
-                  <span className={`text-[9px] md:text-[10px] uppercase font-bold tracking-[0.15em] mt-1 transition-colors duration-500 ${isDarkHero ? 'text-white/80' : 'text-gray-600'}`}>
-                    Tienda Oficial
-                  </span>
-                </div>
-              </div>
-
-              {/* Tasa del Día Minimalista */}
-              <div className={`flex items-center gap-2 pl-3 pr-4 py-1.5 transition-colors duration-500 drop-shadow-sm ${isDarkHero ? 'text-white' : 'text-gray-900'}`}>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
-                  <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider hidden md:inline transition-colors duration-500 ${isDarkHero ? 'text-white/80' : 'text-gray-600'}`}>
-                    {isEur ? 'Tasa EUR' : 'Tasa BCV'}
-                  </span>
-                  <span className={`text-[9px] font-bold uppercase tracking-wider md:hidden transition-colors duration-500 ${isDarkHero ? 'text-white/80' : 'text-gray-600'}`}>
-                    {isEur ? 'EUR' : 'BCV'}
-                  </span>
-                </div>
-                <div className={`h-3 w-[1px] transition-colors duration-500 ${isDarkHero ? 'bg-white/40' : 'bg-gray-400'}`}></div>
-                <span className="font-mono text-xs font-bold tracking-tight">
-                  <NumberTicker value={activeRate} />
-                </span>
-              </div>
-
-            </div>
-          </div>
-          
-          
-          
         </div>
       )}
 
@@ -316,11 +385,16 @@ export default function StoreInterface({ store, products, rates, promotions = []
               )}
             </div>
 
-            {/* 2. CATEGORÍAS (Centro) */}
-            <div className="w-full md:flex-1 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {categories.map(cat => (
-                <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
-              ))}
+           {/* 2. CATEGORÍAS (Centro) */}
+            <div className="relative w-full md:flex-1 flex items-center">
+              <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar pr-10">
+                {categories.map(cat => (
+                  <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
+                ))}
+              </div>
+              
+              {/* Fade Gradient a la derecha */}
+              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none z-10"></div>
             </div>
 
             {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
@@ -389,12 +463,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
    
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
-        {filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 border border-dashed border-gray-200 rounded-none bg-gray-50">
-            <Search className="text-gray-300 mb-4" size={32} strokeWidth={1.5} />
-            <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Sin resultados</p>
-          </div>
-        ) : (
+        
           
            <>
             {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
@@ -426,7 +495,7 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
               </div>
             )}
           </>
-        )}
+        
       </main>
 
       <FloatingCheckout
