@@ -130,11 +130,19 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     .limit(1)
     .single()
 
+  // 🚀 4. OBTENER MACRO-PROMOCIONES ACTIVAS (Asegúrate de que esto esté aquí)
+  const { data: promotions } = await supabase
+    .from('promotions')
+    .select('*')
+    .eq('store_id', store.id)
+    .eq('is_active', true)
+
   return (
     <StoreInterface 
       store={store} 
       products={products || []} 
       rates={rates || { usd_rate: 0, eur_rate: 0 }}
+      promotions={promotions || []} // 🚀 CRÍTICO: Si falta esto, el banner no sale
     />
   )
 }

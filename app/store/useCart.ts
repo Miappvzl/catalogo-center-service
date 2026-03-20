@@ -15,6 +15,7 @@ export interface CartItem {
   variantInfo: string | null
   category?: string 
   maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
+  compareAtPrice?: number | null // 🚀 NUEVO: El precio tachado original (para calcular ahorros)
 }
 
 interface CartState {
@@ -67,7 +68,11 @@ export const useCart = create<CartState>()(
               quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
               variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
               category: product.category,
-              maxStock: currentMaxStock // <--- 🚀 Se guarda en LocalStorage
+              maxStock: currentMaxStock, // <--- 🚀 Se guarda en LocalStorage
+              // 🚀 NUEVO: Lógica de herencia para el precio tachado
+              compareAtPrice: variant?.override_compare_at_usd !== undefined && variant?.override_compare_at_usd !== null 
+                              ? Number(variant.override_compare_at_usd) 
+                              : (product.compare_at_usd ? Number(product.compare_at_usd) : null)
             }
 
             return { items: [...state.items, newItem] }

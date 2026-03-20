@@ -20,9 +20,44 @@ const CategoryPill = ({ label, active, onClick }: { label: string, active: boole
   </button>
 )
 
-interface Props { store: any; products: any[]; rates: any; }
+// 🚀 MICRO-COMPONENTE: Reloj FOMO (Fear Of Missing Out)
+const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string }) => {
+  const [timeLeft, setTimeLeft] = useState('')
 
-export default function StoreInterface({ store, products, rates }: Props) {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date().getTime()
+      const target = new Date(expiresAt).getTime()
+      const distance = target - now
+      
+      if (distance < 0) {
+        setTimeLeft('¡Expirado!')
+        clearInterval(interval)
+        return
+      }
+      
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt])
+
+  if (!timeLeft) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border shadow-sm text-[10px] font-mono font-bold tracking-widest ml-2" style={{ borderColor: `${color}40`, backgroundColor: `${color}10`, color: color }}>
+      ⏳ {timeLeft}
+    </span>
+  )
+}
+
+interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
+
+export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
+  const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
+  const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
   if (!store) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
       <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
@@ -133,6 +168,22 @@ export default function StoreInterface({ store, products, rates }: Props) {
     return () => document.removeEventListener('openProductModal', handleOpenFromCart);
   }, []);
 
+  // 🚀 Auto-Scroll del Carrusel de Promociones
+  useEffect(() => {
+    if (!promotions || promotions.length <= 1) return;
+    const interval = setInterval(() => {
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
+        }
+      }
+    }, 5000); // Cambia cada 5 segundos
+    return () => clearInterval(interval);
+  }, [promotions]);
+
   const normalizeCategory = (cat: string) => {
     if (!cat) return ""
     const trimmed = cat.trim().toLowerCase()
@@ -149,9 +200,15 @@ export default function StoreInterface({ store, products, rates }: Props) {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
       const productCatClean = normalizeCategory(p.category)
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
-      return matchesSearch && matchesCategory
+      
+      // 🚀 BLINDAJE INT8: Coerción absoluta a String
+      const matchesPromo = activePromo 
+        ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) 
+        : true
+      
+      return matchesSearch && matchesCategory && matchesPromo
     })
-  }, [products, search, selectedCategory])
+  }, [products, search, selectedCategory, activePromo])
 
   const displayedProducts = filteredProducts.slice(0, visibleCount)
 
@@ -236,6 +293,8 @@ export default function StoreInterface({ store, products, rates }: Props) {
         </div>
       )}
 
+      
+
       <div className={`sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100/80 pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-[1500px] mx-auto px-4 md:px-8">
          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
@@ -288,6 +347,47 @@ export default function StoreInterface({ store, products, rates }: Props) {
         </div>
       </div>
 
+      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (BUG ARREGLADO Y RELOJ INYECTADO) */}
+      {promotions && promotions.length > 0 && (
+        <div className="w-full bg-white border-b border-gray-100 overflow-hidden relative z-30">
+           <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" style={{ scrollBehavior: 'smooth' }}>
+               {promotions.map((promo: any) => (
+                   <div key={promo.id}
+                        onClick={() => {
+                            setActivePromo(activePromo?.id === promo.id ? null : promo)
+                            // Un pequeño scroll para que el usuario vea que la tienda se filtró
+                            window.scrollTo({ top: 400, behavior: 'smooth' }) 
+                        }}
+                        className="w-full shrink-0 snap-center cursor-pointer transition-opacity hover:opacity-95"
+                        style={{ backgroundColor: promo.bg_color || '#000' }}>
+                        
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between gap-4">
+                             <div className="flex items-center gap-4 min-w-0">
+                                 {/* La imagen optimizada si existe */}
+                                 {promo.image_url && (
+                                     <img src={promo.image_url} alt={promo.title} className="w-12 h-12 md:w-14 md:h-14 object-contain shrink-0 mix-blend-multiply" />
+                                 )}
+                                 <div className="flex flex-col min-w-0">
+                                     <div className="flex items-center flex-wrap gap-1">
+                                         <h4 className="font-black text-sm md:text-base tracking-tight leading-none truncate" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
+                                         {/* 🚀 RELOJ FOMO */}
+                                         {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} />}
+                                     </div>
+                                     {promo.tagline && <p className="text-[10px] md:text-xs opacity-90 mt-1 truncate" style={{ color: promo.text_color || '#fff' }}>{promo.tagline}</p>}
+                                 </div>
+                             </div>
+                             
+                             <div className={`shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all shadow-subtle ${activePromo?.id === promo.id ? 'bg-white text-black' : 'border border-white/30'}`} style={{ color: activePromo?.id === promo.id ? '#000' : (promo.text_color || '#fff') }}>
+                                 {activePromo?.id === promo.id ? 'Filtro Activo ✕' : 'Ver Ofertas'}
+                             </div>
+                        </div>
+                   </div>
+               ))}
+           </div>
+        </div>
+      )}
+
+   
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 border border-dashed border-gray-200 rounded-none bg-gray-50">
@@ -295,8 +395,10 @@ export default function StoreInterface({ store, products, rates }: Props) {
             <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Sin resultados</p>
           </div>
         ) : (
-          <>
-            <div className="columns-2 gap-3 space-y-3 md:columns-auto md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 md:gap-6 md:space-y-0">
+          
+           <>
+            {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
               {displayedProducts.map(product => {
                 const pricing = getProductPricing(product)
                 
@@ -334,15 +436,18 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
         storeName={store.name}
         storeId={store.id}
         storeConfig={store}
-        products={products} 
+        products={products}
+        promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
       />
 
-      <ProductModal
+    <ProductModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         product={selectedProductForModal}
         currency={isEur ? 'eur' : 'usd'}
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        promotions={promotions}
+        activePromoContext={activePromo} // 🚀 NUEVO: Le pasamos el contexto visual del banner clickeado
       />
 
       <style jsx global>{`

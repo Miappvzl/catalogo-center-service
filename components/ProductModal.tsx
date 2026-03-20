@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Flame } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -13,9 +13,11 @@ interface ProductModalProps {
     product: any
     currency: 'usd' | 'eur'
     rates: { usd: number, eur: number }
+    promotions?: any[]
+    activePromoContext?: any
 }
 
-export default function ProductModal({ isOpen, onClose, product, currency, rates }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext }: ProductModalProps) {
     const { addItem } = useCart()
     const [supabase] = useState(() => getSupabase())
 
@@ -32,42 +34,85 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
     const isEur = currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd
-    const currencySymbol = '$'
 
+    // 🚀 CEREBRO VISUAL (Context-Aware / Doble Capa)
+    const bestPromo = useMemo(() => {
+        if (!product || !promotions) return null;
+        
+        // Filtramos solo las campañas activas a las que pertenece este producto (Blindado contra Int8)
+        const applicablePromos = promotions.filter((p: any) => 
+            p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(product.id))
+        );
+
+        if (applicablePromos.length === 0) return null;
+
+        // 1. Prioridad de Contexto: Si entró por el Banner, mostramos esa campaña para no confundirlo
+        if (activePromoContext && applicablePromos.some(p => p.id === activePromoContext.id)) {
+            return activePromoContext;
+        }
+
+        // 2. Modo Exploración: Si navegó libremente, le mostramos la campaña que de el mayor % efectivo
+        return applicablePromos.reduce((best, current) => {
+            const getEffectiveDiscount = (p: any) => p.promo_type === 'percentage' ? Number(p.discount_percentage) : (p.promo_type === 'bogo' ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
+            return getEffectiveDiscount(current) > getEffectiveDiscount(best) ? current : best;
+        }, applicablePromos[0]);
+
+    }, [product, promotions, activePromoContext]);
+
+    // 🚀 MOTOR DE PRECIOS Y UI (Sinceridad Radical)
     const pricing = useMemo(() => {
-    if (!product) return { cashPrice: 0, priceInBs: 0, hasDiscount: false, discountPercent: 0, exactSavings: 0 }
+        if (!product) return { listPrice: 0, cashPrice: 0, priceInBs: 0, hasDiscount: false, exactSavings: 0, compareAt: 0, isPromo: false, promoPercent: 0, promoBadgeText: null }
 
-    // 1. Asumimos los precios del producto padre por defecto
-    let targetCashPrice = Number(product.usd_cash_price || 0)
-    let targetPenalty = Number(product.usd_penalty || 0)
+        let targetCashPrice = Number(product.usd_cash_price || 0)
+        let targetPenalty = Number(product.usd_penalty || 0)
+        let targetCompareAt = Number(product.compare_at_usd || 0)
 
-    // 2. 🚀 LÓGICA DE OVERRIDE: Si hay una variante seleccionada, revisamos si tiene precio propio
-    if (selectedColor && selectedSize && variants.length > 0) {
-       const specificVariant = variants.find(v => v.color_name === selectedColor && v.size === selectedSize)
-       if (specificVariant) {
-           if (specificVariant.override_usd_price !== null && specificVariant.override_usd_price !== undefined) {
-               targetCashPrice = Number(specificVariant.override_usd_price)
-           }
-           if (specificVariant.override_usd_penalty !== null && specificVariant.override_usd_penalty !== undefined) {
-               targetPenalty = Number(specificVariant.override_usd_penalty)
-           }
-       }
-    }
+        if (selectedColor && selectedSize && variants.length > 0) {
+            const specificVariant = variants.find(v => v.color_name === selectedColor && v.size === selectedSize)
+            if (specificVariant) {
+                if (specificVariant.override_usd_price !== null && specificVariant.override_usd_price !== undefined) targetCashPrice = Number(specificVariant.override_usd_price)
+                if (specificVariant.override_usd_penalty !== null && specificVariant.override_usd_penalty !== undefined) targetPenalty = Number(specificVariant.override_usd_penalty)
+                if (specificVariant.override_compare_at_usd !== null && specificVariant.override_compare_at_usd !== undefined) {
+                    targetCompareAt = Number(specificVariant.override_compare_at_usd)
+                } else {
+                    targetCompareAt = Number(product.compare_at_usd || 0)
+                }
+            }
+        }
 
-    // 3. Calculamos los totales basados en el precio ganador (Target)
-    const listPrice = targetCashPrice + targetPenalty
-    const priceInBs = listPrice * activeRate
-    const discountPercent = listPrice > 0 ? Math.round((targetPenalty / listPrice) * 100) : 0
+        // PRECIO DE LISTA PÚBLICO (Base + Margen de conversión)
+        let listPrice = targetCashPrice + targetPenalty;
+        if (targetCompareAt < listPrice && targetCompareAt > 0) targetCompareAt = listPrice; // El precio tachado nunca puede ser menor al público original
 
-    return {
-        cashPrice: targetCashPrice,
-        priceInBs,
-        discountPercent,
-        hasDiscount: targetPenalty > 0,
-        exactSavings: targetPenalty 
-    }
-  }, [product, activeRate, selectedColor, selectedSize, variants])
-    // --- FETCHING (AHORA TRAEMOS TODO, INCLUSO STOCK 0) ---
+        // 🚀 TEXTO Y MATEMÁTICA DE LA CAMPAÑA
+        let promoBadgeText = null;
+        if (bestPromo) {
+            if (bestPromo.promo_type === 'percentage' && bestPromo.discount_percentage > 0) {
+                const discount = listPrice * (bestPromo.discount_percentage / 100);
+                targetCompareAt = listPrice; // El precio de lista original es el nuevo precio tachado
+                listPrice = listPrice - discount;
+                targetCashPrice = targetCashPrice - (targetCashPrice * (bestPromo.discount_percentage / 100)); // El precio en divisa también baja proporcionalmente
+                promoBadgeText = `Campaña ${bestPromo.title} (-${bestPromo.discount_percentage}%)`;
+            } else if (bestPromo.promo_type === 'bogo' && bestPromo.bogo_buy > 0) {
+                promoBadgeText = `Campaña ${bestPromo.title}: Lleva ${bestPromo.bogo_buy}, Paga ${bestPromo.bogo_pay}`;
+            } else {
+                promoBadgeText = `Campaña Activa: ${bestPromo.title}`;
+            }
+        }
+
+        return {
+            listPrice,
+            cashPrice: targetCashPrice,
+            priceInBs: listPrice * activeRate,
+            hasDiscount: targetPenalty > 0,
+            exactSavings: listPrice - targetCashPrice, // El ahorro real y transparente por pagar en divisas
+            compareAt: targetCompareAt,
+            isPromo: targetCompareAt > listPrice,
+            promoPercent: targetCompareAt > listPrice ? Math.round(((targetCompareAt - listPrice) / targetCompareAt) * 100) : 0,
+            promoBadgeText 
+        }
+    }, [product, activeRate, selectedColor, selectedSize, variants, bestPromo])
+
     useEffect(() => {
         if (isOpen && product) {
             setLoading(true)
@@ -76,9 +121,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                     .from('product_variants')
                     .select('*')
                     .eq('product_id', product.id)
-                // ELIMINADO: .gt('stock', 0) -> Ahora necesitamos saber cuáles están en 0 para tacharlos
 
-                // 🚀 LÓGICA CORREGIDA: Definimos la galería por defecto incluyendo las fotos extras
                 const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean)
                 setCurrentGallery(defaultGallery)
                 setGalleryIndex(0)
@@ -87,7 +130,6 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                 if (vars && vars.length > 0) {
                     setVariants(vars)
 
-                    // Seleccionar el primer color que tenga AL MENOS una talla con stock
                     const availableVar = vars.find((v: any) => v.stock > 0) || vars[0]
                     setSelectedColor(availableVar.color_name)
 
@@ -101,7 +143,6 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                     setVariants([])
                     setSelectedColor(null)
                     setSelectedSize(null)
-                    // Si no hay variantes, la galería ya se estableció correctamente con defaultGallery
                 }
                 setLoading(false)
             }
@@ -121,10 +162,10 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         if (!selectedColor || variants.length === 0) return
         const variant = variants.find(v => v.color_name === selectedColor)
         if (variant) {
-           let images = []
-        if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
-        else if (variant.variant_image) images = [variant.variant_image]
-        else images = [product.image_url, ...(product.gallery || [])].filter(Boolean)
+            let images = []
+            if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
+            else if (variant.variant_image) images = [variant.variant_image]
+            else images = [product.image_url, ...(product.gallery || [])].filter(Boolean)
             if (JSON.stringify(images) !== JSON.stringify(currentGallery)) {
                 setCurrentGallery(images)
                 setGalleryIndex(0)
@@ -132,12 +173,11 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
     }, [selectedColor, variants, product, currentGallery])
 
-    // --- STOCK ENGINE (Cálculos de Límites) ---
+    // --- STOCK ENGINE ---
     const availableColors = useMemo(() => {
         const map = new Map()
         variants.forEach(v => {
             if (!map.has(v.color_name)) {
-                // Un color está disponible si al menos una de sus tallas tiene stock
                 const isColorAvailable = variants.some(varCheck => varCheck.color_name === v.color_name && varCheck.stock > 0)
                 map.set(v.color_name, { name: v.color_name, hex: v.color_hex, isAvailable: isColorAvailable })
             }
@@ -153,18 +193,17 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     }, [variants, selectedColor])
 
     const currentMaxStock = useMemo(() => {
-        if (variants.length === 0) return product?.stock || 0; // Si no hay variantes, usa stock general
+        if (variants.length === 0) return product?.stock || 0; 
         if (!selectedColor || !selectedSize) return 0;
         const specificVariant = variants.find(v => v.color_name === selectedColor && v.size === selectedSize);
         return specificVariant ? specificVariant.stock : 0;
     }, [variants, selectedColor, selectedSize, product])
 
-    // Resetea cantidad si cambiamos de talla/color y excede el nuevo límite
     useEffect(() => {
         if (quantity > currentMaxStock && currentMaxStock > 0) {
             setQuantity(currentMaxStock)
         } else if (currentMaxStock === 0) {
-            setQuantity(1) // Si no hay stock, dejamos en 1 visualmente pero el botón estará bloqueado
+            setQuantity(1) 
         }
     }, [currentMaxStock, quantity])
 
@@ -216,7 +255,6 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
     }
 
-    // NUEVO: CÁLCULO BLINDADO CONTRA VALORES NULOS
     const isCompletelyOutOfStock = variants.length > 0
         ? variants.every(v => (v.stock || 0) <= 0)
         : (product?.stock || 0) <= 0;
@@ -241,7 +279,6 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                         exit="exit"
                         className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[92vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200"
                     >
-
                         <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/90 p-2 rounded-full hover:bg-gray-100 transition-colors backdrop-blur border border-gray-200 text-gray-900 active:scale-95">
                             <X size={20} strokeWidth={2} />
                         </button>
@@ -269,34 +306,49 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                         </div>
 
                         <div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col bg-white">
-
                             <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
-
                                 <div>
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
                                     <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight tracking-tight">{product?.name}</h2>
+                                    
+                                    {/* 🚀 ETIQUETA DE CAMPAÑA (Cero Emojis, Pura UI Limpia) */}
+                                    <AnimatePresence>
+                                        {pricing.promoBadgeText && (
+                                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-800 rounded-lg text-xs font-black tracking-wide transition-all uppercase">
+                                                <Tag size={14} className="text-red-600 shrink-0" /> {pricing.promoBadgeText}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                    {(pricing.hasDiscount || isCompletelyOutOfStock) && (
-                                        <div className="flex flex-wrap gap-1.5 mt-3">
-                                            {pricing.hasDiscount && pricing.exactSavings > 0 && (
-                                                <span className="text-emerald-600 text-[10px] font-bold tracking-wide flex items-center gap-1">
-                                                    Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD <Flame size={12} className="text-emerald-500 fill-emerald-500/20" />
+                                    <div className="flex flex-wrap gap-1.5 mt-3">
+                                        {/* 🚀 NUDGE DE AHORRO HONESTO */}
+                                        {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                            <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-md text-[11px] font-bold tracking-wide flex items-center gap-1.5">
+                                                <Banknote size={14} className="text-emerald-600" />
+                                                Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
+                                            </span>
+                                        )}
+                                        {isCompletelyOutOfStock && (
+                                            <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm flex items-center">
+                                                Agotado Temporalmente
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* 🚀 PRECIOS RE-ALINEADOS A SINCERIDAD RADICAL */}
+                                    <div className="flex items-end gap-3 md:gap-4 mt-6">
+                                        <div className="flex flex-col">
+                                            {pricing.isPromo && (
+                                                <span className="text-sm md:text-base font-bold text-gray-400 line-through decoration-gray-300 mb-0.5">
+                                                    ${pricing.compareAt.toFixed(2)}
                                                 </span>
                                             )}
-                                            {isCompletelyOutOfStock && (
-                                                <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm flex items-center">
-                                                    Agotado Temporalmente
-                                                </span>
-                                            )}
+                                            <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-gray-900'}`}>
+                                                ${pricing.listPrice.toFixed(2)}
+                                            </span>
                                         </div>
-                                    )}
-
-                                    <div className="mt-4 flex flex-col gap-1">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">{currencySymbol}{pricing.cashPrice.toFixed(2)}</span>
-                                        </div>
-                                        <span className="text-xs font-mono font-bold text-gray-400">
-                                            Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                        <span className="text-sm md:text-base font-bold text-gray-400 mb-1">
+                                            Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
 
@@ -318,8 +370,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                 <div className="space-y-3">
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-    1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
-</span>
+                                                            1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
+                                                        </span>
                                                         <span className="text-xs font-bold text-gray-900">{selectedColor}</span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-3">
@@ -329,8 +381,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                                 onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); setSelectedSize(null) } }}
                                                                 disabled={!c.isAvailable}
                                                                 className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                        ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'ring-1 ring-black ring-offset-2 scale-110 border-transparent' : 'hover:scale-105 border-gray-200'}`
-                                                                        : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border ${selectedColor === c.name ? 'bg-black text-white border-black shadow-subtle' : 'bg-white text-gray-700 border-gray-200 hover:border-black'}`
+                                                                    ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'ring-1 ring-black ring-offset-2 scale-110 border-transparent' : 'hover:scale-105 border-gray-200'}`
+                                                                    : `px-4 py-2.5 rounded-lg text-xs font-bold border ${selectedColor === c.name ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-black'}`
                                                                     } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                                                                 style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
                                                                 title={!c.isAvailable ? 'Agotado' : c.name}
@@ -375,14 +427,13 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                                         onClick={() => { if (!isOutOfStock) setSelectedSize(v.size) }}
                                                                         disabled={isOutOfStock}
                                                                         className={`relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden ${selectedSize === v.size
-                                                                                ? 'bg-black text-white border-black'
-                                                                                : isOutOfStock
-                                                                                    ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
-                                                                                    : 'bg-white text-gray-900 border-gray-200 hover:border-black'
+                                                                            ? 'bg-black text-white border-black'
+                                                                            : isOutOfStock
+                                                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                                                                                : 'bg-white text-gray-900 border-gray-200 hover:border-black'
                                                                             }`}
                                                                     >
                                                                         {v.size}
-                                                                        {/* TACHADO CSS PARA TALLAS AGOTADAS */}
                                                                         {isOutOfStock && (
                                                                             <svg className="absolute inset-0 w-full h-full text-gray-300" preserveAspectRatio="none" viewBox="0 0 100 100">
                                                                                 <line x1="0" y1="100" x2="100" y2="0" stroke="currentColor" strokeWidth="2" />
@@ -412,16 +463,15 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                 )}
                             </div>
 
-                            {/* 2. Footer Fijo (Controles de Compra) */}
+                            {/* Footer Fijo (Controles de Compra) */}
                             <div className="p-4 md:p-6 bg-white border-t border-gray-200 shrink-0 z-10">
                                 <div className="flex gap-3 md:gap-4">
-
                                     <div className="flex items-center rounded-full p-1 border-[1.8px] border-[#1a1a1ad2] shrink-0">
-                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center  text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Minus size={16} strokeWidth={2.5} />
                                         </button>
                                         <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-[#1a1a1ad2]">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center  text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Plus size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
@@ -432,9 +482,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                         className="flex-1 bg-black text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-black"
                                     >
                                         <ShoppingBag size={18} className="pointer-events-none mb-0.5" />
-                                        <span>{isCompletelyOutOfStock ? 'Agotado' : (variants.length > 0 ? 'Agregar' : 'Agregar')}</span>
+                                        <span>{isCompletelyOutOfStock ? 'Agotado' : 'Agregar'}</span>
                                     </button>
-
                                 </div>
                             </div>
 
