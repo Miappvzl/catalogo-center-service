@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { 
-  Plus, Package, TrendingUp, AlertTriangle, ArrowRight, 
+  Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,  
   Clock, DollarSign, Truck, Box, ChevronRight
 } from 'lucide-react'
 
@@ -78,7 +78,7 @@ export default async function AdminDashboard() {
                 </div>
                 <div>
                     <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none">
-                        {currencySymbol}{salesTodayUSD.toFixed(0)}
+                        {currencySymbol}{salesTodayUSD.toFixed(2)}
                     </p>
                     <div className="flex items-center gap-1.5 mt-2 opacity-60">
                         <TrendingUp size={12} className="text-green-600"/>
@@ -145,13 +145,13 @@ export default async function AdminDashboard() {
             {/* ÚLTIMOS PEDIDOS */}
             <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-[var(--radius-card)] flex flex-col overflow-hidden relative">
                 
-                <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div className="p-5 border-b border-gray-100 flex justify-between  items-center bg-gray-50/50">
                     <h3 className="font-black text-gray-900 flex items-center gap-2 text-sm uppercase tracking-wider">
                         <Truck size={16} className="text-gray-400"/> Actividad Reciente
                     </h3>
                     
-                    <Link href="/admin/orders" className="text-xs font-bold text-gray-600 hover:text-black transition-colors uppercase tracking-wide flex items-center gap-1 bg-white border border-transparent shadow-subtle hover:border-gray-200 px-3 py-1.5 rounded-[var(--radius-btn)]">
-                        Ver Todo <ChevronRight size={14}/>
+                    <Link href="/admin/orders" className="text-[0.7rem] font-bold text-gray-600 hover:text-black transition-colors  uppercase tracking-wide rounded-[var(--radius-badge)] flex items-center gap-1 bg-white border border-transparent shadow-subtle hover:border-gray-200 px-2.5 py-1.5">
+                        Ver Todo <ArrowUpRight size={14}/>
                     </Link>
                 </div>
 
@@ -168,7 +168,7 @@ export default async function AdminDashboard() {
                             const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : Package;
                             return (
                             
-                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 bg-white hover:bg-gray-50 border border-transparent hover:border-gray-200 rounded-[var(--radius-btn)] transition-all">
+                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 border border-b-[#f6f6f6] bg-white hover:bg-gray-50 border border-transparent hover:  transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-[var(--radius-btn)] flex items-center justify-center shrink-0 ${
                                         order.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
@@ -188,7 +188,8 @@ export default async function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-black text-sm text-gray-900">${order.total_usd}</p>
+                                    {/* 🚀 ESCUDO VISUAL: Forzamos 2 decimales absolutos para limpiar la basura binaria */}
+                                    <p className="font-black text-sm text-gray-900">${Number(order.total_usd).toFixed(2)}</p>
                                     
                                     <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-[var(--radius-badge)] uppercase tracking-wider ${
                                         order.status === 'pending' ? 'bg-yellow-50 text-yellow-700' : 

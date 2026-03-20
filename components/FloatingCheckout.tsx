@@ -381,8 +381,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     store_id: storeId,
                     customer_name: clientData.name,
                     customer_phone: clientData.phone,
-                    total_usd: grandTotalUSD,
-                    total_bs: grandTotalBs,
+                    // 🚀 SANEAMIENTO FINANCIERO: Cortamos la basura binaria
+                    total_usd: Number(grandTotalUSD.toFixed(2)),
+                    total_bs: Number(grandTotalBs.toFixed(2)),
                     exchange_rate: activeRate,
                     currency_type: currency,
                     status: 'pending',
@@ -390,8 +391,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     shipping_method: clientData.deliveryType,
                     delivery_info: deliveryInfoFull,
                     receipt_url: receiptPublicUrl,
-                    shipping_cost: deliveryCost,
-                    discount_amount: wholesaleDiscountList + cartEngine.listPromoDiscounts
+                    // 🚀 SANEAMIENTO FINANCIERO
+                    shipping_cost: Number(deliveryCost.toFixed(2)),
+                    discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts).toFixed(2))
                 })
                 .select()
                 .single()

@@ -322,7 +322,7 @@ export default function OrdersPage() {
 
                {/* FILTERS & SEARCH (SOFT UI) */}
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                     <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
+                     <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)]  border border-[#6d6d6d1b]  shrink-0 shadow-inner overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
                         {['all', 'pending', 'paid', 'shipped'].map(status => (
                             <button 
                                 key={status}
@@ -372,8 +372,8 @@ export default function OrdersPage() {
                                     </div>
                                     <p className="font-bold text-sm text-gray-900 truncate">{order.customer_name}</p>
                                     <div className="flex justify-between items-end mt-3">
-                                        <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 pr-2">
-                                            <span className="bg-gray-50 px-2 py-1 rounded-[var(--radius-badge)] text-[10px] font-mono uppercase text-gray-600 truncate max-w-[120px]">{order.payment_method}</span>
+                                       <div className="text-right shrink-0">
+                                            <p className="font-black text-base text-gray-900 leading-none">${Number(order.total_usd).toFixed(2)}</p>
                                         </div>
                                         <div className="text-right shrink-0">
                                             <p className="font-black text-base text-gray-900 leading-none">${order.total_usd}</p>
@@ -423,7 +423,7 @@ export default function OrdersPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                    <p className="font-black text-gray-900">${order.total_usd}</p>
+                                                    <p className="font-black text-gray-900">${Number(order.total_usd).toFixed(2)}</p>
                                                     <p className="text-[10px] font-mono text-gray-400">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                                 </td>
                                             </tr>
@@ -522,9 +522,9 @@ export default function OrdersPage() {
                                         </a>
                                     )}
                                 </div>
-                                <div className="text-right shrink-0">
+                               <div className="text-right shrink-0">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total</p>
-                                    <p className="font-black text-2xl text-gray-900 leading-none">${selectedOrder.total_usd}</p>
+                                    <p className="font-black text-2xl text-gray-900 leading-none">${Number(selectedOrder.total_usd).toFixed(2)}</p>
                                     <p className="text-[10px] font-mono font-bold text-gray-400 mt-1">Bs {getBsAmount(selectedOrder).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                 </div>
                             </div>

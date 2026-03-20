@@ -1,24 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, X } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
 import Swal from 'sweetalert2'
 
+// 1. CONTRATO DE RUTAS (Modificado con control de visualización)
 const NAV_LINKS = [
   { name: 'Inicio', href: '/admin', icon: LayoutGrid },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
   { name: 'Nuevo', href: '/admin/product/new', icon: Plus, isAction: true },
   { name: 'Inventario', href: '/admin/inventory', icon: Package },
+  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true }, // 🚀 NUEVO: Protegemos la Bottom Bar
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 
 // 🚀 ENVOLTORIO PROTEGIDO PARA LOS LINKS
-const GuardedLink = ({ href, children, className, isAction }: any) => {
+const GuardedLink = ({ href, children, className }: any) => {
   const router = useRouter()
   const pathname = usePathname()
   const isDirty = useEditorGuard((state) => state.isDirty)
@@ -26,9 +28,7 @@ const GuardedLink = ({ href, children, className, isAction }: any) => {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    
-    if (pathname === href) return // Si ya estamos en la ruta, no hace nada
-
+    if (pathname === href) return 
     if (isDirty) {
       Swal.fire({
           title: '¿Salir sin guardar?',
@@ -42,7 +42,7 @@ const GuardedLink = ({ href, children, className, isAction }: any) => {
           customClass: { popup: 'rounded-[var(--radius-card)]' }
       }).then((result) => {
           if (result.isConfirmed) {
-              setDirty(false) // Limpiamos el guardián
+              setDirty(false)
               router.push(href)
           }
       })
@@ -51,18 +51,16 @@ const GuardedLink = ({ href, children, className, isAction }: any) => {
     }
   }
 
-  return (
-    <a href={href} onClick={handleClick} className={className}>
-      {children}
-    </a>
-  )
+  return <a href={href} onClick={handleClick} className={className}>{children}</a>
 }
 
+// --- DESKTOP SIDEBAR ---
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
   const [copied, setCopied] = useState(false)
   const copyLink = () => {
     if (!store?.slug) return
-    const url = `${window.location.origin}/${store.slug}`
+    const host = window.location.host.replace('www.', '')
+    const url = `${window.location.protocol}//${store.slug}.${host}`
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -126,7 +124,6 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
             <button 
                 onClick={copyLink} 
                 className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-badge)] bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
-                title="Copiar enlace"
             >
                 {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
             </button>
@@ -143,10 +140,131 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   )
 }
 
+// --- MOBILE SIDEBAR (Arquitectura de Nivel Élite) ---
+const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true)
+    document.addEventListener('toggleMobileAdminSidebar', handleOpen)
+    return () => document.removeEventListener('toggleMobileAdminSidebar', handleOpen)
+  }, [])
+
+  // Auto-cerrar al cambiar de ruta
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
+  const copyLink = () => {
+    if (!store?.slug) return
+    const host = window.location.host.replace('www.', '')
+    const url = `${window.location.protocol}//${store.slug}.${host}`
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const sidebarVariants: Variants = {
+    hidden: { x: '100%', opacity: 0 },
+    visible: { x: 0, opacity: 1, transition: { type: 'spring', damping: 25, stiffness: 200 } },
+    exit: { x: '100%', opacity: 0, transition: { damping: 25, stiffness: 200 } }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-[70] flex justify-end">
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            onPointerDown={(e) => {
+              e.stopPropagation(); // Evita que el toque se propague a otros elementos
+              setIsOpen(false);
+            }} 
+          />
+          <motion.div 
+            variants={sidebarVariants} initial="hidden" animate="visible" exit="exit"
+            className="relative w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col"
+          >
+            <div className="p-6 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-black text-white rounded-[var(--radius-badge)] flex items-center justify-center">
+                    <Store size={18} />
+                </div>
+                <span className="font-black text-lg tracking-tight text-gray-900">Preziso</span>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 active:scale-95 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+              {NAV_LINKS.map((link) => {
+                if (link.isAction) return null
+                const isActive = pathname === link.href
+
+                return (
+                  <GuardedLink 
+                      key={link.href} 
+                      href={link.href} 
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
+                          isActive ? 'bg-gray-50 text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                  >
+                    <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-black" : "text-gray-400"} />
+                    {link.name}
+                  </GuardedLink>
+                )
+              })}
+              <div className="pt-4 mt-4 border-t border-gray-100">
+                  <GuardedLink 
+                      href="/admin/product/new" 
+                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-gray-500 bg-gray-50 border border-transparent border-dashed hover:border-black transition-all"
+                  >
+                      <Plus size={20} /> Nuevo Producto
+                  </GuardedLink>
+              </div>
+            </nav>
+
+            <div className="p-4 border-t border-gray-100 space-y-3 bg-white">
+              {store && (
+                <div className="flex items-center justify-between p-1 rounded-xl bg-gray-50 border border-gray-100">
+                  <Link 
+                      href={`/${store.slug}`} 
+                      target="_blank" 
+                      className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
+                  >
+                      <Store size={15} /> Ver mi Tienda
+                  </Link>
+                  <div className="w-px h-5 bg-gray-200 mx-1"></div>
+                  <button 
+                      onClick={copyLink} 
+                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
+                  >
+                      {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                  </button>
+                </div>
+              )}
+              <button 
+                  onClick={onLogout} 
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-all w-full text-left"
+              >
+                  <LogOut size={16} /> Cerrar Sesión
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// --- MOBILE BOTTOM BAR ---
 const MobileBottomBar = ({ pathname }: { pathname: string }) => (
   <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
     <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
-      {NAV_LINKS.map((link) => {
+      {NAV_LINKS.filter(link => !link.hideOnBottomBar).map((link) => {
         const isActive = pathname === link.href
 
         if (link.isAction) {
@@ -206,6 +324,7 @@ export default function AdminNavigation({ store }: NavProps) {
   return (
     <>
       <DesktopSidebar pathname={pathname} store={store} onLogout={handleLogout} />
+      <MobileSidebar pathname={pathname} store={store} onLogout={handleLogout} />
       <MobileBottomBar pathname={pathname} />
     </>
   )
