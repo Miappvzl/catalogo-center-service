@@ -133,6 +133,12 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
                     const availableVar = vars.find((v: any) => v.stock > 0) || vars[0]
                     setSelectedColor(availableVar.color_name)
+                    
+                    // 🚀 AUTO-SELECCIÓN INICIAL (Capa 1)
+                    const sizesForFirstColor = vars.filter((v: any) => v.color_name === availableVar.color_name);
+                    if (sizesForFirstColor.length === 1) {
+                        setSelectedSize(sizesForFirstColor[0].size);
+                    }
 
                     let images = []
                     if (availableVar.gallery && availableVar.gallery.length > 0) images = availableVar.gallery
@@ -161,7 +167,16 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
     useEffect(() => {
         if (!selectedColor || variants.length === 0) return
-        const variant = variants.find(v => v.color_name === selectedColor)
+        
+        // 🚀 AUTO-SELECCIÓN DINÁMICA (Capa 2: Cuando el usuario cambia de color)
+        const variantsForColor = variants.filter(v => v.color_name === selectedColor);
+        if (variantsForColor.length === 1 && selectedSize !== variantsForColor[0].size) {
+            setSelectedSize(variantsForColor[0].size); // Auto-selecciona la talla si solo hay una
+        } else if (variantsForColor.length > 1 && !variantsForColor.some(v => v.size === selectedSize)) {
+            setSelectedSize(null); // Resetea la talla si la anterior no existe en el nuevo color
+        }
+
+        const variant = variantsForColor[0]
         if (variant) {
             let images = []
             if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
@@ -172,7 +187,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                 setGalleryIndex(0)
             }
         }
-    }, [selectedColor, variants, product, currentGallery])
+    }, [selectedColor, variants, product, currentGallery, selectedSize]) // 🚀 Dependencia añadida
 
     // --- STOCK ENGINE ---
     const availableColors = useMemo(() => {
@@ -432,11 +447,12 @@ const isCompletelyOutOfStock = variants.length > 0
                                                     </div>
                                                 </motion.div>
 
-                                                {/* 🚀 CONTENEDOR ANIMADO DE TALLA */}
-                                                <motion.div 
-                                                    animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                    className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
-                                                >
+                                                {/* 🚀 CONTENEDOR ANIMADO DE TALLA (AUTO-COLLAPSE) */}
+                                                {availableSizes.length > 1 && (
+                                                    <motion.div 
+                                                        animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                        className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
+                                                    >
                                                     <div className="flex justify-between items-end">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">2. Talla</span>
                                                         {selectedSize && currentMaxStock > 0 && (
@@ -478,6 +494,7 @@ const isCompletelyOutOfStock = variants.length > 0
                                                         </div>
                                                     )}
                                                 </motion.div>
+                                                )}
                                             </>
                                         )}
 
