@@ -98,8 +98,8 @@ export default function TopPerformers({ storeId }: { storeId: string }) {
                 <Crown size={20} strokeWidth={2.5} />
             </div>
             {topCustomer?.phone && (
-                <a href={`https://wa.me/${topCustomer.phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1 text-[10px] font-bold text-green-700  hover:bg-green-100 px-2.5 py-1.5 rounded-[var(--radius-badge)] transition-colors uppercase tracking-widest shadow-subtle hover:shadow-none">
-                    <MessageCircle size={12}/> Fidelizar
+                <a href={`https://wa.me/${topCustomer.phone.replace(/\D/g, '')}`} target="_blank" className="flex items-center gap-1 text-[10px] font-bold text-green-700 border-green-700 border hover:bg-green-100 px-4 py-2 rounded-full transition-colors uppercase tracking-widest shadow-subtle hover:shadow-none">
+                     Fidelizar<MessageCircle size={12}/>
                 </a>
             )}
         </div>

@@ -147,10 +147,10 @@ export default async function AdminDashboard() {
                 
                 <div className="p-5 border-b border-gray-100 flex justify-between  items-center bg-gray-50/50">
                     <h3 className="font-black text-gray-900 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <Truck size={16} className="text-gray-400"/> Actividad Reciente
+                        Actividad Reciente
                     </h3>
                     
-                    <Link href="/admin/orders" className="text-[0.7rem] font-bold text-gray-600 hover:text-black transition-colors  uppercase tracking-wide rounded-[var(--radius-badge)] flex items-center gap-1 bg-white border border-transparent shadow-subtle hover:border-gray-200 px-2.5 py-1.5">
+                    <Link href="/admin/orders" className="text-[0.7rem] font-bold text-gray-600  hover:text-black transition-colors  uppercase tracking-wide rounded-full flex items-center gap-1 bg-white border border-gray-600 shadow-subtle hover:border-gray-200 px-4 py-2">
                         Ver Todo <ArrowUpRight size={14}/>
                     </Link>
                 </div>
