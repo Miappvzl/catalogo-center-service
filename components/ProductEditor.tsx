@@ -496,32 +496,36 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }
     }
 
+// 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
+    // 1. Estados del Smart Header
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    // 2. Motor de Scroll
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+
+            if (currentScrollY < 50) {
+                setIsHeaderVisible(true);
+            } else if (currentScrollY > lastScrollY.current) {
+                setIsHeaderVisible(false); // Bajando: esconder
+            } else {
+                setIsHeaderVisible(true);  // Subiendo: mostrar
+            }
+            
+            lastScrollY.current = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+    
+
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]"><Loader2 className="animate-spin text-gray-400" size={32} /></div>
 
 
-    // 1. Estados del Smart Header
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
-
-  // 2. Motor de Scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY < 50) {
-        setIsHeaderVisible(true);
-      } else if (currentScrollY > lastScrollY.current) {
-        setIsHeaderVisible(false); // Bajando: esconder
-      } else {
-        setIsHeaderVisible(true);  // Subiendo: mostrar
-      }
-      
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  
 
     return (
        <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-clip w-full max-w-[100vw]">
