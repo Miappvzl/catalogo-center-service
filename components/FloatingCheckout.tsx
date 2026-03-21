@@ -10,6 +10,7 @@ import { compressImage } from '@/utils/imageOptimizer'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
+import ProductCard from './ProductCard'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -130,9 +131,28 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         identityCard: '', phone: '', notes: '', state: '', city: '', addressDetail: '', reference: ''
     })
 
-    useEffect(() => {
+   useEffect(() => {
         if (clientData.deliveryType !== 'local_delivery') setSelectedDeliveryZone('')
     }, [clientData.deliveryType])
+
+    // --- 🚀 MOTOR DE RECOMENDACIONES (CROSS-SELLING) ---
+    const recommendedProducts = useMemo(() => {
+        if (items.length === 0 || !products || products.length === 0) return []
+        
+        const cartCategories = Array.from(new Set(items.map(item => item.category?.toLowerCase() || '')))
+        const cartProductIds = new Set(items.map(item => item.productId))
+        
+        const recommendations = products.filter(p => {
+            // No recomendar si ya está en el carrito
+            if (cartProductIds.has(p.id)) return false
+            // No recomendar si está agotado
+            if ((p.stock || 0) <= 0 && (!p.product_variants || p.product_variants.every((v: any) => (v.stock || 0) <= 0))) return false
+            // Recomendar de la misma categoría
+            return cartCategories.includes(p.category?.toLowerCase() || '')
+        })
+        
+        return recommendations.slice(0, 10)
+    }, [items, products])
 
     // --- 🚀 MOTOR MATEMÁTICO: "CLEAN RECEIPT PIPELINE" ---
     const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
@@ -618,6 +638,36 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     )
                                                 })}
                                             </div>
+
+                                            {/* 🚀 CROSS-SELLING: PRODUCTOS RECOMENDADOS */}
+                                        {recommendedProducts.length > 0 && (
+                                            <div className="mt-8 border-t p-5 border-gray-100 pt-8 pb-4">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Mas para ti</h3>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Sugerencias</span>
+                                                </div>
+                                               {/* 🚀 SLIDER OPTIMIZADO: items-stretch y [&>div]:h-full sincronizan la altura de todas las tarjetas */}
+                                                <div className="flex overflow-x-auto ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
+                                                    {recommendedProducts.map(product => {
+                                                        const cashPrice = Number(product.usd_cash_price || 0)
+                                                        const markup = Number(product.usd_penalty || 0)
+                                                        const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
+                                                        return (
+                                                            <div key={product.id} className="w-[150px] md:w-[160px] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                <ProductCard 
+                                                                    product={product} 
+                                                                    pricing={pricing} 
+                                                                    onOpen={(p) => {
+                                                                        setIsOpen(false);
+                                                                        document.dispatchEvent(new CustomEvent('openProductModal', { detail: p }));
+                                                                    }} 
+                                                                />
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
 
                                             {/* 🚀 EL NUDGE MUTANTE (Inteligente según la selección previa) */}
                                             {step === 1 && cartEngine.fxSavingsAmount > 0 && (

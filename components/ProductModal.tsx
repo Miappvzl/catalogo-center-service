@@ -422,7 +422,19 @@ const isCompletelyOutOfStock = variants.length > 0
                                                         {availableColors.map((c: any) => (
                                                             <button
                                                                 key={c.name}
-                                                                onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); setSelectedSize(null); setErrorShake(null); } }}
+                                                              onClick={() => { 
+                                                            if (c.isAvailable) { 
+                                                                setSelectedColor(c.name); 
+                                                                // 🚀 AUTO-SELECCIÓN SINCRÓNICA: Agrupa el render y elimina el glitch
+                                                                const sizesForColor = variants.filter(v => v.color_name === c.name);
+                                                                if (sizesForColor.length === 1) {
+                                                                    setSelectedSize(sizesForColor[0].size);
+                                                                } else {
+                                                                    setSelectedSize(null); 
+                                                                }
+                                                                setErrorShake(null); 
+                                                            } 
+                                                        }}
                                                                 disabled={!c.isAvailable}
                                                                 className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
                                                                     ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'ring-1 ring-black ring-offset-2 scale-110 border-transparent' : 'hover:scale-105 border-gray-200'}`
