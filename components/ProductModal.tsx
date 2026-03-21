@@ -246,6 +246,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const nextImage = () => setGalleryIndex((prev) => (prev + 1) % currentGallery.length)
     const prevImage = () => setGalleryIndex((prev) => (prev - 1 + currentGallery.length) % currentGallery.length)
 
+  // 🚀 OPTIMIZACIÓN: Curvas Bezier (Estilo iOS) en lugar de Resortes (Springs)
     const modalVariants: Variants = {
         hidden: {
             opacity: 0,
@@ -256,13 +257,13 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
             opacity: 1,
             y: 0,
             x: 0,
-            transition: { type: "spring", damping: 25, stiffness: 200 }
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
         },
         exit: {
             opacity: 0,
             y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0,
             x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0,
-            transition: { damping: 25, stiffness: 200 }
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 }
         }
     }
 
@@ -277,25 +278,27 @@ const isCompletelyOutOfStock = variants.length > 0
         : 'Agregar';
 
     return (
-        <AnimatePresence>
+       <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end md:items-stretch justify-end">
+                    {/* 🚀 FASE 1: Fondo Orgánico */}
                     <motion.div
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
+                        exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity]"
                         onClick={onClose}
                     />
 
+                    {/* 🚀 FASE 2: Contenedor con Aceleración GPU */}
                     <motion.div
                         variants={modalVariants}
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[92vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200"
+                        className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[92vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200 will-change-transform"
                     >
+                        {/* ... (El resto del contenido queda igual: el botón de cerrar, la galería, etc) ... */}
                         <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/90 p-2 rounded-full hover:bg-gray-100 transition-colors backdrop-blur border border-gray-200 text-gray-900 active:scale-95">
                             <X size={20} strokeWidth={2} />
                         </button>
@@ -328,10 +331,15 @@ const isCompletelyOutOfStock = variants.length > 0
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
                                     <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight tracking-tight">{product?.name}</h2>
                                     
-                                    {/* 🚀 ETIQUETA DE CAMPAÑA (Cero Emojis, Pura UI Limpia) */}
+                                    {/* 🚀 ETIQUETA DE CAMPAÑA (Animación Fluida) */}
                                     <AnimatePresence>
                                         {pricing.promoBadgeText && (
-                                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-800 rounded-lg text-xs font-black tracking-wide transition-all uppercase">
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: -10 }} 
+                                                animate={{ opacity: 1, y: 0, transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } }} 
+                                                exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }} 
+                                                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-800 rounded-lg text-xs font-black tracking-wide transition-all uppercase origin-bottom"
+                                            >
                                                 <Tag size={14} className="text-red-600 shrink-0" /> {pricing.promoBadgeText}
                                             </motion.div>
                                         )}
