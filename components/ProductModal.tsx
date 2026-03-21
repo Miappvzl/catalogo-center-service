@@ -266,9 +266,15 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
     }
 
-    const isCompletelyOutOfStock = variants.length > 0
+const isCompletelyOutOfStock = variants.length > 0
         ? variants.every(v => (v.stock || 0) <= 0)
         : (product?.stock || 0) <= 0;
+
+    // 🚀 NUEVO: Variable reactiva para el texto del botón
+    const buttonText = isCompletelyOutOfStock ? 'Agotado' 
+        : (variants.length > 0 && !selectedColor) ? 'Elige un Color'
+        : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
+        : 'Agregar';
 
     return (
         <AnimatePresence>
@@ -497,22 +503,29 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
                                     <button
                                         onClick={handleAddToCart}
-                                        disabled={isCompletelyOutOfStock} // 🚀 NUNCA se deshabilita por falta de talla, solo si no hay stock
-                                        className={`flex-1 text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 border ${
+                                        disabled={isCompletelyOutOfStock}
+                                        className={`flex-1 text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 border overflow-hidden ${
                                             isCompletelyOutOfStock 
                                                 ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
                                                 : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                                    ? 'bg-gray-900 border-gray-900 hover:bg-black active:scale-[0.98]' // Estado de guía
-                                                    : 'bg-black border-black hover:bg-gray-800 active:scale-[0.98]' // Estado listo
+                                                    ? 'bg-gray-900 border-gray-900 hover:bg-black active:scale-[0.98]' 
+                                                    : 'bg-black border-black hover:bg-gray-800 active:scale-[0.98]' 
                                         }`}
                                     >
-                                        <ShoppingBag size={18} className="pointer-events-none mb-0.5" />
-                                        <span>
-                                            {isCompletelyOutOfStock ? 'Agotado' 
-                                            : (variants.length > 0 && !selectedColor) ? 'Elige un Color'
-                                            : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
-                                            : 'Agregar'}
-                                        </span>
+                                        <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
+                                        {/* 🚀 CONTENEDOR DE ANIMACIÓN ULTRAFLUIDA */}
+                                        <AnimatePresence mode="popLayout" initial={false}>
+                                            <motion.span
+                                                key={buttonText}
+                                                initial={{ opacity: 0, y: 15 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -15 }}
+                                                transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
+                                                className="block whitespace-nowrap"
+                                            >
+                                                {buttonText}
+                                            </motion.span>
+                                        </AnimatePresence>
                                     </button>
                                      
                                 </div>
