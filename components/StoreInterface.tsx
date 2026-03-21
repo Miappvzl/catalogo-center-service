@@ -20,7 +20,7 @@ const CategoryPill = ({ label, active, onClick }: { label: string, active: boole
   </button>
 )
 
-// 🚀 MICRO-COMPONENTE: Reloj FOMO (Fear Of Missing Out)
+// 🚀 MICRO-COMPONENTE OPTIMIZADO: The Live Pill (Tabular Nums & Pulse)
 const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string }) => {
   const [timeLeft, setTimeLeft] = useState('')
 
@@ -31,7 +31,7 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
       const distance = target - now
       
       if (distance < 0) {
-        setTimeLeft('¡Expirado!')
+        setTimeLeft('Expirado')
         clearInterval(interval)
         return
       }
@@ -47,9 +47,15 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
   if (!timeLeft) return null;
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border shadow-sm text-[10px] font-mono font-bold tracking-widest ml-2" style={{ borderColor: `${color}40`, backgroundColor: `${color}10`, color: color }}>
-      ⏳ {timeLeft}
-    </span>
+    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md transition-all ml-1 md:ml-3" style={{ borderColor: `${color}30`, backgroundColor: `${color}10`, color: color }}>
+      <div className="relative flex h-1.5 w-1.5 shrink-0">
+         {timeLeft !== 'Expirado' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }}></span>}
+         <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: color }}></span>
+      </div>
+      <span className="text-[10px] md:text-[11px] font-bold tabular-nums tracking-widest leading-none mt-[1px]">
+        {timeLeft}
+      </span>
+    </div>
   )
 }
 
@@ -421,46 +427,71 @@ export default function StoreInterface({ store, products, rates, promotions = []
         </div>
       </div>
 
-      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (BUG ARREGLADO Y RELOJ INYECTADO) */}
+      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
       {promotions && promotions.length > 0 && (
         <div className="w-full bg-white border-b border-gray-100 overflow-hidden relative z-30">
            <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" style={{ scrollBehavior: 'smooth' }}>
-               {promotions.map((promo: any) => (
+               {promotions.map((promo: any) => {
+                   const isActive = activePromo?.id === promo.id;
+                   return (
                    <div key={promo.id}
                         onClick={() => {
-                            setActivePromo(activePromo?.id === promo.id ? null : promo)
-                            // Un pequeño scroll para que el usuario vea que la tienda se filtró
+                            setActivePromo(isActive ? null : promo)
                             window.scrollTo({ top: 400, behavior: 'smooth' }) 
                         }}
-                        className="w-full shrink-0 snap-center cursor-pointer transition-opacity hover:opacity-95"
+                        className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-500 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
                         style={{ backgroundColor: promo.bg_color || '#000' }}>
                         
-                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between gap-4">
-                             <div className="flex items-center gap-4 min-w-0">
-                                 {/* La imagen optimizada si existe */}
+                        {/* Brillo interno (Glassmorphism / Hardware feel) */}
+                        <div className="absolute inset-0 border-[0.5px] pointer-events-none" style={{ borderColor: `${promo.text_color}15` }}></div>
+
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 flex flex-row items-center justify-between gap-4 relative z-10">
+                             <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+                                 {/* La imagen optimizada flotante */}
                                  {promo.image_url && (
-                                     <img src={promo.image_url} alt={promo.title} className="w-12 h-12 md:w-14 md:h-14 object-contain shrink-0 mix-blend-multiply" />
+                                     <div className="w-14 h-14 md:w-20 md:h-20 shrink-0 relative flex items-center justify-center">
+                                         <img src={promo.image_url} alt={promo.title} className="w-full h-full object-contain mix-blend-multiply drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
+                                     </div>
                                  )}
-                                 <div className="flex flex-col min-w-0">
-                                     <div className="flex items-center flex-wrap gap-1">
-                                         <h4 className="font-black text-sm md:text-base tracking-tight leading-none truncate" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
-                                         {/* 🚀 RELOJ FOMO */}
+                                 
+                                 {/* Jerarquía Tipográfica Estricta */}
+                                 <div className="flex flex-col min-w-0 justify-center">
+                                     {promo.tagline && (
+                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-1 truncate" style={{ color: promo.text_color || '#fff', opacity: 0.8 }}>
+                                             {promo.tagline}
+                                         </span>
+                                     )}
+                                    <div className="flex items-center flex-wrap gap-1 md:gap-2">
+                                         {/* 🚀 TÍTULO BLINDADO: line-clamp-2 para que envuelva elegante y pr-2 para evitar el corte de fuente */}
+                                         <h4 className="font-black text-xl md:text-3xl tracking-tighter leading-none line-clamp-2 pr-2 pb-0.5" style={{ color: promo.text_color || '#fff' }}>
+                                             {promo.title}
+                                         </h4>
+                                       
+                                         {/* 🚀 RELOJ FOMO INTEGRADO */}
                                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} />}
                                      </div>
-                                     {promo.tagline && <p className="text-[10px] md:text-xs opacity-90 mt-1 truncate" style={{ color: promo.text_color || '#fff' }}>{promo.tagline}</p>}
                                  </div>
                              </div>
                              
-                             <div className={`shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase transition-all shadow-subtle ${activePromo?.id === promo.id ? 'bg-white text-black' : 'border border-white/30'}`} style={{ color: activePromo?.id === promo.id ? '#000' : (promo.text_color || '#fff') }}>
-                                 {activePromo?.id === promo.id ? 'Filtro Activo ✕' : 'Ver Ofertas'}
+                             {/* 🚀 CTA INEQUÍVOCO (Botón Real de Alto Contraste) */}
+                             <div className="shrink-0 pl-2">
+                                 <div 
+                                    className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`} 
+                                    style={{ 
+                                        backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'), 
+                                        color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'),
+                                        border: `1px solid ${isActive ? promo.text_color : 'transparent'}`
+                                    }}
+                                 >
+                                     <span>{isActive ? 'Quitar Filtro ✕' : 'Ver Oferta'}</span>
+                                 </div>
                              </div>
                         </div>
                    </div>
-               ))}
+               )})}
            </div>
         </div>
       )}
-
    
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
         
