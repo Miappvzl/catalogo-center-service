@@ -28,6 +28,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [selectedColor, setSelectedColor] = useState<string | null>(null)
     const [selectedSize, setSelectedSize] = useState<string | null>(null)
     const [quantity, setQuantity] = useState(1)
+    const [errorShake, setErrorShake] = useState<'color' | 'size' | null>(null)
 
     const [currentGallery, setCurrentGallery] = useState<string[]>([])
     const [galleryIndex, setGalleryIndex] = useState(0)
@@ -214,8 +215,18 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
     const handleAddToCart = () => {
         if (variants.length > 0) {
-            if (!selectedColor) return Swal.fire({ title: 'Falta Color', text: 'Selecciona un color', icon: 'warning', confirmButtonColor: '#000' })
-            if (!selectedSize) return Swal.fire({ title: 'Falta Talla', text: 'Selecciona tu talla', icon: 'warning', confirmButtonColor: '#000' })
+            if (!selectedColor) {
+                setErrorShake('color')
+                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
+                setTimeout(() => setErrorShake(null), 800)
+                return
+            }
+            if (!selectedSize) {
+                setErrorShake('size')
+                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
+                setTimeout(() => setErrorShake(null), 800)
+                return
+            }
 
             const specificVariant = variants.find(v => v.color_name === selectedColor && v.size === selectedSize)
             if (specificVariant) {
@@ -367,7 +378,11 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                     <div className="space-y-6 pb-4">
                                         {variants.length > 0 && !isCompletelyOutOfStock && (
                                             <>
-                                                <div className="space-y-3">
+                                                {/* 🚀 CONTENEDOR ANIMADO DE COLOR */}
+                                                <motion.div 
+                                                    animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                    className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
+                                                >
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                                             1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
@@ -378,7 +393,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                         {availableColors.map((c: any) => (
                                                             <button
                                                                 key={c.name}
-                                                                onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); setSelectedSize(null) } }}
+                                                                onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); setSelectedSize(null); setErrorShake(null); } }}
                                                                 disabled={!c.isAvailable}
                                                                 className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
                                                                     ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'ring-1 ring-black ring-offset-2 scale-110 border-transparent' : 'hover:scale-105 border-gray-200'}`
@@ -401,9 +416,13 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                             </button>
                                                         ))}
                                                     </div>
-                                                </div>
+                                                </motion.div>
 
-                                                <div className="space-y-3">
+                                                {/* 🚀 CONTENEDOR ANIMADO DE TALLA */}
+                                                <motion.div 
+                                                    animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                    className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
+                                                >
                                                     <div className="flex justify-between items-end">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">2. Talla</span>
                                                         {selectedSize && currentMaxStock > 0 && (
@@ -424,7 +443,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                                 return (
                                                                     <button
                                                                         key={v.id}
-                                                                        onClick={() => { if (!isOutOfStock) setSelectedSize(v.size) }}
+                                                                        onClick={() => { if (!isOutOfStock) { setSelectedSize(v.size); setErrorShake(null); } }}
                                                                         disabled={isOutOfStock}
                                                                         className={`relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden ${selectedSize === v.size
                                                                             ? 'bg-black text-white border-black'
@@ -444,7 +463,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                                                             })}
                                                         </div>
                                                     )}
-                                                </div>
+                                                </motion.div>
                                             </>
                                         )}
 
@@ -478,12 +497,24 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
                                     <button
                                         onClick={handleAddToCart}
-                                        disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)}
-                                        className="flex-1 bg-black text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-black"
+                                        disabled={isCompletelyOutOfStock} // 🚀 NUNCA se deshabilita por falta de talla, solo si no hay stock
+                                        className={`flex-1 text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 border ${
+                                            isCompletelyOutOfStock 
+                                                ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
+                                                : (variants.length > 0 && (!selectedColor || !selectedSize))
+                                                    ? 'bg-gray-900 border-gray-900 hover:bg-black active:scale-[0.98]' // Estado de guía
+                                                    : 'bg-black border-black hover:bg-gray-800 active:scale-[0.98]' // Estado listo
+                                        }`}
                                     >
                                         <ShoppingBag size={18} className="pointer-events-none mb-0.5" />
-                                        <span>{isCompletelyOutOfStock ? 'Agotado' : 'Agregar'}</span>
+                                        <span>
+                                            {isCompletelyOutOfStock ? 'Agotado' 
+                                            : (variants.length > 0 && !selectedColor) ? 'Elige un Color'
+                                            : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
+                                            : 'Agregar'}
+                                        </span>
                                     </button>
+                                     
                                 </div>
                             </div>
 
