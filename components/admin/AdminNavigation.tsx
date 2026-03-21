@@ -165,27 +165,51 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // 🚀 OPTIMIZACIÓN 1: Curvas Bezier nativas y eliminación de opacidad en el panel
   const sidebarVariants: Variants = {
-    hidden: { x: '100%', opacity: 0 },
-    visible: { x: 0, opacity: 1, transition: { type: 'spring', damping: 25, stiffness: 200 } },
-    exit: { x: '100%', opacity: 0, transition: { damping: 25, stiffness: 200 } }
+    hidden: { x: '100%' }, // Cero cálculos de opacidad
+    visible: { 
+      x: 0, 
+      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.4 } 
+    },
+    exit: { 
+      x: '100%', 
+      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.3 } 
+    }
+  }
+
+  // 🚀 OPTIMIZACIÓN 2: Variante separada para el fondo (solo anima opacidad)
+  const backdropVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+    exit: { opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } }
   }
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-[70] flex justify-end">
+          {/* Fonde difuminado */}
           <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            variants={backdropVariants}
+            initial="hidden" 
+            animate="visible" 
+            exit="exit" 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity]" 
             onPointerDown={(e) => {
-              e.stopPropagation(); // Evita que el toque se propague a otros elementos
+              e.stopPropagation();
               setIsOpen(false);
             }} 
           />
+          
+          {/* Panel Lateral */}
           <motion.div 
-            variants={sidebarVariants} initial="hidden" animate="visible" exit="exit"
-            className="relative w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col"
+            variants={sidebarVariants} 
+            initial="hidden" 
+            animate="visible" 
+            exit="exit"
+            // 🚀 OPTIMIZACIÓN 3: Hardware Acceleration forzado
+            className="relative w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col will-change-transform"
           >
             <div className="p-6 flex items-center justify-between border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -199,7 +223,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 no-scrollbar">
               {NAV_LINKS.map((link) => {
                 if (link.isAction) return null
                 const isActive = pathname === link.href

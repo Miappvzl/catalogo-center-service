@@ -28,6 +28,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
+  
 
     const isEur = storeSettings?.currency === 'eur' 
     const activeRate = isEur ? rates.eur : rates.usd
@@ -99,6 +100,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             setIsDirty(true)
         }
     }
+
+
 
     const handleSizeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' || e.key === ',') {
@@ -172,6 +175,10 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     router.push('/admin/inventory')
                     return
                 }
+
+      
+
+
 
                 setFormData({
                     name: product.name,
@@ -492,19 +499,43 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]"><Loader2 className="animate-spin text-gray-400" size={32} /></div>
 
 
-    return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-hidden w-full max-w-[100vw]">
+    // 1. Estados del Smart Header
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
-            {/* HEADER */}
-            <div className="bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-all">
+  // 2. Motor de Scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 50) {
+        setIsHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY.current) {
+        setIsHeaderVisible(false); // Bajando: esconder
+      } else {
+        setIsHeaderVisible(true);  // Subiendo: mostrar
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+    return (
+       <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-clip w-full max-w-[100vw]">
+
+           {/* HEADER */}
+            <div className={`bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="flex items-center gap-3 md:gap-6 min-w-0">
-                    <button onClick={handleExit} className="p-2 shrink-0 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-(--radius-btn) transition-colors group" title="Volver">
+                    <button onClick={handleExit} className="p-2 shrink-0 hover:bg-gray-100 border border-gray-100 rounded-full transition-colors group" title="Volver">
                         <ArrowLeft className="text-gray-500 group-hover:text-black transition-colors w-4 h-4 md:w-5 md:h-5" />
                     </button>
                     <div className="min-w-0">
                         <h1 className="font-black text-lg md:text-2xl leading-none truncate">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
                         <div className="flex items-center gap-2 mt-1.5 md:mt-2 overflow-hidden">
-                            <span className={`text-[9px] px-2 py-0.5 rounded-(--radius-badge) font-bold uppercase border whitespace-nowrap ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-[var(--radius-badge)] font-bold uppercase whitespace-nowrap ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                                 {isEur ? 'EUR' : 'USD'} Base
                             </span>
                         </div>
@@ -512,7 +543,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 </div>
                 <div className="flex items-center gap-2 md:gap-5 shrink-0 pl-2">
                     <button onClick={handleExit} className="hidden md:block px-4 py-2 text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase tracking-wide">Cancelar</button>
-                    <button onClick={handleSave} disabled={saving} className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-(--radius-btn) shadow-subtle font-bold text-xs md:text-sm hover:bg-gray-800 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70 border border-black">
+                    <button onClick={handleSave} disabled={saving} className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full shadow-subtle font-bold text-xs md:text-sm hover:bg-gray-800 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70 border border-black">
                         {saving ? <Loader2 className="animate-spin w-3.5 h-3.5 md:w-4 md:h-4" /> : <Save strokeWidth={2.5} className="w-3.5 h-3.5 md:w-4 md:h-4" />}
                         <span className="hidden sm:block">Guardar Producto</span>
                         <span className="sm:hidden">Guardar</span>
@@ -536,17 +567,17 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 )}
 
                 {/* CARD 1: INFORMACIÓN GENERAL */}
-                <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent shadow-sm space-y-6">
+                <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent space-y-6">
                     <h3 className="text-lg font-black text-gray-900 border-b border-gray-100 pb-3">1. Información Básica</h3>
                     <div className="space-y-5">
                         <div>
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Nombre del Producto</label>
-                            <input value={formData.name} onChange={e => updateForm('name', e.target.value)} placeholder="Ej: Nike Air Force 1" className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 transition-all outline-none" />
+                            <input value={formData.name} onChange={e => updateForm('name', e.target.value)} placeholder="Ej: Nike Air Force 1" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 transition-all outline-none" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div className="relative" ref={categoryDropdownRef}>
                                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Categoría</label>
-                                <input value={formData.category} onChange={e => { updateForm('category', e.target.value); setIsCategoryDropdownOpen(true) }} onFocus={() => setIsCategoryDropdownOpen(true)} placeholder="Ej: Zapatos, Relojes..." className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 transition-all outline-none" />
+                                <input value={formData.category} onChange={e => { updateForm('category', e.target.value); setIsCategoryDropdownOpen(true) }} onFocus={() => setIsCategoryDropdownOpen(true)} placeholder="Ej: Zapatos, Relojes..." className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 transition-all outline-none" />
                                 <AnimatePresence>
                                     {isCategoryDropdownOpen && (
                                         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-(--radius-card) shadow-xl overflow-hidden max-h-60 flex flex-col">
@@ -571,7 +602,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Estado en Tienda</label>
-                                <select value={formData.status} onChange={e => updateForm('status', e.target.value)} className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 transition-all outline-none cursor-pointer appearance-none">
+                                <select value={formData.status} onChange={e => updateForm('status', e.target.value)} className="w-full bg-[#f6f6f6] border-none focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 transition-all outline-none cursor-pointer appearance-none">
                                     <option value="active">Activo (Visible)</option>
                                     <option value="draft">Borrador (Oculto)</option>
                                 </select>
@@ -585,19 +616,19 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 </div>
 
                 {/* CARD 2: MEDIOS Y GALERÍA */}
-                <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent shadow-sm space-y-6">
+                <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent  space-y-6 mb-auto">
                     <h3 className="text-lg font-black text-gray-900 border-b border-gray-100 pb-3">2. Fotos del Producto</h3>
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                         {/* Foto Principal */}
                         <div className="w-full md:w-1/3">
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Foto Portada (Obligatoria)</label>
                             <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'main')} />
-                            <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-gray-50 rounded-(--radius-card) border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
+                            <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-[#f6f6f6] rounded-(--radius-card) border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
                                 {formData.image_url ? (
                                     <img src={formData.image_url} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" alt="Producto Principal" />
                                 ) : (
                                     <div className="text-center p-4 flex flex-col items-center">
-                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 text-gray-400 border border-gray-200 group-hover:text-black group-hover:border-gray-300 transition-colors shadow-sm">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 text-gray-400 border border-gray-200 group-hover:text-black group-hover:border-gray-300 transition-colors ">
                                             {uploading ? <Loader2 className="animate-spin" /> : <ImageIcon size={20} />}
                                         </div>
                                     </div>
@@ -613,7 +644,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             </label>
                             <input type="file" multiple ref={productGalleryInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'productGallery')} />
                             <div className="flex gap-3 h-30 md:h-40 overflow-x-auto no-scrollbar snap-x pb-2">
-                                <button onClick={() => productGalleryInputRef.current?.click()} disabled={productGallery.length >= 3 || uploading} className="w-30 md:w-40 h-full rounded-(--radius-card) border border-dashed border-gray-300 flex items-center justify-center hover:border-black hover:bg-white transition-all disabled:opacity-50 text-gray-400 hover:text-black shrink-0 bg-gray-50 shadow-sm flex-col gap-2">
+                                <button onClick={() => productGalleryInputRef.current?.click()} disabled={productGallery.length >= 3 || uploading} className="w-30 md:w-40 h-full rounded-(--radius-card) border border-dashed border-gray-300 flex items-center justify-center hover:border-black hover:bg-white transition-all disabled:opacity-50 text-gray-400 hover:text-black shrink-0 bg-[#f6f6f6] flex-col gap-2">
                                     {uploading ? <Loader2 className="animate-spin" size={24} /> : <><ImagePlus size={24} /><span className="text-[10px] font-bold uppercase">Añadir</span></>}
                                 </button>
                                 {productGallery.map((img, idx) => (
@@ -629,26 +660,26 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 </div>
 
                 {/* CARD 3: ESTRATEGIA DE PRECIO BASE */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-white relative top-13 p-5 pb-14 rounded-(--radius-card) border border-transparentbg-white border-transparent space-y-0 grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base) *</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <input type="number" min="0" value={formData.price} onChange={e => updateForm('price', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
+                            <input type="number" min="0" value={formData.price} onChange={e => updateForm('price', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
                         </div>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Anterior (Tachado)</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500 transition-colors">$</span>
-                            <input type="number" min="0" value={formData.compareAt} onChange={e => updateForm('compareAt', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
+                            <input type="number" min="0" value={formData.compareAt} onChange={e => updateForm('compareAt', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
                         </div>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen Conversión (Opcional)</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <input type="number" min="0" value={formData.penalty} onChange={e => updateForm('penalty', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
+                            <input type="number" min="0" value={formData.penalty} onChange={e => updateForm('penalty', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
                         </div>
                     </div>
                 </div>
