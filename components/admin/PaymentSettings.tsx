@@ -19,6 +19,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   const [isDirty, setIsDirty] = useState(false) 
   
   const [methods, setMethods] = useState({
+    allow_split_payments: initialData?.allow_split_payments || false, // 🚀 NUEVO: Feature Flag
     pago_movil: { active: false, details: '', ...initialData?.pago_movil },
     zelle: { active: false, details: '', ...initialData?.zelle },
     binance: { active: false, details: '', ...initialData?.binance },
@@ -32,6 +33,12 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
       ...prev,
       [method]: { ...prev[method as keyof typeof prev], [field]: value }
     }))
+  }
+
+  // 🚀 NUEVO: Controlador para el Pago Mixto
+  const handleSplitToggle = (value: boolean) => {
+    setIsDirty(true);
+    setMethods(prev => ({ ...prev, allow_split_payments: value }));
   }
 
   const handleSave = async () => {
@@ -61,6 +68,20 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
             <CreditCard size={20} /> Métodos de Pago
           </h3>
           <p className="text-sm text-gray-500 mt-1">Configura las cuentas donde recibirás el dinero.</p>
+      </div>
+
+      {/* 🚀 GLOBAL SETTING: PAGO MIXTO */}
+      <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] mb-6 border border-transparent">
+          <div 
+              className="flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform"
+              onClick={() => handleSplitToggle(!methods.allow_split_payments)}
+          >
+              <div className="pr-4">
+                  <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5">Habilitar Pago Mixto</p>
+                  <p className="text-xs text-gray-500 mt-1">Permite a los clientes pagar una misma orden combinando múltiples métodos (Ej: Zelle + Pago Móvil).</p>
+              </div>
+              <AnimatedSwitch active={methods.allow_split_payments} />
+          </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">

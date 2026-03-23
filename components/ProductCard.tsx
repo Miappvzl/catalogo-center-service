@@ -26,21 +26,20 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       className={`w-full group cursor-pointer flex flex-col relative transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
     >
-      {/* 🚀 IMAGE CONTAINER: STRICT ASPECT RATIO (Se mantiene impecable) */}
-      <div className="relative w-full bg-[#F8F9FA] overflow-hidden rounded-[4px] aspect-[4/5] flex items-center justify-center">
+     {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
+      <div className="relative w-full bg-white overflow-hidden rounded-[4px] aspect-[4/5] flex items-center justify-center">
         {product.image_url ? (
           <img
             src={product.image_url}
             alt={product.name}
             loading="lazy"
-            className="w-full h-full object-contain p-4 mix-blend-multiply transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
+          <div className="w-full h-full flex items-center justify-center text-gray-300 bg-[#F8F9FA]">
             <ImageIcon size={32} strokeWidth={1.5} />
           </div>
         )}
-        
         {/* OVERLAY AGOTADO */}
         {isOutOfStock && (
              <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center z-10">

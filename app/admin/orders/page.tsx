@@ -28,10 +28,11 @@ interface Order {
   payment_method: string
   shipping_method: string
   delivery_info: string | null
-  tracking_number?: string | null
-  receipt_url?: string | null // <-- NUEVO
-  shipping_cost?: number // <-- NUEVO
-  discount_amount?: number // <-- NUEVO
+ tracking_number?: string | null
+  receipt_url?: string | null 
+  split_payments?: any[] | null // 🚀 NUEVO: Array JSONB del Liquid-Split
+  shipping_cost?: number 
+  discount_amount?: number 
   order_items: OrderItem[]
 }
 
@@ -480,39 +481,70 @@ export default function OrdersPage() {
                             </button>
                         </div>
 
-                        {/* VISOR DE COMPROBANTE */}
-                        {selectedOrder.receipt_url && (
-                            <div className="animate-in fade-in pt-5 slide-in-from-bottom-2 px-6">
-                                <p className="text-[10px] font-bold pl-2 text-gray-400 uppercase tracking-widest mb-2">Comprobante Adjunto</p>
-                                <div className="bg-gray-50 rounded-[var(--radius-card)] p-2 flex items-center justify-between gap-3">
-                                    <div className="flex items-center pl-2 gap-3 overflow-hidden">
-                                        <div className="w-12 h-12 bg-white rounded-[var(--radius-btn)] overflow-hidden shrink-0 shadow-sm">
-                                            <img 
-                                                src={selectedOrder.receipt_url} 
-                                                alt="Comprobante" 
-                                                className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
-                                            />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">Captura de Pago</p>
-                                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedOrder.payment_method}</p>
-                                        </div>
+                       <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+                            
+                            {/* 🚀 CENTRO DE CONCILIACIÓN VISUAL (Liquid-Split Engine) */}
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Desglose de Pagos</p>
+                                
+                                {selectedOrder.split_payments && selectedOrder.split_payments.length > 0 ? (
+                                    <div className="grid grid-cols-1 gap-2.5">
+                                       {selectedOrder.split_payments.map((payment: any, index: number) => (
+                                            <div key={index} className="bg-gray-50 rounded-[var(--radius-card)] p-3 border border-gray-100 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    {/* 🚀 THUMBNAIL INTELIGENTE (Imagen o Fallback) */}
+                                                    <div className="w-10 h-10 bg-white border border-gray-100 rounded-lg flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                                                        {payment.receipt_url ? (
+                                                            <img 
+                                                                src={payment.receipt_url} 
+                                                                alt={`Comprobante de ${payment.method}`} 
+                                                                className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+                                                            />
+                                                        ) : (
+                                                            <DollarSign size={16} className="text-gray-400" strokeWidth={2.5}/>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <p className="font-bold text-sm text-gray-900 truncate tracking-tight">{payment.method}</p>
+                                                        <p className="text-[11px] font-mono text-gray-500 uppercase">
+                                                            {payment.currency === 'usd' ? `$${Number(payment.amount_usd).toFixed(2)}` : `Bs ${Number(payment.amount_bs).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {payment.receipt_url ? (
+                                                    <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="shrink-0 p-2 bg-white text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-100 rounded-full transition-colors group flex items-center gap-1.5 px-3">
+                                                        <ArrowUpRight size={14} /> <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Ver</span>
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 bg-gray-100 rounded-md py-1 border border-gray-200">Sin Capture</span>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <a 
-                                        href={selectedOrder.receipt_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="p-2.5 bg-white text-gray-700 hover:text-black hover:bg-gray-100 rounded-[var(--radius-btn)] mr-2 transition-colors shrink-0 shadow-subtle"
-                                        title="Ampliar comprobante"
-                                    >
-                                        <ArrowUpRight size={16} strokeWidth={2.5}/>
-                                    </a>
-                                </div>
+                                ) : selectedOrder.receipt_url ? (
+                                    <div className="bg-gray-50 rounded-[var(--radius-card)] p-2.5 border border-gray-100 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-12 h-12 bg-white rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100">
+                                                <img src={selectedOrder.receipt_url} alt="Comprobante Antiguo" className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 truncate">{selectedOrder.payment_method}</p>
+                                                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Pago Único (Legacy)</p>
+                                            </div>
+                                        </div>
+                                        <a href={selectedOrder.receipt_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-white text-gray-700 hover:text-black border border-gray-200 hover:bg-gray-100 rounded-full mr-2 transition-colors shrink-0 shadow-sm">
+                                            <ArrowUpRight size={16} strokeWidth={2.5}/>
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <div className="bg-gray-50 border border-gray-100 border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-gray-400">
+                                        <Clock size={20} className="mb-1 opacity-50" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-center">Esperando o No requiere comprobante</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
-                            <div className="flex justify-between items-start">
+                            
+                            <div className="flex justify-between items-start pt-6 border-t border-gray-100">
                                 <div className="min-w-0 pr-4">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cliente</p>
                                     <p className="font-bold text-lg text-gray-900 break-words">{selectedOrder.customer_name}</p>
