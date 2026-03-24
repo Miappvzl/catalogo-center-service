@@ -15,7 +15,7 @@ export interface CartItem {
   variantInfo: string | null
   category?: string 
   maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
-  compareAtPrice?: number | null // 🚀 NUEVO: El precio tachado original (para calcular ahorros)
+  compareAtPrice?: number | null // 
 }
 
 interface CartState {
