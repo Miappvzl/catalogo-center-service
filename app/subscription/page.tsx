@@ -1,100 +1,216 @@
 'use client'
 
-import { MessageCircle, CheckCircle, Lock, Copy } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageCircle, CheckCircle, Lock, Copy, Check, Wallet, Globe, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { getSupabase } from '@/lib/supabase-client'
+import { PREZISO_BILLING } from '@/lib/config/billing'
 import Link from 'next/link'
-import Swal from 'sweetalert2'
 
 export default function SubscriptionPage() {
-  const price = "10$"
-  const pagoMovil = {
-    banco: "Venezuela",
-    telefono: "0414-580-9864", // <--- TU NÚMERO
-    cedula: "V-34.075.886"     // <--- TU CÉDULA
-  }
+    const supabase = getSupabase()
+    const [rate, setRate] = useState<number>(0)
+    const [store, setStore] = useState<any>(null)
+    const [copiedId, setCopiedId] = useState<string | null>(null)
+    const [showSuccessModal, setShowSuccessModal] = useState(false)
 
-  const handleReportPayment = () => {
-    const message = `Hola, mi periodo de prueba en Preziso venció. Ya realicé el pago de la suscripción (${price}).\n\nAdjunto comprobante:`
-    const url = `https://wa.me/584145811936?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
-  }
+useEffect(() => {
+        const getData = async () => {
+            // 1. Obtener Tasa BCV desde tu tabla app_config
+            const { data: configData } = await supabase
+                .from('app_config')
+                .select('usd_rate')
+                .eq('id', 1) // Aseguramos traer la fila de configuración principal
+                .single()
+                
+            if (configData && configData.usd_rate) {
+                setRate(configData.usd_rate)
+            }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    Swal.fire({ toast: true, position: 'top', icon: 'success', title: 'Copiado', timer: 1000, showConfirmButton: false })
-  }
+            // 2. Obtener datos de la tienda actual para el reporte
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data: storeData } = await supabase.from('stores').select('id, name').eq('user_id', user.id).single()
+                setStore(storeData)
+            }
+        }
+        getData()
+    }, [])
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans py-10">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+    const amountBs = (PREZISO_BILLING.priceUSD * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+    const copyToClipboard = (text: string, id: string) => {
+        navigator.clipboard.writeText(text)
+        setCopiedId(id)
+        setTimeout(() => setCopiedId(null), 2000)
+    }
+
+    const handleReportPayment = () => {
+        const message = PREZISO_BILLING.generateReportMessage(store?.name || 'Tienda', store?.id || 'ID-Pendiente', amountBs)
+        const url = `https://wa.me/${PREZISO_BILLING.whatsappContact}?text=${encodeURIComponent(message)}`
         
-        {/* Header Rojo */}
-        <div className="bg-black text-white p-6 md:p-8 text-center relative overflow-hidden flex-shrink-0">
-            <div className="absolute top-0 left-0 w-full h-full bg-white/10 rotate-12 scale-150 transform origin-bottom-left"></div>
-            <div className="relative z-10 flex flex-col items-center">
-                <div className="bg-white/20 p-3 md:p-4 rounded-full mb-3 backdrop-blur-sm shadow-lg">
-                    <Lock size={28} className="text-white"/>
-                </div>
-                <h1 className="text-xl md:text-2xl font-bold mb-1">Suscripción Requerida</h1>
-                <p className="text-gray-300 text-xs md:text-sm px-4">Tu periodo de prueba gratuito ha finalizado.</p>
-            </div>
-        </div>
+        // Primero mostramos nuestro modal de tranquilidad
+        setShowSuccessModal(true)
+        
+        // Pequeño delay para que lean el modal antes de saltar a WA
+        setTimeout(() => {
+            window.open(url, '_blank')
+        }, 2000)
+    }
 
-        {/* Body */}
-        <div className="p-6 md:p-8 flex-1 flex flex-col">
-            <div className="text-center mb-6">
-                <p className="text-gray-600 mb-2 text-sm md:text-base">Reactiva tu tienda y sigue vendiendo sin límites.</p>
-                <div className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{price}<span className="text-sm text-gray-400 font-medium ml-1">/mes</span></div>
-            </div>
-
-            {/* Beneficios */}
-            <ul className="space-y-3 mb-6 bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                <li className="flex items-center gap-3 text-sm text-gray-700">
-                    <CheckCircle size={16} className="text-green-500 flex-shrink-0"/> Panel de Control Ilimitado
-                </li>
-                <li className="flex items-center gap-3 text-sm text-gray-700">
-                    <CheckCircle size={16} className="text-green-500 flex-shrink-0"/> Catálogo Público Activo
-                </li>
-                <li className="flex items-center gap-3 text-sm text-gray-700">
-                    <CheckCircle size={16} className="text-green-500 flex-shrink-0"/> Actualizaciones BCV
-                </li>
-            </ul>
-
-            {/* Datos de Pago */}
-            <div className="mb-6 text-center">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Datos para Pago Móvil</p>
-                <div className="bg-gray-100 p-4 rounded-xl text-sm font-mono text-gray-600 border border-gray-200 relative group">
-                    <div className="space-y-1">
-                        <p className="flex justify-between"><span>Banco:</span> <b className="text-black">{pagoMovil.banco}</b></p>
-                        <p className="flex justify-between"><span>Tlf:</span> <b className="text-black">{pagoMovil.telefono}</b></p>
-                        <p className="flex justify-between"><span>CI:</span> <b className="text-black">{pagoMovil.cedula}</b></p>
+    return (
+        <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4 font-sans selection:bg-black selection:text-white">
+            <div className="w-full max-w-[440px] flex flex-col gap-6">
+                
+                {/* CARD PRINCIPAL */}
+                <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+                    
+                    {/* Header Minimalista */}
+                    <div className="p-8 text-center border-b border-gray-50 bg-gray-50/30">
+                        <div className="inline-flex p-3 rounded-2xl bg-black text-white mb-4">
+                            <Lock size={24} strokeWidth={2.5} />
+                        </div>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Membresía Preziso</h1>
+                        <p className="text-gray-400 text-sm mt-1 font-medium">Tu periodo de prueba ha finalizado.</p>
                     </div>
-                    {/* Botón flotante para copiar todo */}
-                    <button 
-                        onClick={() => copyToClipboard(`${pagoMovil.banco}\n${pagoMovil.telefono}\n${pagoMovil.cedula}`)}
-                        className="absolute top-2 right-2 p-1.5 bg-white rounded-md shadow-sm opacity-50 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
-                        title="Copiar datos"
-                    >
-                        <Copy size={14} className="text-gray-500"/>
-                    </button>
+
+                    <div className="p-8 space-y-8">
+                       {/* Precio Dual y Tasa BCV */}
+                        <div className="text-center">
+                            <div className="flex items-baseline justify-center gap-1">
+                                <span className="text-4xl font-black text-gray-900">${PREZISO_BILLING.priceUSD}</span>
+                                <span className="text-gray-400 font-bold text-sm">/mes</span>
+                            </div>
+                            
+                            {/* Gatillo Dinámico BCV */}
+                            <div className="mt-3 flex justify-center">
+                                {rate > 0 ? (
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100/50 rounded-full text-[11px] font-black uppercase tracking-widest text-emerald-700 transition-all">
+                                        <span>≈ Bs {amountBs} (BCV)</span>
+                                        <div className="w-px h-3 bg-emerald-200 mx-0.5"></div>
+                                        <button 
+                                            onClick={() => copyToClipboard(amountBs, 'monto')}
+                                            className="text-emerald-600 hover:text-emerald-900 transition-colors flex items-center gap-1 active:scale-90"
+                                            title="Copiar monto exacto en Bolívares"
+                                        >
+                                            {copiedId === 'monto' ? <Check size={12} strokeWidth={3} /> : <Copy size={12} strokeWidth={2.5} />}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                                        <Loader2 size={12} className="animate-spin" /> Calculando Tasa...
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Métodos de Pago */}
+                        <div className="space-y-4">
+                            {/* Pago Móvil */}
+                            <div className="p-4 rounded-2xl border border-gray-100 bg-white group transition-all hover:border-gray-200">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+                                        <Wallet size={16} className="text-gray-400" />
+                                        Pago Móvil
+                                    </div>
+                                    <span className="text-[10px] font-black text-gray-300 uppercase">Venezuela</span>
+                                </div>
+                                <div className="space-y-2">
+                                    <DataRow label="Banco" value={PREZISO_BILLING.pagoMovil.banco} />
+                                    <DataRow 
+                                        label="Teléfono" 
+                                        value={PREZISO_BILLING.pagoMovil.telefono} 
+                                        onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.telefono, 'tlf')}
+                                        isCopied={copiedId === 'tlf'}
+                                    />
+                                    <DataRow 
+                                        label="Cédula" 
+                                        value={PREZISO_BILLING.pagoMovil.cedula} 
+                                        onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.cedula, 'ci')}
+                                        isCopied={copiedId === 'ci'}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Otros Métodos */}
+                            <div className="p-4 rounded-2xl border border-gray-100 bg-white transition-all hover:border-gray-200">
+                                <div className="flex items-center gap-2 text-gray-900 font-bold text-sm mb-4">
+                                    <Globe size={16} className="text-gray-400" />
+                                    Global Wallets
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        onClick={() => copyToClipboard(PREZISO_BILLING.wallets.binanceId, 'binance')}
+                                        className="p-3 rounded-xl border border-gray-50 bg-gray-50/50 text-center transition-all active:scale-95"
+                                    >
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Binance ID</p>
+                                        <p className="text-xs font-black text-gray-900 mt-0.5">{copiedId === 'binance' ? '¡Copiado!' : PREZISO_BILLING.wallets.binanceId}</p>
+                                    </button>
+                                    <button 
+                                        onClick={() => copyToClipboard(PREZISO_BILLING.wallets.zinliEmail, 'zinli')}
+                                        className="p-3 rounded-xl border border-gray-50 bg-gray-50/50 text-center transition-all active:scale-95"
+                                    >
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Zinli / Email</p>
+                                        <p className="text-xs font-black text-gray-900 mt-0.5 truncate px-1">{copiedId === 'zinli' ? '¡Copiado!' : PREZISO_BILLING.wallets.zinliEmail}</p>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Botón Principal */}
+                        <button 
+                            onClick={handleReportPayment}
+                            className="w-full bg-black text-white py-5 rounded-[20px] font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98] shadow-none"
+                        >
+                            <MessageCircle size={18} /> Reportar Pago vía WhatsApp
+                        </button>
+                    </div>
+                </div>
+
+                {/* Enlace de Retorno */}
+                <div className="text-center">
+                    <Link href="/admin" className="text-xs font-bold text-gray-400 hover:text-black transition-colors">
+                        Volver al Panel de Control
+                    </Link>
                 </div>
             </div>
 
-            {/* Botón */}
-            <div className="mt-auto">
-                <button 
-                    onClick={handleReportPayment}
-                    className="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold text-base md:text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-200 active:scale-95"
-                >
-                    <MessageCircle size={20} />
-                    Reportar Pago
-                </button>
+            {/* MODAL DE CONFIRMACIÓN (SUCCESS) */}
+            <AnimatePresence>
+                {showSuccessModal && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/80 backdrop-blur-md" />
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative bg-white border border-gray-100 p-8 rounded-[40px] shadow-xl max-w-sm text-center"
+                        >
+                            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <ShieldCheck size={40} strokeWidth={1.5} />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-900 mb-2">Pago Enviado</h3>
+                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                Tu reporte ha sido generado. Verificaremos el pago y serás reconectado en breve.
+                            </p>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
+}
 
-                <div className="mt-4 text-center">
-                    <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 underline">Volver al inicio</Link>
-                </div>
+function DataRow({ label, value, onCopy, isCopied }: any) {
+    return (
+        <div className="flex items-center justify-between text-[13px]">
+            <span className="text-gray-400 font-medium">{label}</span>
+            <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900">{value}</span>
+                {onCopy && (
+                    <button onClick={onCopy} className="text-gray-300 hover:text-black transition-colors">
+                        {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    </button>
+                )}
             </div>
         </div>
-      </div>
-    </div>
-  )
+    )
 }

@@ -12,6 +12,7 @@ import PaymentSettings from '@/components/admin/PaymentSettings'
 import ShippingSettings from '@/components/admin/ShippingSettings'
 import AdminHeader from '@/components/admin/AdminHeader'
 import SecuritySettings from '@/components/admin/SecuritySettings'
+import PushNotificationManager from '@/components/admin/PushNotificationManager'
 
 // --- COMPONENTE TOGGLE ANIMADO (Soft UI) ---
 const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
@@ -275,7 +276,9 @@ export default function SettingsPage() {
         <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
         
 {/* SEGURIDAD DE LA CUENTA */}
+<PushNotificationManager storeId={store.id} />
         <SecuritySettings />
+        
 
         <button 
                     onClick={handleLogout} 

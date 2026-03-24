@@ -288,6 +288,19 @@ export default function CheckoutProcess({
             const orderItems = items.map(item => ({ order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || 'N/A', quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null }))
             await supabase.from('order_items').insert(orderItems)
 
+            // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (Web Push)
+            // Lo hacemos SIN "await" para que no retrase la carga del botón de WhatsApp al cliente
+            fetch('/api/web-push/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storeId: storeId,
+                    orderNumber: order.order_number,
+                    totalUsd: grandTotalUSD.toFixed(2),
+                    customerName: clientData.name
+                })
+            }).catch(err => console.error("Error silencioso en notificación Push:", err));
+
             // 4. Formatear Mensaje WhatsApp
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`
             cartEngine.processedItems.forEach((item: any) => {
@@ -517,7 +530,7 @@ export default function CheckoutProcess({
                                 {splitPayments.map(block => {
                                     // Validación correcta: Si Strict Mode está activo, y NO es Efectivo, se pide captura.
                                     const requiresReceipt = receiptConfig.strict_mode && block.method !== 'Efectivo';
-                                    
+
                                     return (
                                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} key={block.id} className="py-5 overflow-hidden">
                                             <div className="flex justify-between items-center">
@@ -529,7 +542,7 @@ export default function CheckoutProcess({
                                                     <button onClick={() => removePaymentBlock(block.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* MICRO-UPLOADER NAKED CORREGIDO */}
                                             {requiresReceipt && (
                                                 <div className="mt-4 pt-2">
@@ -608,7 +621,7 @@ export default function CheckoutProcess({
                                                         </button>
                                                     </div>
                                                 </>
-                                           ) : (
+                                            ) : (
                                                 // 🚀 PORTAL MODO ÚNICO (Tipografía Directa y Uploader Inteligente)
                                                 (() => {
                                                     const canUploadReceipt = activePaymentInput !== 'Efectivo';
@@ -624,7 +637,7 @@ export default function CheckoutProcess({
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             {canUploadReceipt && singlePaymentBlock && (
                                                                 <div className="pt-2">
                                                                     {!singlePaymentBlock.receiptFile ? (
@@ -745,8 +758,8 @@ export default function CheckoutProcess({
                         onClick={handleCheckout}
                         disabled={loading || !isPaidInFull || missingReceipts}
                         className={`flex-1 h-[52px] rounded-full font-black text-xs md:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${missingReceipts && isPaidInFull
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-black text-white hover:bg-gray-900 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-black text-white hover:bg-gray-900 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10'
                             }`}
                     >
                         {loading ? (

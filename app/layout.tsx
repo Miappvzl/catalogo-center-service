@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,13 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   style: ['normal', 'italic'],
 });
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://preziso.vercel.app'),
@@ -86,11 +94,13 @@ export default function RootLayout({
   return (
     // 2. SEGUNDA DEFENSA: lang="es" para SEO local y translate="no" HTML5 estándar
     <html lang="es" translate="no">
+      
       <body
         // 3. TERCERA DEFENSA: Clase 'notranslate' que bloquea la acción en el DOM
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased notranslate`}
       >
         {children}
+        <Toaster position="bottom-right" theme="light" closeButton richColors />
       </body>
     </html>
   );
