@@ -2,21 +2,21 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-// 1. Configuramos el motor Push con tus llaves criptográficas
-webpush.setVapidDetails(
-    'mailto:quanzosinc@gmail.com', // ⚠️ Cambia esto por tu correo real de fundador
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
-);
-
-// 2. Cliente Supabase con privilegios absolutos
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: Request) {
     try {
+        // 🚀 INYECCIÓN EN RUNTIME: Configuramos Web Push ADENTRO
+        webpush.setVapidDetails(
+            'mailto:quanzosinc@gmail.com',
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+            process.env.VAPID_PRIVATE_KEY!
+        );
+
+        // 🚀 INYECCIÓN EN RUNTIME: Cliente Supabase ADENTRO
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         const { storeId, orderNumber, totalUsd, customerName } = await request.json();
 
         // 3. Buscamos a qué dispositivos debemos avisarle de esta venta
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
             icon: '/favicon-light.png'
         });
 
-        // 5. Disparamos a todos los dispositivos en paralelo (Ej: Si el admin tiene PC y Celular)
+        // 5. Disparamos a todos los dispositivos en paralelo
         const notifications = subscriptions.map(sub => {
             const pushSubscription = {
                 endpoint: sub.endpoint,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
             return webpush.sendNotification(pushSubscription, payload).catch(async (err) => {
                 console.error('Error enviando push al dispositivo:', err);
-                // Lógica de autolimpieza: Si el usuario borró la PWA, Google/Apple devuelven error 410 o 404
+                // Lógica de autolimpieza
                 if (err.statusCode === 410 || err.statusCode === 404) {
                     await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
                 }

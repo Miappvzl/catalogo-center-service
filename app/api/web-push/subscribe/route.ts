@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Usamos el Service Role Key para saltarnos el RLS de Supabase y asegurar que se guarde
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: Request) {
     try {
+        // 🚀 INYECCIÓN EN RUNTIME: Cliente Supabase protegido ADENTRO
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         const { subscription, storeId } = await request.json();
 
         if (!subscription || !subscription.endpoint || !storeId) {
@@ -29,8 +29,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, message: 'Suscripción guardada' });
 
-   } catch (error: any) {
-        // 🚀 INYECCIÓN DE DEBUGGER: Esto imprimirá el error real en tu TERMINAL de VS Code
+    } catch (error: any) {
+        // 🚀 INYECCIÓN DE DEBUGGER: Esto imprimirá el error real en tu TERMINAL de Vercel/VS Code
         console.error('🔥 ERROR CRÍTICO EN SUPABASE:', error.message || error);
         return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }

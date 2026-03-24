@@ -2,26 +2,26 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-// 1. Configuración Web Push
-webpush.setVapidDetails(
-    'mailto:quanzosinc@gmail.com',
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
-);
-
-// 2. Cliente Supabase con privilegios absolutos (Service Role)
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function GET(request: Request) {
     try {
-        // 🔒 SEGURIDAD VERCEL: Validamos que la petición venga del Cron oficial de Vercel
+        // 🔒 SEGURIDAD VERCEL: Validamos que la petición venga del Cron
         const authHeader = request.headers.get('authorization');
         if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
         }
+
+        // 1. Configuración Web Push (AHORA ESTÁ ADENTRO)
+        webpush.setVapidDetails(
+            'mailto:quanzosinc@gmail.com',
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+            process.env.VAPID_PRIVATE_KEY!
+        );
+
+        // 2. Cliente Supabase (AHORA ESTÁ ADENTRO)
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
 
         // 3. Extraemos todas las tiendas activas o en trial
         const { data: stores, error: storesError } = await supabase
@@ -39,13 +39,12 @@ export async function GET(request: Request) {
             if (!store.trial_ends_at) continue;
 
             const endsAt = new Date(store.trial_ends_at);
-            // Calculamos la diferencia exacta en días
             const diffTime = endsAt.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             let title = '';
             let message = '';
-            let urgency = 'alert'; // Para el icono en la base de datos
+            let urgency = 'alert'; 
 
             // Reglas de Retención: [3, 1, 0]
             if (diffDays === 3) {
@@ -58,22 +57,18 @@ export async function GET(request: Request) {
                 title = 'Suscripción Expirada 🚨';
                 message = 'Tu tienda ha sido pausada. El catálogo público ya no es visible. Renueva ahora para reactivarla.';
                 urgency = 'critical';
-                
-                // Automáticamente le cambiamos el status a 'trial' (vencido) para que el frontend lo bloquee
                 await supabase.from('stores').update({ subscription_status: 'trial' }).eq('id', store.id);
             } else {
-                // Si no es 3, 1 o 0, saltamos a la siguiente tienda
                 continue;
             }
 
-            // Si llegamos aquí, la tienda está en la zona roja. 
             // PREPARAMOS FRENTE A (Campanita In-App)
             const dbNotification = supabase.from('notifications').insert({
                 store_id: store.id,
                 title: title,
                 message: message,
                 type: urgency,
-                link: '/subscription' // Los mandamos directo al portal de pago
+                link: '/subscription' 
             });
 
             // PREPARAMOS FRENTE B (Web Push / Pantalla de Bloqueo)
@@ -81,12 +76,7 @@ export async function GET(request: Request) {
                 const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('store_id', store.id);
                 if (!subs || subs.length === 0) return;
 
-                const payload = JSON.stringify({
-                    title: title,
-                    body: message,
-                    url: '/subscription',
-                    icon: '/favicon-light.png'
-                });
+                const payload = JSON.stringify({ title, body: message, url: '/subscription', icon: '/favicon-light.png' });
 
                 const pushPromises = subs.map(sub => {
                     return webpush.sendNotification({
