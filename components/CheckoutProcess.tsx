@@ -236,17 +236,31 @@ export default function CheckoutProcess({
         setLoading(true)
 
         try {
-            // 1. Upload Paralelo
+            // 1. Upload Paralelo con Prevención de Colisiones
             const uploadedPayments = await Promise.all(splitPayments.map(async (p) => {
                 let receiptPublicUrl = null;
                 if (p.receiptFile) {
-                    const compressedReceipt = await compressImage(p.receiptFile, 800, 0.7)
-                    const fileExt = p.receiptFile.name.split('.').pop() || 'jpg'
-                    const fileName = `receipt-${p.id}.${fileExt}`
-                    const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, compressedReceipt)
-                    if (uploadError) throw uploadError
-                    const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName)
-                    receiptPublicUrl = publicUrl
+                    let compressedReceipt;
+                    try {
+                     compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
+                    } catch (compErr) {
+                        console.error("Compresión fallida:", compErr);
+                        throw new Error("El formato de la imagen no es válido o es muy pesada. Por favor, intenta con un capture diferente.");
+                    }
+
+                    const fileExt = p.receiptFile.name.split('.').pop() || 'jpg';
+                    const uniqueUploadId = Date.now().toString().slice(-6); 
+                    const fileName = `receipt-${p.id}-${uniqueUploadId}.${fileExt}`;
+                    
+                    const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, compressedReceipt, { upsert: true });
+                    
+                    if (uploadError) {
+                        console.error("Storage Error Técnico:", uploadError);
+                        throw new Error("Tuvimos un problema de conexión al subir tu comprobante. Por favor, verifica tu internet e intenta de nuevo.");
+                    }
+                    
+                    const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
+                    receiptPublicUrl = publicUrl;
                 }
                 return {
                     method: p.method,
@@ -257,10 +271,10 @@ export default function CheckoutProcess({
                 }
             }));
 
-            let deliveryInfoFull = 'Retiro Personal'
-            if (clientData.deliveryType === 'courier') deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || 'N/A'} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`
-            else if (clientData.deliveryType === 'local_delivery') deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || 'Zona'} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || 'N/A'} | Tlf: ${clientData.phone}`
-            else if (clientData.deliveryType === 'pickup') deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`
+            let deliveryInfoFull = 'Retiro Personal';
+            if (clientData.deliveryType === 'courier') deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || 'N/A'} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+            else if (clientData.deliveryType === 'local_delivery') deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || 'Zona'} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || 'N/A'} | Tlf: ${clientData.phone}`;
+            else if (clientData.deliveryType === 'pickup') deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
 
             // 2. Insertar Orden
             const { data: order, error: orderError } = await supabase
@@ -280,16 +294,63 @@ export default function CheckoutProcess({
                     delivery_info: deliveryInfoFull,
                     shipping_cost: Number(deliveryCost.toFixed(2)),
                     discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts).toFixed(2))
-                }).select().single()
+                }).select().single();
 
-            if (orderError) throw orderError
+            if (orderError) {
+                console.error("Order DB Error Técnico:", orderError);
+                throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
+            }
 
+         
+            
             // 3. Insertar Items
-            const orderItems = items.map(item => ({ order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || 'N/A', quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null }))
-            await supabase.from('order_items').insert(orderItems)
-
+            const orderItemsPayload = items.map(item => ({ 
+                order_id: order.id, 
+                product_id: item.productId, 
+                product_name: item.name, 
+                variant_info: item.variantInfo || 'N/A', 
+                quantity: item.quantity, 
+                price_at_purchase: item.basePrice, 
+                variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null 
+            }));
+            
+            const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+            
+            if (itemsError) {
+                console.error("Order Items DB Error Técnico:", itemsError);
+                
+                // 🚀 ESTRATEGIA FAIL-FORWARD: Salvamos la venta y bloqueamos reintentos
+                
+                // 1. Armamos el mensaje de WhatsApp de rescate (explicando la situación a la tienda)
+                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n`;
+                fallbackMessage += `*Intento de Pedido:* #${order.order_number}\n`;
+                fallbackMessage += `*Cliente:* ${clientData.name}\n`;
+                fallbackMessage += `*Teléfono:* ${clientData.phone}\n\n`;
+                fallbackMessage += `Hola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
+                
+                const fallbackWaLink = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
+                
+                // 2. Vaciamos el carrito para matar la data local
+                clearCart();
+                
+                // 3. Forzamos el paso a la pantalla de Éxito (Paso 3) con el link de emergencia
+                onSuccess(order.order_number, fallbackWaLink);
+                
+                // 4. Le explicamos al cliente qué pasó con una alerta suave
+                Swal.fire({
+                    title: 'Interrupción de red',
+                    text: 'Registramos tu pago, pero tu carrito tuvo un problema al sincronizarse. Te enviaremos a WhatsApp para que la tienda te confirme manualmente.',
+                    icon: 'info',
+                    iconColor: '#000',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#000',
+                    customClass: { popup: 'rounded-xl border border-gray-100', title: 'font-black text-xl text-gray-900' }
+                });
+                
+                setLoading(false);
+                return; // <-- CRÍTICO: Detenemos la función aquí. No entra al catch. No genera órdenes basura.
+            }
             // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (Web Push)
-            // Lo hacemos SIN "await" para que no retrase la carga del botón de WhatsApp al cliente
             fetch('/api/web-push/notify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -327,14 +388,39 @@ export default function CheckoutProcess({
 
             const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 
-            clearCart()
-            onSuccess(order.order_number, waLink)
+            clearCart();
+            onSuccess(order.order_number, waLink);
 
         } catch (error: any) {
-            Swal.fire('Error', error.message, 'error')
+            // Extracción del mensaje amigable para el cliente
+            let friendlyMessage = "Ocurrió un error inesperado al procesar tu pedido por una falla de conexión. Por favor intenta de nuevo.";
+            
+            if (typeof error === 'string') {
+                friendlyMessage = error;
+            } else if (error instanceof Error) {
+                friendlyMessage = error.message;
+            } else if (error?.message && !error.message.includes('fetch') && !error.message.includes('JSON')) {
+                // Filtramos errores de fetch genéricos que asustan
+                friendlyMessage = error.message;
+            }
+
+            // Alerta enfocada en la tranquilidad del cliente (Brutalist UX)
+            Swal.fire({
+                title: 'Falla de Conexión',
+                text: friendlyMessage,
+                icon: 'info', // Usamos 'info' o 'warning' en lugar de 'error' para reducir la ansiedad
+                iconColor: '#000',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#000',
+                customClass: {
+                    title: 'font-black text-xl text-gray-900',
+                    popup: 'rounded-xl border border-gray-100',
+                }
+            });
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
+    
     }
 
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
