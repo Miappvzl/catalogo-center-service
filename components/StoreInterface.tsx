@@ -533,7 +533,7 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
 {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
 <div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
     <a 
-        href="https://tudominio.com?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+        href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
         target="_blank"
         rel="noopener noreferrer"
         className="group inline-flex flex-col items-center gap-1.5"
