@@ -416,7 +416,7 @@ export default function LandingClient() {
                 <div className="flex-1 flex items-end justify-center">
                   <div className="w-full max-w-[260px] relative">
                     <div className="relative w-full aspect-[9/16] rounded-[2.5rem] md:rounded-[3rem] border-7 border-black bg-white overflow-hidden shadow-2xl transition-transform duration-700 md:group-hover:-translate-y-4">
-                      {/* Notch / Isla Dinámica */}
+                      {/* Notch Isla Dinámica */}
                       <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-20">
                         <div className="w-24 h-[5px] bg-black rounded-b-xl"></div>
                       </div>
