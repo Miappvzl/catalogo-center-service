@@ -386,6 +386,23 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     Volver a la Tienda
                                                 </button>
                                             </div>
+                                            {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
+<div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
+    <a 
+        href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group inline-flex flex-col items-center gap-1.5"
+    >
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">
+            Experiencia de compra impulsada por
+        </span>
+        <div className="flex items-center gap-1">
+            <span className="font-black text-sm tracking-tight text-gray-300 group-hover:text-gray-900 transition-colors">PREZISO</span>
+             <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+        </div>
+    </a>
+</div>
                                         </motion.div>
                                     )}
 

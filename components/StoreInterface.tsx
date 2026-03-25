@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
@@ -299,7 +299,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
   }
 
   return (
-    <div className="min-h-screen bg-white pb-32 font-sans selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-white pb-8 font-sans selection:bg-black selection:text-white">
 
       
 
@@ -529,6 +529,24 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
         
       </main>
 
+     
+{/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
+<div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
+    <a 
+        href="https://tudominio.com?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group inline-flex flex-col items-center gap-1.5"
+    >
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">
+            Experiencia de compra impulsada por
+        </span>
+        <div className="flex items-center gap-1.5">
+            <span className="font-black text-sm tracking-tight text-gray-300 group-hover:text-gray-900 transition-colors">PREZISO</span>
+            <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+        </div>
+    </a>
+</div>
       <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
