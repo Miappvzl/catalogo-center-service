@@ -188,8 +188,15 @@ export default function LandingClient() {
 
       {/* NAVEGACIÓN DESKTOP (CLEAN LOOK) */}
       <header className="hidden md:flex fixed top-0 left-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-50 h-[72px] items-center justify-between px-6 lg:px-10 transition-all">
-        <Link href="/" className="font-black text-xl tracking-tighter uppercase flex items-center gap-1 group">
-          PREZISO<span className="text-[#00cd61]">.</span>
+        <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+          <Image 
+            src="/pezisologo.png" 
+            alt="Preziso Logo" 
+            width={200} 
+            height={90} 
+            className="h-10 md:h-15 w-auto object-contain"
+            priority
+          />
         </Link>
 
         <nav className="flex items-center gap-8">
@@ -243,8 +250,18 @@ export default function LandingClient() {
               </Link>
             </div>
             <div className="absolute top-6 left-6 font-black text-xl tracking-tighter uppercase text-gray-900">
-              PREZISO.
+                    <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+          <Image 
+            src="/pezisologo.png" 
+            alt="Preziso Logo" 
+            width={200} 
+            height={90} 
+            className="h-15 md:h-20 w-auto object-contain"
+            priority
+          />
+        </Link>
             </div>
+            
           </motion.div>
         )}
       </AnimatePresence>
@@ -589,10 +606,18 @@ export default function LandingClient() {
         </div>
 
         {/* LOGO GIGANTE Y LEGALES */}
-        <div className="mt-16 md:mt-24 border-t border-gray-900 pt-8 md:pt-12 w-full flex flex-col items-center relative z-10 overflow-hidden">
-          <h2 className="text-[20vw] font-black leading-none tracking-tighter uppercase w-full text-center cursor-default text-gray-900 select-none">
-            PREZISO.
-          </h2>
+        <div className="mt-10 md:mt-24 border-t border-gray-900 pt-8 md:pt-12 w-full flex flex-col items-center relative z-10 overflow-hidden">
+          
+          {/* 🚀 NUEVO LOGO GIGANTE (IMAGE) */}
+          <div className="w-[90vw] md:w-[80vw] max-w-[1400px] flex items-center justify-center opacity-20 md:hover:opacity-30 transition-opacity duration-500 select-none pointer-events-none mb-4 md:mb-8">
+            <Image 
+              src="/pezisologow.png" 
+              alt="Preziso Logo Gigante" 
+              width={1400} 
+              height={400} 
+              className="w-full h-auto object-contain"
+            />
+          </div>
           
           <div className="flex flex-col md:flex-row justify-between w-full max-w-7xl mt-5 mb-20 px-4 md:px-0 gap-6 text-center md:text-left text-gray-600">
             <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest">
