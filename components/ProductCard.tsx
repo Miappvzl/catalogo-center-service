@@ -1,6 +1,6 @@
 'use client'
 
-import { ImageIcon, ShoppingCart, Banknote } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
 
 interface ProductCardProps {
   product: any;
@@ -97,8 +97,8 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
 
         {/* NUDGE HONESTO Y LIMPIO */}
         {penalty > 0 && !isOutOfStock && (
-          <div className="mt-3 inline-flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-1.5 rounded-md self-start transition-colors group-hover:bg-emerald-100/50">
-            <Banknote size={12} className="text-emerald-600 shrink-0" />
+          <div className="mt-3 inline-flex items-center gap-1.5  border border-emerald-600 text-[9px] md:text-[10px] font-bold text-emerald-700  px-2 py-1.5 rounded-full self-start transition-colors group-hover:bg-emerald-100/50">
+            <Flame size={12} className="text-emerald-600 shrink-0" />
             <span>Paga ${cashPrice.toFixed(2)} en DIvisas</span>
           </div>
         )}

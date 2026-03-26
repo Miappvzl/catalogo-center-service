@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -365,7 +365,7 @@ const isCompletelyOutOfStock = variants.length > 0
                                         {/* 🚀 NUDGE DE AHORRO HONESTO */}
                                         {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
                                             <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-md text-[11px] font-bold tracking-wide flex items-center gap-1.5">
-                                                <Banknote size={14} className="text-emerald-600" />
+                                                <Flame size={14} className="text-emerald-600" />
                                                 Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
                                             </span>
                                         )}

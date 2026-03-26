@@ -11,15 +11,17 @@ interface ShippingSettingsProps {
   initialData: any
 }
 
-// FlatToggle Soft UI
+// FlatToggle Soft UI (Optimizada contra Flexbox Blowout)
 const FlatToggle = ({ active, label, subtitle, onClick }: { active: boolean, label: string, subtitle?: string, onClick: () => void }) => (
     <div 
         onClick={onClick}
         className={`cursor-pointer p-4 rounded-[var(--radius-btn)] border transition-all flex items-center justify-between active:scale-[0.98] ${active ? 'border-transparent bg-black text-white shadow-subtle' : 'border-transparent bg-gray-50 hover:bg-gray-100 text-gray-900'}`}
     >
-        <div className="flex flex-col min-w-0 pr-4">
-            <span className="font-bold uppercase text-xs sm:text-sm truncate">{label}</span>
-            {subtitle && <span className={`text-[10px] font-medium uppercase tracking-widest mt-0.5 ${active ? 'text-gray-300' : 'text-gray-500'}`}>{subtitle}</span>}
+        {/* 🚀 Se añadió flex-1 y min-w-0 al padre para forzar el límite de ancho */}
+        <div className="flex flex-col min-w-0 pr-4 flex-1">
+            {/* 🚀 Se cambió 'truncate' por 'break-words whitespace-normal leading-tight' para que el texto baje en lugar de estirar la pantalla */}
+            <span className="font-bold uppercase text-xs sm:text-sm break-words whitespace-normal leading-tight">{label}</span>
+            {subtitle && <span className={`text-[10px] font-medium uppercase tracking-wide mt-1 break-words whitespace-normal leading-snug ${active ? 'text-gray-300' : 'text-gray-500'}`}>{subtitle}</span>}
         </div>
         <div className={`w-10 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${active ? 'bg-white border-white justify-end' : 'bg-white border-transparent justify-start shadow-sm'}`}>
             <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${active ? 'bg-black' : 'bg-gray-300'}`}/>
@@ -216,7 +218,7 @@ const [config, setConfig] = useState({
                                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
                                     <Truck size={14}/> Tarifas por Zona
                                 </label>
-                                <button onClick={addDeliveryZone} className="bg-black text-white px-3 py-1.5 rounded-[var(--radius-btn)] shadow-subtle text-xs font-bold hover:bg-gray-800 transition-colors flex items-center gap-1">
+                                <button onClick={addDeliveryZone} className="bg-black text-white px-3 py-1.5 rounded-full shadow-subtle text-xs font-bold hover:bg-gray-800 transition-colors flex items-center gap-1">
                                     <Plus size={14}/> Crear Zona
                                 </button>
                             </div>
@@ -259,20 +261,21 @@ const [config, setConfig] = useState({
         </div>
 
         {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS */}
-            <div className="space-y-4 pt-6 border-t border-gray-100">
+            <div className="space-y-4 pt-6 border-t border-gray-100 w-full overflow-hidden">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Modal de Productos</h4>
-                <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
+                <div className="bg-[#f6f6f6] p-4 sm:p-5 rounded-[var(--radius-card)] border border-transparent space-y-4 w-full">
                     <FlatToggle 
                         active={config.show_badge} 
-                        label="Mostrar Etiqueta de Entrega" 
-                        subtitle="Aparece debajo de las variantes en la tienda." 
+                        label="Etiqueta de Logística" 
+                        subtitle="Aparece debajo del precio en el producto." 
                         onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }} 
                     />
                     
                     {config.show_badge && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-2">
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Título Global (Max 20)</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-2 w-full">
+                            {/* 🚀 min-w-0 evita que el input force un ancho mínimo oculto */}
+                            <div className="w-full min-w-0">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block truncate">Título (Max 20)</label>
                                 <input 
                                     type="text" 
                                     maxLength={20}
@@ -282,12 +285,12 @@ const [config, setConfig] = useState({
                                     className="w-full bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-bold focus:border-black focus:shadow-subtle outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
                                 />
                             </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Descripción Global (Max 50)</label>
+                            <div className="w-full min-w-0">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block truncate">Desc. (Max 50)</label>
                                 <input 
                                     type="text" 
                                     maxLength={50}
-                                    placeholder="Ej: Entrega de 2 a 7 días hábiles"
+                                    placeholder="Ej: Entrega de 2 a 7 días"
                                     value={config.global_badge_desc}
                                     onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
                                     className="w-full bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-bold focus:border-black focus:shadow-subtle outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
