@@ -31,11 +31,14 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   
-  const [config, setConfig] = useState({
+const [config, setConfig] = useState({
     methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true },
-    main_address: '', // NUEVO CAMPO: Dirección de la tienda física
+    main_address: '', 
     pickup_locations: [] as string[],
-    delivery_zones: [] as {id: string, name: string, cost: number}[] 
+    delivery_zones: [] as {id: string, name: string, cost: number}[],
+    show_badge: true, // NUEVO
+    global_badge_title: '', // NUEVO
+    global_badge_desc: '' // NUEVO
   })
   
   const [newLocation, setNewLocation] = useState('')
@@ -46,10 +49,13 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
         setConfig(prev => ({
             ...prev,
             ...initialData,
-            methods: { ...prev.methods, ...initialData.methods },
-            main_address: initialData.main_address || '', // Cargar
-            delivery_zones: initialData.delivery_zones || [],
-            pickup_locations: initialData.pickup_locations || []
+           methods: { ...prev.methods, ...initialData.methods },
+          main_address: initialData.main_address || '', 
+          delivery_zones: initialData.delivery_zones || [],
+          pickup_locations: initialData.pickup_locations || [],
+          show_badge: initialData.show_badge ?? true, // NUEVO
+          global_badge_title: initialData.global_badge_title || '', // NUEVO
+          global_badge_desc: initialData.global_badge_desc || '' // NUEVO
         }))
     }
   }, [initialData])
@@ -251,6 +257,46 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                 )}
             </div>
         </div>
+
+        {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS */}
+            <div className="space-y-4 pt-6 border-t border-gray-100">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Modal de Productos</h4>
+                <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent space-y-4">
+                    <FlatToggle 
+                        active={config.show_badge} 
+                        label="Mostrar Etiqueta de Entrega" 
+                        subtitle="Aparece debajo de las variantes en la tienda." 
+                        onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }} 
+                    />
+                    
+                    {config.show_badge && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-2">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Título Global (Max 20)</label>
+                                <input 
+                                    type="text" 
+                                    maxLength={20}
+                                    placeholder="Ej: Bajo Pedido"
+                                    value={config.global_badge_title}
+                                    onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_title: e.target.value })) }}
+                                    className="w-full bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-bold focus:border-black focus:shadow-subtle outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Descripción Global (Max 50)</label>
+                                <input 
+                                    type="text" 
+                                    maxLength={50}
+                                    placeholder="Ej: Entrega de 2 a 7 días hábiles"
+                                    value={config.global_badge_desc}
+                                    onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
+                                    className="w-full bg-white border border-transparent rounded-[var(--radius-btn)] px-4 py-3 text-sm font-bold focus:border-black focus:shadow-subtle outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
         {/* FOOTER DE ACCIÓN */}
         <div className="mt-8 pt-5 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">

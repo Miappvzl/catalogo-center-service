@@ -565,7 +565,8 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
         currency={isEur ? 'eur' : 'usd'}
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         promotions={promotions}
-        activePromoContext={activePromo} // 🚀 NUEVO: Le pasamos el contexto visual del banner clickeado
+        activePromoContext={activePromo}
+        storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
       />
 
       <style jsx global>{`

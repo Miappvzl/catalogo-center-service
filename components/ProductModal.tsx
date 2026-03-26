@@ -15,9 +15,10 @@ interface ProductModalProps {
     rates: { usd: number, eur: number }
     promotions?: any[]
     activePromoContext?: any
+    storeConfig?: any // 🚀 NUEVO
 }
 
-export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext, storeConfig }: ProductModalProps) {
     const { addItem } = useCart()
     const [supabase] = useState(() => getSupabase())
 
@@ -510,14 +511,19 @@ const isCompletelyOutOfStock = variants.length > 0
                                             </>
                                         )}
 
-                                        {!isCompletelyOutOfStock && (
+                                        {/* 🚀 ETIQUETA LOGÍSTICA (Herencia Global vs Local) */}
+                                        {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
                                             <div className="flex items-center gap-3 p-4 bg-[#F8F9FA] rounded-2xl border border-gray-200">
                                                 <div className="bg-white p-2 rounded-xl border border-gray-200 shrink-0">
                                                     <Truck size={16} className="text-gray-900" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wide">Bajo Pedido</span>
-                                                    <span className="text-[11px] font-medium text-gray-500">Tiempo de entrega: de 2 a 7 días hábiles</span>
+                                                    <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wide truncate">
+                                                        {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
+                                                    </span>
+                                                    <span className="text-[11px] font-medium text-gray-500 truncate">
+                                                        {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
+                                                    </span>
                                                 </div>
                                             </div>
                                         )}

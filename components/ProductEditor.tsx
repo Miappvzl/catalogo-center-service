@@ -42,7 +42,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         price: '' as number | '',
         penalty: '' as number | '',
         compareAt: '' as number | '',
-        status: 'active'
+        status: 'active',
+        shipping_badge_title: '', // NUEVO
+        shipping_badge_desc: ''   // NUEVO
     })
 
     const [productGallery, setProductGallery] = useState<string[]>([])
@@ -188,7 +190,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     price: product.usd_cash_price || 0,
                     penalty: product.usd_penalty || 0,
                     compareAt: product.compare_at_usd || '',
-                    status: product.status || 'active'
+                    status: product.status || 'active',
+                    shipping_badge_title: product.shipping_badge_title || '', // NUEVO
+                    shipping_badge_desc: product.shipping_badge_desc || ''    // NUEVO
                 })
 
                 setProductGallery(product.gallery || [])
@@ -427,7 +431,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("No auth")
 
-            const payload = {
+           const payload = {
                 name: formData.name,
                 category: formData.category,
                 description: formData.description,
@@ -439,7 +443,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 status: formData.status,
                 user_id: user.id,
                 store_id: storeSettings!.id,
-                stock: hasVariants ? 0 : (Number(simpleStock) || 0)
+                stock: hasVariants ? 0 : (Number(simpleStock) || 0),
+                shipping_badge_title: formData.shipping_badge_title || null, // NUEVO (Null para heredar)
+                shipping_badge_desc: formData.shipping_badge_desc || null    // NUEVO
             }
 
             let currentId = productId
@@ -615,6 +621,30 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         <div>
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Descripción</label>
                             <textarea value={formData.description} onChange={e => updateForm('description', e.target.value)} placeholder="Añade detalles, materiales, cuidados..." className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-medium text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 min-h-25 resize-none transition-all outline-none" />
+                        </div>
+                        <div className="pt-4 border-t border-gray-100">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 block ml-1">Etiqueta de Logística (Opcional)</label>
+                            <p className="text-[11px] text-gray-500 mb-3 ml-1">Sobrescribe el mensaje de entrega solo para este producto. Déjalo en blanco para usar la configuración general de la tienda.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <input 
+                                        maxLength={20}
+                                        value={formData.shipping_badge_title} 
+                                        onChange={e => updateForm('shipping_badge_title', e.target.value)} 
+                                        placeholder="Título (Ej: Entrega Inmediata)" 
+                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none" 
+                                    />
+                                </div>
+                                <div>
+                                    <input 
+                                        maxLength={50}
+                                        value={formData.shipping_badge_desc} 
+                                        onChange={e => updateForm('shipping_badge_desc', e.target.value)} 
+                                        placeholder="Descripción (Ej: Despacho hoy mismo)" 
+                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none" 
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

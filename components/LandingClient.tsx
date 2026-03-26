@@ -515,7 +515,7 @@ export default function LandingClient() {
               </div>
 
               <div className="lg:col-span-7 flex flex-col bg-[#FAFAFA] border-t border-gray-200 mt-8 md:mt-0">
-                <FaqItem question="¿Necesito tarjeta internacional?" answer="No. Sabemos cómo funciona el mercado venezolano. Puedes pagar tu suscripción mensual de $10 en Bolívares (Pago Móvil) o usando USDT (Binance)." />
+                <FaqItem question="¿Necesito tarjeta internacional?" answer="No. Sabemos cómo funciona el mercado venezolano. Puedes pagar tu suscripción mensual de $18.99 en Bolívares (Pago Móvil) o usando USDT (Binance)." />
                 <FaqItem question="¿Cobran comisión por venta?" answer="Cero comisiones. Jamás tocaremos tu dinero. Pagas una tarifa plana al mes y puedes vender 10 o 10.000 productos. El 100% de la ganancia va directo a tus cuentas bancarias." />
                 <FaqItem question="¿El dinero pasa por Preziso?" answer="Nunca. El cliente arma el carrito en nuestra plataforma, y el pedido se envía a tu WhatsApp. El cliente te paga directamente a ti (a tu Pago Móvil o tu Zelle)." />
                 <FaqItem question="¿Hay límite de productos?" answer="No. Carga todo tu inventario, con todas sus variantes, tallas y colores. No te cobraremos extra por crecer." />
