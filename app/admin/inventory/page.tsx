@@ -168,7 +168,7 @@ export default function InventoryPage() {
                             <div className="overflow-x-auto w-full max-w-full">
                                 <table className="w-full text-left border-collapse min-w-[600px]">
                                     <thead>
-                                        <tr className="border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                        <tr className="border-b   border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
                                             <th className="p-4 md:p-6">Producto</th>
                                             <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
                                             <th className="p-4 md:p-6 text-center">Stock Real</th>

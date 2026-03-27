@@ -43,6 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* El contenido de la página se inyecta aquí */}
       <div className="flex-1 lg:ml-64 relative z-10">
         {children}
+        
       </div>
     </div>
   )

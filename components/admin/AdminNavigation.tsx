@@ -8,6 +8,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
 import Swal from 'sweetalert2'
+import Image from 'next/image'
 
 // 1. CONTRATO DE RUTAS (Modificado con control de visualización)
 const NAV_LINKS = [
@@ -69,10 +70,17 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   return (
     <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-6 border-r border-gray-100">
       <div className="mb-10 flex items-center gap-3 px-2">
-        <div className="w-8 h-8 bg-black text-white rounded-[var(--radius-badge)] flex items-center justify-center">
-            <Store size={18} />
-        </div>
-        <span className="font-black text-lg tracking-tight text-gray-900">Preziso</span>
+       
+          <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+                  <Image 
+                    src="/pezisologo.png" 
+                    alt="Preziso Logo" 
+                    width={200} 
+                    height={90} 
+                    className="h-10 md:h-15 w-auto object-contain"
+                    priority
+                  />
+                </Link>
       </div>
 
       <nav className="flex-1 space-y-1.5 relative">
@@ -213,10 +221,17 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
           >
             <div className="p-6 flex items-center justify-between border-b border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-black text-white rounded-[var(--radius-badge)] flex items-center justify-center">
-                    <Store size={18} />
-                </div>
-                <span className="font-black text-lg tracking-tight text-gray-900">Preziso</span>
+               
+                 <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+          <Image 
+            src="/pezisologo.png" 
+            alt="Preziso Logo" 
+            width={200} 
+            height={90} 
+            className="h-15 md:h-20 w-auto object-contain"
+            priority
+          />
+        </Link>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 active:scale-95 transition-colors">
                 <X size={20} />
