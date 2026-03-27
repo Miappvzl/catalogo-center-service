@@ -20,34 +20,23 @@ const NAV_LINKS = [
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 
-// 🚀 ENVOLTORIO PROTEGIDO DE ALTO RENDIMIENTO (Prefetch + Cache Busting)
+// 🚀 ENVOLTORIO PROTEGIDO ULTRA-RÁPIDO (Prefetching + Caché en RAM)
 const GuardedLink = ({ href, children, className }: any) => {
   const router = useRouter()
   const pathname = usePathname()
   const isDirty = useEditorGuard((state) => state.isDirty)
   const setDirty = useEditorGuard((state) => state.setDirty)
 
-  // 1. Prefetching proactivo: Precarga la ruta cuando el componente se monta
-  useEffect(() => {
-    router.prefetch(href)
-  }, [router, href])
-
   const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (pathname === href) return 
-
-    // 2. El motor de navegación ultrarrápida
-    const navigateWithFreshData = () => {
-        // A. Navegamos instantáneamente usando lo que ya se precargó en memoria
-        router.push(href, { scroll: false })
-        
-        // B. Disparamos un refresh en segundo plano para matar la caché de 30s de Next.js
-        // Esto asegura que si hubo una nueva venta, la tabla se actualice en un parpadeo
-        // sin mostrar pantallas de carga molestas.
-        router.refresh()
+    // Si ya estamos en la ruta, ignoramos el clic
+    if (pathname === href) {
+        e.preventDefault()
+        return 
     }
-
+    
+    // Si hay cambios sin guardar, detenemos la navegación ultra-rápida y mostramos la alerta
     if (isDirty) {
+      e.preventDefault() 
       Swal.fire({
           title: '¿Salir sin guardar?',
           text: 'Tienes cambios pendientes en el producto. Si sales ahora, se perderán.',
@@ -61,22 +50,20 @@ const GuardedLink = ({ href, children, className }: any) => {
       }).then((result) => {
           if (result.isConfirmed) {
               setDirty(false)
-              navigateWithFreshData()
+              router.push(href) // Navegación programática manual
           }
       })
-    } else {
-      navigateWithFreshData()
     }
+    // 🔥 EL TRUCO: Si NO está dirty, NO hacemos e.preventDefault(). 
+    // Dejamos que el componente <Link> libere la pantalla desde la RAM al instante.
   }
 
   return (
     <Link 
         href={href} 
         onClick={handleClick} 
-        // 3. Hover Fetching: Si el usuario acerca el mouse, forzamos la descarga
-        onMouseEnter={() => router.prefetch(href)}
         className={className}
-        prefetch={true} // Obliga a Next.js a precargar en producción
+        prefetch={true} // 🚀 EL MOTOR DE VELOCIDAD: Fuerza la descarga silenciosa
     >
         {children}
     </Link>
