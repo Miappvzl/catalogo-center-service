@@ -81,7 +81,7 @@ export default function RateWidget({
                 type="button"
                 onClick={() => handleCurrencyChange('usd')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius-badge)] text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[.6rem] text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'usd'
                         ? "bg-white text-black shadow-subtle border border-transparent"
                         : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
@@ -93,10 +93,10 @@ export default function RateWidget({
                 type="button"
                 onClick={() => handleCurrencyChange('eur')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[var(--radius-badge)] text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[.6rem] text-xs font-bold transition-all cursor-pointer ${
                     optimisticCurrency === 'eur'
                         ? "bg-white text-black shadow-subtle border border-transparent"
-                        : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
+                        : "text-gray-400 hover:text-black  border border-transparent hover:bg-gray-100"
                 }`}
             >
                 <Euro size={14} strokeWidth={3} /> EUR
