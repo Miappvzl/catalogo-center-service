@@ -20,16 +20,33 @@ const NAV_LINKS = [
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 
-// 🚀 ENVOLTORIO PROTEGIDO PARA LOS LINKS
+// 🚀 ENVOLTORIO PROTEGIDO DE ALTO RENDIMIENTO (Prefetch + Cache Busting)
 const GuardedLink = ({ href, children, className }: any) => {
   const router = useRouter()
   const pathname = usePathname()
   const isDirty = useEditorGuard((state) => state.isDirty)
   const setDirty = useEditorGuard((state) => state.setDirty)
 
+  // 1. Prefetching proactivo: Precarga la ruta cuando el componente se monta
+  useEffect(() => {
+    router.prefetch(href)
+  }, [router, href])
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     if (pathname === href) return 
+
+    // 2. El motor de navegación ultrarrápida
+    const navigateWithFreshData = () => {
+        // A. Navegamos instantáneamente usando lo que ya se precargó en memoria
+        router.push(href, { scroll: false })
+        
+        // B. Disparamos un refresh en segundo plano para matar la caché de 30s de Next.js
+        // Esto asegura que si hubo una nueva venta, la tabla se actualice en un parpadeo
+        // sin mostrar pantallas de carga molestas.
+        router.refresh()
+    }
+
     if (isDirty) {
       Swal.fire({
           title: '¿Salir sin guardar?',
@@ -44,15 +61,26 @@ const GuardedLink = ({ href, children, className }: any) => {
       }).then((result) => {
           if (result.isConfirmed) {
               setDirty(false)
-              router.push(href)
+              navigateWithFreshData()
           }
       })
     } else {
-      router.push(href)
+      navigateWithFreshData()
     }
   }
 
-  return <a href={href} onClick={handleClick} className={className}>{children}</a>
+  return (
+    <Link 
+        href={href} 
+        onClick={handleClick} 
+        // 3. Hover Fetching: Si el usuario acerca el mouse, forzamos la descarga
+        onMouseEnter={() => router.prefetch(href)}
+        className={className}
+        prefetch={true} // Obliga a Next.js a precargar en producción
+    >
+        {children}
+    </Link>
+  )
 }
 
 // --- DESKTOP SIDEBAR ---
