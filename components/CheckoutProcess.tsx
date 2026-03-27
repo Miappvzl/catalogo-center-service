@@ -191,7 +191,26 @@ export default function CheckoutProcess({
     const confirmPaymentBlock = () => {
         const amount = parseFloat(paymentAmount);
         if (isNaN(amount) || amount <= 0) return;
+        
         const isHard = hardCurrencyMethods.includes(activePaymentInput!);
+        
+        // 1. Calculamos el límite exacto según la moneda seleccionada
+        const maxAllowed = isHard ? remainingCashUSD : remainingBs;
+
+        // 2. Escudo Anti-Sobrepago (Permitimos 0.01 de tolerancia por redondeos de JavaScript)
+        if (amount > maxAllowed + 0.01) {
+            Swal.fire({
+                title: 'Monto Excedido',
+                text: `Solo debes ${isHard ? '$' : 'Bs'} ${maxAllowed.toFixed(2)}. No puedes ingresar un monto mayor.`,
+                icon: 'warning',
+                confirmButtonColor: '#000',
+                customClass: { popup: 'rounded-xl' }
+            });
+            // Auto-completamos el input con el máximo permitido para ayudar al usuario (UX de élite)
+            setPaymentAmount(maxAllowed.toFixed(2));
+            return;
+        }
+
         setSplitPayments([...splitPayments, { id: `pay-${Date.now()}`, method: activePaymentInput!, amount, currency: isHard ? 'usd' : 'ves', isHardCurrency: isHard, receiptFile: null }]);
         setActivePaymentInput(null);
         setPaymentAmount('');
@@ -199,10 +218,19 @@ export default function CheckoutProcess({
 
     const removePaymentBlock = (id: string) => setSplitPayments(splitPayments.filter(p => p.id !== id));
 
-    const handleAttachReceipt = (id: string, file: File | null) => {
+   const handleAttachReceipt = (id: string, file: File | null) => {
+        if (file) {
+            // 1. Validar Mime Type real
+            if (!file.type.startsWith('image/')) {
+                return Swal.fire({ title: 'Formato inválido', text: 'Por seguridad, solo se permiten imágenes (JPG, PNG, WEBP).', icon: 'error', confirmButtonColor: '#000' });
+            }
+            // 2. Limitar tamaño máximo a 5MB (Prevención de saturación de memoria)
+            if (file.size > 5 * 1024 * 1024) {
+                return Swal.fire({ title: 'Archivo muy pesado', text: 'El comprobante no debe superar los 5MB.', icon: 'error', confirmButtonColor: '#000' });
+            }
+        }
         setSplitPayments(splitPayments.map(p => p.id === id ? { ...p, receiptFile: file } : p));
     }
-
     // 🚀 ESTÉTICA BRUTALISTA / NEO-EDITORIAL PARA LOS MÉTODOS
     const getPaymentConfig = (pm: string) => {
         const baseSelected = 'bg-black text-white rounded-md transition-all'
@@ -430,25 +458,22 @@ export default function CheckoutProcess({
 
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
 
-                {/* 🚀 DATOS PERSONALES (Naked Inputs) */}
-                <div className="space-y-6">
-                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-3">Datos Personales</h2>
-                    <div className="grid grid-cols-1 gap-6">
-                        <input
+               <input
+                            maxLength={50} // Límite estricto de base de datos
                             value={clientData.name}
-                            onChange={e => setClientData({ ...clientData, name: e.target.value })}
+                            // Eliminamos los caracteres < y > para evitar inyecciones XSS
+                            onChange={e => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, '') })}
                             className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
                             placeholder="Nombre completo *"
                         />
                         <input
+                            maxLength={20} // Un teléfono no necesita más
                             value={clientData.phone}
-                            onChange={e => setClientData({ ...clientData, phone: e.target.value })}
+                            // Permite SOLO números y el símbolo +
+                            onChange={e => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, '') })}
                             className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
                             placeholder="Teléfono / WhatsApp *"
                         />
-                    </div>
-                </div>
-
                 {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
                 <div className="space-y-6">
                     <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-3">Entrega</h2>
@@ -546,12 +571,18 @@ export default function CheckoutProcess({
                             </div>
                             {clientData.courier && (
                                 <div className="space-y-6 animate-in fade-in pt-2">
-                                    <input value={clientData.identityCard} onChange={e => setClientData({ ...clientData, identityCard: e.target.value })} className="w-full bg-transparent  border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Cédula de Identidad *" />
+                                   <input 
+                                        maxLength={15}
+                                        value={clientData.identityCard} 
+                                        // Permite solo letras y números (ej: V12345678)
+                                        onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, '') })} 
+                                        className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Cédula de Identidad *" 
+                                    />
                                     <div className="grid grid-cols-2 gap-6">
-                                        <input value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value })} className="w-full bg-transparent   border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Estado *" />
-                                        <input value={clientData.city} onChange={e => setClientData({ ...clientData, city: e.target.value })} className="w-full bg-transparent    border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Ciudad *" />
+                                        <input maxLength={40} value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Estado *" />
+                                        <input maxLength={40} value={clientData.city} onChange={e => setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Ciudad *" />
                                     </div>
-                                    <input value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Dirección de la Agencia *" />
+                                    <input maxLength={150} value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Dirección exacta *" />
                                 </div>
                             )}
                         </div>
@@ -692,13 +723,40 @@ export default function CheckoutProcess({
                                                                 <span className="font-black text-3xl text-gray-300 mr-2">
                                                                     {hardCurrencyMethods.includes(activePaymentInput) ? '$' : 'Bs'}
                                                                 </span>
-                                                                <input
-                                                                    type="number" autoFocus
-                                                                    value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
-                                                                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                                                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                                                    className="w-full bg-transparent font-black text-3xl md:text-4xl  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none   accent-black h-4 border-0  py-6  text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
-                                                                    placeholder="0.00"
+                                                               <input
+                                                                    type="text" 
+                                                                    inputMode="decimal"
+                                                                    autoFocus
+                                                                    // 🚀 1. EL ESPEJO VISUAL (Vista Venezolana)
+                                                                    // Toma el valor "4678.67", le pone puntos a los miles y cambia el punto por coma.
+                                                                    value={paymentAmount ? paymentAmount.split('.').map((p, i) => i === 0 ? p.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : p).join(',') : ''} 
+                                                                    onChange={e => {
+                                                                        let val = e.target.value;
+                                                                        
+                                                                        // 🚀 2. LA INGENIERÍA INVERSA (Formato Máquina)
+                                                                        // A. Quitamos los puntos visuales que el usuario acaba de ver/escribir
+                                                                        val = val.replace(/\./g, ''); 
+                                                                        // B. Transformamos la coma venezolana en un punto decimal gringo para JavaScript
+                                                                        val = val.replace(/,/g, '.'); 
+                                                                        
+                                                                        // 3. Limpiamos basura (Letras, símbolos, etc.)
+                                                                        val = val.replace(/[^0-9.]/g, '');
+                                                                        
+                                                                        // 4. Bloqueamos colisiones de múltiples puntos decimales (Ej: 15.50.3)
+                                                                        const parts = val.split('.');
+                                                                        if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                                                                        
+                                                                        // 5. Bloqueamos a un máximo de 2 decimales reales
+                                                                        if (parts[1] && parts[1].length > 2) val = parts[0] + '.' + parts[1].substring(0, 2);
+                                                                        
+                                                                        // 6. Límite de longitud máxima para evitar ataques DoS
+                                                                        if (val.length > 12) return;
+                                                                        
+                                                                        // Guardamos el número en formato puro (Ej: "4678.67")
+                                                                        setPaymentAmount(val);
+                                                                    }}
+                                                                    className="w-full bg-transparent font-black text-3xl md:text-4xl accent-black h-4 border-0 py-6 text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
+                                                                    placeholder="0,00"
                                                                 />
                                                             </div>
                                                         </div>
