@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Loader2, ShoppingBag, Edit2, Menu } from 'lucide-react'
 import SubscriptionBanner from './SubscriptionBanner'
 import { getSupabase } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Swal from 'sweetalert2'
 import NotificationBell from '@/components/admin/NotificationBell'
+import { AnimatePresence, motion } from 'framer-motion'
 
 export default function AdminHeader({ store, title }: { store: any, title?: string }) {
   const router = useRouter()
@@ -44,11 +45,37 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
     }
   }
 
+   // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
+      // 1. Estados del Smart Header
+      const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+      const lastScrollY = useRef(0);
+
+   // 2. Motor de Scroll
+      useEffect(() => {
+          const handleScroll = () => {
+              const currentScrollY = window.scrollY;
+  
+              if (currentScrollY < 50) {
+                  setIsHeaderVisible(true);
+              } else if (currentScrollY > lastScrollY.current) {
+                  setIsHeaderVisible(false); // Bajando: esconder
+              } else {
+                  setIsHeaderVisible(true);  // Subiendo: mostrar
+              }
+  
+              lastScrollY.current = currentScrollY;
+          };
+  
+          window.addEventListener('scroll', handleScroll, { passive: true });
+          return () => window.removeEventListener('scroll', handleScroll);
+      }, []);
+  
+
   return (
     <>
       {store && <SubscriptionBanner store={store} />}
 
-      <header className="px-4 md:px-8 py-6 md:py-8 flex justify-between items-center bg-transparent border-b border-gray-200">
+      <header className={`bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40 px-3 md:px-8 py-3 md:py-3 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-gray-900">{title || store?.name || 'Cargando...'}</h1>
           {!title && <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Panel de Control</p>}
@@ -66,7 +93,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
             <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
 
-            <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden transition-colors group-hover:border-black shadow-sm">
+            <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden transition-colors group-hover:border-black ">
               {uploading ? (
                 <Loader2 className="animate-spin text-gray-400" />
               ) : store?.logo_url ? (
@@ -85,7 +112,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
           {/* BOTÓN HAMBURGUESA (Solo Móvil, Estrictamente a la derecha) */}
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('toggleMobileAdminSidebar'))}
-            className="lg:hidden w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 active:scale-95 transition-all shadow-sm"
+            className="lg:hidden w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 active:scale-95 transition-all "
             aria-label="Abrir menú"
           >
             <Menu size={20} strokeWidth={2.5} />

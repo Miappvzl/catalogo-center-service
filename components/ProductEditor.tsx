@@ -28,9 +28,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
-  
 
-    const isEur = storeSettings?.currency === 'eur' 
+
+    const isEur = storeSettings?.currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd
     const rateLabel = isEur ? 'Tasa Euro' : 'Tasa BCV'
 
@@ -178,7 +178,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     return
                 }
 
-      
+
 
 
 
@@ -257,7 +257,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 const currentSlots = 3 - productGallery.length
                 if (currentSlots <= 0) return Swal.fire('Límite alcanzado', 'Máximo 3 fotos extra para la galería', 'warning')
                 const filesToUpload = fileArray.slice(0, currentSlots)
-                
+
                 const uploadPromises = filesToUpload.map(async (file) => {
                     if (!file.type.startsWith('image/')) return null
                     const compressedFile = await compressImage(file, 800, 0.7)
@@ -269,7 +269,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     }
                     return null
                 })
-                
+
                 const newUrls = (await Promise.all(uploadPromises)).filter(Boolean) as string[]
                 setProductGallery(prev => [...prev, ...newUrls])
                 setIsDirty(true)
@@ -288,7 +288,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     const currentSlots = 3 - variantInput.images.length
                     if (currentSlots <= 0) return Swal.fire('Límite alcanzado', 'Máximo 3 fotos por variante', 'warning')
                     const filesToUpload = fileArray.slice(0, currentSlots)
-                    
+
                     const uploadPromises = filesToUpload.map(async (file) => {
                         if (!file.type.startsWith('image/')) return null
                         const compressedFile = await compressImage(file, 800, 0.7)
@@ -300,7 +300,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         }
                         return null
                     })
-                    
+
                     const newUrls = (await Promise.all(uploadPromises)).filter(Boolean) as string[]
                     setVariantInput(prev => ({ ...prev, images: [...prev.images, ...newUrls] }))
                     setIsDirty(true)
@@ -431,7 +431,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("No auth")
 
-           const payload = {
+            const payload = {
                 name: formData.name,
                 category: formData.category,
                 description: formData.description,
@@ -502,7 +502,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }
     }
 
-// 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
+    // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
     // 1. Estados del Smart Header
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
@@ -519,24 +519,24 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             } else {
                 setIsHeaderVisible(true);  // Subiendo: mostrar
             }
-            
+
             lastScrollY.current = currentScrollY;
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-    
+
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]"><Loader2 className="animate-spin text-gray-400" size={32} /></div>
 
 
-  
+
 
     return (
-       <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-clip w-full max-w-[100vw]">
+        <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-clip w-full max-w-[100vw]">
 
-           {/* HEADER */}
+            {/* HEADER */}
             <div className={`bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="flex items-center gap-3 md:gap-6 min-w-0">
                     <button onClick={handleExit} className="p-2 shrink-0 hover:bg-gray-100 border border-gray-100 rounded-full transition-colors group" title="Volver">
@@ -627,21 +627,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             <p className="text-[11px] text-gray-500 mb-3 ml-1">Sobrescribe el mensaje de entrega solo para este producto. Déjalo en blanco para usar la configuración general de la tienda.</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
-                                    <input 
+                                    <input
                                         maxLength={20}
-                                        value={formData.shipping_badge_title} 
-                                        onChange={e => updateForm('shipping_badge_title', e.target.value)} 
-                                        placeholder="Título (Ej: Entrega Inmediata)" 
-                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none" 
+                                        value={formData.shipping_badge_title}
+                                        onChange={e => updateForm('shipping_badge_title', e.target.value)}
+                                        placeholder="Título (Ej: Entrega Inmediata)"
+                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none"
                                     />
                                 </div>
                                 <div>
-                                    <input 
+                                    <input
                                         maxLength={50}
-                                        value={formData.shipping_badge_desc} 
-                                        onChange={e => updateForm('shipping_badge_desc', e.target.value)} 
-                                        placeholder="Descripción (Ej: Despacho hoy mismo)" 
-                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none" 
+                                        value={formData.shipping_badge_desc}
+                                        onChange={e => updateForm('shipping_badge_desc', e.target.value)}
+                                        placeholder="Descripción (Ej: Despacho hoy mismo)"
+                                        className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 placeholder:font-medium transition-all outline-none"
                                     />
                                 </div>
                             </div>
@@ -989,7 +989,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         </div>
                     </div>
                 </div>
-           )}
+            )}
         </div>
     )
 }

@@ -233,7 +233,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
           />
         </Link>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 active:scale-95 transition-colors">
+              <button onClick={() => setIsOpen(false)} className="p-2 bg-[#F8F9FA] hover:bg-gray-100 rounded-full text-gray-500 active:scale-95 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -248,7 +248,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                       key={link.href} 
                       href={link.href} 
                       className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
-                          isActive ? 'bg-gray-50 text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                          isActive ? 'bg-[#F8F9FA] text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
                     <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-black" : "text-gray-400"} />
@@ -259,7 +259,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
               <div className="pt-4 mt-4 border-t border-gray-100">
                   <GuardedLink 
                       href="/admin/product/new" 
-                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-gray-500 bg-gray-50 border border-transparent border-dashed hover:border-black transition-all"
+                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-gray-500 bg-[#F8F9FA] border border-transparent border-dashed hover:border-black transition-all"
                   >
                       <Plus size={20} /> Nuevo Producto
                   </GuardedLink>
@@ -268,7 +268,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
 
             <div className="p-4 border-t border-gray-100 space-y-3 bg-white">
               {store && (
-                <div className="flex items-center justify-between p-1 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="flex items-center justify-between p-1 rounded-xl bg-[#F8F9FA] border border-gray-100">
                   <Link 
                       href={`/${store.slug}`} 
                       target="_blank" 

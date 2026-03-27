@@ -216,20 +216,33 @@ export default function PromotionsPage() {
         return (
             <>
                 {/* Fixed Top Bar (Elite Standard) */}
-                <div className="fixed top-0 right-0 left-0 lg:left-64 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setIsEditing(false)} className="p-2 -ml-2 text-gray-500 hover:text-black hover:bg-gray-50 rounded-full transition-colors active:scale-95"><ArrowLeft size={18} /></button>
-                        <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate tracking-tight pr-4">
-                            {currentPromo.id ? 'Editar Campaña' : 'Nueva Campaña'}
-                        </h2>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                        <button onClick={() => setIsEditing(false)} className="px-4 py-2.5 text-xs font-bold text-gray-500 hover:text-black rounded-full active:scale-95 transition-all">Cancelar</button>
-                        <button onClick={handleSave} disabled={saving} className={`bg-black text-white px-6 py-2.5 ${BTN_RADIUS} font-bold text-xs flex items-center gap-2 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed`}>
-                            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Guardar Cambios
-                        </button>
-                    </div>
-                </div>
+<div className="fixed top-0 right-0 left-0 lg:left-64 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 gap-4">
+    
+    {/* 1. IZQUIERDA: flex-1 y min-w-0 habilitan el truncate del h2 */}
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+        <button onClick={() => setIsEditing(false)} className="p-2 -ml-2 text-gray-500 hover:text-black hover:bg-gray-50 rounded-full transition-colors active:scale-95 shrink-0">
+            <ArrowLeft size={18} />
+        </button>
+        <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate tracking-tight pr-2">
+            {currentPromo.id ? 'Editar Campaña' : 'Nueva Campaña'}
+        </h2>
+    </div>
+
+    {/* 2. DERECHA: shrink-0 protege los botones */}
+    <div className="flex gap-2 shrink-0 items-center">
+        {/* Ocultamos "Cancelar" en móviles muy pequeños para mantener el Clean Look */}
+        <button onClick={() => setIsEditing(false)} className="hidden sm:block px-4 py-2.5 text-xs font-bold text-gray-500 hover:text-black rounded-full active:scale-95 transition-all">
+            Cancelar
+        </button>
+        
+        {/* Hacemos el texto del botón dinámico: "Guardar" en mobile, "Guardar Cambios" en desktop */}
+        <button onClick={handleSave} disabled={saving} className={`bg-black text-white px-4 sm:px-6 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed`}>
+            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} 
+            <span className="hidden sm:inline">Guardar Cambios</span>
+            <span className="sm:hidden">Guardar</span>
+        </button>
+    </div>
+</div>
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto px-4 md:px-8 pt-28 md:pt-32 pb-24 overflow-visibleSelection">
 
