@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { 
   Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,  
-  Clock, DollarSign, Truck, Box, ChevronRight
+  Clock, DollarSign, Truck, Box, ChevronRight, XCircle
 } from 'lucide-react'
 
 // COMPONENTES IMPORTADOS
@@ -163,16 +163,19 @@ export default async function AdminDashboard() {
                             </div>
                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sin pedidos recientes</p>
                         </div>
-                    ) : (
+                   ) : (
                         recentOrders.map((order) => {
-                            const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : Package;
-                            return (
+                            // 1. Icono dinámico corregido
+                            const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : order.status === 'cancelled' ? XCircle : Package;
                             
-                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 border border-b-[#f6f6f6] bg-white hover:bg-gray-50 border border-transparent hover:  transition-all">
+                            return (
+                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 border-b border-[#f6f6f6] bg-white hover:bg-gray-50 transition-all">
                                 <div className="flex items-center gap-4">
+                                    {/* 2. Color del contenedor del ícono corregido */}
                                     <div className={`w-10 h-10 rounded-[var(--radius-btn)] flex items-center justify-center shrink-0 ${
                                         order.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
                                         order.status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
+                                        order.status === 'cancelled' ? 'bg-red-50 text-red-600' :
                                         'bg-gray-50 text-gray-500'
                                     }`}>
                                         <StatusIcon size={18} strokeWidth={2.5} />
@@ -188,15 +191,16 @@ export default async function AdminDashboard() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    {/* 🚀 ESCUDO VISUAL: Forzamos 2 decimales absolutos para limpiar la basura binaria */}
                                     <p className="font-black text-sm text-gray-900">${Number(order.total_usd).toFixed(2)}</p>
                                     
+                                    {/* 3. Etiqueta de texto y color corregidos */}
                                     <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-[var(--radius-badge)] uppercase tracking-wider ${
                                         order.status === 'pending' ? 'bg-yellow-50 text-yellow-700' : 
                                         order.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                                        order.status === 'cancelled' ? 'bg-red-50 text-red-700' :
                                         'bg-gray-100 text-gray-600'
                                     }`}>
-                                        {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : 'Enviado'}
+                                        {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : order.status === 'cancelled' ? 'Cancelado' : 'Enviado'}
                                     </span>
                                 </div>
                             </Link>
