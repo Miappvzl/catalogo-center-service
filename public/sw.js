@@ -1,29 +1,43 @@
 // public/sw.js
 
+// 🚀 1. BLINDAJE DE ACTUALIZACIÓN: Obligamos al teléfono a matar el SW viejo e instalar este de inmediato.
+self.addEventListener('install', function (event) {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+    event.waitUntil(clients.claim());
+});
+
+// 🚀 2. TU LÓGICA DE PUSH INTACTA (Con manejo de errores extra)
 self.addEventListener('push', function (event) {
-    if (event.data) {
+    if (!event.data) return;
+
+    try {
         const data = event.data.json();
         
-        // Configuración visual de la notificación en la pantalla de bloqueo
+        // Configuración visual de la notificación
         const options = {
             body: data.body,
             icon: data.icon || '/favicon-light.png',
-            badge: '/favicon-light.png', // El icono pequeñito en la barra de estado de Android
-            vibrate: [200, 100, 200], // Patrón de vibración (B2B Feel)
+            badge: '/favicon-light.png', // El icono monocromático para Android
+            vibrate: [200, 100, 200], // Patrón de vibración
             data: {
                 dateOfArrival: Date.now(),
-                url: data.url || '/admin' // A dónde ir al hacer clic
+                url: data.url || '/admin' 
             }
         };
 
         event.waitUntil(self.registration.showNotification(data.title, options));
+    } catch (error) {
+        console.error('Error procesando el payload del push:', error);
     }
 });
 
+// 🚀 3. TU LÓGICA DE NAVEGACIÓN ÉLITE
 self.addEventListener('notificationclick', function (event) {
-    event.notification.close(); // Cerramos la notificación visual
+    event.notification.close(); 
     
-    // Le decimos al sistema operativo que abra la PWA en la URL específica
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
             // Si la app ya está abierta en segundo plano, la enfocamos
