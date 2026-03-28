@@ -378,8 +378,9 @@ export default function CheckoutProcess({
                 setLoading(false);
                 return; // <-- CRÍTICO: Detenemos la función aquí. No entra al catch. No genera órdenes basura.
             }
-            // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (Web Push)
-            fetch('/api/web-push/notify', {
+       
+            // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (AWAIT OBLIGATORIO)
+            await fetch('/api/web-push/notify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -389,6 +390,8 @@ export default function CheckoutProcess({
                     customerName: clientData.name
                 })
             }).catch(err => console.error("Error silencioso en notificación Push:", err));
+
+          
 
             // 4. Formatear Mensaje WhatsApp
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`
