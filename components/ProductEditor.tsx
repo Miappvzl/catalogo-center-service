@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
+import { revalidateStoreCache } from '@/app/admin/actions'
 import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -410,6 +411,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             const { error: prodError } = await supabase.from('products').delete().eq('id', productId);
             if (prodError) throw prodError;
 
+            // 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
+            await revalidateStoreCache()
+
             setIsDirty(false);
             Swal.fire({ title: 'Eliminado', text: 'El producto fue borrado.', icon: 'success', confirmButtonColor: '#000', customClass: { popup: 'rounded-(--radius-card)' } });
             router.push('/admin/inventory');
@@ -490,6 +494,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     if (toUpdate.length > 0) await supabase.from('product_variants').upsert(toUpdate)
                 }
             }
+
+// 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
+            await revalidateStoreCache()
 
             setIsDirty(false)
             Swal.fire({ title: '¡Guardado con éxito!', icon: 'success', confirmButtonColor: '#000', customClass: { popup: 'rounded-(--radius-card)' } })

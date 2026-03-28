@@ -7,12 +7,13 @@ import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 import { motion } from 'framer-motion'
-
+import { revalidateStoreCache } from '@/app/admin/actions'
 import PaymentSettings from '@/components/admin/PaymentSettings'
 import ShippingSettings from '@/components/admin/ShippingSettings'
 import AdminHeader from '@/components/admin/AdminHeader'
 import SecuritySettings from '@/components/admin/SecuritySettings'
 import PushNotificationManager from '@/components/admin/PushNotificationManager'
+import CategorySorter from '@/components/admin/CategorySorter' // NUEVO
 
 // --- COMPONENTE TOGGLE ANIMADO (Soft UI) ---
 const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
@@ -83,6 +84,8 @@ export default function SettingsPage() {
           
           setIdentity(prev => ({ ...prev, hero_url: publicUrl }))
           await supabase.from('stores').update({ hero_url: publicUrl }).eq('id', store.id)
+          // 🚀 MATA LA CACHÉ PARA QUE EL BANNER NUEVO APAREZCA AL INSTANTE
+          await revalidateStoreCache()
       } catch (error) {
           Swal.fire('Error', 'No se pudo subir la imagen', 'error')
       } finally {
@@ -110,6 +113,8 @@ export default function SettingsPage() {
     if (error) {
         Swal.fire('Error', 'No se pudo guardar la configuración', 'error')
     } else {
+        // 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
+        await revalidateStoreCache()
         setIsDirty(false)
         const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
@@ -275,6 +280,9 @@ export default function SettingsPage() {
         <PaymentSettings storeId={store.id} initialData={store.payment_config} />
         <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
         
+        <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
+        
+      
 {/* SEGURIDAD DE LA CUENTA */}
 <PushNotificationManager storeId={store.id} />
         <SecuritySettings />

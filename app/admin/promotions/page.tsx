@@ -7,6 +7,7 @@ import { Flame, Plus, Save, Trash2, Loader2, Check, ImageIcon, X, Search, PlusCi
 import Swal from 'sweetalert2'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { revalidateStoreCache } from '@/app/admin/actions'
 
 // Constantes de diseño unificadas
 const CARD_RADIUS = 'rounded-[var(--radius-card)]';
@@ -126,7 +127,10 @@ export default function PromotionsPage() {
                 response = await supabase.from('promotions').insert(payload).select().single()
             }
 
-            if (response.error) throw response.error;
+           if (response.error) throw response.error;
+
+            // 🚀 CACHE BUSTER: Dispara los banners y descuentos en la vitrina pública
+            await revalidateStoreCache()
 
             // 🚀 ACTUALIZACIÓN OPTIMISTA (Cero parpadeos, UX Elite)
             setPromotions(prev => {

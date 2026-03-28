@@ -262,9 +262,31 @@ export default function StoreInterface({ store, products, rates, promotions = []
   }
 
   const categories = useMemo(() => {
-    const cats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
-    return ['Todos', ...Array.from(new Set(cats))]
-  }, [products])
+    // 1. Extraemos todas las categorías únicas de los productos actuales
+    const rawCats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
+    const uniqueCats = Array.from(new Set(rawCats))
+
+    // 2. Leemos el orden guardado por el admin (si existe)
+    const savedOrder = store?.categories_order || []
+
+    // 3. Ordenamos las categorías respetando el arreglo del admin
+    const sortedCats = uniqueCats.sort((a, b) => {
+        const indexA = savedOrder.indexOf(a)
+        const indexB = savedOrder.indexOf(b)
+        
+        // Si ambas están en la lista guardada, respetamos su orden
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB
+        // Si solo A está en la lista, A va primero
+        if (indexA !== -1) return -1
+        // Si solo B está en la lista, B va primero
+        if (indexB !== -1) return 1
+        // Si ninguna está (ej: categorías nuevas), las ordenamos alfabéticamente al final
+        return a.localeCompare(b)
+    })
+
+    // 4. "Todos" siempre va de primero indiscutiblemente
+    return ['Todos', ...sortedCats]
+  }, [products, store?.categories_order])
 
  const filteredProducts = useMemo(() => {
     return products.filter(p => {

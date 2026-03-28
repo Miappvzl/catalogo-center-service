@@ -69,3 +69,10 @@ export async function updateStoreCurrency(prevState: ActionState, formData: Form
     return { success: false, message: 'Error al actualizar preferencia' }
   }
 }
+
+// 🚀 NUEVO CACHE BUSTER GENÉRICO
+// Exponemos esta función para que otros componentes puedan matar la caché
+// sin necesidad de enviar formularios ni recargar la moneda.
+export async function revalidateStoreCache() {
+  revalidatePath('/', 'layout')
+}

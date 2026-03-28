@@ -5,6 +5,7 @@ import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save,
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
+import { revalidateStoreCache } from '@/app/admin/actions'
 
 // --- TIPOS (Intactos) ---
 interface InventoryItem { rowId: string; productId: string; name: string; image: string | null; category: string; variantId: string | null; color: string; hex: string; size: string; stock: number }
@@ -65,6 +66,7 @@ export default function InventoryPage() {
                 if (error) throw error
             }
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
+            await revalidateStoreCache()
             const remaining = { ...pendingChanges }
             delete remaining[row.rowId]
             setPendingChanges(remaining)

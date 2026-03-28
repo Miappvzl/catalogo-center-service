@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Truck, MapPin, Save, Loader2, AlertTriangle, Plus, Trash2, DollarSign, Store } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
+import { revalidateStoreCache } from '@/app/admin/actions'
 import Swal from 'sweetalert2'
 
 interface ShippingSettingsProps {
@@ -76,6 +77,9 @@ const [config, setConfig] = useState({
     if (error) {
        Swal.fire('Error', 'No se pudo guardar la logística', 'error')
     } else {
+       // 🚀 CACHE BUSTER: Actualiza las tarifas y agencias en el checkout en vivo
+       await revalidateStoreCache()
+       
        setIsDirty(false)
        const Toast = Swal.mixin({
           toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,

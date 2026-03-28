@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { getSupabase } from '@/lib/supabase-client'
 import { Save, Smartphone, Banknote, Bitcoin, Loader2, DollarSign, CreditCard, AlertTriangle } from 'lucide-react'
 import Swal from 'sweetalert2'
+import { revalidateStoreCache } from '@/app/admin/actions'
 import { motion } from 'framer-motion'
 
 // --- COMPONENTE TOGGLE ANIMADO (Soft UI) ---
@@ -41,7 +42,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
     setMethods(prev => ({ ...prev, allow_split_payments: value }));
   }
 
-  const handleSave = async () => {
+ const handleSave = async () => {
     if (!isDirty) return
     setSaving(true)
     
@@ -55,6 +56,9 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
     if (error) {
       Swal.fire('Error', 'No se pudo guardar', 'error')
     } else {
+      // 🚀 CACHE BUSTER: Destruye la caché de la tienda para mostrar los nuevos métodos al instante
+      await revalidateStoreCache()
+      
       setIsDirty(false)
       const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, customClass: { popup: 'bg-black text-white rounded-xl text-sm font-bold' } })
       Toast.fire({ icon: 'success', title: 'Pagos Actualizados' })
