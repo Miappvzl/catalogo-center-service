@@ -14,7 +14,7 @@ const ADMIN_EMAIL = 'quanzosinc@gmail.com'
 export default function SuperAdminPage() {
     const supabase = getSupabase()
     const router = useRouter()
-    
+
     const [loading, setLoading] = useState(true)
     const [stores, setStores] = useState<any[]>([])
     const [search, setSearch] = useState('')
@@ -26,7 +26,7 @@ export default function SuperAdminPage() {
             .from('stores')
             .select('*')
             .order('created_at', { ascending: false })
-            
+
         if (data) setStores(data)
         setLoading(false)
     }
@@ -34,13 +34,13 @@ export default function SuperAdminPage() {
     useEffect(() => {
         const verifyAndFetch = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            
+
             // Redirección fantasma: Expulsamos a los intrusos sin mostrar alertas ni UI de fondo
             if (!user || user.email !== ADMIN_EMAIL) {
                 router.replace('/admin')
                 return
             }
-            
+
             setIsAuthorized(true)
             await fetchStores()
         }
@@ -141,6 +141,91 @@ export default function SuperAdminPage() {
         }
     }
 
+    const impersonateStore = async (store: any) => {
+        const confirm = await Swal.fire({
+            title: `¿Infiltrarse en ${store.name}?`,
+            text: "Se generará un ticket criptográfico de sesión para esta tienda.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Generar Acceso',
+            confirmButtonColor: '#000',
+            cancelButtonText: 'Cancelar',
+            customClass: { popup: 'rounded-2xl shadow-none border border-gray-100' }
+        })
+
+        if (!confirm.isConfirmed) return
+
+        Swal.fire({
+            title: 'Forzando cerradura...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        })
+
+        try {
+            // 1. OBTENEMOS EL LINK DESDE LA API
+            const res = await fetch('/api/admin/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: store.user_id })
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) throw new Error(data.error)
+
+            // 2. MOSTRAMOS EL ENLACE PARA INCÓGNITO Y LA OPCIÓN DE ENTRAR DIRECTO
+            Swal.fire({
+                title: 'Acceso Generado',
+                icon: 'success',
+                html: `
+                    <div class="text-left mt-2">
+                        <p class="text-sm text-gray-600 mb-4">
+                            <b>Advertencia:</b> Si abres este enlace aquí, tu sesión actual de God Mode se cerrará.
+                        </p>
+                        <button id="direct-access-btn" class="w-full bg-black text-white px-4 py-3 rounded-xl text-sm font-bold block text-center mb-3 hover:bg-gray-800 transition-colors">
+                            Entrar Directamente
+                        </button>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Enlace para Incógnito (Recomendado):</p>
+                        <input type="text" id="magic-link-input" value="${data.url}" readonly 
+                            class="w-full p-2.5 border border-gray-200 rounded-xl text-xs bg-gray-50 text-gray-600 focus:outline-none cursor-pointer" 
+                        />
+                    </div>
+                `,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'Cerrar',
+                customClass: { popup: 'rounded-2xl shadow-none border border-gray-100' },
+                didOpen: () => {
+                    const input = document.getElementById('magic-link-input') as HTMLInputElement;
+                    const directBtn = document.getElementById('direct-access-btn') as HTMLButtonElement;
+                    
+                    if (input) {
+                        input.addEventListener('click', () => {
+                            input.select();
+                            navigator.clipboard.writeText(input.value).then(() => {
+                                Swal.showValidationMessage('¡Enlace copiado al portapapeles!');
+                            }).catch(() => {
+                                Swal.showValidationMessage('Error al copiar el enlace.');
+                            });
+                        });
+                    }
+
+                    if (directBtn) {
+                        directBtn.addEventListener('click', async () => {
+                            directBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Abriendo brecha...</span>';
+                            directBtn.disabled = true;
+                            // 3. CERRAR SESIÓN DE ADMIN ANTES DE REDIRIGIR PARA EVITAR COLISIÓN
+                            await supabase.auth.signOut();
+                            window.location.href = data.url;
+                        });
+                    }
+                }
+            })
+        } catch (error: any) {
+            Swal.fire('Error de Acceso', error.message, 'error')
+        }
+    }
+
     // --- KPIs FINANCIEROS (Conectados a la Fuente de la Verdad) ---
     const kpis = useMemo(() => {
         const now = new Date()
@@ -162,7 +247,7 @@ export default function SuperAdminPage() {
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] font-sans text-gray-900 pb-20 selection:bg-black selection:text-white">
-            
+
             {/* HEADER ULTRA CLEAN */}
             <header className="bg-white px-6 py-6 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -180,23 +265,23 @@ export default function SuperAdminPage() {
             </header>
 
             <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-8">
-                
+
                 {/* KPI DASHBOARD (Tarjetas Blancas, sin sombras, bordes ultra finos) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-none">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Store size={14}/> Total Tiendas</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Store size={14} /> Total Tiendas</p>
                         <p className="text-3xl font-black text-gray-900">{kpis.total}</p>
                     </div>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-none">
-                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Zap size={14}/> Activas</p>
+                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Zap size={14} /> Activas</p>
                         <p className="text-3xl font-black text-gray-900">{kpis.active}</p>
                     </div>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-none">
-                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Ban size={14}/> Vencidas</p>
+                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Ban size={14} /> Vencidas</p>
                         <p className="text-3xl font-black text-gray-900">{kpis.expired}</p>
                     </div>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-none">
-                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><TrendingUp size={14}/> MRR</p>
+                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><TrendingUp size={14} /> MRR</p>
                         <p className="text-3xl font-black text-gray-900">${kpis.mrr}</p>
                     </div>
                 </div>
@@ -215,7 +300,7 @@ export default function SuperAdminPage() {
                 {/* LISTA DE TIENDAS */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-none overflow-hidden">
                     {loading ? (
-                        <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-200" size={32}/></div>
+                        <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-200" size={32} /></div>
                     ) : (
                         <div className="overflow-x-auto w-full">
                             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -231,7 +316,7 @@ export default function SuperAdminPage() {
                                         const endsAt = new Date(store.trial_ends_at)
                                         const now = new Date()
                                         const isExpired = store.subscription_status === 'trial' && endsAt < now
-                                        
+
                                         // Días restantes o vencidos
                                         const diffDays = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -240,12 +325,12 @@ export default function SuperAdminPage() {
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-xl bg-[#F8F9FA] border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
-                                                            {store.logo_url ? <img src={store.logo_url} className="w-full h-full object-cover"/> : <Store size={18} className="text-gray-300"/>}
+                                                            {store.logo_url ? <img src={store.logo_url} className="w-full h-full object-cover" /> : <Store size={18} className="text-gray-300" />}
                                                         </div>
                                                         <div>
                                                             <p className="font-black text-gray-900">{store.name}</p>
                                                             <Link href={`/${store.slug}`} target="_blank" className="text-[11px] font-bold text-gray-400 hover:text-black flex items-center gap-1 mt-0.5 transition-colors">
-                                                                preziso.shop/{store.slug} <ExternalLink size={10}/>
+                                                                preziso.shop/{store.slug} <ExternalLink size={10} />
                                                             </Link>
                                                         </div>
                                                     </div>
@@ -253,34 +338,41 @@ export default function SuperAdminPage() {
                                                 <td className="px-6 py-5">
                                                     <div className="flex flex-col gap-1.5 items-start">
                                                         {isExpired ? (
-                                                            <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Ban size={10}/> Pausada</span>
+                                                            <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Ban size={10} /> Pausada</span>
                                                         ) : (
-                                                            <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Zap size={10}/> Activa ({diffDays}d)</span>
+                                                            <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Zap size={10} /> Activa ({diffDays}d)</span>
                                                         )}
-                                                        <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1"><Clock size={12}/> {endsAt.toLocaleDateString()}</span>
+                                                        <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1"><Clock size={12} /> {endsAt.toLocaleDateString()}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <button 
+                                                        <button
                                                             onClick={() => addCustomDays(store)}
                                                             className="bg-black text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-transform active:scale-95"
                                                         >
-                                                            <Edit3 size={14}/> Renovar
+                                                            <Edit3 size={14} /> Renovar
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => pauseStore(store)}
                                                             className="bg-white border border-gray-100 text-gray-500 hover:text-red-500 hover:bg-red-50 hover:border-red-100 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
                                                             title="Bloquear Tienda"
                                                         >
                                                             Bloquear
                                                         </button>
-                                                        <button 
+                                                        <button
+                                                            onClick={() => impersonateStore(store)}
+                                                            className="bg-white border border-gray-100 text-gray-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                                                            title="Iniciar sesión como este usuario"
+                                                        >
+                                                            Infiltrarse
+                                                        </button>
+                                                        <button
                                                             onClick={() => deleteStore(store)}
                                                             className="p-2 text-gray-300 hover:text-red-500 transition-colors ml-1 rounded-xl hover:bg-red-50"
                                                             title="Eliminar Base de Datos"
                                                         >
-                                                            <Trash2 size={16}/>
+                                                            <Trash2 size={16} />
                                                         </button>
                                                     </div>
                                                 </td>
