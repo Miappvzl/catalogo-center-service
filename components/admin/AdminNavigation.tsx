@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, X } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
@@ -134,6 +134,9 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
       </nav>
 
       <div className="mt-auto pt-6 border-t border-gray-100 space-y-3">
+        
+
+    
         {store && (
           <div className="flex items-center justify-between p-1 rounded-[var(--radius-btn)] bg-gray-50">
             <Link 
@@ -152,6 +155,18 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
             </button>
           </div>
         )}
+
+        {/* ENLACE DE SOPORTE TÉCNICO */}
+        <a 
+            href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all w-full text-left"
+        >
+            <Headset size={16} /> Soporte Técnico
+        </a>
+
+        
         <button 
             onClick={onLogout} 
             className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
@@ -282,6 +297,8 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
             </nav>
 
             <div className="p-4 border-t border-gray-100 space-y-3 bg-white">
+
+               
               {store && (
                 <div className="flex items-center justify-between p-1 rounded-xl bg-[#F8F9FA] border border-gray-100">
                   <Link 
@@ -300,9 +317,19 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                   </button>
                 </div>
               )}
+ {/* ENLACE DE SOPORTE TÉCNICO MÓVIL */}
+              <a 
+                  href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-gray-600  hover:bg-gray-100 hover:text-black transition-all w-full text-left"
+              >
+                  <Headset size={16} /> Hablar con Soporte
+              </a>
+            
               <button 
                   onClick={onLogout} 
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-all w-full text-left"
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500  hover:bg-red-100 transition-all w-full text-left"
               >
                   <LogOut size={16} /> Cerrar Sesión
               </button>
