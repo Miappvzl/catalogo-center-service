@@ -8,6 +8,7 @@ import Swal from 'sweetalert2'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { revalidateStoreCache } from '@/app/admin/actions'
+import Image from 'next/image'
 
 // Constantes de diseño unificadas
 const CARD_RADIUS = 'rounded-[var(--radius-card)]';
@@ -18,7 +19,7 @@ export default function PromotionsPage() {
     const supabase = getSupabase()
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
-    
+
     // Estados de Carga y Datos
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -26,7 +27,7 @@ export default function PromotionsPage() {
     const [promotions, setPromotions] = useState<any[]>([])
     const [products, setProducts] = useState<any[]>([])
     const [storeId, setStoreId] = useState<string | null>(null)
-    
+
     // Estados de UI y Filtros
     const [isEditing, setIsEditing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -69,7 +70,7 @@ export default function PromotionsPage() {
         return products.filter(p => p.name.toLowerCase().includes(lowerSearch));
     }, [products, searchTerm]);
 
-   // 🚀 LOGICA DE NEGOCIO (Bulk Actions)
+    // 🚀 LOGICA DE NEGOCIO (Bulk Actions)
     const selectAllProducts = useCallback(() => {
         setCurrentPromo((prev: any) => ({ ...prev, linked_products: filteredProducts.map(p => p.id) }));
     }, [filteredProducts]);
@@ -127,7 +128,7 @@ export default function PromotionsPage() {
                 response = await supabase.from('promotions').insert(payload).select().single()
             }
 
-           if (response.error) throw response.error;
+            if (response.error) throw response.error;
 
             // 🚀 CACHE BUSTER: Dispara los banners y descuentos en la vitrina pública
             await revalidateStoreCache()
@@ -142,12 +143,12 @@ export default function PromotionsPage() {
                 }
             });
 
-            Swal.fire({ 
-                title: 'Campaña Guardada', icon: 'success', toast: true, position: 'top-end', 
+            Swal.fire({
+                title: 'Campaña Guardada', icon: 'success', toast: true, position: 'top-end',
                 showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl text-xs' }
             })
             setIsEditing(false)
-            
+
         } catch (error: any) {
             Swal.fire('Error', error.message || 'No se pudo guardar la campaña', 'error')
         } finally {
@@ -156,10 +157,10 @@ export default function PromotionsPage() {
     }
 
     const handleDelete = async (id: string) => {
-        const confirm = await Swal.fire({ 
-            title: '¿Eliminar campaña?', text: 'Esta acción no se puede deshacer', icon: 'warning', 
+        const confirm = await Swal.fire({
+            title: '¿Eliminar campaña?', text: 'Esta acción no se puede deshacer', icon: 'warning',
             showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#000', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
-            customClass: { popup: 'rounded-2xl', confirmButton: 'rounded-lg text-xs', cancelButton: 'rounded-lg text-xs' } 
+            customClass: { popup: 'rounded-2xl', confirmButton: 'rounded-lg text-xs', cancelButton: 'rounded-lg text-xs' }
         })
         if (confirm.isConfirmed) {
             try {
@@ -175,8 +176,8 @@ export default function PromotionsPage() {
 
     const toggleProduct = (productId: number) => {
         const currentList = currentPromo.linked_products || []
-        setCurrentPromo({ 
-            ...currentPromo, 
+        setCurrentPromo({
+            ...currentPromo,
             linked_products: currentList.includes(productId)
                 ? currentList.filter((id: number) => id !== productId)
                 : [...currentList, productId]
@@ -208,7 +209,7 @@ export default function PromotionsPage() {
     // --- RENDERIZADO: ESTADOS DE CARGA ---
     if (loading) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA] text-gray-400 gap-4"><Loader2 className="animate-spin" size={32} /><span className="text-xs font-bold uppercase tracking-widest">Cargando Campañas...</span></div>
 
- const stepVariants: Variants = {
+    const stepVariants: Variants = {
         initial: { opacity: 0, height: 0 },
         animate: { opacity: 1, height: 'auto', transition: { ease: [0.32, 0.72, 0, 1] } },
         exit: { opacity: 0, height: 0, transition: { duration: 0.2 } }
@@ -220,33 +221,33 @@ export default function PromotionsPage() {
         return (
             <>
                 {/* Fixed Top Bar (Elite Standard) */}
-<div className="fixed top-0 right-0 left-0 lg:left-64 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 gap-4">
-    
-    {/* 1. IZQUIERDA: flex-1 y min-w-0 habilitan el truncate del h2 */}
-    <div className="flex items-center gap-3 flex-1 min-w-0">
-        <button onClick={() => setIsEditing(false)} className="p-2 -ml-2 text-gray-500 hover:text-black hover:bg-gray-50 rounded-full transition-colors active:scale-95 shrink-0">
-            <ArrowLeft size={18} />
-        </button>
-        <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate tracking-tight pr-2">
-            {currentPromo.id ? 'Editar Campaña' : 'Nueva Campaña'}
-        </h2>
-    </div>
+                <div className="fixed top-0 right-0 left-0 lg:left-64 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 gap-4">
 
-    {/* 2. DERECHA: shrink-0 protege los botones */}
-    <div className="flex gap-2 shrink-0 items-center">
-        {/* Ocultamos "Cancelar" en móviles muy pequeños para mantener el Clean Look */}
-        <button onClick={() => setIsEditing(false)} className="hidden sm:block px-4 py-2.5 text-xs font-bold text-gray-500 hover:text-black rounded-full active:scale-95 transition-all">
-            Cancelar
-        </button>
-        
-        {/* Hacemos el texto del botón dinámico: "Guardar" en mobile, "Guardar Cambios" en desktop */}
-        <button onClick={handleSave} disabled={saving} className={`bg-black text-white px-4 sm:px-6 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed`}>
-            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} 
-            <span className="hidden sm:inline">Guardar Cambios</span>
-            <span className="sm:hidden">Guardar</span>
-        </button>
-    </div>
-</div>
+                    {/* 1. IZQUIERDA: flex-1 y min-w-0 habilitan el truncate del h2 */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <button onClick={() => setIsEditing(false)} className="p-2 -ml-2 text-gray-500 hover:text-black hover:bg-gray-50 rounded-full transition-colors active:scale-95 shrink-0">
+                            <ArrowLeft size={18} />
+                        </button>
+                        <h2 className="text-xl md:text-2xl font-black text-gray-900 truncate tracking-tight pr-2">
+                            {currentPromo.id ? 'Editar Campaña' : 'Nueva Campaña'}
+                        </h2>
+                    </div>
+
+                    {/* 2. DERECHA: shrink-0 protege los botones */}
+                    <div className="flex gap-2 shrink-0 items-center">
+                        {/* Ocultamos "Cancelar" en móviles muy pequeños para mantener el Clean Look */}
+                        <button onClick={() => setIsEditing(false)} className="hidden sm:block px-4 py-2.5 text-xs font-bold text-gray-500 hover:text-black rounded-full active:scale-95 transition-all">
+                            Cancelar
+                        </button>
+
+                        {/* Hacemos el texto del botón dinámico: "Guardar" en mobile, "Guardar Cambios" en desktop */}
+                        <button onClick={handleSave} disabled={saving} className={`bg-black text-white px-4 sm:px-6 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed`}>
+                            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                            <span className="hidden sm:inline">Guardar Cambios</span>
+                            <span className="sm:hidden">Guardar</span>
+                        </button>
+                    </div>
+                </div>
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto px-4 md:px-8 pt-28 md:pt-32 pb-24 overflow-visibleSelection">
 
@@ -255,7 +256,13 @@ export default function PromotionsPage() {
                         <div className="text-[10px] font-bold text-gray-400 bg-white  px-6 py-3 uppercase tracking-widest border-b-2 border-[#f8f9fa]">Vista Previa de la Campaña (Banner en Vitrina)</div>
                         <div className="w-full flex flex-col md:flex-row items-center gap-6 px-8 py-10" style={{ backgroundColor: currentPromo.bg_color }}>
                             {currentPromo.image_url && (
-                                <img src={currentPromo.image_url} alt="Promo" className="w-28 h-28 md:w-36 md:h-36 object-contain shrink-0 mix-blend-multiply transition-transform" />
+                                <Image
+                                    src={currentPromo.image_url}
+                                    alt="Promo"
+                                    width={150}
+                                    height={150}
+                                    className="w-28 h-28 md:w-36 md:h-36 object-contain shrink-0 mix-blend-multiply transition-transform"
+                                />
                             )}
                             <div className="flex flex-col items-center md:items-start text-center md:text-left flex-1 min-w-0">
                                 <h4 className="font-black text-2xl md:text-3xl tracking-tight leading-tight" style={{ color: currentPromo.text_color }}>{currentPromo.title || 'Título de la Campaña'}</h4>
@@ -275,7 +282,13 @@ export default function PromotionsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-6 items-center">
                                 <div onClick={() => !uploading && fileInputRef.current?.click()} className={`relative aspect-square bg-gray-50 rounded-2xl ${uploading ? 'animate-pulse cursor-wait' : 'hover:bg-gray-100 cursor-pointer'} flex flex-col items-center justify-center overflow-hidden relative group transition-colors border border-gray-100`}>
                                     {currentPromo.image_url ? (
-                                        <img src={currentPromo.image_url} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" alt="Preview" />
+                                        <Image
+                                            src={currentPromo.image_url}
+                                            alt="Preview"
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 300px"
+                                            className="object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                                        />
                                     ) : (
                                         <div className="text-center p-4 text-gray-400 group-hover:text-gray-900 transition-colors flex flex-col items-center">
                                             {uploading ? <Loader2 className="animate-spin mb-2" size={24} /> : <ImageIcon size={32} className="mb-2" />}
@@ -309,7 +322,7 @@ export default function PromotionsPage() {
                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">Subtítulo</label>
                                     <input value={currentPromo.tagline} onChange={e => setCurrentPromo({ ...currentPromo, tagline: e.target.value })} placeholder="Ej: Hasta 50% de descuento en ropa" className={CLEAN_INPUT} />
                                 </div>
-                                
+
                                 {/* SELECTORES ESTILIZADOS */}
                                 <div>
                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">Color de Fondo</label>
@@ -325,7 +338,7 @@ export default function PromotionsPage() {
                                         <span className="font-mono text-sm font-bold text-gray-600 tracking-wider group-hover:text-black uppercase">{currentPromo.text_color}</span>
                                     </div>
                                 </div>
-                                
+
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1.5">Fecha de Vencimiento (Urgencia)</label>
                                     <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 group transition-colors hover:border-black/20 focus-within:border-black focus-within:bg-gray-100">
@@ -339,7 +352,7 @@ export default function PromotionsPage() {
                         <div className={`bg-white p-6 ${CARD_RADIUS} space-y-4 border border-gray-50`}>
                             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest pb-3 flex items-center gap-1.5"><Flame size={14} className="text-red-500" />3. Motor de Oferta (Estrategia Matemática)</h3>
                             <div className="flex flex-col sm:flex-row w-full md:w-fit mb-4 bg-gray-50 p-1 rounded-xl border border-gray-100 shrink-0">
-                                {[ {type: 'visual', label: 'Solo Visual'}, {type: 'percentage', label: 'Descuento %'}, {type: 'bogo', label: 'Lleva N, Paga M'} ].map(opt => (
+                                {[{ type: 'visual', label: 'Solo Visual' }, { type: 'percentage', label: 'Descuento %' }, { type: 'bogo', label: 'Lleva N, Paga M' }].map(opt => (
                                     <button key={opt.type} onClick={() => setCurrentPromo({ ...currentPromo, promo_type: opt.type })} className={`flex-1 sm:flex-none px-6 py-3 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 ${currentPromo.promo_type === opt.type ? 'bg-white text-black shadow-subtle border border-transparent' : 'text-gray-500 hover:text-black'}`}>
                                         {currentPromo.promo_type === opt.type && <Target size={14} className="text-emerald-500" />}
                                         {opt.label}
@@ -401,7 +414,13 @@ export default function PromotionsPage() {
                                     return (
                                         <div key={p.id} onClick={() => toggleProduct(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-all border ${isSelected ? 'bg-gray-100 border-gray-200' : 'bg-white hover:bg-gray-50 border-gray-100/50'}`}>
                                             <div className="w-12 h-12 bg-white rounded-lg shrink-0 overflow-hidden border border-gray-100/60 p-1 flex items-center justify-center">
-                                                {p.image_url ? <img src={p.image_url} className="w-full h-full object-contain mix-blend-multiply" /> : <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50"><ImageIcon size={18} strokeWidth={1}/></div>}
+                                                <Image
+                                                    src={p.image_url}
+                                                    alt={p.name}
+                                                    width={60}
+                                                    height={60}
+                                                    className="w-full h-full object-contain mix-blend-multiply"
+                                                />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-bold text-sm text-gray-900 truncate tracking-tight">{p.name}</p>
@@ -434,7 +453,7 @@ export default function PromotionsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto p-4 md:p-8 pb-32">
             <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-10 gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Flame size={28} className="text-red-600"/> Campañas</h1>
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-2"><Flame size={28} className="text-red-600" /> Campañas</h1>
                     <p className="text-sm text-gray-500 mt-1">Crea banners visuales, activa motores de oferta y dispara tus ventas.</p>
                 </div>
                 <button onClick={() => { setCurrentPromo({ title: '', tagline: '', bg_color: '#000000', text_color: '#ffffff', linked_products: [], promo_type: 'visual', discount_percentage: null, bogo_buy: null, bogo_pay: null, expires_at: null }); setIsEditing(true); }} className={`bg-black text-white px-5 py-3 ${BTN_RADIUS} font-bold text-sm flex items-center gap-2 active:scale-95 transition-transform shrink-0`}>
@@ -448,14 +467,20 @@ export default function PromotionsPage() {
                         <Tag size={48} className="mx-auto text-gray-200 mb-6" />
                         <p className="font-black text-gray-900 tracking-tight text-xl mb-1">Crea tu primera promoción</p>
                         <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">Activa descuentos o crea ofertas BOGO para productos específicos y lánzalas en tu vitrina.</p>
-                       <button onClick={() => { setCurrentPromo({ title: '', tagline: '', bg_color: '#000000', text_color: '#ffffff', linked_products: [], promo_type: 'visual', discount_percentage: null, bogo_buy: null, bogo_pay: null, expires_at: null }); setIsEditing(true); }} className="px-5 py-3 rounded-full text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 hover:border-emerald-200 transition-colors flex items-center gap-1.5 mx-auto active:scale-95"><PlusCircle size={14}/> Crear Campaña</button>
+                        <button onClick={() => { setCurrentPromo({ title: '', tagline: '', bg_color: '#000000', text_color: '#ffffff', linked_products: [], promo_type: 'visual', discount_percentage: null, bogo_buy: null, bogo_pay: null, expires_at: null }); setIsEditing(true); }} className="px-5 py-3 rounded-full text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 hover:border-emerald-200 transition-colors flex items-center gap-1.5 mx-auto active:scale-95"><PlusCircle size={14} /> Crear Campaña</button>
                     </div>
                 ) : (
                     promotions.map(promo => (
                         <div key={promo.id} className={`bg-white ${CARD_RADIUS} overflow-hidden flex flex-col group hover:scale-[0.98] hover:shadow-subtle border border-gray-50 transition-all duration-300`}>
                             <div className="w-full flex items-center gap-5 px-8 py-8" style={{ backgroundColor: promo.bg_color }}>
                                 {promo.image_url && (
-                                    <img src={promo.image_url} alt={promo.title} className="w-16 h-16 md:w-20 md:h-20 object-contain shrink-0 mix-blend-multiply group-hover:scale-105 transition-transform" />
+                                    <Image
+                                        src={promo.image_url}
+                                        alt={promo.title}
+                                        width={100}
+                                        height={100}
+                                        className="w-16 h-16 md:w-20 md:h-20 object-contain shrink-0 mix-blend-multiply group-hover:scale-105 transition-transform"
+                                    />
                                 )}
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <h4 className="font-black text-xl md:text-2xl tracking-tight truncate leading-tight" style={{ color: promo.text_color }}>{promo.title}</h4>
@@ -464,7 +489,7 @@ export default function PromotionsPage() {
                             </div>
                             <div className="p-5 flex items-center justify-between bg-white mt-auto border-t border-gray-50">
                                 <div className="flex flex-col">
-                                    <span className="text-xs font-black text-gray-900 bg-gray-50 px-3 py-1.5 rounded-full tracking-tight tabular-nums flex items-center gap-1.5"><Package size={14} className="text-gray-400"/> {promo.linked_products?.length || 0} Productos</span>
+                                    <span className="text-xs font-black text-gray-900 bg-gray-50 px-3 py-1.5 rounded-full tracking-tight tabular-nums flex items-center gap-1.5"><Package size={14} className="text-gray-400" /> {promo.linked_products?.length || 0} Productos</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => { setCurrentPromo(promo); setIsEditing(true); }} className="px-4 py-2.5 text-xs font-bold text-gray-700 bg-gray-50 rounded-full hover:bg-gray-100 hover:text-black transition-colors active:scale-95">Editar</button>

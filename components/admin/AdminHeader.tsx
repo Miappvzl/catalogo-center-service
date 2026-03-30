@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import Swal from 'sweetalert2'
 import NotificationBell from '@/components/admin/NotificationBell'
 import { AnimatePresence, motion } from 'framer-motion'
+import Image from 'next/image'
 
 export default function AdminHeader({ store, title }: { store: any, title?: string }) {
   const router = useRouter()
@@ -45,31 +46,31 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
     }
   }
 
-   // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
-      // 1. Estados del Smart Header
-      const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-      const lastScrollY = useRef(0);
+  // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
+  // 1. Estados del Smart Header
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
-   // 2. Motor de Scroll
-      useEffect(() => {
-          const handleScroll = () => {
-              const currentScrollY = window.scrollY;
-  
-              if (currentScrollY < 50) {
-                  setIsHeaderVisible(true);
-              } else if (currentScrollY > lastScrollY.current) {
-                  setIsHeaderVisible(false); // Bajando: esconder
-              } else {
-                  setIsHeaderVisible(true);  // Subiendo: mostrar
-              }
-  
-              lastScrollY.current = currentScrollY;
-          };
-  
-          window.addEventListener('scroll', handleScroll, { passive: true });
-          return () => window.removeEventListener('scroll', handleScroll);
-      }, []);
-  
+  // 2. Motor de Scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 50) {
+        setIsHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY.current) {
+        setIsHeaderVisible(false); // Bajando: esconder
+      } else {
+        setIsHeaderVisible(true);  // Subiendo: mostrar
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
 
   return (
     <>
@@ -82,22 +83,28 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
         </div>
 
         <div className="flex items-center gap-3">
-        
-
-            {/* 🚀 EL CENTRO DE NOTIFICACIONES */}
-            {store?.id && <NotificationBell storeId={store.id} />}
 
 
+          {/* 🚀 EL CENTRO DE NOTIFICACIONES */}
+          {store?.id && <NotificationBell storeId={store.id} />}
 
-            {/* EDITOR DE LOGO (Clean UI) */}
-            <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+
+
+          {/* EDITOR DE LOGO (Clean UI) */}
+          <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
 
             <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden transition-colors group-hover:border-black ">
               {uploading ? (
                 <Loader2 className="animate-spin text-gray-400" />
               ) : store?.logo_url ? (
-                <img src={store.logo_url} className="w-full h-full object-contain" alt="Logo" />
+                <Image
+                  src={store.logo_url}
+                  alt="Logo"
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-contain"
+                />
               ) : (
                 <ShoppingBag size={18} className="text-gray-300" />
               )}

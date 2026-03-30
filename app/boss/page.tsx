@@ -7,6 +7,7 @@ import { PREZISO_BILLING } from '@/lib/config/billing'
 import Swal from 'sweetalert2'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 // 🔒 SEGURIDAD EXTREMA: El único correo con acceso al God Mode
 const ADMIN_EMAIL = 'quanzosinc@gmail.com'
@@ -198,7 +199,7 @@ export default function SuperAdminPage() {
                 didOpen: () => {
                     const input = document.getElementById('magic-link-input') as HTMLInputElement;
                     const directBtn = document.getElementById('direct-access-btn') as HTMLButtonElement;
-                    
+
                     if (input) {
                         input.addEventListener('click', () => {
                             input.select();
@@ -325,7 +326,13 @@ export default function SuperAdminPage() {
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-xl bg-[#F8F9FA] border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
-                                                            {store.logo_url ? <img src={store.logo_url} className="w-full h-full object-cover" /> : <Store size={18} className="text-gray-300" />}
+                                                            <Image
+                                                                src={store.logo_url}
+                                                                alt={`Logo ${store.name}`}
+                                                                width={40}
+                                                                height={40}
+                                                                className="w-full h-full object-cover"
+                                                            />
                                                         </div>
                                                         <div>
                                                             <p className="font-black text-gray-900">{store.name}</p>

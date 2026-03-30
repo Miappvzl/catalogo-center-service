@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { revalidateStoreCache } from '@/app/admin/actions'
+import Image from 'next/image'
 
 // --- TIPOS (Intactos) ---
 interface InventoryItem { rowId: string; productId: string; name: string; image: string | null; category: string; variantId: string | null; color: string; hex: string; size: string; stock: number }
@@ -133,8 +134,7 @@ export default function InventoryPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setFilterStatus(tab.id)}
-                                    className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                                        filterStatus === tab.id
+                                    className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterStatus === tab.id
                                             ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
                                             : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
                                         }`}
@@ -203,7 +203,13 @@ export default function InventoryPage() {
                                                         <div className="flex items-center gap-4">
                                                             <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0">
                                                                 {item.image ? (
-                                                                    <img src={item.image} className="w-full h-full object-cover mix-blend-multiply" alt={item.name} />
+                                                                    <Image
+                                                                        src={item.image}
+                                                                        alt={item.name}
+                                                                        width={64}
+                                                                        height={64}
+                                                                        className="w-full h-full object-cover mix-blend-multiply"
+                                                                    />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={16} /></div>
                                                                 )}
@@ -243,8 +249,8 @@ export default function InventoryPage() {
                                                                     value={currentStockDisplay}
                                                                     onChange={(e) => handleStockChange(item.rowId, e.target.value)}
                                                                     className={`w-16 md:w-20 text-center font-mono font-bold text-sm md:text-base py-2 rounded-[var(--radius-btn)] border transition-all outline-none ${isPending
-                                                                            ? 'border-black bg-white text-black ring-1 ring-black shadow-subtle'
-                                                                            : 'border-transparent bg-gray-50 text-gray-700 hover:bg-gray-100 focus:bg-white'
+                                                                        ? 'border-black bg-white text-black ring-1 ring-black shadow-subtle'
+                                                                        : 'border-transparent bg-gray-50 text-gray-700 hover:bg-gray-100 focus:bg-white'
                                                                         }`}
                                                                 />
                                                                 {isPending && (

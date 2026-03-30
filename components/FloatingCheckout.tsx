@@ -6,6 +6,7 @@ import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
 import CheckoutProcess from './CheckoutProcess'
+import Image from 'next/image'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -22,8 +23,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const { items, removeItem, updateQuantity } = useCart()
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
-    const [step, setStep] = useState(1) 
-    
+    const [step, setStep] = useState(1)
+
     const [whatsappUrl, setWhatsappUrl] = useState('')
     const [generatedOrderNumber, setGeneratedOrderNumber] = useState<number | null>(null)
 
@@ -63,16 +64,16 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
 
     const cartEngine = useMemo(() => {
-        let totalListNominal = 0; 
-        let totalCashNominal = 0; 
-        let listPromoDiscounts = 0; 
+        let totalListNominal = 0;
+        let totalCashNominal = 0;
+        let listPromoDiscounts = 0;
         let cashPromoDiscounts = 0;
         let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
         const promoCounts: Record<string, number> = {};
 
         items.forEach(item => {
             promotions?.forEach(p => {
-                if (p.promo_type === 'bogo' && (p.linked_products || []).some((id:any) => String(id) === String(item.productId))) {
+                if (p.promo_type === 'bogo' && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) {
                     promoCounts[p.id] = (promoCounts[p.id] || 0) + item.quantity;
                 }
             })
@@ -97,41 +98,41 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             if (applicablePromos.length > 0) {
                 let maxEffective = 0;
                 applicablePromos.forEach(p => {
-                    let eff = p.promo_type === 'percentage' 
-                        ? Number(p.discount_percentage) 
+                    let eff = p.promo_type === 'percentage'
+                        ? Number(p.discount_percentage)
                         : (p.promo_type === 'bogo' && (promoCounts[p.id] || 0) >= p.bogo_buy ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
                     if (eff > maxEffective) { maxEffective = eff; bestPromo = p; }
                 });
 
                 if (bestPromo) {
-    if ((bestPromo as any).promo_type === 'percentage') {
-        const pct = (bestPromo as any).discount_percentage / 100;
-        itemListDiscount = (listPrice * item.quantity) * pct;
-        itemCashDiscount = (cashPrice * item.quantity) * pct;
-        listPromoDiscounts += itemListDiscount;
-        cashPromoDiscounts += itemCashDiscount;
+                    if ((bestPromo as any).promo_type === 'percentage') {
+                        const pct = (bestPromo as any).discount_percentage / 100;
+                        itemListDiscount = (listPrice * item.quantity) * pct;
+                        itemCashDiscount = (cashPrice * item.quantity) * pct;
+                        listPromoDiscounts += itemListDiscount;
+                        cashPromoDiscounts += itemCashDiscount;
 
-        // Guardamos el JSX, no un string
-        badge = (
-            <span className="flex items-center gap-1">
-                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
-                {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
-            </span>
-        );
+                        // Guardamos el JSX, no un string
+                        badge = (
+                            <span className="flex items-center gap-1">
+                                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
+                                {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
+                            </span>
+                        );
 
-    } else if ((bestPromo as any).promo_type === 'bogo') {
-        badge = (
-            <span className="flex items-center gap-1">
-                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
-                {(bestPromo as any).title}
-            </span>
-        );
-        // ... resto de tu lógica de bogoPool
-    }
-}
+                    } else if ((bestPromo as any).promo_type === 'bogo') {
+                        badge = (
+                            <span className="flex items-center gap-1">
+                                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
+                                {(bestPromo as any).title}
+                            </span>
+                        );
+                        // ... resto de tu lógica de bogoPool
+                    }
+                }
             }
 
-          return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.quantity), finalCashPrice: cashPrice - (itemCashDiscount / item.quantity), badge }
+            return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.quantity), finalCashPrice: cashPrice - (itemCashDiscount / item.quantity), badge }
         });
 
         Object.values(bogoPool).forEach(pool => {
@@ -154,7 +155,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const isWholesaleActive = wholesale.active && totalItemsCount >= wholesale.min_items;
     const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
     const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
-    
+
     const step1GrandTotalUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList);
     const step1GrandTotalBs = step1GrandTotalUSD * activeRate;
     const step1CashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash);
@@ -246,7 +247,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             {/* CONTENEDOR MULTI-PASO */}
                             <div className="flex-1 relative overflow-hidden bg-[#F8F9FA]">
                                 <AnimatePresence mode="wait">
-                                    
+
                                     {/* --- PASO 1: LA BOLSA --- */}
                                     {step === 1 && (
                                         <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col h-full w-full">
@@ -255,7 +256,13 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     {cartEngine.processedItems.map((item) => (
                                                         <div key={item.id} className="flex gap-4 p-4 bg-white border-b border-gray-100/60">
                                                             <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative border border-gray-100">
-                                                                <img src={item.image} className="w-full h-full object-cover mix-blend-multiply" alt={item.name} />
+                                                                <Image
+                                                                    src={item.image}
+                                                                    alt={item.name}
+                                                                    fill
+                                                                    sizes="80px"
+                                                                    className="object-cover mix-blend-multiply"
+                                                                />
                                                             </div>
                                                             <div className="flex-1 flex flex-col justify-between py-0.5">
                                                                 <div>
@@ -266,7 +273,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                     </div>
                                                                     <p className="text-[11px] text-gray-500 font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
                                                                 </div>
-                                                                
+
                                                                 <div className="flex items-end justify-between mt-2">
                                                                     <div className="flex flex-col min-w-0">
                                                                         {item.finalListPrice < item.listPrice ? (
@@ -329,7 +336,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 {step1FxSavings > 0 && (
                                                     <div className="px-4 pb-10 bg-[#F8F9FA] pt-6">
                                                         <div className="bg-[#073824] p-4 rounded-xl flex items-center gap-3 border">
-                                                             <BadgeDollarSign size={30} strokeWidth={1.5} className='text-[#7fff00]'/>
+                                                            <BadgeDollarSign size={30} strokeWidth={1.5} className='text-[#7fff00]' />
                                                             <div className="flex flex-col">
                                                                 <span className="text-xs font-bold text-white tracking-wide">Paga en Efectivo o Zelle</span>
                                                                 <span className="text-[11px] font-medium text-white mt-0.5">
@@ -359,7 +366,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                                     {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
                                     {step === 2 && (
-                                        <CheckoutProcess 
+                                        <CheckoutProcess
                                             storeId={storeId}
                                             storeConfig={storeConfig}
                                             currency={currency}
@@ -396,22 +403,22 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 </button>
                                             </div>
                                             {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
-<div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
-    <a 
-        href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group inline-flex flex-col items-center gap-1.5"
-    >
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">
-            Experiencia de compra impulsada por
-        </span>
-        <div className="flex items-center gap-1">
-            <span className="font-black text-sm tracking-tight text-gray-300 group-hover:text-gray-900 transition-colors">PREZISO</span>
-             <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
-        </div>
-    </a>
-</div>
+                                            <div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
+                                                <a
+                                                    href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="group inline-flex flex-col items-center gap-1.5"
+                                                >
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">
+                                                        Experiencia de compra impulsada por
+                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-black text-sm tracking-tight text-gray-300 group-hover:text-gray-900 transition-colors">PREZISO</span>
+                                                        <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+                                                    </div>
+                                                </a>
+                                            </div>
                                         </motion.div>
                                     )}
 

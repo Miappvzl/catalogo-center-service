@@ -8,6 +8,7 @@ import { revalidateStoreCache } from '@/app/admin/actions'
 import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
+import Image from 'next/image'
 
 interface ProductEditorProps {
     productId?: string
@@ -495,7 +496,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 }
             }
 
-// 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
+            // 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
             await revalidateStoreCache()
 
             setIsDirty(false)
@@ -666,7 +667,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'main')} />
                             <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-[#f6f6f6] rounded-(--radius-card) border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
                                 {formData.image_url ? (
-                                    <img src={formData.image_url} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" alt="Producto Principal" />
+                                    <Image
+                                        src={formData.image_url}
+                                        alt="Producto Principal"
+                                        fill
+                                        sizes="300px"
+                                        className="object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                                    />
                                 ) : (
                                     <div className="text-center p-4 flex flex-col items-center">
                                         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 text-gray-400 border border-gray-200 group-hover:text-black group-hover:border-gray-300 transition-colors ">
@@ -690,7 +697,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 </button>
                                 {productGallery.map((img, idx) => (
                                     <div key={idx} className="relative w-30 md:w-40 h-full rounded-(--radius-card) border border-gray-100 overflow-hidden group bg-white shrink-0 shadow-sm">
-                                        <img src={img} alt={`Galería ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <Image
+                                            src={img}
+                                            alt={`Galería ${idx + 1}`}
+                                            fill
+                                            sizes="160px"
+                                            className="object-cover"
+                                        />
                                         <button onClick={() => removeImageFromGallery(idx)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity"><X size={20} /></button>
                                     </div>
                                 ))}
@@ -792,7 +805,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                     {uploading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={22} />}
                                                 </button>
                                                 {variantInput.images.map((img, idx) => (
-                                                    <div key={idx} className="relative w-14 h-14 rounded-(--radius-btn) border border-gray-100 overflow-hidden group bg-white shrink-0 shadow-sm"><img src={img} alt={`Exclusiva ${idx + 1}`} className="w-full h-full object-cover" /><button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity"><X size={16} /></button></div>
+                                                    <div key={idx} className="relative w-14 h-14 rounded-(--radius-btn) border border-gray-100 overflow-hidden group bg-white shrink-0 shadow-sm"><Image
+                                                        src={img}
+                                                        alt={`Exclusiva ${idx + 1}`}
+                                                        fill
+                                                        sizes="56px"
+                                                        className="object-cover"
+                                                    /><button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity"><X size={16} /></button></div>
                                                 ))}
                                             </div>
                                         </div>
@@ -872,7 +891,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             <div className="flex items-center justify-between p-3 md:p-4 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
                                                 <div className="flex items-center gap-4 min-w-0">
                                                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center relative">
-                                                        {v.variant_image ? <img src={v.variant_image} alt={`Variante ${v.color_name || i}`} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex === 'transparent' ? '#f3f4f6' : v.color_hex }}></div>}
+                                                        {v.variant_image ? <Image
+                                                            src={v.variant_image}
+                                                            alt={`Variante ${v.color_name || i}`}
+                                                            fill
+                                                            sizes="56px"
+                                                            className="object-cover"
+                                                        /> : <div className="w-full h-full" style={{ backgroundColor: v.color_hex === 'transparent' ? '#f3f4f6' : v.color_hex }}></div>}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2">
