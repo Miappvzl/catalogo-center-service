@@ -5,8 +5,15 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        // Dominio del proyecto NUEVO autorizado para compresión Edge por Vercel
+        // 🚀 PROYECTO NUEVO (Para todas las imágenes y pedidos futuros)
         hostname: 'qzeelmmhictsabuwbyjh.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        // 🕰️ PROYECTO VIEJO (Retrocompatibilidad para cargar recibos históricos)
+        hostname: 'lrmhgzohfclrepwvrhdy.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
