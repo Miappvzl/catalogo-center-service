@@ -110,8 +110,8 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
             {/* Etiquetas SVG Nativas en minúsculas */}
             <defs>
               <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="2%" stopColor="rgb(0,89,255)" stopOpacity={0.8}/>
-                <stop offset="98%" stopColor="#97c9ff" stopOpacity={0}/>
+                <stop offset="1%" stopColor="#0084ff" stopOpacity={200}/>
+                <stop offset="99%" stopColor="#0611ab" stopOpacity={0}/>
               </linearGradient>
             </defs>
 
@@ -168,8 +168,8 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
               animationEasing="ease-in-out"
               type="monotone" 
               dataKey="ventas" 
-              stroke="#000000" 
-              strokeWidth={0.7}
+              stroke="#11286c" 
+              strokeWidth={1.2}
               fill="url(#colorVentas)" 
               activeDot={{ 
                 r: 5, 

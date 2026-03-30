@@ -1,6 +1,7 @@
 'use client'
 
 import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
+import Image from 'next/image' // <- INYECTA ESTA LÍNEA AQUÍ
 
 interface ProductCardProps {
   product: any;
@@ -29,11 +30,12 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
      {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
       <div className="relative w-full bg-white overflow-hidden rounded-[4px] aspect-[4/5] flex items-center justify-center">
         {product.image_url ? (
-          <img
+          <Image
             src={product.image_url}
             alt={product.name}
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+            fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 bg-[#F8F9FA]">

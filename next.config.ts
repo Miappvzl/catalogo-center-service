@@ -5,9 +5,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        // Reemplaza esto con TU dominio de Supabase (sin el https://)
-        // Ejemplo: 'abcdefg.supabase.co'
-        hostname: 'lrmhgzohfclrepwvrhdy.supabase.co',
+        // Dominio del proyecto NUEVO autorizado para compresión Edge por Vercel
+        hostname: 'qzeelmmhictsabuwbyjh.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
@@ -16,5 +15,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-

@@ -7,6 +7,7 @@ import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
 import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
+import Image from 'next/image'
 
 const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button
@@ -160,8 +161,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
   useEffect(() => {
       if (!store?.hero_url) return;
-      
-      const img = new Image();
+
+      const img = new window.Image()
       img.crossOrigin = "Anonymous"; // Crucial para evitar bloqueos CORS
       img.src = store.hero_url;
       
@@ -332,7 +333,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <div className="relative shrink-0">
             {store.logo_url ? (
-              <img src={store.logo_url} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-gray-100 shadow-sm" alt="Logo" />
+             <Image src={store.logo_url} width={44} height={44} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-gray-100 shadow-sm" alt="Logo" />
             ) : (
               <div className="w-10 h-10 md:w-11 md:h-11 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 border border-gray-100 shadow-sm">
                 <ShoppingBag size={18} strokeWidth={1.5} />
@@ -372,20 +373,25 @@ export default function StoreInterface({ store, products, rates, promotions = []
       {store.hero_url && (
         <div className="w-full h-[22vh] md:h-[28vh] relative bg-gray-100 overflow-hidden flex items-center justify-center border-b border-gray-100">
           
-          {/* Fondo difuminado (Rellena los vacíos con los colores de la marca) */}
-          <img
+         {/* Fondo difuminado optimizado */}
+          <Image
             src={store.hero_url}
-            className="absolute inset-0 w-full h-full object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
+            className="absolute inset-0 object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
             crossOrigin="anonymous"
             alt=""
+            fill
+            sizes="100vw"
+            quality={30} // Bajamos la calidad de la compresión porque solo es un fondo difuminado
           />
           
-          {/* Imagen real (Sin recortes agresivos) */}
-          <img
+          {/* Imagen real optimizada */}
+          <Image
             src={store.hero_url}
             alt={`Banner de ${store.name}`}
-            className="relative z-10 w-full h-full object-contain pointer-events-none drop-shadow-sm"
+            className="relative z-10 object-contain pointer-events-none drop-shadow-sm"
             crossOrigin="anonymous"
+            fill
+            sizes="100vw"
           />
         </div>
       )}
@@ -472,7 +478,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                                  {/* La imagen optimizada flotante */}
                                  {promo.image_url && (
                                      <div className="w-14 h-14 md:w-20 md:h-20 shrink-0 relative flex items-center justify-center">
-                                         <img src={promo.image_url} alt={promo.title} className="w-full h-full object-contain mix-blend-multiply drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
+                                        <Image src={promo.image_url} alt={promo.title} fill sizes="80px" className="object-contain mix-blend-multiply drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
                                      </div>
                                  )}
                                  

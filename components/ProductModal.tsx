@@ -5,6 +5,7 @@ import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, Chevro
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
+import Image from 'next/image'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
 
 interface ProductModalProps {
@@ -321,10 +322,12 @@ const isCompletelyOutOfStock = variants.length > 0
 
                         <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[#F8F9FA] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (
-                                <img
+                                <Image
                                     src={currentGallery[galleryIndex]}
                                     alt="Producto"
-                                    className="w-full h-full object-contain mix-blend-multiply p-6 md:p-10 transition-transform duration-700 ease-out group-hover:scale-105"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                    className="object-contain mix-blend-multiply p-6 md:p-10 transition-transform duration-700 ease-out group-hover:scale-105"
                                 />
                             ) : (
                                 <span className="text-4xl font-black text-gray-200">P.</span>
