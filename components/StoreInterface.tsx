@@ -402,8 +402,9 @@ export default function StoreInterface({ store, products, rates, promotions = []
         <div className="max-w-[1500px] mx-auto px-4 md:px-8">
          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
             
-            {/* 1. BUSCADOR (Izquierda) */}
-            <div className="relative flex-1 w-full md:max-w-md group">
+           {/* 1. BUSCADOR (Izquierda) */}
+            {/* 🚀 INYECCIÓN: min-w-0 para evitar desbordamiento del flex-1 */}
+            <div className="relative flex-1 w-full md:max-w-md group min-w-0">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors" size={16} strokeWidth={2} />
               <input
                 type="text"
@@ -420,7 +421,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
             </div>
 
            {/* 2. CATEGORÍAS (Centro) */}
-            <div className="relative w-full md:flex-1 flex items-center">
+           {/* 🚀 INYECCIÓN: min-w-0 es el cinturón de seguridad que ancla la UI */}
+            <div className="relative w-full md:flex-1 min-w-0 flex items-center">
               <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar pr-10">
                 {categories.map(cat => (
                   <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
