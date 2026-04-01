@@ -285,7 +285,16 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     const { error } = await supabase.storage.from('variants').upload(fileName, compressedFile)
                     if (error) throw error
                     const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
-                    updateVariantOverride(variantId, 'variant_image', publicUrl)
+
+                    // 🚀 BYPASS ARQUITECTÓNICO: Sincronizamos la imagen individual Y aplastamos la galería vieja
+                    setVariants(prev => prev.map(v => {
+                        if (v.id === variantId) {
+                            return { ...v, variant_image: publicUrl, gallery: [publicUrl] }
+                        }
+                        return v
+                    }))
+                    setIsDirty(true)
+
                 } else {
                     const currentSlots = 3 - variantInput.images.length
                     if (currentSlots <= 0) return Swal.fire('Límite alcanzado', 'Máximo 3 fotos por variante', 'warning')
@@ -933,17 +942,41 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                                                             {/* Fila 1: Imagen y Atributos Básicos */}
                                                             <div className="flex flex-col sm:flex-row gap-5">
-                                                                <div className="shrink-0 flex flex-col gap-2">
-                                                                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Foto</label>
-                                                                    <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
-                                                                    <button onClick={() => document.getElementById(`file-${v.id}`)?.click()} className="w-16 h-16 rounded-(--radius-badge) border border-gray-200 bg-white hover:border-black flex items-center justify-center overflow-hidden transition-all group shadow-sm">
-                                                                        {v.variant_image ? (
-                                                                            <img src={v.variant_image} alt={`Editar variante ${v.color_name || ''}`} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
-                                                                        ) : (
-                                                                            <ImagePlus size={20} className="text-gray-400 group-hover:text-black" />
-                                                                        )}
+                                                                {/* 🚀 NUEVA UI DE FOTO BLINDADA Y EXPLÍCITA */}
+                                                            <div className="shrink-0 flex flex-col gap-2 group relative">
+                                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Foto</label>
+                                                                <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
+                                                                
+                                                                {v.variant_image ? (
+                                                                    // Contenedor de la imagen: Vista previa no clicable por defecto
+                                                                    <div className="relative w-16 h-16 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center shadow-sm">
+                                                                        <Image
+                                                                            src={v.variant_image}
+                                                                            alt={`Vista previa variante ${v.color_name || i}`}
+                                                                            fill
+                                                                            sizes="64px"
+                                                                            className="object-cover"
+                                                                        />
+                                                                        {/* 🖱️ Overlay explícito de hover: ÚNICO lugar clicable para cambiar foto */}
+                                                                        <button 
+                                                                            onClick={() => document.getElementById(`file-${v.id}`)?.click()}
+                                                                            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-(--radius-badge) cursor-pointer"
+                                                                            title="Cambiar Foto de Variante"
+                                                                        >
+                                                                            {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImageIcon size={20} />}
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    // Botón de "Añadir Foto" si no hay imagen (se mantiene clicable toda la zona)
+                                                                    <button 
+                                                                        onClick={() => document.getElementById(`file-${v.id}`)?.click()} 
+                                                                        className="w-16 h-16 rounded-(--radius-badge) border border-dashed border-gray-300 bg-white hover:border-black flex items-center justify-center overflow-hidden transition-all text-gray-400 hover:text-black shadow-sm"
+                                                                        title="Añadir Foto a Variante"
+                                                                    >
+                                                                        {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImagePlus size={20} />}
                                                                     </button>
-                                                                </div>
+                                                                )}
+                                                            </div>
                                                                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                                     <div>
                                                                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Talla/Medida</label>
