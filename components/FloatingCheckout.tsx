@@ -175,9 +175,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             {/* GATILLO MOBILE */}
             <AnimatePresence>
                 {!isOpen && items.length > 0 && (
-                    <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed bottom-0 left-0 right-0 z-50 bg-white md:hidden flex items-center justify-between px-5 py-3 border-t border-gray-200">
+                    <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed bottom-0 left-0 right-0 z-50 rounded-[13px] m-[30px] mb-[5px] bg-white shadow-[0px_20px_30px_1px_#00000063] md:hidden flex items-center justify-between px-5 py-3 border-t border-gray-200">
                         <div className="flex items-center gap-3 cursor-pointer group" onClick={handleOpenModal}>
-                            <div className="relative bg-gray-50 p-2.5 rounded-full group-hover:bg-gray-100 transition-colors">
+                            <div className="relative bg-gray-50 p-2.5 border border-gray-200 rounded-full group-hover:bg-gray-100 transition-colors">
                                 <ShoppingCart size={20} className="text-gray-900 animate-wiggle" strokeWidth={2} />
                                 <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItemsCount}</span>
                             </div>

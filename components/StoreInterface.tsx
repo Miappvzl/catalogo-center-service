@@ -458,7 +458,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
       {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
       {promotions && promotions.length > 0 && (
         <div className="w-full bg-white border-b border-gray-100 overflow-hidden relative z-30">
-           <div ref={carouselRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar" style={{ scrollBehavior: 'smooth' }}>
+           <div ref={carouselRef} className="flex overflow-x-auto  rounded-[16px] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
                {promotions.map((promo: any) => {
                    const isActive = activePromo?.id === promo.id;
                    return (
