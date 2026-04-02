@@ -9,6 +9,7 @@ import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 interface ProductEditorProps {
     productId?: string
@@ -677,7 +678,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-[#f6f6f6] rounded-(--radius-card) border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
                                 {formData.image_url ? (
                                     <Image
-                                        src={formData.image_url}
+                                        src={getOptimizedUrl(formData.image_url)}
                                         alt="Producto Principal"
                                         fill
                                         sizes="300px"
@@ -707,7 +708,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 {productGallery.map((img, idx) => (
                                     <div key={idx} className="relative w-30 md:w-40 h-full rounded-(--radius-card) border border-gray-100 overflow-hidden group bg-white shrink-0 shadow-sm">
                                         <Image
-                                            src={img}
+                                            src={getOptimizedUrl(img)}
                                             alt={`Galería ${idx + 1}`}
                                             fill
                                             sizes="160px"
@@ -815,7 +816,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                 </button>
                                                 {variantInput.images.map((img, idx) => (
                                                     <div key={idx} className="relative w-14 h-14 rounded-(--radius-btn) border border-gray-100 overflow-hidden group bg-white shrink-0 shadow-sm"><Image
-                                                        src={img}
+                                                        src={getOptimizedUrl(img)}
                                                         alt={`Exclusiva ${idx + 1}`}
                                                         fill
                                                         sizes="56px"
@@ -901,7 +902,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                 <div className="flex items-center gap-4 min-w-0">
                                                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center relative">
                                                         {v.variant_image ? <Image
-                                                            src={v.variant_image}
+                                                            src={getOptimizedUrl(v.variant_image)}
                                                             alt={`Variante ${v.color_name || i}`}
                                                             fill
                                                             sizes="56px"
@@ -951,7 +952,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     // Contenedor de la imagen: Vista previa no clicable por defecto
                                                                     <div className="relative w-16 h-16 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center shadow-sm">
                                                                         <Image
-                                                                            src={v.variant_image}
+                                                                            src={getOptimizedUrl(v.variant_image)}
                                                                             alt={`Vista previa variante ${v.color_name || i}`}
                                                                             fill
                                                                             sizes="64px"

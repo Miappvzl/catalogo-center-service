@@ -9,6 +9,7 @@ import Swal from 'sweetalert2'
 import NotificationBell from '@/components/admin/NotificationBell'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 export default function AdminHeader({ store, title }: { store: any, title?: string }) {
   const router = useRouter()
@@ -99,7 +100,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
                 <Loader2 className="animate-spin text-gray-400" />
               ) : store?.logo_url ? (
                 <Image
-                  src={store.logo_url}
+                  src={getOptimizedUrl(store.logo_url)}
                   alt="Logo"
                   width={56}
                   height={56}

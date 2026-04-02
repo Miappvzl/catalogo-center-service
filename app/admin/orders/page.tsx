@@ -7,6 +7,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // --- TIPOS ESTRICTOS ---
 interface OrderItem {
@@ -496,7 +497,7 @@ export default function OrdersPage() {
                                                         <div className="w-10 h-10 bg-white border border-gray-100 rounded-lg flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
                                                             {payment.receipt_url ? (
                                                                 <Image
-                                                                    src={payment.receipt_url}
+                                                                    src={getOptimizedUrl(payment.receipt_url)}
                                                                     alt={`Comprobante de ${payment.method}`}
                                                                     width={80}
                                                                     height={80}
@@ -528,7 +529,7 @@ export default function OrdersPage() {
                                             <div className="flex items-center gap-3 overflow-hidden">
                                                 <div className="w-12 h-12 bg-white rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100">
                                                     <Image
-                                                        src={selectedOrder.receipt_url}
+                                                        src={getOptimizedUrl(selectedOrder.receipt_url)}
                                                         alt="Comprobante Antiguo"
                                                         width={80}
                                                         height={80}

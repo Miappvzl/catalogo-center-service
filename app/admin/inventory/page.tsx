@@ -7,6 +7,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // --- TIPOS (Intactos) ---
 interface InventoryItem { rowId: string; productId: string; name: string; image: string | null; category: string; variantId: string | null; color: string; hex: string; size: string; stock: number }
@@ -204,7 +205,7 @@ export default function InventoryPage() {
                                                             <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0">
                                                                 {item.image ? (
                                                                     <Image
-                                                                        src={item.image}
+                                                                        src={getOptimizedUrl(item.image)}
                                                                         alt={item.name}
                                                                         width={64}
                                                                         height={64}

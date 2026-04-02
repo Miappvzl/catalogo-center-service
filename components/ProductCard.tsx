@@ -1,5 +1,6 @@
 'use client'
 
+import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
 import Image from 'next/image' // <- INYECTA ESTA LÍNEA AQUÍ
 
@@ -31,7 +32,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       <div className="relative w-full bg-white overflow-hidden rounded-[10px] aspect-[4/4] flex items-center justify-center">
         {product.image_url ? (
           <Image
-            src={product.image_url}
+            src={getOptimizedUrl(product.image_url)}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"

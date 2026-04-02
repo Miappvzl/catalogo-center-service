@@ -2,8 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true, // 🚀 BYPASS: Apaga el motor de cobro de Vercel
+    unoptimized: true, // Lo mantenemos así para ahorrar en Vercel
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.preziso.shop', // 🚀 NUESTRO NUEVO CDN
+        port: '',
+        pathname: '/**',
+      },
       {
         protocol: 'https',
         hostname: 'qzeelmmhictsabuwbyjh.supabase.co',

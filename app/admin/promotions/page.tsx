@@ -9,6 +9,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // Constantes de diseño unificadas
 const CARD_RADIUS = 'rounded-[var(--radius-card)]';
@@ -257,7 +258,7 @@ export default function PromotionsPage() {
                         <div className="w-full flex flex-col md:flex-row items-center gap-6 px-8 py-10" style={{ backgroundColor: currentPromo.bg_color }}>
                             {currentPromo.image_url && (
                                 <Image
-                                    src={currentPromo.image_url}
+                                    src={getOptimizedUrl(currentPromo.image_url)}
                                     alt="Promo"
                                     width={150}
                                     height={150}
@@ -283,7 +284,7 @@ export default function PromotionsPage() {
                                 <div onClick={() => !uploading && fileInputRef.current?.click()} className={`relative aspect-square bg-gray-50 rounded-2xl ${uploading ? 'animate-pulse cursor-wait' : 'hover:bg-gray-100 cursor-pointer'} flex flex-col items-center justify-center overflow-hidden relative group transition-colors border border-gray-100`}>
                                     {currentPromo.image_url ? (
                                         <Image
-                                            src={currentPromo.image_url}
+                                            src={getOptimizedUrl(currentPromo.image_url)}
                                             alt="Preview"
                                             fill
                                             sizes="(max-width: 768px) 100vw, 300px"
@@ -415,7 +416,7 @@ export default function PromotionsPage() {
                                         <div key={p.id} onClick={() => toggleProduct(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-all border ${isSelected ? 'bg-gray-100 border-gray-200' : 'bg-white hover:bg-gray-50 border-gray-100/50'}`}>
                                             <div className="w-12 h-12 bg-white rounded-lg shrink-0 overflow-hidden border border-gray-100/60 p-1 flex items-center justify-center">
                                                 <Image
-                                                    src={p.image_url}
+                                                    src={getOptimizedUrl(p.image_url)}
                                                     alt={p.name}
                                                     width={60}
                                                     height={60}
@@ -475,7 +476,7 @@ export default function PromotionsPage() {
                             <div className="w-full flex items-center gap-5 px-8 py-8" style={{ backgroundColor: promo.bg_color }}>
                                 {promo.image_url && (
                                     <Image
-                                        src={promo.image_url}
+                                        src={getOptimizedUrl(promo.image_url)}
                                         alt={promo.title}
                                         width={100}
                                         height={100}

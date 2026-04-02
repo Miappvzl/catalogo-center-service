@@ -9,6 +9,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // 1. CONTRATO DE RUTAS (Modificado con control de visualización)
 const NAV_LINKS = [
@@ -88,7 +89,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
        
           <Link href="/" className="flex items-center group active:scale-95 transition-transform">
                   <Image 
-                    src="/pezisologo.png" 
+                    src={getOptimizedUrl("/pezisologo.png")} 
                     alt="Preziso Logo" 
                     width={200} 
                     height={90} 
@@ -254,7 +255,7 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                
                  <Link href="/" className="flex items-center group active:scale-95 transition-transform">
           <Image 
-            src="/pezisologo.png" 
+            src={getOptimizedUrl("/pezisologo.png")} 
             alt="Preziso Logo" 
             width={200} 
             height={90} 

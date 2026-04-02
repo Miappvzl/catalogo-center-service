@@ -7,6 +7,7 @@ import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 interface ProductModalProps {
     isOpen: boolean
@@ -323,7 +324,7 @@ const isCompletelyOutOfStock = variants.length > 0
                         <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[#F8F9FA] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (
                                 <Image
-                                    src={currentGallery[galleryIndex]}
+                                    src={getOptimizedUrl(currentGallery[galleryIndex])}
                                     alt="Producto"
                                     fill
                                     sizes="(max-width: 768px) 100vw, 50vw"

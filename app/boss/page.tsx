@@ -8,6 +8,7 @@ import Swal from 'sweetalert2'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // 🔒 SEGURIDAD EXTREMA: El único correo con acceso al God Mode
 const ADMIN_EMAIL = 'quanzosinc@gmail.com'
@@ -327,7 +328,7 @@ export default function SuperAdminPage() {
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-xl bg-[#F8F9FA] border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
                                                             <Image
-                                                                src={store.logo_url}
+                                                                src={getOptimizedUrl(store.logo_url)}
                                                                 alt={`Logo ${store.name}`}
                                                                 width={40}
                                                                 height={40}

@@ -7,6 +7,7 @@ import { AnimatePresence, motion, Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
 import CheckoutProcess from './CheckoutProcess'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -257,7 +258,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         <div key={item.id} className="flex gap-4 p-4 bg-white border-b border-gray-100/60">
                                                             <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative border border-gray-100">
                                                                 <Image
-                                                                    src={item.image}
+                                                                    src={getOptimizedUrl(item.image)}
                                                                     alt={item.name}
                                                                     fill
                                                                     sizes="80px"

@@ -15,6 +15,7 @@ import SecuritySettings from '@/components/admin/SecuritySettings'
 import PushNotificationManager from '@/components/admin/PushNotificationManager'
 import CategorySorter from '@/components/admin/CategorySorter' // NUEVO
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 // --- COMPONENTE TOGGLE ANIMADO (Soft UI) ---
 const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
@@ -176,7 +177,7 @@ export default function SettingsPage() {
                             {identity.hero_url ? (
                                 <div className="relative w-full h-40 md:h-48 rounded-[var(--radius-card)] overflow-hidden group border border-transparent hover:border-black transition-colors cursor-pointer" onClick={() => heroInputRef.current?.click()}>
                                     <Image
-                                        src={identity.hero_url}
+                                        src={getOptimizedUrl(identity.hero_url)}
                                         alt="Hero Banner"
                                         fill
                                         sizes="(max-width: 768px) 100vw, 896px"

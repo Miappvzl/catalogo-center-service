@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
 
 export default function ProductPage() {
     const { id } = useParams()
@@ -145,7 +146,7 @@ export default function ProductPage() {
                         <div className="aspect-[4/5] md:aspect-square bg-gray-50/80 rounded-3xl md:rounded-[2.5rem] relative overflow-hidden group border border-gray-100 shadow-sm flex items-center justify-center">
                             {currentImage ? (
                                 <Image
-                                    src={currentImage}
+                                    src={getOptimizedUrl(currentImage)}
                                     alt={product.name}
                                     fill
                                     priority
