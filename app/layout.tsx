@@ -35,6 +35,10 @@ export const metadata: Metadata = {
   },
   description: "Sistema de ventas inteligente que actualiza tus precios a Tasa BCV automáticamente. Vende en dólares, cobra en bolívares y gestiona pedidos por WhatsApp.",
   keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
+
+  verification: {
+    google: "M4XhHoatLNpxW7arB9a6LWkdKCUYm4u9UCZ5UOPK3ok", // Reemplaza esto con tu token exacto
+  },
   
   // --- CONFIGURACIÓN DE REDES SOCIALES (WhatsApp, Facebook, LinkedIn) ---
   openGraph: {
