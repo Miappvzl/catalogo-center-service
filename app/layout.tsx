@@ -1,22 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
+import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
 
-// 🚀 FUENTE PRINCIPAL: FinTech & Clean Look (UI, Botones, Descripciones)
-const jakarta = Plus_Jakarta_Sans({
+// 🚀 FUENTE PRINCIPAL: Inter (El estándar de oro para UI Premium y Legibilidad)
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-// 🚀 FUENTE SECUNDARIA: Elegancia "Old Money" (Títulos gigantes, Banners)
-const fraunces = Fraunces({
+// 🚀 FUENTE SECUNDARIA: Elegancia Boutique (Para Títulos y Nombres de Tienda)
+const playfair = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin"],
   style: ['normal', 'italic'],
 });
 
-// 🚀 FUENTE MONOESPACIADA: Datos financieros (Tasa BCV, Números de Orden)
+// 🚀 FUENTE MONOESPACIADA: Precisión Financiera (Para Tasa BCV y Datos Duros)
 const jetbrains = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
@@ -95,8 +95,8 @@ export default function RootLayout({
   return (
     <html lang="es" translate="no">
       <body
-        // Inyectamos las nuevas variables tipográficas
-        className={`${jakarta.variable} ${fraunces.variable} ${jetbrains.variable} font-sans antialiased notranslate`}
+        // 🚀 Inyectamos las 3 variables tipográficas al DOM
+        className={`${inter.variable} ${playfair.variable} ${jetbrains.variable} font-sans antialiased notranslate`}
       >
         {children}
         <Toaster position="bottom-right" theme="light" closeButton richColors />
