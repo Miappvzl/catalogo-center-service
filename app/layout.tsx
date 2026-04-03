@@ -1,22 +1,25 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// 🚀 FUENTE PRINCIPAL: FinTech & Clean Look (UI, Botones, Descripciones)
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const playfair = Playfair_Display({
+// 🚀 FUENTE SECUNDARIA: Elegancia "Old Money" (Títulos gigantes, Banners)
+const fraunces = Fraunces({
   variable: "--font-serif",
   subsets: ["latin"],
   style: ['normal', 'italic'],
+});
+
+// 🚀 FUENTE MONOESPACIADA: Datos financieros (Tasa BCV, Números de Orden)
+const jetbrains = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
 });
 
 export const viewport: Viewport = {
@@ -37,10 +40,9 @@ export const metadata: Metadata = {
   keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
 
   verification: {
-    google: "M4XhHoatLNpxW7arB9a6LWkdKCUYm4u9UCZ5UOPK3ok", // Reemplaza esto con tu token exacto
+    google: "M4XhHoatLNpxW7arB9a6LWkdKCUYm4u9UCZ5UOPK3ok", 
   },
   
-  // --- CONFIGURACIÓN DE REDES SOCIALES (WhatsApp, Facebook, LinkedIn) ---
   openGraph: {
     title: "Preziso - Deja de ser esclavo de la tasa",
     description: "Tu tienda online que calcula el dólar sola. Prueba gratis hoy.",
@@ -50,7 +52,7 @@ export const metadata: Metadata = {
     url: 'https://preziso.vercel.app',
     images: [
       {
-        url: '/opengraph-image.jpg', // AQUI estaba el error, ahora coinciden
+        url: '/opengraph-image.jpg', 
         width: 1200,
         height: 630,
         alt: 'Preziso Dashboard Preview',
@@ -58,24 +60,20 @@ export const metadata: Metadata = {
     ],
   },
 
-  // --- CONFIGURACIÓN PARA TWITTER / X ---
   twitter: {
     card: 'summary_large_image',
     title: 'Preziso - Sistema Operativo para Venezuela',
     description: 'Automatiza tu tienda con tasa BCV en tiempo real.',
-    images: ['/opengraph-image.jpg'], // Coincide con la de arriba
+    images: ['/opengraph-image.jpg'], 
   },
 
-  // --- CONFIGURACIÓN DE ICONOS (FAVICON) ---
   icons: {
     icon: [
-      // MODO CLARO (Navegador Blanco) -> Necesitas la Z NEGRA (favicon-light.png)
       {
         media: '(prefers-color-scheme: light)',
         url: '/favicon-light.png',
         href: '/favicon-light.png',
       },
-      // MODO OSCURO (Navegador Negro) -> Necesitas la Z BLANCA (favicon-dark.png)
       {
         media: '(prefers-color-scheme: dark)',
         url: '/favicon-dark.png',
@@ -84,7 +82,6 @@ export const metadata: Metadata = {
     ],
   },
 
-  // Bloqueo de traducción automática (Correcto)
   other: {
     google: "notranslate",
   },
@@ -96,12 +93,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // 2. SEGUNDA DEFENSA: lang="es" para SEO local y translate="no" HTML5 estándar
     <html lang="es" translate="no">
-      
       <body
-        // 3. TERCERA DEFENSA: Clase 'notranslate' que bloquea la acción en el DOM
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased notranslate`}
+        // Inyectamos las nuevas variables tipográficas
+        className={`${jakarta.variable} ${fraunces.variable} ${jetbrains.variable} font-sans antialiased notranslate`}
       >
         {children}
         <Toaster position="bottom-right" theme="light" closeButton richColors />

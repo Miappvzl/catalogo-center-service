@@ -76,7 +76,7 @@ export default function RateWidget({
         </div>
 
         {/* SELECTOR SEGMENTADO (Borderless & Shadow Subtle) */}
-        <div className="relative z-10  flex bg-gray-100 p-1 rounded-(--radius-btn) border border-gray-200  shrink-0 shadow-inner">
+        <div className="relative z-10  flex bg-gray-100 p-1 rounded-(--radius-btn)   shrink-0 shadow-inner">
             <button
                 type="button"
                 onClick={() => handleCurrencyChange('usd')}

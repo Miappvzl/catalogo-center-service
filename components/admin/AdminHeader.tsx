@@ -120,10 +120,10 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
           {/* BOTÓN HAMBURGUESA (Solo Móvil, Estrictamente a la derecha) */}
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('toggleMobileAdminSidebar'))}
-            className="lg:hidden w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 active:scale-95 transition-all "
+            className="lg:hidden w-11 h-11 rounded-full bg-white  flex items-center justify-center text-[#4a5565] active:scale-95 transition-all "
             aria-label="Abrir menú"
           >
-            <Menu size={20} strokeWidth={2.5} />
+            <Menu size={22} strokeWidth={2} />
           </button>
 
         </div>

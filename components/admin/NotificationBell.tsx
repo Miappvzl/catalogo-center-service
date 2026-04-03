@@ -109,9 +109,9 @@ export default function NotificationBell({ storeId }: { storeId: string }) {
             {/* El Gatillo (La Campana) */}
             <button 
                 onClick={toggleOpen}
-                className="relative w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:text-black hover:border-black active:scale-95 transition-all "
+                className="relative w-12 h-12 rounded-full bg-white  flex items-center justify-center text-gray-600 hover:text-black hover:border-black active:scale-95 transition-all "
             >
-                <Bell size={20} strokeWidth={2} />
+                <Bell size={22} strokeWidth={2} />
                 {unreadCount > 0 && (
                     <motion.div 
                         initial={{ scale: 0 }} animate={{ scale: 1 }}

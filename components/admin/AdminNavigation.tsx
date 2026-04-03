@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
@@ -11,13 +11,13 @@ import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 
-// 1. CONTRATO DE RUTAS (Modificado con control de visualización)
 const NAV_LINKS = [
   { name: 'Inicio', href: '/admin', icon: LayoutGrid },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
+ { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true },
   { name: 'Nuevo', href: '/admin/product/new', icon: Plus, isAction: true },
   { name: 'Inventario', href: '/admin/inventory', icon: Package },
-  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true }, // 🚀 NUEVO: Protegemos la Bottom Bar
+  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true },
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 

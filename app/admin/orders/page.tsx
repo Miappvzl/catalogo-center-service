@@ -325,7 +325,7 @@ export default function OrdersPage() {
 
                     {/* FILTERS & SEARCH (SOFT UI) */}
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)]  border border-[#6d6d6d1b]  shrink-0 shadow-inner overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
+                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] shrink-0 w-full overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full">
                             {['all', 'pending', 'paid', 'shipped'].map(status => (
                                 <button
                                     key={status}
