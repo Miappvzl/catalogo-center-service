@@ -314,7 +314,7 @@ const isCompletelyOutOfStock = variants.length > 0
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[92vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200 will-change-transform"
+                        className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200 will-change-transform"
                     >
                         {/* ... (El resto del contenido queda igual: el botón de cerrar, la galería, etc) ... */}
                         <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/90 p-2 rounded-full hover:bg-gray-100 transition-colors backdrop-blur border border-gray-200 text-gray-900 active:scale-95">

@@ -29,7 +29,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
     >
      {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
-      <div className="relative w-full bg-white overflow-hidden rounded-[10px] aspect-[4/4] flex items-center justify-center">
+      <div className="relative w-full bg-white overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}

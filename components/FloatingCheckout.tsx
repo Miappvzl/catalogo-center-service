@@ -200,7 +200,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCloseModal} />
 
-                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[#F8F9FA] w-full md:w-[450px] md:h-full h-[90vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
+                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[#F8F9FA] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
 
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (
