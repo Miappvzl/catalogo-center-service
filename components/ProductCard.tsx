@@ -2,16 +2,18 @@
 
 import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
-import Image from 'next/image' // <- INYECTA ESTA LÍNEA AQUÍ
+import Image from 'next/image'
+import { motion } from 'framer-motion' // 🚀 1. RESTAURAMOS EL MOTOR
 
 interface ProductCardProps {
   product: any;
   pricing: { cashPrice: number; priceInBs: number; discountPercent: number; hasDiscount: boolean; };
   onOpen: (product: any) => void;
   isOutOfStock?: boolean;
+  index?: number;
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false }: ProductCardProps) {
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index = 0 }: ProductCardProps) {
   const penalty = Number(product.usd_penalty || 0);
   const cashPrice = Number(product.usd_cash_price || 0);
   
@@ -24,11 +26,22 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
   const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
 
   return (
-    <div 
-      className={`w-full group cursor-pointer flex flex-col relative transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+    <motion.div 
+      // 🚀 2. TAILWIND CONTROLA EL HOVER: Física ultraligera sin JavaScript
+      className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      
+      // 🚀 3. FRAMER MOTION CONTROLA EL SCROLL: Solo opacidad, cero problemas de Layout
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: "0px 0px 50px 0px" }}
+      transition={{ 
+        duration: 0.30, 
+        delay: Math.min(index * 0.05, 0.2), // Tope matemático rápido y fluido
+        ease: "easeOut" 
+      }}
     >
-     {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
+      {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
       <div className="relative w-full bg-white overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
         {product.image_url ? (
           <Image
@@ -106,6 +119,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

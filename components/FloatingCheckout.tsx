@@ -173,22 +173,41 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     return (
         <>
-            {/* GATILLO MOBILE */}
+            {/* 🚀 GATILLO MOBILE (El Dock Nativo de cristal) */}
             <AnimatePresence>
                 {!isOpen && items.length > 0 && (
-                    <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed bottom-0 left-0 right-0 z-50 rounded-[13px] m-[30px] mb-[5px] bg-white shadow-[0px_20px_30px_1px_#00000063] md:hidden flex items-center justify-between px-5 py-3 border-t border-gray-200">
-                        <div className="flex items-center gap-3 cursor-pointer group" onClick={handleOpenModal}>
-                            <div className="relative bg-gray-50 p-2.5 border border-gray-200 rounded-full group-hover:bg-gray-100 transition-colors">
-                                <ShoppingCart size={20} className="text-gray-900 animate-wiggle" strokeWidth={2} />
-                                <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItemsCount}</span>
+                    <motion.div 
+                        initial={{ y: "100%" }} 
+                        animate={{ y: 0 }} 
+                        exit={{ y: "100%" }} 
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }} 
+                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/85 backdrop-blur-2xl border-t border-gray-200/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                    >
+                        {/* 1. IZQUIERDA: Icono interactivo + Precios */}
+                        <div className="flex items-center gap-3.5 cursor-pointer group" onClick={handleOpenModal}>
+                            <div className="relative">
+                                <div className="bg-gray-100/80 p-2.5 rounded-full transition-colors group-hover:bg-gray-200">
+                                    <ShoppingCart size={22} className="text-gray-900" strokeWidth={1.5} />
+                                </div>
+                                {/* El círculo de notificación que solicitaste */}
+                                <span className="absolute -top-1 -right-1 bg-gray-900 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                    {totalItemsCount}
+                                </span>
                             </div>
-                            <div className="flex flex-col items-start cursor-pointer">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">Ver Carrito</span>
-                                <span className="text-base font-black text-gray-900 tracking-tight">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                            
+                            <div className="flex flex-col items-start">
+                                {/* Total en $ y Bs como solicitaste */}
+                                <span className="text-xl font-black text-gray-900 tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                <span className="text-[11px] font-mono font-bold text-gray-500 mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
-                        <button onClick={handleOpenModal} className="bg-black text-white px-5 py-2.5 pr-3 rounded-full font-bold text-xs uppercase tracking-wide flex items-center gap-1 active:scale-95 hover:bg-gray-800 transition-all border border-black">
-                            Pagar <ArrowUpRight size={18} />
+
+                        {/* 2. DERECHA: Botón de Pagar Estructural */}
+                        <button 
+                            onClick={handleOpenModal} 
+                            className="bg-black text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-black/10"
+                        >
+                            Pagar
                         </button>
                     </motion.div>
                 )}
@@ -311,28 +330,39 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     ))}
                                                 </div>
 
-                                                {/* CROSS-SELLING */}
+                                               {/* CROSS-SELLING */}
                                                 {recommendedProducts.length > 0 && (
-                                                    <div className="mt-8 border-t p-5 border-gray-100 pt-8 pb-4 bg-white">
+                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-gray-100 pt-8 pb-4 bg-white">
                                                         <div className="flex items-center justify-between mb-4">
                                                             <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Mas para ti</h3>
                                                             <span className="text-[10px] font-bold text-gray-400 uppercase">Sugerencias</span>
                                                         </div>
-                                                        <div className="flex overflow-x-auto ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
-                                                            {recommendedProducts.map(product => {
+                                                        {/* 🚀 ASESINO DE SCROLL VERTICAL: Agregamos flex-row, flex-nowrap, overflow-y-hidden y pt-3 */}
+                                                        <div className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
+                                                            {recommendedProducts.map((product, index) => {
                                                                 const cashPrice = Number(product.usd_cash_price || 0)
                                                                 const markup = Number(product.usd_penalty || 0)
                                                                 const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
+                                                                
+                                                                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0 
+                                                                  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                                                                  : (product.stock || 0) <= 0;
+
                                                                 return (
                                                                     <div key={product.id} className="w-[150px] md:w-[160px] shrink-0 snap-start flex flex-col [&>div]:h-full">
-                                                                        <ProductCard product={product} pricing={pricing} onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }} />
+                                                                        <ProductCard 
+                                                                            product={product} 
+                                                                            pricing={pricing} 
+                                                                            onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }} 
+                                                                            isOutOfStock={isCompletelyOutOfStock}
+                                                                            index={index}
+                                                                        />
                                                                     </div>
                                                                 )
                                                             })}
                                                         </div>
                                                     </div>
                                                 )}
-
                                                 {/* 🚀 NUDGE DE AHORRO PREVIO */}
                                                 {step1FxSavings > 0 && (
                                                     <div className="px-4 pb-10 bg-[#F8F9FA] pt-6">

@@ -9,6 +9,7 @@ import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 
 const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button
@@ -328,7 +329,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
       
 
     {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
-      <div className="bg-white px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-gray-100">
+     <div className="bg-white px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-gray-100">
         
         {/* Logo & Store Info */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -372,7 +373,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
       {/* --- 2. HERO BANNER (BLUR-PAD TECHNIQUE) --- */}
       {store.hero_url && (
-        <div className="w-full h-[22vh] md:h-[28vh] relative bg-gray-100 overflow-hidden flex items-center justify-center border-b border-gray-100">
+       <div className="w-full h-[22vh] md:h-[28vh] relative bg-gray-100 overflow-hidden flex items-center justify-center border-b border-gray-100">
           
          {/* Fondo difuminado optimizado */}
           <Image
@@ -399,7 +400,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
       
 
-      <div className={`sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100/80 pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+     <div className={`sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100/80 pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-[1500px] mx-auto px-4 md:px-8">
          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
             
@@ -460,7 +461,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
       {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
       {promotions && promotions.length > 0 && (
-        <div className="w-full bg-white border-b border-gray-100 overflow-hidden relative z-30">
+       <div className="w-full bg-white border-b border-gray-100 overflow-hidden relative z-30">
            <div ref={carouselRef} className="flex overflow-x-auto  rounded-[16px] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
                {promotions.map((promo: any) => {
                    const isActive = activePromo?.id === promo.id;
@@ -528,16 +529,14 @@ export default function StoreInterface({ store, products, rates, promotions = []
         
           
            <>
-            {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
+          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-              {displayedProducts.map(product => {
+              {displayedProducts.map((product, index) => { // 🚀 INYECCIÓN: Agregamos el index
                 const pricing = getProductPricing(product)
                 
-                
-                // NUEVO: CÁLCULO DE INVENTARIO BLINDADO
-const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0 
-  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-  : (product.stock || 0) <= 0;
+                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0 
+                  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                  : (product.stock || 0) <= 0;
 
                 return (
                   <ProductCard
@@ -545,7 +544,8 @@ const isCompletelyOutOfStock = product.product_variants && product.product_varia
                     product={product}
                     pricing={pricing}
                     onOpen={handleOpenProduct}
-                    isOutOfStock={isCompletelyOutOfStock} // NUEVO PROP A ENVIAR
+                    isOutOfStock={isCompletelyOutOfStock}
+                    index={index} // 🚀 INYECCIÓN: Enviamos el index a la tarjeta
                   />
                 )
               })}
