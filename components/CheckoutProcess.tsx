@@ -7,6 +7,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
+import { Icon } from '@iconify/react'
 
 // --- TIPOS ESTRICTOS ---
 export interface CheckoutProcessProps {
@@ -34,35 +35,24 @@ interface PaymentBlock {
 // --- LOGOS DE MÉTODOS DE PAGO ---
 const BrandLogos = {
     Zelle: ({ className, size }: any) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className} style={{ width: size, height: size }}>
-            <path d="M17.4 6.2h-3.8l-4 8.2V6.2H5.8v11.6h3.8l4-8.2v8.2h3.8V6.2z" />
-            <rect x="11.5" y="3" width="1" height="18" />
-        </svg>
+        // Reemplaza "simple-icons:zelle" con el que tienes tú
+        <Icon icon="simple-icons:zelle" className={className} width={size} height={size} />
     ),
     Binance: ({ className, size }: any) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className} style={{ width: size, height: size }}>
-            <path d="M12 2.5L7.2 7.3l2.8 2.8L12 8.1l2 2 2.8-2.8L12 2.5zm0 11.4l-2-2-2.8 2.8 4.8 4.8 4.8-4.8-2.8-2.8-2 2zM4.3 9.7L1.5 12.5l2.8 2.8 2.8-2.8-2.8-2.8zm15.4 0l-2.8 2.8 2.8 2.8 2.8-2.8-2.8-2.8zM12 10.9l-1.6 1.6 1.6 1.6 1.6-1.6L12 10.9z" />
-        </svg>
+        // Reemplaza "simple-icons:binance" con el que tienes tú
+        <Icon icon="simple-icons:binance" className={className} width={size} height={size} />
     ),
     PagoMovil: ({ className, size }: any) => (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ width: size, height: size }}>
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <path d="M12 18h.01"></path>
-            <path d="M9 10l3 3 3-3"></path>
-            <path d="M12 6v7"></path>
-        </svg>
+        // Reemplaza este string con el icono de Pago Móvil que elegiste
+        <Icon icon="fluent:phone-checkmark-24-regular" className={className} width={size} height={size} />
     ),
     Efectivo: ({ className, size }: any) => (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ width: size, height: size }}>
-            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
-            <circle cx="12" cy="12" r="2"></circle>
-            <path d="M6 12h.01M18 12h.01"></path>
-        </svg>
+        // Reemplaza este string con el de Efectivo
+        <Icon icon="bi:cash" className={className} width={size} height={size} />
     ),
     Zinli: ({ className, size }: any) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className} style={{ width: size, height: size }}>
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 8.5L11 16h-2l4.5-5.5H9v-2h6.5v2z" />
-        </svg>
+        // Reemplaza este string con el de Zinli
+        <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />
     )
 }
 
@@ -698,7 +688,7 @@ export default function CheckoutProcess({
                                 const config = getPaymentConfig(pm);
                                 return (
                                     <button key={pm} onClick={() => openPaymentInput(pm)} className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-md transition-all duration-200 active:scale-[0.98] ${activePaymentInput === pm ? config.btnSelected : config.btnIdle}`}>
-                                        <config.icon size={16} className={activePaymentInput === pm ? 'text-white' : 'text-gray-900'} /> {pm}
+                                        <config.icon size={20} className={activePaymentInput === pm ? 'text-white' : 'text-gray-900'} /> {pm}
                                     </button>
                                 )
                             })}

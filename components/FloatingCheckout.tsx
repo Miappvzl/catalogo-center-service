@@ -116,7 +116,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         // Guardamos el JSX, no un string
                         badge = (
                             <span className="flex items-center gap-1">
-                                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
+                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
                                 {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
                             </span>
                         );
@@ -124,7 +124,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     } else if ((bestPromo as any).promo_type === 'bogo') {
                         badge = (
                             <span className="flex items-center gap-1">
-                                <TicketPercent size={12} strokeWidth={2} className="text-[#7fff00]" />
+                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
                                 {(bestPromo as any).title}
                             </span>
                         );
@@ -286,7 +286,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             </div>
                                                             <div className="flex-1 flex flex-col justify-between py-0.5">
                                                                 <div>
-                                                                    {item.badge && <span className="inline-block text-[9px] font-black text-[#7fff00] bg-[#073824] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
+                                                                    {item.badge && <span className="inline-block text-[9px] font-black text-white bg-[#1b1b1b] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
                                                                     <div className="flex justify-between items-start">
                                                                         <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-snug pr-2">{item.name}</h3>
                                                                         <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 transition-colors bg-gray-50 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={14} /></button>
@@ -366,12 +366,12 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 {/* 🚀 NUDGE DE AHORRO PREVIO */}
                                                 {step1FxSavings > 0 && (
                                                     <div className="px-4 pb-10 bg-[#F8F9FA] pt-6">
-                                                        <div className="bg-[#073824] p-4 rounded-xl flex items-center gap-3 border">
-                                                            <BadgeDollarSign size={30} strokeWidth={1.5} className='text-[#7fff00]' />
+                                                        <div className="bg-[#1b1b1b] p-4 rounded-xl flex items-center gap-3 border">
+                                                            <BadgeDollarSign size={30} strokeWidth={1.5} className='text-white' />
                                                             <div className="flex flex-col">
                                                                 <span className="text-xs font-bold text-white tracking-wide">Paga en Efectivo o Zelle</span>
                                                                 <span className="text-[11px] font-medium text-white mt-0.5">
-                                                                    Y tu total bajará a <b className="text-[#7fff00] ml-0.5 text-sm">{currencySymbol}{step1CashUSD.toFixed(2)}</b>
+                                                                    Y tu total bajará a <b className="text-white ml-0.5 text-sm">{currencySymbol}{step1CashUSD.toFixed(2)}</b>
                                                                 </span>
                                                             </div>
                                                         </div>

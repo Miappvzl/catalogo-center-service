@@ -1,7 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -69,14 +70,9 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
+// Si tenías un config, déjalo así:
 export const config = {
-  matcher: [
-    /*
-     * Ignora todas las rutas que empiecen por:
-     * - _next/static (archivos estáticos de Next.js)
-     * - _next/image (optimización de imágenes)
-     * - Y CUALQUIER archivo que termine en extensiones visuales, .json o .js
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|js)$).*)',
-  ],
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    ],
 }
