@@ -43,6 +43,8 @@ export default function CashRegisterPage() {
     });
     const [lastClosureDate, setLastClosureDate] = useState<string | null>(null);
     const [history, setHistory] = useState<any[]>([]);
+    // 🚀 NUEVO: Estado para el historial de ingresos/egresos
+    const [movementHistory, setMovementHistory] = useState<any[]>([])
 
     // Data para el Gráfico de Anillo y Estado Interactivo
     const [activeSegment, setActiveSegment] = useState<string | null>(null);
@@ -121,19 +123,33 @@ export default function CashRegisterPage() {
 
     // 2. Motores de Datos
     const fetchHistoryAndContext = useCallback(async () => {
-        if (!storeId) return;
-        const { data } = await supabase
-            .from("cash_closures")
-            .select("*")
-            .eq("store_id", storeId)
-            .order("closed_at", { ascending: false })
-            .limit(10);
+        if (!storeId) return
+        
+        // 1. Obtener Historial de Cierres
+        const { data: closures } = await supabase
+            .from('cash_closures')
+            .select('*')
+            .eq('store_id', storeId)
+            .order('closed_at', { ascending: false })
+            .limit(10)
 
-        if (data && data.length > 0) {
-            setHistory(data);
-            setLastClosureDate(data[0].closed_at);
+        if (closures && closures.length > 0) {
+            setHistory(closures)
+            setLastClosureDate(closures[0].closed_at)
         }
-    }, [supabase, storeId]);
+
+        // 2. 🚀 NUEVO: Obtener Historial de Ajustes (Ingresos/Egresos)
+        const { data: movements } = await supabase
+            .from('cash_movements')
+            .select('*')
+            .eq('store_id', storeId)
+            .order('created_at', { ascending: false })
+            .limit(15) // Traemos los últimos 15 movimientos
+
+        if (movements) {
+            setMovementHistory(movements)
+        }
+    }, [supabase, storeId])
 
     const calculateFloatingCash = useCallback(async () => {
         if (!storeId) return;
@@ -369,6 +385,7 @@ export default function CashRegisterPage() {
             setReportedTotals({ cash: "", zelle: "", bs: "" });
             setClosureNotes("");
             await calculateFloatingCash();
+            await fetchHistoryAndContext() // <--- 🚀 AÑADE ESTA LÍNEA AQUÍ
             await fetchHistoryAndContext();
         } catch (e) {
             Swal.fire("Error", "No se pudo completar el cierre.", "error");
@@ -670,7 +687,7 @@ export default function CashRegisterPage() {
                 {/* SECCIÓN 1.5: EL PULSO OPERATIVO (GRÁFICO DE ANILLO INTERACTIVO) */}
                 <section>
                     <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
-                        Pulso del Turno
+                        Pulso general
                     </h2>
                     <div className="bg-white p-6 md:p-8 rounded-[var(--radius-card)] card-interactive flex flex-col md:flex-row items-center gap-8 md:gap-12 min-h-[220px]">
                         {/* El SVG Vectorial Interactivo */}
@@ -800,8 +817,7 @@ export default function CashRegisterPage() {
                     </div>
                 </section>
 
-                {/* SECCIÓN 2: ACCIONES OPERATIVAS */}
-                {/* ... (El resto del código hacia abajo se mantiene exactamente igual a tu versión anterior) ... */}
+               {/* SECCIÓN 2: ACCIONES OPERATIVAS */}
                 <section>
                     <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
                         Acciones Operativas
@@ -857,6 +873,44 @@ export default function CashRegisterPage() {
                             />
                         </button>
                     </div>
+                </section>
+
+                {/* 🚀 SECCIÓN 2.5: HISTORIAL DE AJUSTES (NUEVA) */}
+                <section>
+                    <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">Últimos Ajustes de Caja</h2>
+                    {movementHistory.length === 0 ? (
+                        <div className="bg-white rounded-[var(--radius-card)] p-8 flex flex-col items-center justify-center text-center">
+                            <p className="text-xs font-bold text-gray-400">No hay movimientos manuales registrados aún.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-[var(--radius-card)] p-3 md:p-5">
+                            {movementHistory.map((mov) => {
+                                const isIn = mov.type === 'in';
+                                return (
+                                    <div key={mov.id} className="flex items-center justify-between p-4 hover:bg-[#F9FAFB] rounded-2xl transition-colors border-b border-gray-50 last:border-0 group">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${isIn ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' : 'bg-red-50 text-red-600 group-hover:bg-red-100'}`}>
+                                                {isIn ? <ArrowDownToLine size={16} /> : <ArrowUpFromLine size={16} />}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-[#111] text-sm leading-tight">{mov.description || (isIn ? 'Ingreso a Caja' : 'Retiro de Caja')}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                                                    <span>{new Date(mov.created_at).toLocaleDateString('es-VE')}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                                    <span>{mov.payment_method === 'cash' ? 'Efectivo USD' : mov.payment_method === 'zelle' ? 'Zelle/Digital' : 'Pago Móvil Bs'}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`font-black text-lg tracking-tight ${isIn ? 'text-emerald-600' : 'text-[#111]'}`}>
+                                                {isIn ? '+' : '-'}{mov.currency === 'usd' ? '$' : 'Bs '}{Number(mov.amount).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </section>
 
                 {/* SECCIÓN 3: HISTORIAL DE CIERRES (LA BÓVEDA) */}
