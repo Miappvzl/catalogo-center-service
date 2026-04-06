@@ -81,11 +81,15 @@ export default function CustomizationPage() {
     // 🚀 EL TÚNEL DE DATOS: Inyectar colores al Iframe en Tiempo Real
     useEffect(() => {
         if (iframeRef.current && iframeRef.current.contentWindow && !loading) {
-            // Usamos '*' para evitar bloqueos de CORS en puertos locales
-            iframeRef.current.contentWindow.postMessage({
-                type: 'UPDATE_THEME',
-                config: config
-            }, '*');
+            try {
+                iframeRef.current.contentWindow.postMessage({
+                    type: 'UPDATE_THEME',
+                    config: config
+                }, '*'); 
+            } catch (error) {
+                // Silenciamos el error de CORS si el iframe colapsó por falta de internet/DNS
+                console.warn("El iframe aún no está listo o falló su carga en red.");
+            }
         }
     }, [config, loading]);
 
@@ -133,9 +137,15 @@ export default function CustomizationPage() {
     }
 
     if (loading) return <div className="min-h-screen bg-[#F6F6F6] flex items-center justify-center"><Loader2 className="animate-spin text-gray-300" size={32} /></div>
-
-    // Construimos la URL del Iframe con el parámetro secreto ?mode=preview
-    const previewUrl = storeData ? `${window.location.protocol}//${storeData.slug}.${window.location.host.replace('www.', '')}?mode=preview` : ''
+// 🚀 BLINDAJE DE URL Y ENTORNO
+    const getBaseDomain = () => {
+        if (typeof window === 'undefined') return 'preziso.shop';
+        if (window.location.hostname.includes('localhost')) return window.location.host;
+        // Obligamos a que en producción siempre sea el dominio raíz
+        return 'preziso.shop'; 
+    }
+    
+    const previewUrl = storeData ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview` : '';
 
 
 
