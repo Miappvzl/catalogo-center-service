@@ -7,7 +7,16 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // 🚀 INYECCIÓN: Variables dinámicas para el Storefront
+        store: {
+          primary: 'var(--store-primary)',
+          primaryText: 'var(--store-primary-text)',
+          bg: 'var(--store-bg)',
+        },
+      },
+    },
   },
   plugins: [],
 }

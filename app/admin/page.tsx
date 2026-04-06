@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
+import FeatureAnnouncement from '@/components/FeatureAnnouncement'
 import { 
   Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,  
   Clock, DollarSign, Truck, Box, ChevronRight, XCircle
@@ -210,6 +211,8 @@ export default async function AdminDashboard() {
             </div>
         </div>
       </main>
+      {/* Inyección del Modal One-Time */}
+            <FeatureAnnouncement />
     </div>
   )
 }

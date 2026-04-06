@@ -296,7 +296,7 @@ export default function ProductPage() {
                     </div>
                     <button
                         onClick={handleAddToCart}
-                        className="flex-1 bg-black text-white h-12 rounded-full font-black uppercase tracking-widest text-xs hover:bg-gray-800 active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-2"
+                        className="flex-1 bg-[var(--store-primary)] text-[var(--store-primary-text)]  px-8 py-3.5 rounded-full font-bold text-sm hover:bg-[var(--store-primary-hover)] active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center justify-center gap-2"
                     >
                         <ShoppingBag size={16} /> Agregar
                     </button>

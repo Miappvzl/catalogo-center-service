@@ -223,8 +223,8 @@ export default function CheckoutProcess({
     }
     // 🚀 ESTÉTICA BRUTALISTA / NEO-EDITORIAL PARA LOS MÉTODOS
     const getPaymentConfig = (pm: string) => {
-        const baseSelected = 'bg-black text-white rounded-md transition-all'
-        const baseIdle = 'bg-transparent text-gray-900 border border-gray-200 hover:border-gray-900 rounded-md transition-all'
+        const baseSelected = 'bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-md transition-all'
+        const baseIdle = 'bg-transparent text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all'
 
         switch (pm) {
             case 'Pago Móvil': return { icon: BrandLogos.PagoMovil, btnSelected: baseSelected, btnIdle: baseIdle }
@@ -362,7 +362,7 @@ export default function CheckoutProcess({
                     iconColor: '#000',
                     confirmButtonText: 'Entendido',
                     confirmButtonColor: '#000',
-                    customClass: { popup: 'rounded-xl border border-gray-100', title: 'font-black text-xl text-gray-900' }
+                    customClass: { popup: 'rounded-xl border border-[var(--store-border)]', title: 'font-black text-xl text-[var(--store-text-main)]' }
                 });
                 
                 setLoading(false);
@@ -434,8 +434,8 @@ export default function CheckoutProcess({
                 confirmButtonText: 'Entendido',
                 confirmButtonColor: '#000',
                 customClass: {
-                    title: 'font-black text-xl text-gray-900',
-                    popup: 'rounded-xl border border-gray-100',
+                    title: 'font-black text-xl text-[var(--store-text-main)]',
+                    popup: 'rounded-xl border border-[var(--store-border)]',
                 }
             });
         } finally {
@@ -447,7 +447,7 @@ export default function CheckoutProcess({
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
 
     return (
-        <motion.div key="step-2" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="flex flex-col h-full w-full overflow-hidden bg-white">
+        <motion.div key="step-2" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)]">
 
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
 
@@ -456,7 +456,7 @@ export default function CheckoutProcess({
                             value={clientData.name}
                             // Eliminamos los caracteres < y > para evitar inyecciones XSS
                             onChange={e => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, '') })}
-                            className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
+                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
                             placeholder="Nombre completo *"
                         />
                         <input
@@ -464,40 +464,40 @@ export default function CheckoutProcess({
                             value={clientData.phone}
                             // Permite SOLO números y el símbolo +
                             onChange={e => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, '') })}
-                            className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
+                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
                             placeholder="Teléfono / WhatsApp *"
                         />
                 {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
                 <div className="space-y-6">
-                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-3">Entrega</h2>
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">Entrega</h2>
                     <div className="grid grid-cols-1 gap-3">
                         {shipping.methods?.pickup && (
                             <div onClick={() => { setClientData({ ...clientData, deliveryType: 'pickup', addressDetail: '' }); setSelectedDeliveryZone('') }}
-                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'pickup' ? 'border-black ring-1 ring-black bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                <Store size={20} className={clientData.deliveryType === 'pickup' ? 'text-black' : 'text-gray-400'} />
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'pickup' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Store size={20} className={clientData.deliveryType === 'pickup' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
                                 <div>
-                                    <p className="font-bold text-sm text-gray-900">Retiro Personal</p>
-                                    <p className="text-xs mt-0.5 text-gray-500">Busca tu pedido gratis en tienda.</p>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
                                 </div>
                             </div>
                         )}
                         {shipping.methods?.delivery && deliveryZones.length > 0 && (
                             <div onClick={() => setClientData({ ...clientData, deliveryType: 'local_delivery', addressDetail: '' })}
-                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'local_delivery' ? 'border-black ring-1 ring-black bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                <Truck size={20} className={clientData.deliveryType === 'local_delivery' ? 'text-black' : 'text-gray-400'} />
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'local_delivery' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Truck size={20} className={clientData.deliveryType === 'local_delivery' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
                                 <div>
-                                    <p className="font-bold text-sm text-gray-900">Delivery Local</p>
-                                    <p className="text-xs mt-0.5 text-gray-500">Entregas a domicilio.</p>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Entregas a domicilio.</p>
                                 </div>
                             </div>
                         )}
                         {(shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca) && (
                             <div onClick={() => { setClientData({ ...clientData, deliveryType: 'courier', addressDetail: '' }); setSelectedDeliveryZone('') }}
-                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'courier' ? 'border-black ring-1 ring-black bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                <Package size={20} className={clientData.deliveryType === 'courier' ? 'text-black' : 'text-gray-400'} />
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'courier' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Package size={20} className={clientData.deliveryType === 'courier' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
                                 <div>
-                                    <p className="font-bold text-sm text-gray-900">Envío Nacional</p>
-                                    <p className="text-xs mt-0.5 text-gray-500">Envíos por agencia.</p>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Envío Nacional</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envíos por agencia.</p>
                                 </div>
                             </div>
                         )}
@@ -506,23 +506,23 @@ export default function CheckoutProcess({
                     {/* Sub-opciones de Logística (Naked Inputs) */}
                     {clientData.deliveryType === 'pickup' && (
                         <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-4">¿Dónde lo buscas? *</label>
+                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">¿Dónde lo buscas? *</label>
                             <div className="grid gap-3">
                                 {shipping.main_address && (
-                                    <label className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? 'border-black ring-1 ring-black bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-black w-4 h-4 border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" checked={clientData.addressDetail === shipping.main_address} onChange={() => setClientData({ ...clientData, addressDetail: shipping.main_address })} />
+                                    <label className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" checked={clientData.addressDetail === shipping.main_address} onChange={() => setClientData({ ...clientData, addressDetail: shipping.main_address })} />
                                         <div>
-                                            <p className="font-bold text-sm text-gray-900 leading-none">Tienda Física</p>
-                                            <p className="text-xs text-gray-500 mt-1.5">{shipping.main_address}</p>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">Tienda Física</p>
+                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">{shipping.main_address}</p>
                                         </div>
                                     </label>
                                 )}
                                 {shipping.pickup_locations?.map((loc: string, idx: number) => (
-                                    <label key={idx} className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? 'border-black ring-1 ring-black bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-black w-4 h-4 border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" checked={clientData.addressDetail === loc} onChange={() => setClientData({ ...clientData, addressDetail: loc })} />
+                                    <label key={idx} className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" checked={clientData.addressDetail === loc} onChange={() => setClientData({ ...clientData, addressDetail: loc })} />
                                         <div>
-                                            <p className="font-bold text-sm text-gray-900 leading-none">Punto de Entrega</p>
-                                            <p className="text-xs text-gray-500 mt-1.5">{loc}</p>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">Punto de Entrega</p>
+                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">{loc}</p>
                                         </div>
                                     </label>
                                 ))}
@@ -533,10 +533,10 @@ export default function CheckoutProcess({
                     {clientData.deliveryType === 'local_delivery' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-4">Selecciona tu zona *</label>
+                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Selecciona tu zona *</label>
                                 <div className="grid grid-cols-1 gap-3">
                                     {deliveryZones.map((z: any) => (
-                                        <button key={z.id} onClick={() => setSelectedDeliveryZone(z.id)} className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? 'border-black ring-1 ring-black bg-gray-50/50 text-gray-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                                        <button key={z.id} onClick={() => setSelectedDeliveryZone(z.id)} className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]'}`}>
                                             <span className="font-bold text-sm">{z.name}</span>
                                             <span className="font-black text-sm">+{currencySymbol}{Number(z.cost).toFixed(2)}</span>
                                         </button>
@@ -545,8 +545,8 @@ export default function CheckoutProcess({
                             </div>
                             {selectedDeliveryZone && (
                                 <div className="grid grid-cols-1 gap-6 animate-in fade-in pt-2">
-                                    <input value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value })} className="w-full bg-transparent   border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Dirección exacta *" />
-                                    <input value={clientData.reference} onChange={e => setClientData({ ...clientData, reference: e.target.value })} className="w-full bg-transparent   border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Punto de referencia (Opcional)" />
+                                    <input value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value })} className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección exacta *" />
+                                    <input value={clientData.reference} onChange={e => setClientData({ ...clientData, reference: e.target.value })} className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Punto de referencia (Opcional)" />
                                 </div>
                             )}
                         </div>
@@ -555,10 +555,10 @@ export default function CheckoutProcess({
                     {clientData.deliveryType === 'courier' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-4">Agencia de Envío *</label>
+                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Agencia de Envío *</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {activeCouriers.map(c => (
-                                        <button key={c} onClick={() => setClientData({ ...clientData, courier: c })} className={`py-4 rounded-md text-xs font-bold transition-all border ${clientData.courier === c ? 'border-black ring-1 ring-black bg-gray-50/50 text-gray-900' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>{c}</button>
+                                        <button key={c} onClick={() => setClientData({ ...clientData, courier: c })} className={`py-4 rounded-md text-xs font-bold transition-all border ${clientData.courier === c ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]'}`}>{c}</button>
                                     ))}
                                 </div>
                             </div>
@@ -569,13 +569,13 @@ export default function CheckoutProcess({
                                         value={clientData.identityCard} 
                                         // Permite solo letras y números (ej: V12345678)
                                         onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, '') })} 
-                                        className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Cédula de Identidad *" 
+                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Cédula de Identidad *" 
                                     />
                                     <div className="grid grid-cols-2 gap-6">
-                                        <input maxLength={40} value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Estado *" />
-                                        <input maxLength={40} value={clientData.city} onChange={e => setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Ciudad *" />
+                                        <input maxLength={40} value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Estado *" />
+                                        <input maxLength={40} value={clientData.city} onChange={e => setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)]     transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Ciudad *" />
                                     </div>
-                                    <input maxLength={150} value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-gray-200 py-3 text-base font-bold text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300" placeholder="Dirección exacta *" />
+                                    <input maxLength={150} value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección exacta *" />
                                 </div>
                             )}
                         </div>
@@ -584,20 +584,20 @@ export default function CheckoutProcess({
 
                 {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
                 <div className="space-y-6">
-                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest pb-3">Pagos</h2>
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">Pagos</h2>
 
                     {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
                     {allowSplitPayments && (
-                        <div className="flex gap-6 border-b border-gray-100 w-full mb-8">
+                        <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
                             <button
                                 onClick={() => { setPaymentMode('single'); setSplitPayments([]); setActivePaymentInput(null); }}
-                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'single' ? 'border-b-2 border-black text-gray-900' : 'text-gray-400 hover:text-gray-900 border-b-2 border-transparent'}`}
+                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'single' ? 'border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent'}`}
                             >
                                 Pago Único
                             </button>
                             <button
                                 onClick={() => { setPaymentMode('split'); setSplitPayments([]); setActivePaymentInput(null); }}
-                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'split' ? 'border-b-2 border-black text-gray-900' : 'text-gray-400 hover:text-gray-900 border-b-2 border-transparent'}`}
+                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'split' ? 'border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent'}`}
                             >
                                 Pago Mixto
                             </button>
@@ -607,27 +607,27 @@ export default function CheckoutProcess({
                     {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
                     {remainingListUSD > 0.01 ? (
                         <div className="py-4 flex flex-col items-center justify-center text-center">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Total Pendiente</span>
+                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">Total Pendiente</span>
                             <div className="flex items-baseline justify-center gap-1.5">
-                                <span className="text-xl md:text-2xl font-bold text-gray-300">Bs</span>
-                                <span className="font-black text-5xl md:text-6xl text-gray-900 leading-none tracking-tighter">
+                                <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">Bs</span>
+                                <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
                                     {remainingBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                 </span>
                             </div>
-                            <span className="text-sm font-medium text-gray-500 mt-4">Ref: ${remainingListUSD.toFixed(2)}</span>
+                            <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">Ref: ${remainingListUSD.toFixed(2)}</span>
 
                             {/* Nudge sin caja */}
                             {remainingListUSD > 0.01 && fxMultiplier > 1 && (
-                                <span className="text-xs font-bold text-emerald-600 mt-4 tracking-wide">
+                                <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
                                     {isHardCurrencyPayment ? 'Resta en Divisa' : 'Si pagas en divisa'}: <span className="font-black">${remainingCashUSD.toFixed(2)}</span>
                                 </span>
                             )}
                         </div>
                     ) : (
-                        <div className="py-8 flex flex-col items-center justify-center text-center text-gray-900">
-                            <Check size={40} strokeWidth={2} className="mb-4 text-emerald-500" />
+                        <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
+                            <Check size={40} strokeWidth={2} className="mb-4 text-[var(--store-incentive)]" />
                             <p className="font-black text-2xl tracking-tight">Monto Cubierto</p>
-                            <p className="text-sm font-medium text-gray-500 mt-2">
+                            <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
                                 {paymentMode === 'single' ? 'Adjunta el comprobante para finalizar.' : 'El total ha sido cubierto. Envía el pedido.'}
                             </p>
                         </div>
@@ -636,7 +636,7 @@ export default function CheckoutProcess({
                     {/* 2. LISTA DE PAGOS AÑADIDOS (Solo Mixto - Líneas Finas) */}
                     <AnimatePresence>
                         {paymentMode === 'split' && splitPayments.length > 0 && (
-                            <div className="divide-y divide-gray-100 border-t border-b border-gray-100 py-2 mt-4">
+                            <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
                                 {splitPayments.map(block => {
                                     // Validación correcta: Si Strict Mode está activo, y NO es Efectivo, se pide captura.
                                     const requiresReceipt = receiptConfig.strict_mode && block.method !== 'Efectivo';
@@ -644,12 +644,12 @@ export default function CheckoutProcess({
                                     return (
                                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} key={block.id} className="py-5 overflow-hidden">
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-3 text-gray-900">
+                                                <div className="flex items-center gap-3 text-[var(--store-text-main)]">
                                                     <span className="font-bold text-sm">{block.method}</span>
                                                 </div>
                                                 <div className="flex items-center gap-6">
-                                                    <span className="font-black text-lg text-gray-900 tracking-tight">{block.currency === 'usd' ? `$${block.amount.toFixed(2)}` : `Bs ${block.amount.toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}</span>
-                                                    <button onClick={() => removePaymentBlock(block.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                                                    <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">{block.currency === 'usd' ? `$${block.amount.toFixed(2)}` : `Bs ${block.amount.toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}</span>
+                                                    <button onClick={() => removePaymentBlock(block.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                                                 </div>
                                             </div>
 
@@ -659,17 +659,17 @@ export default function CheckoutProcess({
                                                     {!block.receiptFile ? (
                                                         <div className="relative">
                                                             <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => e.target.files && handleAttachReceipt(block.id, e.target.files[0])} />
-                                                            <div className="w-full py-4 border-b border-dashed border-gray-300 flex items-center justify-center gap-2 font-bold text-[11px] text-gray-400 hover:text-gray-900 hover:border-gray-900 transition-all cursor-pointer">
+                                                            <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
                                                                 <Upload size={14} /> Subir Capture de {block.method} *
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex justify-between items-center bg-gray-50 px-4 py-3 rounded-md border border-gray-100">
-                                                            <div className="flex items-center gap-3 min-w-0 text-gray-900">
-                                                                <Check size={16} className="shrink-0 text-emerald-600" />
+                                                        <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                            <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                <Check size={16} className="shrink-0 text-[var(--store-incentive)]" />
                                                                 <span className="text-xs font-bold truncate">{block.receiptFile.name}</span>
                                                             </div>
-                                                            <button onClick={() => handleAttachReceipt(block.id, null)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-full transition-colors shrink-0"><X size={14} strokeWidth={3} /></button>
+                                                            <button onClick={() => handleAttachReceipt(block.id, null)} className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"><X size={14} strokeWidth={3} /></button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -688,7 +688,7 @@ export default function CheckoutProcess({
                                 const config = getPaymentConfig(pm);
                                 return (
                                     <button key={pm} onClick={() => openPaymentInput(pm)} className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-md transition-all duration-200 active:scale-[0.98] ${activePaymentInput === pm ? config.btnSelected : config.btnIdle}`}>
-                                        <config.icon size={20} className={activePaymentInput === pm ? 'text-white' : 'text-gray-900'} /> {pm}
+                                        <config.icon size={20} className={activePaymentInput === pm ? 'text-[var(--store-primary-text)]' : 'text-[var(--store-text-main)]'} /> {pm}
                                     </button>
                                 )
                             })}
@@ -704,16 +704,16 @@ export default function CheckoutProcess({
                                     const singlePaymentBlock = paymentMode === 'single' ? splitPayments.find(p => p.method === activePaymentInput) : null;
 
                                     return (
-                                        <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col gap-6">
+                                        <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
 
                                             {paymentMode === 'split' ? (
                                                 // 🚀 PORTAL MODO MIXTO (Naked Input Gigante)
                                                 <>
                                                     <div className="flex justify-between items-end gap-6">
                                                         <div className="relative flex-1 group">
-                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Monto con {activePaymentInput}</label>
-                                                            <div className="flex items-baseline border-b-2 border-gray-200 group-focus-within:border-gray-900 transition-colors pb-2">
-                                                                <span className="font-black text-3xl text-gray-300 mr-2">
+                                                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">Monto con {activePaymentInput}</label>
+                                                            <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
+                                                                <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
                                                                     {hardCurrencyMethods.includes(activePaymentInput) ? '$' : 'Bs'}
                                                                 </span>
                                                                <input
@@ -748,12 +748,12 @@ export default function CheckoutProcess({
                                                                         // Guardamos el número en formato puro (Ej: "4678.67")
                                                                         setPaymentAmount(val);
                                                                     }}
-                                                                    className="w-full bg-transparent font-black text-3xl md:text-4xl accent-black h-4 border-0 py-6 text-gray-900 outline-none focus:ring-0 focus:shadow-none focus:border-black transition-colors rounded-none placeholder:text-gray-300"
+                                                                    className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
                                                                     placeholder="0,00"
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <button onClick={confirmPaymentBlock} className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-gray-900 text-white hover:bg-black flex items-center justify-center shrink-0">
+                                                        <button onClick={confirmPaymentBlock} className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0">
                                                             Añadir
                                                         </button>
                                                     </div>
@@ -768,8 +768,8 @@ export default function CheckoutProcess({
                                                         <>
                                                             <div className="flex justify-between items-start">
                                                                 <div>
-                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total a cancelar</p>
-                                                                    <p className="font-black text-3xl md:text-4xl text-gray-900 leading-none tracking-tighter">
+                                                                    <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Total a cancelar</p>
+                                                                    <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
                                                                         {hardCurrencyMethods.includes(activePaymentInput) ? `$${totalCashUSD.toFixed(2)}` : `Bs ${(totalListUSD * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}
                                                                     </p>
                                                                 </div>
@@ -780,17 +780,17 @@ export default function CheckoutProcess({
                                                                     {!singlePaymentBlock.receiptFile ? (
                                                                         <div className="relative">
                                                                             <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => e.target.files && handleAttachReceipt(singlePaymentBlock.id, e.target.files[0])} />
-                                                                            <div className="w-full py-4 border-b border-dashed border-gray-300 flex items-center gap-3 font-bold text-xs text-gray-400 hover:text-gray-900 transition-colors cursor-pointer">
-                                                                                <Upload size={16} /> Subir Capture de {activePaymentInput} {isMandatory ? '*' : <span className="font-medium text-gray-300">(Opcional)</span>}
+                                                                            <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
+                                                                                <Upload size={16} /> Subir Capture de {activePaymentInput} {isMandatory ? '*' : <span className="font-medium text-[var(--store-surface-text)]">(Opcional)</span>}
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="flex justify-between items-center bg-gray-50 px-4 py-3 rounded-md border border-gray-100">
-                                                                            <div className="flex items-center gap-3 min-w-0 text-gray-900">
-                                                                                <Check size={16} className="shrink-0 text-emerald-600" />
+                                                                        <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                            <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                                <Check size={16} className="shrink-0 text-[var(--store-incentive)]" />
                                                                                 <span className="text-xs font-bold truncate">{singlePaymentBlock.receiptFile.name}</span>
                                                                             </div>
-                                                                            <button onClick={() => handleAttachReceipt(singlePaymentBlock.id, null)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-white transition-colors shrink-0"><X size={16} /></button>
+                                                                            <button onClick={() => handleAttachReceipt(singlePaymentBlock.id, null)} className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"><X size={16} /></button>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -802,14 +802,14 @@ export default function CheckoutProcess({
 
                                             {/* RECIBO DE DATOS BANCARIOS (Bloque Técnico) */}
                                             {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                <div className="bg-[#FAFAFA] rounded-md p-5 border border-gray-100 mt-2">
+                                                <div className="bg-[var(--store-bg)] rounded-md p-5 border border-[var(--store-border)] mt-2">
                                                     <div className="flex justify-between items-center mb-3">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Datos para Transferir</span>
-                                                        <button onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || '')} className="text-gray-400 hover:text-gray-900 transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">Datos para Transferir</span>
+                                                        <button onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || '')} className="text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase">
                                                             {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copiado' : 'Copiar'}
                                                         </button>
                                                     </div>
-                                                    <p className="text-sm font-mono font-medium text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                                    <p className="text-sm font-mono font-medium text-[var(--store-surface-text)] leading-relaxed whitespace-pre-wrap">
                                                         {payments[paymentKeysMap[activePaymentInput]]?.details}
                                                     </p>
                                                 </div>
@@ -826,13 +826,13 @@ export default function CheckoutProcess({
 
                 {/* 🚀 NUEVO: EL RESUMEN FINANCIERO SE MUEVE AL SCROLL */}
                 {/* Ahora hace scroll natural con el contenido, liberando el 40% de la pantalla */}
-                <div className="space-y-4 pt-8 border-t border-gray-100 mt-4 pb-8">
-                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest pb-2">Resumen de la Orden</h2>
+                <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">Resumen de la Orden</h2>
 
                     <div className="flex flex-col gap-3">
-                        <div className="flex justify-between items-center text-sm font-medium text-gray-500">
+                        <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
                             <span>Subtotal (Precio de Lista)</span>
-                            <span className={cartEngine.listPromoDiscounts > 0 ? "line-through decoration-gray-300" : ""}>
+                            <span className={cartEngine.listPromoDiscounts > 0 ? "line-through decoration-[var(--store-border)]" : ""}>
                                 {currencySymbol}{cartEngine.totalListNominal.toFixed(2)}
                             </span>
                         </div>
@@ -844,13 +844,13 @@ export default function CheckoutProcess({
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center text-sm font-black text-gray-900 pt-2 border-t border-gray-50">
+                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]">
                             <span>Subtotal Neto</span>
                             <span>{currencySymbol}{(cartEngine.finalBsModeUSD).toFixed(2)}</span>
                         </div>
 
                         {wholesaleDiscountList > 0 && (
-                            <div className="flex justify-between items-center text-sm font-black text-emerald-600">
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
                                 <span>Descuento Mayorista</span>
                                 <span>-{currencySymbol}{wholesaleDiscountList.toFixed(2)}</span>
                             </div>
@@ -858,7 +858,7 @@ export default function CheckoutProcess({
 
                         <AnimatePresence>
                             {isHardCurrencyPayment && actualFxSavings > 0 && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-emerald-600">
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
                                     <span>Beneficio Pago en Divisa</span>
                                     <span>-{currencySymbol}{actualFxSavings.toFixed(2)}</span>
                                 </motion.div>
@@ -866,7 +866,7 @@ export default function CheckoutProcess({
                         </AnimatePresence>
 
                         {deliveryCost > 0 && (
-                            <div className="flex justify-between items-center text-sm font-bold text-gray-900 mt-1">
+                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
                                 <span>Delivery / Envío</span>
                                 <span>+{currencySymbol}{deliveryCost.toFixed(2)}</span>
                             </div>
@@ -878,16 +878,16 @@ export default function CheckoutProcess({
 
             {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
             {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
-            <div className="bg-white/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-gray-100 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)] pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
 
                     {/* Total a la izquierda */}
                     <div className="flex flex-col shrink-0">
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1.5">Total Final</span>
+                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">Total Final</span>
                         <div className="flex items-end gap-2">
-                            <span className="text-2xl md:text-3xl font-black text-gray-900 leading-none tracking-tighter">{currencySymbol}{grandTotalUSD.toFixed(2)}</span>
+                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">{currencySymbol}{grandTotalUSD.toFixed(2)}</span>
                         </div>
-                        <span className="text-[10px] font-mono font-bold text-gray-400 mt-1.5">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1.5">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                     </div>
 
                     {/* Botón a la derecha */}
@@ -895,8 +895,8 @@ export default function CheckoutProcess({
                         onClick={handleCheckout}
                         disabled={loading || !isPaidInFull || missingReceipts}
                         className={`flex-1 h-[52px] rounded-full font-black text-xs md:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${missingReceipts && isPaidInFull
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-black text-white hover:bg-gray-900 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10'
+                            ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed'
+                            : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10'
                             }`}
                     >
                         {loading ? (

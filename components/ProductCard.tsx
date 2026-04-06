@@ -42,7 +42,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       }}
     >
       {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
-      <div className="relative w-full bg-white overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
+      <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
@@ -52,13 +52,13 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
             className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300 bg-[#F8F9FA]">
+          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] bg-[var(--store-bg)]">
             <ImageIcon size={32} strokeWidth={1.5} />
           </div>
         )}
         {/* OVERLAY AGOTADO */}
         {isOutOfStock && (
-             <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center z-10">
+             <div className="absolute inset-0 bg-[var(--store-surface)]/40 backdrop-blur-[2px] flex items-center justify-center z-10">
                  <span className="bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full">Agotado</span>
              </div>
         )}
@@ -74,7 +74,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       {/* 🚀 CONTENT CONTAINER: AUTO-ALIGNMENT INYECTADO */}
       <div className="flex flex-col flex-1 pt-3 pb-1">
         
-        <h3 className="text-xs md:text-sm font-bold text-gray-900 tracking-tight leading-snug group-hover:text-gray-500 transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
+        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-tight leading-snug group-hover:text-[var(--store-surface-text)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
           {product.name}
         </h3>
 
@@ -82,20 +82,20 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         {/* ELIMINADO: mt-auto. INYECTADO: flex-1 flex flex-col justify-end */}
         <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
           
-          <div className="flex items-end justify-between gap-2 border-t border-gray-100 pt-3">
+          <div className="flex items-end justify-between gap-2 border-t border-[var(--store-border)] pt-3">
             <div className="flex flex-col min-w-0">
               {/* PRECIO PÚBLICO REAL */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {isPromo && (
-                  <span className="text-[10px] md:text-xs font-bold text-gray-400 line-through decoration-gray-300">
+                  <span className="text-[10px] md:text-xs font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
                     ${activeCompareAt.toFixed(2)}
                   </span>
                 )}
-                <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-red-600' : 'text-gray-900'}`}>
+                <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
                   ${listPrice.toFixed(2)}
                 </span>
               </div>
-              <span className="text-[10px] font-mono font-bold text-gray-400 leading-none mt-1.5 tabular-nums">
+              <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums">
                 Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
               </span>
             </div>
@@ -103,7 +103,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
             {/* 🚀 BOTÓN FIJO: SIEMPRE EN EL MISMO LUGAR */}
             <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 md:w-9 md:h-9 rounded-full border border-gray-200/60 flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-50 text-gray-900 group-hover:bg-black group-hover:text-white active:scale-90'}`}
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-full border text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-[var(--store-border)] text-[var(--store-surface-text)]  cursor-not-allowed' : 'text-[var(--store-surface-text)]   group-hover:bg-[var(--store-primary)]  group-hover:text-[var(--store-primary-text)] active:scale-90'}`}
               aria-label="Ver producto"
             >
               <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
@@ -113,8 +113,8 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
 
         {/* NUDGE HONESTO Y LIMPIO */}
         {penalty > 0 && !isOutOfStock && (
-          <div className="mt-3 inline-flex items-center gap-1.5  border border-emerald-600 text-[9px] md:text-[10px] font-bold text-emerald-700  px-2 py-1.5 rounded-full self-start transition-colors group-hover:bg-emerald-100/50">
-            <Flame size={12} className="text-emerald-600 shrink-0" />
+          <div className="mt-3 inline-flex items-center gap-1.5  border border-[var(--store-incentive)] text-[9px] md:text-[10px] font-bold text-[var(--store-incentive)]  px-2 py-1.5 rounded-full self-start transition-colors group-hover:bg-[var(--store-incentive)]/20">
+            <Flame size={12} className="text-[var(--store-incentive)] shrink-0" />
             <span>Paga ${cashPrice.toFixed(2)} en DIvisas</span>
           </div>
         )}

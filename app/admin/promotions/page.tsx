@@ -222,7 +222,7 @@ export default function PromotionsPage() {
         return (
             <>
                 {/* Fixed Top Bar (Elite Standard) */}
-                <div className="fixed top-0 right-0 left-0 lg:left-64 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 gap-4">
+                <div className="fixed top-0 right-0 left-0 lg:left-64 bg-[var(--store-surface)]/90 backdrop-blur-sm border-b border-gray-100 z-40 px-4 md:px-8 py-4 flex justify-between items-center transition-all duration-300 gap-4">
 
                     {/* 1. IZQUIERDA: flex-1 y min-w-0 habilitan el truncate del h2 */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -413,7 +413,7 @@ export default function PromotionsPage() {
                                 {filteredProducts.slice(0, visibleCount).map(p => {
                                     const isSelected = currentPromo.linked_products?.includes(p.id);
                                     return (
-                                        <div key={p.id} onClick={() => toggleProduct(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-all border ${isSelected ? 'bg-gray-100 border-gray-200' : 'bg-white hover:bg-gray-50 border-gray-100/50'}`}>
+                                        <div key={p.id} onClick={() => toggleProduct(p.id)} className={`flex items-center gap-4 p-3.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-all border ${isSelected ? 'bg-gray-100 border-[var(--store-border)]' : 'bg-[var(--store-bg)] border-[var(--store-border)]'}`}>
                                             <div className="w-12 h-12 bg-white rounded-lg shrink-0 overflow-hidden border border-gray-100/60 p-1 flex items-center justify-center">
                                                 <Image
                                                     src={getOptimizedUrl(p.image_url)}

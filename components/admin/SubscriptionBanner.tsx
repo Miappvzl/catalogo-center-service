@@ -181,7 +181,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
             >
               <button 
                 onClick={() => setShowModal(false)} 
-                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-colors z-10"
+                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10"
               >
                 <X size={16} />
               </button>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
@@ -18,6 +18,7 @@ const NAV_LINKS = [
   { name: 'Nuevo', href: '/admin/product/new', icon: Plus, isAction: true },
   { name: 'Inventario', href: '/admin/inventory', icon: Package },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true },
+  { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true }, // 🚀 INYECCIÓN: Nueva pestaña
   { name: 'Ajustes', href: '/admin/settings', icon: Settings },
 ]
 

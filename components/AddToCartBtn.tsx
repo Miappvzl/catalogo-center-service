@@ -20,7 +20,7 @@ export default function AddToCartBtn({ product, iconOnly = false }: { product: a
     if (quantity === 0) {
         const Toast = Swal.mixin({
             toast: true, position: 'top', showConfirmButton: false, timer: 1000,
-            customClass: { popup: 'bg-black text-white rounded-none' }
+            customClass: { popup: 'bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-none' }
         })
         Toast.fire({ icon: 'success', title: 'AGREGADO' })
     }
@@ -44,19 +44,19 @@ export default function AddToCartBtn({ product, iconOnly = false }: { product: a
   if (quantity > 0) {
     if (iconOnly) {
         return (
-            <div className="bg-black text-white p-1 rounded-lg flex flex-col items-center justify-between h-[100px] w-[40px] shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-                <button onClick={handleIncrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Plus size={14}/></button>
+            <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] p-1 rounded-lg flex flex-col items-center justify-between h-[100px] w-[40px] shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                <button onClick={handleIncrease} className="p-1 hover:brightness-75 rounded-full transition-colors"><Plus size={14}/></button>
                 <span className="font-mono text-xs font-bold">{quantity}</span>
-                <button onClick={handleDecrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Minus size={14}/></button>
+                <button onClick={handleDecrease} className="p-1 hover:brightness-75 rounded-full transition-colors"><Minus size={14}/></button>
             </div>
         )
     }
 
     return (
-        <div className="w-full bg-black text-white h-[46px] rounded-xl flex items-center justify-between px-4 shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-            <button onClick={handleDecrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Minus size={18}/></button>
+        <div className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] h-[46px] rounded-xl flex items-center justify-between px-4 shadow-lg animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <button onClick={handleDecrease} className="p-1 hover:brightness-75 rounded-full transition-colors"><Minus size={18}/></button>
             <span className="font-mono font-bold text-sm">{quantity}</span>
-            <button onClick={handleIncrease} className="p-1 hover:bg-gray-700 rounded-full transition-colors"><Plus size={18}/></button>
+            <button onClick={handleIncrease} className="p-1 hover:brightness-75 rounded-full transition-colors"><Plus size={18}/></button>
         </div>
     )
   }
@@ -66,7 +66,7 @@ export default function AddToCartBtn({ product, iconOnly = false }: { product: a
     return (
       <button 
         onClick={handleAdd}
-        className="bg-black text-white p-2.5 rounded-lg hover:bg-gray-800 transition-colors shadow-sm active:scale-95"
+        className="bg-[var(--store-primary)] text-[var(--store-primary-text)] p-2.5 rounded-lg hover:brightness-75 transition-colors shadow-sm active:scale-95"
         title="Agregar al carrito"
       >
         <ShoppingCart size={16} strokeWidth={2.5} />
@@ -77,7 +77,7 @@ export default function AddToCartBtn({ product, iconOnly = false }: { product: a
   return (
     <button 
       onClick={handleAdd}
-      className="w-full bg-black text-white py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+      className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs hover:opacity-90 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
     >
       <ShoppingCart size={18} />
       Agregar al Carrito

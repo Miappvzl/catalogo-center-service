@@ -181,31 +181,31 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         animate={{ y: 0 }} 
                         exit={{ y: "100%" }} 
                         transition={{ type: "spring", damping: 25, stiffness: 200 }} 
-                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/85 backdrop-blur-2xl border-t border-gray-200/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
                     >
                         {/* 1. IZQUIERDA: Icono interactivo + Precios */}
                         <div className="flex items-center gap-3.5 cursor-pointer group" onClick={handleOpenModal}>
                             <div className="relative">
-                                <div className="bg-gray-100/80 p-2.5 rounded-full transition-colors group-hover:bg-gray-200">
-                                    <ShoppingCart size={22} className="text-gray-900" strokeWidth={1.5} />
+                                <div className="bg-[var(--store-primary)]/80  p-2.5 rounded-full transition-colors group-hover:bg-[var(--store-border)]">
+                                    <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
                                 </div>
                                 {/* El círculo de notificación que solicitaste */}
-                                <span className="absolute -top-1 -right-1 bg-gray-900 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
                                     {totalItemsCount}
                                 </span>
                             </div>
                             
                             <div className="flex flex-col items-start">
                                 {/* Total en $ y Bs como solicitaste */}
-                                <span className="text-xl font-black text-gray-900 tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                <span className="text-[11px] font-mono font-bold text-gray-500 mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
 
                         {/* 2. DERECHA: Botón de Pagar Estructural */}
                         <button 
                             onClick={handleOpenModal} 
-                            className="bg-black text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-black/10"
+                            className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-black/10"
                         >
                             Pagar
                         </button>
@@ -219,53 +219,53 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCloseModal} />
 
-                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[#F8F9FA] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
+                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
 
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (
-                                <div className="bg-white px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-gray-100">
+                                <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]">
                                     <AnimatePresence mode="wait">
                                         {step === 1 ? (
                                             <motion.div key="header-1" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
-                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Tu Bolsa</h2>
-                                                <p className="text-xs text-gray-500 font-medium mt-1">Revisa tus items antes de pagar</p>
+                                                <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Tu Bolsa</h2>
+                                                <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Revisa tus items antes de pagar</p>
                                             </motion.div>
                                         ) : (
                                             <motion.div key="header-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex items-center gap-3">
-                                                <button onClick={() => setStep(1)} className="p-1.5 -ml-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"><ArrowLeft size={18} /></button>
+                                                <button onClick={() => setStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
                                                 <div>
-                                                    <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Checkout</h2>
-                                                    <p className="text-xs text-gray-500 font-medium mt-1">Completa tu envío y pago</p>
+                                                    <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Checkout</h2>
+                                                    <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Completa tu envío y pago</p>
                                                 </div>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                    <button onClick={handleCloseModal} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors text-gray-500 active:scale-95"><X size={20} /></button>
+                                    <button onClick={handleCloseModal} className="p-2 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full transition-colors text-[var(--store-surface-text)] active:scale-95"><X size={20} /></button>
                                 </div>
                             )}
 
                             {/* PROGRESS BAR MAYORISTA (Solo Paso 1) */}
                             {step === 1 && wholesale.active && (
-                                <div className="bg-white px-6 py-3 shrink-0 border-b border-gray-100">
+                                <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
                                     <div className="flex justify-between items-end mb-2">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Activado' : 'Ahorra al Mayor'}</span>
-                                        <span className="text-xs font-black text-gray-900">{totalItemsCount} / {wholesale.min_items}</span>
+                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Activado' : 'Ahorra al Mayor'}</span>
+                                        <span className="text-xs font-black text-[var(--store-text-main)]">{totalItemsCount} / {wholesale.min_items}</span>
                                     </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${Math.min(100, (totalItemsCount / wholesale.min_items) * 100)}%` }}
-                                            className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-black'}`}
+                                            className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
                                         />
                                     </div>
-                                    <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                    <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
                                         {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento.` : `Agrega ${wholesale.min_items - totalItemsCount} piezas más para un ${wholesale.discount_percentage}% de descuento.`}
                                     </p>
                                 </div>
                             )}
 
                             {/* CONTENEDOR MULTI-PASO */}
-                            <div className="flex-1 relative overflow-hidden bg-[#F8F9FA]">
+                            <div className="flex-1 relative overflow-hidden bg-[var(--store-bg)]">
                                 <AnimatePresence mode="wait">
 
                                     {/* --- PASO 1: LA BOLSA --- */}
@@ -274,31 +274,31 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth no-scrollbar">
                                                 <div className="space-y-0 flex-1">
                                                     {cartEngine.processedItems.map((item) => (
-                                                        <div key={item.id} className="flex gap-4 p-4 bg-white border-b border-gray-100/60">
-                                                            <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative border border-gray-100">
+                                                        <div key={item.id} className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]">
+                                                            <div className="w-20 h-20 bg-[var(--store-bg)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
                                                                 <Image
                                                                     src={getOptimizedUrl(item.image)}
                                                                     alt={item.name}
                                                                     fill
                                                                     sizes="80px"
-                                                                    className="object-cover mix-blend-multiply"
+                                                                    className="object-cover "
                                                                 />
                                                             </div>
                                                             <div className="flex-1 flex flex-col justify-between py-0.5">
                                                                 <div>
                                                                     {item.badge && <span className="inline-block text-[9px] font-black text-white bg-[#1b1b1b] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
                                                                     <div className="flex justify-between items-start">
-                                                                        <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-snug pr-2">{item.name}</h3>
-                                                                        <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 transition-colors bg-gray-50 p-1.5 rounded-md hover:bg-red-50"><Trash2 size={14} /></button>
+                                                                        <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
+                                                                        <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors bg-[var(--store-bg)] p-1.5 rounded-md hover:bg-red-50"><Trash2 size={14} /></button>
                                                                     </div>
-                                                                    <p className="text-[11px] text-gray-500 font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
+                                                                    <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
                                                                 </div>
 
                                                                 <div className="flex items-end justify-between mt-2">
                                                                     <div className="flex flex-col min-w-0">
                                                                         {item.finalListPrice < item.listPrice ? (
                                                                             <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                                                                <span className="text-[10px] font-bold text-gray-400 line-through decoration-gray-300">
+                                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
                                                                                     {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
                                                                                 </span>
                                                                                 <span className="font-black text-base text-red-600 leading-none">
@@ -306,21 +306,21 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                                 </span>
                                                                             </div>
                                                                         ) : (
-                                                                            <span className="font-black text-base text-gray-900 leading-none">
+                                                                            <span className="font-black text-base text-[var(--store-text-main)] leading-none">
                                                                                 {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
                                                                             </span>
                                                                         )}
-                                                                        <span className="text-[10px] font-mono font-bold text-gray-400 mt-1">
+                                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
                                                                             Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                                         </span>
                                                                     </div>
 
-                                                                    <div className="flex items-center p-1 gap-3 rounded-full bg-gray-50 border border-gray-200/60">
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-gray-900 hover:bg-white hover:border hover:border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                                                    <div className="flex items-center p-1 gap-3 rounded-full bg-[var(--store-bg)] border border-[var(--store-border)]/60">
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                                                                             <Minus size={14} strokeWidth={3} />
                                                                         </button>
-                                                                        <span className="text-xs font-bold w-3 text-center text-gray-900">{item.quantity}</span>
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-gray-900 hover:bg-white hover:border hover:border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                                                        <span className="text-xs font-bold w-3 text-center text-[var(--store-text-main)]">{item.quantity}</span>
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                                                                             <Plus size={14} strokeWidth={3} />
                                                                         </button>
                                                                     </div>
@@ -332,10 +332,10 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                                                {/* CROSS-SELLING */}
                                                 {recommendedProducts.length > 0 && (
-                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-gray-100 pt-8 pb-4 bg-white">
+                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)] pt-8 pb-4 bg-[var(--store-surface)]">
                                                         <div className="flex items-center justify-between mb-4">
-                                                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Mas para ti</h3>
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Sugerencias</span>
+                                                            <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
+                                                            <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
                                                         </div>
                                                         {/* 🚀 ASESINO DE SCROLL VERTICAL: Agregamos flex-row, flex-nowrap, overflow-y-hidden y pt-3 */}
                                                         <div className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
@@ -365,7 +365,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 )}
                                                 {/* 🚀 NUDGE DE AHORRO PREVIO */}
                                                 {step1FxSavings > 0 && (
-                                                    <div className="px-4 pb-10 bg-[#F8F9FA] pt-6">
+                                                    <div className="px-4 pb-10 bg-[var(--store-bg)] pt-6">
                                                         <div className="bg-[#1b1b1b] p-4 rounded-xl flex items-center gap-3 border">
                                                             <BadgeDollarSign size={30} strokeWidth={1.5} className='text-white' />
                                                             <div className="flex flex-col">
@@ -380,15 +380,15 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             </div>
 
                                             {/* FOOTER PASO 1 */}
-                                            <div className="bg-white px-5 py-5 shrink-0 z-20 border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                            <div className="bg-[var(--store-surface)] px-5 py-5 shrink-0 z-20 border-t border-[var(--store-border)] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
-                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Final</p>
+                                                    <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
                                                     <div className="flex flex-col items-end">
-                                                        <span className="text-2xl md:text-3xl font-black text-gray-900 leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                                        <span className="text-[10px] font-mono font-bold text-gray-400 mt-1">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                                        <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => setStep(2)} className="w-full bg-black text-white px-8 py-3.5 rounded-full font-bold text-sm hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-2 border border-black">
+                                                <button onClick={() => setStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 border border-[var(--store-border)]">
                                                     Ir al Checkout <ChevronRight size={16} />
                                                 </button>
                                             </div>
@@ -417,35 +417,35 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                                     {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
-                                        <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-white">
-                                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center shrink-0 mb-6">
-                                                <Check size={40} className="text-emerald-500" strokeWidth={3} />
+                                        <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
+                                            <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
+                                                <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
                                             </div>
-                                            <h2 className="text-2xl font-black text-gray-900 mb-2">¡Pedido #{generatedOrderNumber}!</h2>
-                                            <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto mb-8">
+                                            <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">¡Pedido #{generatedOrderNumber}!</h2>
+                                            <p className="text-[var(--store-surface-text)] text-sm leading-relaxed max-w-xs mx-auto mb-8">
                                                 Tu orden ha sido guardada. Si WhatsApp no se abrió automáticamente, presiona el botón abajo para enviarnos tu comprobante.
                                             </p>
                                             <div className="w-full flex flex-col gap-3">
-                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[#25D366] text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-[#1ebd5a] transition-all flex items-center justify-center gap-2 active:scale-95 border border-[#1ebd5a]">
+                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] hover:text-[var(--store-surface-text)] transition-all flex items-center justify-center gap-2 active:scale-95">
                                                     <MessageCircle size={18} /> Enviar a WhatsApp
                                                 </a>
-                                                <button onClick={handleCloseModal} className="w-full bg-white text-gray-900 px-6 py-4 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all active:scale-95 border border-gray-200">
+                                                <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
                                                     Volver a la Tienda
                                                 </button>
                                             </div>
                                             {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
-                                            <div className="mt-8 pt-6 border-t border-gray-100 w-full flex justify-center">
+                                            <div className="mt-8 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
                                                 <a
                                                     href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="group inline-flex flex-col items-center gap-1.5"
                                                 >
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">
+                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
                                                         Experiencia de compra impulsada por
                                                     </span>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="font-black text-sm tracking-tight text-gray-300 group-hover:text-gray-900 transition-colors">PREZISO</span>
+                                                        <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
                                                         <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
                                                     </div>
                                                 </a>

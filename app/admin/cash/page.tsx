@@ -902,7 +902,7 @@ export default function CashRegisterPage() {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`font-black text-lg tracking-tight ${isIn ? 'text-emerald-600' : 'text-[#111]'}`}>
+                                            <p className={`font-black text-md tracking-tight ${isIn ? 'text-emerald-600' : 'text-[#111]'}`}>
                                                 {isIn ? '+' : '-'}{mov.currency === 'usd' ? '$' : 'Bs '}{Number(mov.amount).toFixed(2)}
                                             </p>
                                         </div>

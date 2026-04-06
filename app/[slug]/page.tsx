@@ -70,7 +70,7 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   // 1. OBTENER TIENDA
   const { data: store } = await supabase
     .from('stores')
-    .select('*, payment_config, shipping_config') 
+    .select('*, payment_config, shipping_config, theme_config') 
     .eq('slug', slug)
     .single()
 

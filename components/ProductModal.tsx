@@ -314,42 +314,42 @@ const isCompletelyOutOfStock = variants.length > 0
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative bg-white w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-gray-200 will-change-transform"
+                        className="relative bg-[var(--store-surface)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform"
                     >
                         {/* ... (El resto del contenido queda igual: el botón de cerrar, la galería, etc) ... */}
-                        <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-white/90 p-2 rounded-full hover:bg-gray-100 transition-colors backdrop-blur border border-gray-200 text-gray-900 active:scale-95">
+                        <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
                             <X size={20} strokeWidth={2} />
                         </button>
 
-                        <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[#F8F9FA] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 shrink-0 group overflow-hidden">
+                        <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)] shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (
                                 <Image
                                     src={getOptimizedUrl(currentGallery[galleryIndex])}
                                     alt="Producto"
                                     fill
                                     sizes="(max-width: 768px) 100vw, 50vw"
-                                    className="object-contain mix-blend-multiply p-6 md:p-10 transition-transform duration-700 ease-out group-hover:scale-105"
+                                    className="object-contain  p-6 md:p-10 transition-transform duration-700 ease-out group-hover:scale-105"
                                 />
                             ) : (
-                                <span className="text-4xl font-black text-gray-200">P.</span>
+                                <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
                             )}
 
                             {currentGallery.length > 1 && (
                                 <>
-                                    <button onClick={(e) => { e.stopPropagation(); prevImage() }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full border border-gray-200 active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-10 text-gray-900 hover:bg-black hover:text-white hover:border-black"><ChevronLeft size={20} strokeWidth={2} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); nextImage() }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full border border-gray-200 active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-10 text-gray-900 hover:bg-black hover:text-white hover:border-black"><ChevronRight size={20} strokeWidth={2} /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); prevImage() }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-10 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronLeft size={20} strokeWidth={2} /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); nextImage() }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-10 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronRight size={20} strokeWidth={2} /></button>
                                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                                        {currentGallery.map((_, idx) => (<div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === galleryIndex ? 'bg-black w-4' : 'bg-gray-300 w-1.5'}`} />))}
+                                        {currentGallery.map((_, idx) => (<div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === galleryIndex ? 'bg-[var(--store-primary)] w-4' : 'bg-[var(--store-border)] w-1.5'}`} />))}
                                     </div>
                                 </>
                             )}
                         </div>
 
-                        <div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col bg-white">
+                        <div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
                             <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
                                 <div>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
-                                    <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight tracking-tight">{product?.name}</h2>
+                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
+                                    <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
                                     
                                     {/* 🚀 ETIQUETA DE CAMPAÑA (Animación Fluida) */}
                                     <AnimatePresence>
@@ -358,9 +358,9 @@ const isCompletelyOutOfStock = variants.length > 0
                                                 initial={{ opacity: 0, y: -10 }} 
                                                 animate={{ opacity: 1, y: 0, transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } }} 
                                                 exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }} 
-                                                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-black to-gray-500 text-white rounded-lg text-xs font-black tracking-wide transition-all  origin-bottom"
+                                                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-lg text-xs font-black tracking-wide transition-all  origin-bottom"
                                             >
-                                                <Tag size={14} className="text-white shrink-0" /> {pricing.promoBadgeText}
+                                                <Tag size={14} className=" text-[var(--store-primary-text)] shrink-0" /> {pricing.promoBadgeText}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -368,13 +368,13 @@ const isCompletelyOutOfStock = variants.length > 0
                                     <div className="flex flex-wrap gap-1.5 mt-3">
                                         {/* 🚀 NUDGE DE AHORRO HONESTO */}
                                         {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                            <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-md text-[11px] font-bold tracking-wide flex items-center gap-1.5">
-                                                <Flame size={14} className="text-emerald-600" />
+                                            <span className="text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2.5 py-1.5 rounded-md text-[11px] font-bold tracking-wide flex items-center gap-1.5">
+                                                <Flame size={14} className="text-[var(--store-incentive)]" />
                                                 Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
                                             </span>
                                         )}
                                         {isCompletelyOutOfStock && (
-                                            <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm flex items-center">
+                                            <span className="bg-[var(--store-border)] text-[var(--store-surface-text)] border border-[var(--store-border)] text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm flex items-center">
                                                 Agotado Temporalmente
                                             </span>
                                         )}
@@ -384,21 +384,21 @@ const isCompletelyOutOfStock = variants.length > 0
                                     <div className="flex items-end gap-3 md:gap-4 mt-6">
                                         <div className="flex flex-col">
                                             {pricing.isPromo && (
-                                                <span className="text-sm md:text-base font-bold text-gray-400 line-through decoration-gray-300 mb-0.5">
+                                                <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] mb-0.5">
                                                     ${pricing.compareAt.toFixed(2)}
                                                 </span>
                                             )}
-                                            <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-gray-900'}`}>
+                                            <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
                                                 ${pricing.listPrice.toFixed(2)}
                                             </span>
                                         </div>
-                                        <span className="text-sm md:text-base font-bold text-gray-400 mb-1">
+                                        <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1">
                                             Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
 
                                     {product?.description && (
-                                        <p className="text-sm text-gray-600 mt-6 leading-relaxed whitespace-pre-line border-t border-gray-100 pt-6">
+                                        <p className="text-sm text-[var(--store-surface-text)] mt-6 leading-relaxed whitespace-pre-line border-t border-[var(--store-border)] pt-6">
                                             {product.description}
                                         </p>
                                     )}
@@ -406,7 +406,7 @@ const isCompletelyOutOfStock = variants.length > 0
 
                                 {loading ? (
                                     <div className="flex items-center justify-center py-10">
-                                        <Loader2 className="animate-spin text-gray-300" size={32} />
+                                        <Loader2 className="animate-spin text-[var(--store-surface-text)]" size={32} />
                                     </div>
                                 ) : (
                                     <div className="space-y-6 pb-4">
@@ -418,10 +418,10 @@ const isCompletelyOutOfStock = variants.length > 0
                                                     className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
                                                 >
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
                                                             1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
                                                         </span>
-                                                        <span className="text-xs font-bold text-gray-900">{selectedColor}</span>
+                                                        <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-3">
                                                         {availableColors.map((c: any) => (
@@ -442,8 +442,8 @@ const isCompletelyOutOfStock = variants.length > 0
                                                         }}
                                                                 disabled={!c.isAvailable}
                                                                 className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                    ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'ring-1 ring-black ring-offset-2 scale-110 border-transparent' : 'hover:scale-105 border-gray-200'}`
-                                                                    : `px-4 py-2.5 rounded-lg text-xs font-bold border ${selectedColor === c.name ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-black'}`
+                                                                    ? `w-10 h-10 rounded-full border ${selectedColor === c.name ?'border-3 ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-120 ' : 'border-3 active:scale:120 hover:scale-105 border-[var(--store-border)]'}`
+                                                                    : `px-4 py-2.5 rounded-lg text-xs font-bold border ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
                                                                     } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                                                                 style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
                                                                 title={!c.isAvailable ? 'Agotado' : c.name}
@@ -471,16 +471,16 @@ const isCompletelyOutOfStock = variants.length > 0
                                                         className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
                                                     >
                                                     <div className="flex justify-between items-end">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">2. Talla</span>
+                                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">2. Talla</span>
                                                         {selectedSize && currentMaxStock > 0 && (
-                                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                                            <span className="text-[10px] font-bold text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2 py-0.5 rounded-md border border-[var(--store-incentive)]/20">
                                                                 Quedan {currentMaxStock} und.
                                                             </span>
                                                         )}
                                                     </div>
 
                                                     {!selectedColor ? (
-                                                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                                        <div className="flex items-center gap-2 text-xs font-bold text-[var(--store-surface-text)] bg-[var(--store-bg)] p-3 rounded-xl border border-[var(--store-border)]">
                                                             <AlertCircle size={16} /> Selecciona un color primero
                                                         </div>
                                                     ) : (
@@ -493,15 +493,15 @@ const isCompletelyOutOfStock = variants.length > 0
                                                                         onClick={() => { if (!isOutOfStock) { setSelectedSize(v.size); setErrorShake(null); } }}
                                                                         disabled={isOutOfStock}
                                                                         className={`relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden ${selectedSize === v.size
-                                                                            ? 'bg-black text-white border-black'
+                                                                            ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
                                                                             : isOutOfStock
-                                                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
-                                                                                : 'bg-white text-gray-900 border-gray-200 hover:border-black'
+                                                                                ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border-[var(--store-border)] cursor-not-allowed opacity-60'
+                                                                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]'
                                                                             }`}
                                                                     >
                                                                         {v.size}
                                                                         {isOutOfStock && (
-                                                                            <svg className="absolute inset-0 w-full h-full text-gray-300" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                                                            <svg className="absolute inset-0 w-full h-full text-[var(--store-surface-text)]" preserveAspectRatio="none" viewBox="0 0 100 100">
                                                                                 <line x1="0" y1="100" x2="100" y2="0" stroke="currentColor" strokeWidth="2" />
                                                                             </svg>
                                                                         )}
@@ -517,15 +517,15 @@ const isCompletelyOutOfStock = variants.length > 0
 
                                         {/* 🚀 ETIQUETA LOGÍSTICA (Herencia Global vs Local) */}
                                         {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                            <div className="flex items-center gap-3 p-4 bg-[#F8F9FA] rounded-2xl border border-gray-200">
-                                                <div className="bg-white p-2 rounded-xl border border-gray-200 shrink-0">
-                                                    <Truck size={16} className="text-gray-900" />
+                                            <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-2xl border border-[var(--store-border)]">
+                                                <div className="bg-[var(--store-surface)] p-2 rounded-xl border border-[var(--store-border)] shrink-0">
+                                                    <Truck size={16} className="text-[var(--store-text-main)]" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wide truncate">
+                                                    <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
                                                         {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
                                                     </span>
-                                                    <span className="text-[11px] font-medium text-gray-500 truncate">
+                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
                                                         {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
                                                     </span>
                                                 </div>
@@ -536,14 +536,14 @@ const isCompletelyOutOfStock = variants.length > 0
                             </div>
 
                             {/* Footer Fijo (Controles de Compra) */}
-                            <div className="p-4 md:p-6 bg-white border-t border-gray-200 shrink-0 z-10">
+                            <div className="p-4 md:p-6 bg-[var(--store-surface)] border-t border-[var(--store-border)] shrink-0 z-10">
                                 <div className="flex gap-3 md:gap-4">
-                                    <div className="flex items-center rounded-full p-1 border-[1.8px] border-[#1a1a1ad2] shrink-0">
-                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <div className="flex items-center rounded-full p-1 border-[1.8px] border-[var(--store-border)] shrink-0">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] hover:bg-[var(--store-bg)] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Minus size={16} strokeWidth={2.5} />
                                         </button>
-                                        <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-[#1a1a1ad2]">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[#1a1a1ad2] hover:border-black hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-[var(--store-text-main)]">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] hover:bg-[var(--store-bg)] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Plus size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
@@ -551,12 +551,12 @@ const isCompletelyOutOfStock = variants.length > 0
                                     <button
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock}
-                                        className={`flex-1 text-white rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 border overflow-hidden ${
+                                        className={`flex-1 text-[var(--store-primary-text)] rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 overflow-hidden ${
                                             isCompletelyOutOfStock 
-                                                ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
+                                                ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)]  opacity-50 cursor-not-allowed' 
                                                 : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                                    ? 'bg-gray-900 border-gray-900 hover:bg-black active:scale-[0.98]' 
-                                                    : 'bg-black border-black hover:bg-gray-800 active:scale-[0.98]' 
+                                                    ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-primary)] active:scale-[0.98]' 
+                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] active:scale-[0.98]' 
                                         }`}
                                     >
                                         <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />

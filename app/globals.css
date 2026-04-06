@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
+
 /* --- ESTA LÍNEA HACE FUNCIONAR EL MODO OSCURO CON EL BOTÓN --- */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  /* ... tu código actual ... */
    textarea, select {
     @apply bg-gray-50/50 border-0 ring-1 ring-gray-200 transition-all duration-300;
     color: #0a0a0a;
@@ -26,6 +28,27 @@
   --card-bg: #ffffff;
   --border-subtle: #e4e4e7;
 }
+
+/* Selecciona el scrollbar de cualquier elemento con la clase .no-scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;     /* Firefox */
+    /* ESTA ES LA CLAVE: evita que el navegador reserve el espacio del fondo */
+    scrollbar-gutter: auto !important; 
+}
+
+
+html {
+    scrollbar-width: none !important; /* Firefox */
+}
+
 
 /* FIX AUTOCOMPLETADO */
 input:-webkit-autofill,
