@@ -144,7 +144,7 @@ export default function LandingClient() {
         <div className="flex items-center gap-6">
           <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">Ingresar</Link>
           <Link href="/login" className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-[#00cd61] hover:text-black transition-colors flex items-center gap-1.5 group editorial-press">
-            Crear Tienda <ArrowUpRight size={14} strokeWidth={3} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            Crear Tienda gratis<ArrowUpRight size={14} strokeWidth={3} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Link>
         </div>
       </header>
@@ -156,7 +156,7 @@ export default function LandingClient() {
             {menuOpen ? <X size={20} strokeWidth={2.5} /> : <Menu size={20} strokeWidth={2.5} />}
           </button>
           <Link href="/login" className="bg-gray-900 text-white px-6 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 editorial-press transition-transform">
-            Crear Tienda <ArrowUpRight size={16} strokeWidth={3} />
+            Crear Tienda gratis <ArrowUpRight size={16} strokeWidth={3} />
           </Link>
         </div>
       </div>
@@ -549,7 +549,7 @@ export default function LandingClient() {
             </p>
             
             <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-gray-950 px-8 py-5 md:px-12 md:py-6 text-base md:text-xl font-bold uppercase tracking-widest rounded-full md:hover:bg-white transition-colors duration-300 editorial-press group shadow-[0_0_40px_rgba(0,205,97,0.3)] hover:shadow-[0_0_60px_rgba(0,205,97,0.5)] max-w-full text-center">
-              Empezar por $18.99/mes <ArrowUpRight size={24} strokeWidth={3} className="md:group-hover:translate-x-1 md:group-hover:-translate-y-1 transition-transform" />
+              obtener prueba gratis <ArrowUpRight size={24} strokeWidth={3} className="md:group-hover:translate-x-1 md:group-hover:-translate-y-1 transition-transform" />
             </Link>
 
             <ul className="mt-12 flex flex-wrap justify-center items-center gap-6 md:gap-10">
