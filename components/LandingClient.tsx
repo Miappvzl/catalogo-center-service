@@ -6,131 +6,83 @@ import Link from 'next/link'
 import {
   ArrowUpRight, Menu, X, Plus,
   Smartphone, Layers, RefreshCw,
-  Check, Instagram, Twitter, Facebook, Mail, Phone
+  Check, Instagram, Twitter, Facebook, Mail, Phone,
+  Calculator, Palette, CheckCircle2 // Nuevos iconos
 } from 'lucide-react'
 import Image from 'next/image';
 
 // =========================================
-// 1. ESTILOS GLOBALES (TECH EDITORIAL / REFINED CLEAN LOOK)
+// 1. ESTILOS GLOBALES (NEO-BRUTALISM & TECH EDITORIAL)
 // =========================================
 const globalStyles = `
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
 
   body {
-    background-color: #FAFAFA; /* Un blanco roto muy premium */
+    background-color: #FAFAFA;
     color: #111111;
   }
   
-  /* EL TOQUE MAESTRO: Selección de texto */
-  ::selection {
-    background-color: #00cd61;
-    color: #000000;
-  }
+  ::selection { background-color: #00cd61; color: #000000; }
   
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
-  /* Sistema de Elevación Refinado (Clean Look) */
-  .editorial-shadow {
-    box-shadow: 0 20px 40px -15px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05);
+  /* Elevación Clean */
+  .editorial-shadow { box-shadow: 0 20px 40px -15px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05); }
+  .editorial-shadow-hover:hover { box-shadow: 0 30px 60px -20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); transform: translateY(-2px); }
+  
+  /* 🚀 NUEVO: Elevación Neo-Brutalista (Hard Shadow) */
+  .brutalist-shadow {
+    box-shadow: 8px 8px 0px #00cd61;
+    transition: all 0.2s ease-in-out;
   }
-  .editorial-shadow-hover:hover {
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
-    transform: translateY(-2px);
-  }
-  .editorial-press:active {
-    transform: scale(0.98);
+  .brutalist-shadow:hover {
+    box-shadow: 12px 12px 0px #00cd61;
+    transform: translate(-4px, -4px);
   }
 
-  /* Textura de Plano de Ingeniería ultra sutil (opcional, al 2% de opacidad) */
+  .editorial-press:active { transform: scale(0.98); }
+
   .blueprint-bg {
     background-image: linear-gradient(to right, rgba(0,0,0,0.02) 1px, transparent 1px),
                       linear-gradient(to bottom, rgba(0,0,0,0.02) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
-  /* Tipografía outline refinada */
-  .text-outline {
-    color: transparent;
-    -webkit-text-stroke: 1px #111111;
-  }
-  @media (min-width: 768px) {
-    .text-outline {
-      -webkit-text-stroke: 1.5px #111111;
-    }
-  }
+  .text-outline { color: transparent; -webkit-text-stroke: 1px #111111; }
+  @media (min-width: 768px) { .text-outline { -webkit-text-stroke: 1.5px #111111; } }
 
-  /* Animación Carrusel */
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(calc(-50% - 1rem)); }
-  }
-  .animate-marquee {
-    animation: marquee 35s linear infinite;
-    will-change: transform;
-  }
-  .animate-marquee:hover {
-    animation-play-state: paused;
-  }
+  @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 1rem)); } }
+  .animate-marquee { animation: marquee 35s linear infinite; will-change: transform; }
+  .animate-marquee:hover { animation-play-state: paused; }
   
-  .fade-edges {
-    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-  }
+  .fade-edges { mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
 `
 
-// =========================================
-// 2. FÍSICA DE INTERFAZ (Suave y Precisa)
-// =========================================
-// Cambiamos el rebote agresivo por una transición sedosa pero rápida
 const elegantUp: Variants = {
   hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring", stiffness: 250, damping: 25, mass: 0.8 } 
-  }
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 250, damping: 25, mass: 0.8 } }
 }
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-// ... (Aquí mantienes tus componentes FaqItem y ScrollFeatureWords intactos por ahora) ...
 const FaqItem = ({ question, answer }: { question: string, answer: string }) => {
   const [isOpen, setIsOpen] = useState(false)
-
   return (
     <div className="border-b border-gray-200 bg-[#FAFAFA] md:hover:bg-gray-50 transition-colors">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-6 md:py-8 px-4 md:px-6 flex items-center justify-between text-left group active:scale-[0.99] transition-transform"
-      >
-        <span className="text-xl md:text-2xl font-black tracking-tight uppercase text-gray-900 pr-6 group-hover:text-[#00cd61] transition-colors">
-          {question}
-        </span>
+      <button onClick={() => setIsOpen(!isOpen)} className="w-full py-6 md:py-8 px-4 md:px-6 flex items-center justify-between text-left group active:scale-[0.99] transition-transform">
+        <span className="text-xl md:text-2xl font-black tracking-tight uppercase text-gray-900 pr-6 group-hover:text-[#00cd61] transition-colors">{question}</span>
         <div className={`w-10 h-10 md:w-12 md:h-12 border border-gray-200 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${isOpen ? 'bg-[#00cd61] border-[#00cd61] text-black' : 'bg-white text-gray-400 group-hover:border-gray-400'}`}>
           <Plus className={`w-5 h-5 md:w-6 md:h-6 transition-transform duration-500 ${isOpen ? 'rotate-45' : 'rotate-0'}`} strokeWidth={2.5} />
         </div>
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden bg-gray-50"
-          >
-            <p className="p-4 md:p-6 font-medium text-gray-600 text-sm md:text-base leading-relaxed max-w-4xl">
-              {answer}
-            </p>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden bg-gray-50">
+            <p className="p-4 md:p-6 font-medium text-gray-600 text-sm md:text-base leading-relaxed max-w-4xl">{answer}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -147,19 +99,11 @@ const ScrollFeatureWords = () => {
     { text: "CERO", outline: false, align: "text-center md:-ml-32" },
     { text: "COMISIONES", outline: true, align: "text-center md:ml-32" },
   ]
-
   return (
     <section className="py-24 md:py-40 overflow-hidden bg-white border-b border-gray-200">
       <div className="flex flex-col gap-2 md:gap-4 w-full">
         {words.map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "0px" }}
-            transition={{ type: "spring", stiffness: 200, damping: 25, delay: i * 0.1 }}
-            className={`w-full px-4 md:px-6 ${item.align}`}
-          >
+          <motion.div key={i} initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "0px" }} transition={{ type: "spring", stiffness: 200, damping: 25, delay: i * 0.1 }} className={`w-full px-4 md:px-6 ${item.align}`}>
             {item.isHighlight ? (
               <span className="inline-block bg-[#00cd61] text-black px-6 md:px-8 text-[13vw] md:text-[8rem] lg:text-[9.5rem] font-black leading-[0.85] tracking-tighter uppercase whitespace-nowrap editorial-shadow rounded-2xl">
                 {item.text}
@@ -186,42 +130,29 @@ export default function LandingClient() {
     <div className="min-h-screen bg-[#FAFAFA] font-sans text-gray-900 overflow-x-hidden">
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
 
-      {/* NAVEGACIÓN DESKTOP (CLEAN LOOK) */}
+      {/* HEADER */}
       <header className="hidden md:flex fixed top-0 left-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-50 h-[72px] items-center justify-between px-6 lg:px-10 transition-all">
         <Link href="/" className="flex items-center group active:scale-95 transition-transform">
-          <Image 
-            src="/pezisologo.png" 
-            alt="Preziso Logo" 
-            width={200} 
-            height={90} 
-            className="h-10 md:h-15 w-auto object-contain"
-            priority
-          />
+          <Image src="/pezisologo.png" alt="Preziso Logo" width={200} height={90} className="h-10 md:h-15 w-auto object-contain" priority />
         </Link>
-
         <nav className="flex items-center gap-8">
           <a href="#solucion" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">Solución</a>
           <a href="#demo" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">Plataforma</a>
+          <a href="#pricing" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">Precios</a>
           <a href="#faq" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">FAQ</a>
         </nav>
-
         <div className="flex items-center gap-6">
-          <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">
-            Ingresar
-          </Link>
+          <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 transition-colors">Ingresar</Link>
           <Link href="/login" className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-[#00cd61] hover:text-black transition-colors flex items-center gap-1.5 group editorial-press">
             Crear Tienda <ArrowUpRight size={14} strokeWidth={3} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Link>
         </div>
       </header>
 
-      {/* NAVEGACIÓN MOBILE (THUMB-ZONE REFINADO) */}
+      {/* NAVEGACIÓN MOBILE */}
       <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] z-50">
         <div className="bg-white/90 backdrop-blur-xl border border-gray-200 editorial-shadow rounded-full p-2 flex items-center justify-between">
-          <button 
-            className="bg-gray-100 text-gray-900 p-3 rounded-full hover:bg-gray-200 transition-colors" 
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
+          <button className="bg-gray-100 text-gray-900 p-3 rounded-full hover:bg-gray-200 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={20} strokeWidth={2.5} /> : <Menu size={20} strokeWidth={2.5} />}
           </button>
           <Link href="/login" className="bg-gray-900 text-white px-6 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 editorial-press transition-transform">
@@ -230,48 +161,28 @@ export default function LandingClient() {
         </div>
       </div>
 
-      {/* FULLSCREEN MOBILE MENU (CLEAN) */}
+      {/* FULLSCREEN MOBILE MENU */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: "100%" }} 
-            animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, y: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed inset-0 z-40 bg-white flex flex-col justify-center px-6"
-          >
+          <motion.div initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="fixed inset-0 z-40 bg-white flex flex-col justify-center px-6">
             <div className="flex flex-col gap-6">
               <a href="#solucion" onClick={() => setMenuOpen(false)} className="text-4xl font-black uppercase tracking-tighter text-gray-900 border-b border-gray-100 pb-4 active:text-[#00cd61] transition-colors">Solución.</a>
               <a href="#demo" onClick={() => setMenuOpen(false)} className="text-4xl font-black uppercase tracking-tighter text-gray-900 border-b border-gray-100 pb-4 active:text-[#00cd61] transition-colors">Plataforma.</a>
+              <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-4xl font-black uppercase tracking-tighter text-gray-900 border-b border-gray-100 pb-4 active:text-[#00cd61] transition-colors">Precios.</a>
               <a href="#faq" onClick={() => setMenuOpen(false)} className="text-4xl font-black uppercase tracking-tighter text-gray-900 border-b border-gray-100 pb-4 active:text-[#00cd61] transition-colors">Preguntas.</a>
-              
-              <Link href="/login" className="text-sm font-bold uppercase tracking-widest text-[#00cd61] mt-6 flex items-center gap-2">
-                Ingresar a mi cuenta <ArrowUpRight size={18} strokeWidth={3} />
-              </Link>
+              <Link href="/login" className="text-sm font-bold uppercase tracking-widest text-[#00cd61] mt-6 flex items-center gap-2">Ingresar a mi cuenta <ArrowUpRight size={18} strokeWidth={3} /></Link>
             </div>
             <div className="absolute top-6 left-6 font-black text-xl tracking-tighter uppercase text-gray-900">
-                    <Link href="/" className="flex items-center group active:scale-95 transition-transform">
-          <Image 
-            src="/pezisologo.png" 
-            alt="Preziso Logo" 
-            width={200} 
-            height={90} 
-            className="h-15 md:h-20 w-auto object-contain"
-            priority
-          />
-        </Link>
+              <Link href="/" className="flex items-center group active:scale-95 transition-transform"><Image src="/pezisologo.png" alt="Preziso Logo" width={200} height={90} className="h-15 md:h-20 w-auto object-contain" priority /></Link>
             </div>
-            
           </motion.div>
         )}
       </AnimatePresence>
 
       <main className="md:pt-[72px]">
-        
-        {/* HERO SECTION (EDITORIAL B2B) */}
+        {/* HERO SECTION */}
         <section className="relative w-full min-h-[90vh] flex flex-col justify-center border-b border-gray-200 blueprint-bg overflow-hidden pt-12 md:pt-0 pb-32 md:pb-20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 w-full relative z-10">
-            
             <motion.div initial="hidden" animate="visible" variants={elegantUp} className="w-full pb-8 md:pb-12 mb-8 md:mb-12 border-b border-gray-200">
               <h1 className="text-[15vw] md:text-[8.5rem] lg:text-[10rem] font-black leading-[0.9] tracking-tighter uppercase text-gray-900">
                 TU NEGOCIO <br className="hidden md:block" /> 
@@ -286,30 +197,23 @@ export default function LandingClient() {
                 <p className="text-base md:text-xl font-medium text-gray-500 border-l-2 border-[#00cd61] pl-4 md:pl-6 leading-relaxed bg-white/30 backdrop-blur-sm py-1 rounded-r-lg">
                   Olvídate de actualizar tasas a mano y de los errores al cobrar. Automatiza el cambio de divisas de tu tienda y deja que las ventas fluyan sin pausas.
                 </p>
-                
                 <Link href="/login" className="self-start inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-8 py-4 md:px-10 md:py-5 text-sm md:text-base font-bold uppercase tracking-widest rounded-full editorial-shadow editorial-shadow-hover editorial-press transition-all duration-300 group hover:bg-[#00cd61] hover:text-black">
                   Crear Tienda Gratis <ArrowUpRight size={20} strokeWidth={3} className="md:group-hover:translate-x-1 md:group-hover:-translate-y-1 transition-transform" />
                 </Link>
               </motion.div>
 
-              {/* MOCKUP DEL DASHBOARD (Clean Mac Window) */}
               <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 250, damping: 25, delay: 0.2 }} className="w-full lg:w-[55%] relative group mt-4 lg:mt-0">
                 <div className="w-full aspect-[4/3] md:aspect-[16/10] bg-white border border-gray-200 rounded-2xl md:rounded-3xl flex flex-col overflow-hidden editorial-shadow transition-transform duration-500 md:hover:-translate-y-2">
-                  
-                  {/* Barra de Navegador Mac-style */}
                   <div className="h-10 md:h-12 border-b border-gray-100 bg-gray-50/80 backdrop-blur-sm flex items-center px-4 gap-2 shrink-0">
                     <div className="w-3 h-3 rounded-full bg-red-400 border border-red-500/20"></div>
                     <div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500/20"></div>
                     <div className="w-3 h-3 rounded-full bg-green-400 border border-green-500/20"></div>
                   </div>
-                  
                   <div className="relative flex-1 bg-white">
                     <Image src="/dashboardpreview.webp" alt="Dashboard Preview" fill className="object-cover object-left-top transform transition-transform duration-700 md:group-hover:scale-105" />
                   </div>
                 </div>
-                
-                {/* Etiqueta Premium */}
-                <div className="absolute -bottom-4 -left-4 md:-bottom-6 md:-left-6 bg-white ml-[12] text-gray-900 border border-gray-200 px-4 py-2 md:px-6 md:py-3 font-bold uppercase tracking-widest text-[10px] md:text-xs rounded-full editorial-shadow z-20 flex items-center gap-2">
+                <div className="absolute -bottom-4 -left-4 md:-bottom-6 md:-left-6 bg-white ml-[12px] text-gray-900 border border-gray-200 px-4 py-2 md:px-6 md:py-3 font-bold uppercase tracking-widest text-[10px] md:text-xs rounded-full editorial-shadow z-20 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#00cd61] animate-pulse"></div> Dashboard Preview
                 </div>
               </motion.div>
@@ -317,18 +221,12 @@ export default function LandingClient() {
           </div>
         </section>
 
-        {/* AQUÍ CONTINÚA TU CÓDIGO ACTUAL (ScrollFeatureWords, etc.) ... */}
-
-        {/* ... AQUÍ CONTINÚA TU CÓDIGO ACTUAL DE ScrollFeatureWords ... */}
-
-       {/* SCROLL CINÉTICO */}
         <ScrollFeatureWords />
 
-{/* =========================================
-            4. BENTO GRID (LA SOLUCIÓN - TECH EDITORIAL)
+        {/* =========================================
+            4. BENTO GRID (LA SOLUCIÓN + NUEVOS FEATURES)
         ========================================= */}
         <section id="solucion" className="py-24 md:py-32 w-full border-b border-gray-200 bg-[#FAFAFA] relative overflow-hidden">
-          {/* Blueprint sutil */}
           <div className="absolute inset-0 blueprint-bg pointer-events-none opacity-50"></div>
 
           <div className="max-w-7xl mx-auto relative z-10">
@@ -342,12 +240,12 @@ export default function LandingClient() {
               </p>
             </motion.div>
 
-            {/* CONTENEDOR HÍBRIDO: Scroll Horizontal en Móvil, Grid en PC */}
+            {/* BENTO GRID ACTUALIZADO (5 Tarjetas) */}
             <motion.div 
               initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={staggerContainer} 
               className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 px-4 md:px-6 md:grid md:grid-cols-2 md:gap-8 md:overflow-visible md:snap-none md:pb-0 no-scrollbar"
             >
-              {/* Tarjeta 1 */}
+              {/* Tarjeta 1: Automatización (Ancha) */}
               <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center md:col-span-2 bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-14 border border-gray-200 editorial-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-8 md:gap-20 group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover">
                 <div className="flex-1 flex flex-col items-start gap-6 md:gap-8 w-full">
                   <div className="px-4 py-2 border border-gray-100 rounded-full text-xs font-bold uppercase tracking-widest text-[#00cd61] bg-green-50/50">
@@ -367,7 +265,7 @@ export default function LandingClient() {
                 </div>
               </motion.article>
 
-              {/* Tarjeta 2 */}
+              {/* Tarjeta 2: Pedidos Directos */}
               <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-gray-200 editorial-shadow flex flex-col justify-between group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover min-h-[350px] md:min-h-[450px]">
                 <div className="flex justify-between items-start mb-8">
                   <div className="px-4 py-2 border border-gray-100 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 bg-gray-50">
@@ -380,16 +278,52 @@ export default function LandingClient() {
                 <div>
                   <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-4 text-gray-900">Pedidos <br /> Directos.</h3>
                   <p className="text-gray-500 text-sm md:text-lg font-medium leading-relaxed">
-                    Se acabaron los chats interminables. El cliente arma su carrito y te envía un ticket limpio y formateado directo a tu WhatsApp.
+                    Se acabaron los chats interminables. El cliente arma su carrito y te envía un ticket limpio directo a tu WhatsApp.
                   </p>
                 </div>
               </motion.article>
 
-              {/* Tarjeta 3 (Alto Contraste Premium) */}
-              <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center bg-gray-900 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-gray-800 editorial-shadow flex flex-col justify-between group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover min-h-[350px] md:min-h-[450px]">
+              {/* Tarjeta 3: Cierre de Caja (NUEVO) */}
+              <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center bg-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-gray-200 editorial-shadow flex flex-col justify-between group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover min-h-[350px] md:min-h-[450px]">
+                <div className="flex justify-between items-start mb-8">
+                  <div className="px-4 py-2 border border-gray-100 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 bg-gray-50">
+                    03 // Inteligencia Financiera
+                  </div>
+                  <div className="w-12 h-12 bg-white border border-gray-100 rounded-full flex items-center justify-center shadow-sm md:group-hover:-translate-y-2 transition-transform">
+                    <Calculator className="w-5 h-5 text-gray-900" strokeWidth={2} />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-4 text-gray-900">Cuadre de<br />Caja Diario.</h3>
+                  <p className="text-gray-500 text-sm md:text-lg font-medium leading-relaxed">
+                    El sistema separa automáticamente cuánto cobraste en dólares y cuánto en bolívares. Olvídate de la calculadora al final del día.
+                  </p>
+                </div>
+              </motion.article>
+
+              {/* Tarjeta 4: Personalización (NUEVO) */}
+              <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center bg-gray-100 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-gray-200 editorial-shadow flex flex-col justify-between group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover min-h-[350px] md:min-h-[450px]">
+                <div className="flex justify-between items-start mb-8">
+                  <div className="px-4 py-2 border border-gray-200 rounded-full text-xs font-bold uppercase tracking-widest text-gray-700 bg-white">
+                    04 // White-Label
+                  </div>
+                  <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm md:group-hover:-translate-y-2 transition-transform">
+                    <Palette className="w-5 h-5 text-[#00cd61]" strokeWidth={2} />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-[0.9] mb-4 text-gray-900">ADN de<br />tu Marca.</h3>
+                  <p className="text-gray-500 text-sm md:text-lg font-medium leading-relaxed">
+                    Tu tienda, tus reglas. Muta los colores, botones y tipografías en 1 clic para que la plataforma respire la identidad de tu negocio.
+                  </p>
+                </div>
+              </motion.article>
+
+              {/* Tarjeta 5: Gestión de Variantes (Alto Contraste Premium) */}
+              <motion.article variants={elegantUp} className="w-[85vw] shrink-0 md:w-auto snap-center bg-gray-900 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 border border-gray-800 editorial-shadow flex flex-col justify-between group transition-all duration-500 md:hover:-translate-y-2 md:hover:editorial-shadow-hover min-h-[350px] md:min-h-[450px] md:col-span-2 lg:col-span-1 lg:col-start-2">
                 <div className="flex justify-between items-start mb-8">
                   <div className="px-4 py-2 border border-gray-700 rounded-full text-xs font-bold uppercase tracking-widest text-white bg-gray-800">
-                    03 // Control Total
+                    05 // Control Total
                   </div>
                   <div className="w-12 h-12 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center shadow-sm md:group-hover:-translate-y-2 transition-transform">
                     <Layers className="w-5 h-5 text-[#00cd61]" strokeWidth={2} />
@@ -402,6 +336,7 @@ export default function LandingClient() {
                   </p>
                 </div>
               </motion.article>
+
             </motion.div>
           </div>
         </section>
@@ -432,7 +367,7 @@ export default function LandingClient() {
                 
                 <div className="flex-1 flex items-end justify-center">
                   <div className="w-full max-w-[260px] relative">
-                    <div className="relative w-full aspect-[9/16] rounded-[2.5rem] md:rounded-[3rem] border-7 border-black bg-white overflow-hidden shadow-2xl transition-transform duration-700 md:group-hover:-translate-y-4">
+                    <div className="relative w-full aspect-[9/16] rounded-[2.5rem] md:rounded-[3rem] border-[6px] border-black bg-white overflow-hidden shadow-2xl transition-transform duration-700 md:group-hover:-translate-y-4">
                       {/* Notch Isla Dinámica */}
                       <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-20">
                         <div className="w-24 h-[5px] bg-black rounded-b-xl"></div>
@@ -455,10 +390,7 @@ export default function LandingClient() {
                 
                 <div className="flex-1 w-full flex items-center justify-center">
                   <div className="w-full relative">
-                    <div className="relative w-full aspect-[16/10] rounded-2xl md:rounded-3xl border border-black border-5 bg-white overflow-hidden shadow-2xl flex flex-col transition-transform duration-700 md:group-hover:-translate-y-4">
-                      
-                      
-                      
+                    <div className="relative w-full aspect-[16/10] rounded-2xl md:rounded-3xl border-4 border-black bg-white overflow-hidden shadow-2xl flex flex-col transition-transform duration-700 md:group-hover:-translate-y-4">
                       <div className="relative flex-1 w-full bg-gray-50">
                         <Image src="/dashboardpreview.webp" alt="Panel web" fill className="object-cover object-left-top" sizes="(max-width: 768px) 100vw, 60vw" />
                       </div>
@@ -514,10 +446,70 @@ export default function LandingClient() {
         </section>
 
         {/* =========================================
-            7. FAQ SECCIÓN (ACORDEÓN SEDOSO)
+            7. PRICING (NEO-BRUTALISM CARD) 🚀 NUEVO
         ========================================= */}
-        <section id="faq" className="py-24 md:py-40 bg-[#FAFAFA] relative">
-          <div className="max-w-7xl mx-auto px-4  bg-[#FAFAFA]md:px-6">
+        <section id="pricing" className="py-24 md:py-32 w-full border-b border-gray-200 bg-[#FAFAFA] relative overflow-hidden">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 relative z-10 flex flex-col items-center">
+              
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} className="text-center mb-12">
+                <h2 className="text-[12vw] md:text-[5rem] lg:text-[6rem] font-black leading-[0.85] tracking-tighter uppercase text-gray-900">
+                  UN PRECIO. <br />
+                  <span className="text-outline">CERO COMISIONES.</span>
+                </h2>
+              </motion.div>
+
+              {/* TARJETA BRUTALISTA */}
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} 
+                className="w-full bg-white border-4 border-gray-900 rounded-[2rem] p-8 md:p-12 brutalist-shadow flex flex-col md:flex-row gap-10 items-center justify-between"
+              >
+                {/* Lado Izquierdo: Precio y Promesa */}
+                <div className="flex flex-col items-center md:items-start text-center md:text-left w-full md:w-1/2">
+                  <div className="bg-[#00cd61] text-black px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6 border-2 border-black">
+                    Plan Ilimitado
+                  </div>
+                  <h3 className="text-6xl md:text-7xl font-black tracking-tighter text-gray-900 leading-none">
+                    $18.99
+                  </h3>
+                  <span className="text-sm font-bold uppercase tracking-widest text-gray-500 mt-2 block">
+                    Al Mes / Sin Contratos
+                  </span>
+                  <p className="text-gray-600 font-medium mt-6 leading-relaxed">
+                    Vende 10 o 10.000 productos. Jamás tocaremos un centavo de tus ganancias. Paga en Bs o USDT.
+                  </p>
+                  
+                  <Link href="/login" className="mt-8 w-full md:w-auto inline-flex items-center justify-center gap-3 bg-gray-900 text-white px-8 py-5 text-sm md:text-base font-bold uppercase tracking-widest rounded-full editorial-press transition-all duration-300 hover:bg-[#00cd61] hover:text-black border-2 border-transparent hover:border-black">
+                    Crear mi tienda <ArrowUpRight size={20} strokeWidth={3} />
+                  </Link>
+                </div>
+
+                {/* Lado Derecho: Checklist de Beneficios */}
+                <div className="w-full md:w-1/2 bg-gray-50 p-6 md:p-8 rounded-[1.5rem] border-2 border-gray-100">
+                  <ul className="flex flex-col gap-5">
+                    {[
+                      "Productos y Pedidos Ilimitados",
+                      "Tasa BCV sincronizada en vivo",
+                      "Cierre de caja en USD y BS",
+                      "Diseño 100% personalizable",
+                      "Pedidos directos a tu WhatsApp",
+                      "Dominio personalizado (.preziso.shop)"
+                    ].map((benefit, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <CheckCircle2 size={24} className="text-[#00cd61] shrink-0" strokeWidth={2.5} />
+                        <span className="text-base font-bold text-gray-800 leading-tight">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+
+            </div>
+        </section>
+
+        {/* =========================================
+            8. FAQ SECCIÓN (ACORDEÓN SEDOSO)
+        ========================================= */}
+        <section id="faq" className="py-24 md:py-40 bg-white relative">
+          <div className="max-w-7xl mx-auto px-4 md:px-6">
             <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
               <div className="lg:col-span-5 lg:sticky lg:top-32">
                 <div className="inline-block bg-[#FAFAFA] text-gray-600 border border-gray-200 rounded-full px-4 py-2 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-6 editorial-shadow">
@@ -531,7 +523,7 @@ export default function LandingClient() {
                 </p>
               </div>
 
-              <div className="lg:col-span-7 flex flex-col bg-[#FAFAFA] border-t border-gray-200 mt-8 md:mt-0">
+              <div className="lg:col-span-7 flex flex-col bg-white border-t border-gray-200 mt-8 md:mt-0">
                 <FaqItem question="¿Necesito tarjeta internacional?" answer="No. Sabemos cómo funciona el mercado venezolano. Puedes pagar tu suscripción mensual de $18.99 en Bolívares (Pago Móvil) o usando USDT (Binance)." />
                 <FaqItem question="¿Cobran comisión por venta?" answer="Cero comisiones. Jamás tocaremos tu dinero. Pagas una tarifa plana al mes y puedes vender 10 o 10.000 productos. El 100% de la ganancia va directo a tus cuentas bancarias." />
                 <FaqItem question="¿El dinero pasa por Preziso?" answer="Nunca. El cliente arma el carrito en nuestra plataforma, y el pedido se envía a tu WhatsApp. El cliente te paga directamente a ti (a tu Pago Móvil o tu Zelle)." />
@@ -544,10 +536,9 @@ export default function LandingClient() {
       </main>
 
       {/* =========================================
-          8. FOOTER POSTER (DARK MODE PREMIUM)
+          9. FOOTER POSTER (DARK MODE PREMIUM)
       ========================================= */}
       <footer className="bg-gray-950 text-white pt-5 md:pt-32 pb-8 px-4 md:px-6 relative mt-0 overflow-hidden">
-        {/* Patrón sutil en fondo oscuro */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
 
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
@@ -557,7 +548,6 @@ export default function LandingClient() {
               ¿Listo para el siguiente nivel?
             </p>
             
-            {/* BOTÓN CTA FINAL */}
             <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-[#00cd61] text-gray-950 px-8 py-5 md:px-12 md:py-6 text-base md:text-xl font-bold uppercase tracking-widest rounded-full md:hover:bg-white transition-colors duration-300 editorial-press group shadow-[0_0_40px_rgba(0,205,97,0.3)] hover:shadow-[0_0_60px_rgba(0,205,97,0.5)] max-w-full text-center">
               Empezar por $18.99/mes <ArrowUpRight size={24} strokeWidth={3} className="md:group-hover:translate-x-1 md:group-hover:-translate-y-1 transition-transform" />
             </Link>
@@ -570,12 +560,8 @@ export default function LandingClient() {
           </motion.div>
         </div>
 
-        {/* =========================================
-            NUEVA SECCIÓN: CONTACTO Y REDES SOCIALES
-        ========================================= */}
         <div className="max-w-7xl mx-auto w-full relative z-10 mt-20 md:mt-28 flex flex-col md:flex-row items-center justify-between gap-10 border-t border-gray-900 pt-10">
           
-          {/* Contacto Directo (Soporte y Teléfono) */}
           <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
             <a href="mailto:quanzosinc@gmail.com" className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors group">
               <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center group-hover:border-[#00cd61] transition-colors">
@@ -591,7 +577,6 @@ export default function LandingClient() {
             </a>
           </div>
 
-          {/* Iconos de Redes Sociales */}
           <div className="flex items-center gap-4">
             <a href="#" target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-950 hover:bg-[#00cd61] hover:border-[#00cd61] transition-all duration-300 editorial-press">
               <Instagram size={18} strokeWidth={2.5} />
@@ -605,18 +590,9 @@ export default function LandingClient() {
           </div>
         </div>
 
-        {/* LOGO GIGANTE Y LEGALES */}
         <div className="mt-10 md:mt-24 border-t border-gray-900 pt-8 md:pt-12 w-full flex flex-col items-center relative z-10 overflow-hidden">
-          
-          {/* 🚀 NUEVO LOGO GIGANTE (IMAGE) */}
           <div className="w-[90vw] md:w-[80vw] max-w-[1400px] flex items-center justify-center opacity-20 md:hover:opacity-30 transition-opacity duration-500 select-none pointer-events-none mb-4 md:mb-8">
-            <Image 
-              src="/pezisologow.png" 
-              alt="Preziso Logo Gigante" 
-              width={1400} 
-              height={400} 
-              className="w-full h-auto object-contain"
-            />
+            <Image src="/pezisologow.png" alt="Preziso Logo Gigante" width={1400} height={400} className="w-full h-auto object-contain" />
           </div>
           
           <div className="flex flex-col md:flex-row justify-between w-full max-w-7xl mt-5 mb-20 px-4 md:px-0 gap-6 text-center md:text-left text-gray-600">
