@@ -104,7 +104,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
       break
     case 'active_expired':
       isCritical = true
-      message = `Tu suscripción a Preziso ha vencido. Renueva tu plan para evitar pausas en tu tienda.`
+      message = `(Modo, solo lectura). Puedes ver tu panel, pero no puedes editar, agregar productos ni vender. Renueva ahora para seguir disfrutando de Preziso`
       break
   }
 

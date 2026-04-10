@@ -28,26 +28,35 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   // ------------------------------------------------------------------
-  // 🛡️ INTERCEPCIÓN B: Muro de pago (CORREGIDA Y BLINDADA)
+  // 🛡️ INTERCEPCIÓN B: Modo de Solo Lectura (Look but don't touch)
   // ------------------------------------------------------------------
   const targetDateString = store.subscription_ends_at || store.trial_ends_at;
   const expirationDate = targetDateString ? new Date(targetDateString) : new Date();
   const now = new Date();
 
-  // Bloqueamos si la fecha ya pasó (sea trial o active) O si el Cron lo marcó como 'expired'
-  if (expirationDate < now || store.subscription_status === 'expired') {
-    redirect('/subscription')
-  }
+  // Evaluamos si está vencido. ¡Ya NO hacemos redirect!
+  const isExpired = expirationDate < now || store.subscription_status === 'expired';
   // ------------------------------------------------------------------
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FA] selection:bg-black selection:text-white">
-      {/* Pasamos la tienda validada a la navegación */}
-      <AdminNavigation store={store} />
+    <div className="flex min-h-screen bg-[#F8F9FA] selection:bg-black selection:text-white relative">
+      {/* Pasamos la tienda y el estado de expiración a la navegación */}
+     <AdminNavigation store={store} />
       
-      {/* El contenido de la página se inyecta aquí */}
-      <div className="flex-1 lg:ml-64 relative z-10">
-        {children}
+      <div className="flex-1 lg:ml-64 relative z-10 flex flex-col h-screen overflow-hidden">
+        
+       
+
+        {/* 🚀 EL MAGICO CAMPO DE FUERZA (Fieldset) */}
+        <div className="flex-1 overflow-y-auto">
+            <fieldset 
+                disabled={isExpired} 
+                className={`min-h-full ${isExpired ? 'opacity-80 grayscale-[30%]' : ''}`}
+            >
+                {children}
+            </fieldset>
+        </div>
+
       </div>
     </div>
   )
