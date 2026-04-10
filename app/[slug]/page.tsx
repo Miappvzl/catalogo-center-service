@@ -79,11 +79,15 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   }
 
   // ------------------------------------------------------------------
-  // 🛡️ EL ESCUDO DE REPUTACIÓN (LA LÓGICA DE CADUCIDAD)
+  // 🛡️ EL ESCUDO DE REPUTACIÓN (LA LÓGICA DE CADUCIDAD CORREGIDA)
   // ------------------------------------------------------------------
-  const trialEnds = new Date(store.trial_ends_at)
-  const now = new Date()
-  const isExpired = store.subscription_status === 'trial' && trialEnds < now
+  // 1. Tomamos la fecha real de vencimiento (prioridad a suscripción paga, fallback a trial)
+  const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+  const expirationDate = targetDateString ? new Date(targetDateString) : new Date();
+  const now = new Date();
+  
+  // 2. Evaluamos caducidad pura: si la fecha ya pasó, se bloquea (sea trial o active)
+  const isExpired = expirationDate < now;
 
   if (isExpired) {
     return (

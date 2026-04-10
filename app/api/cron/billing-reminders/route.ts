@@ -24,11 +24,11 @@ export async function GET(request: Request) {
         );
 
         // 3. Extraemos todas las tiendas activas o en trial
+       // 3. Extraemos todas las tiendas activas o en trial
         const { data: stores, error: storesError } = await supabase
             .from('stores')
-            .select('id, name, trial_ends_at, subscription_status')
+            .select('id, name, trial_ends_at, subscription_ends_at, subscription_status') 
             .in('subscription_status', ['active', 'trial']);
-
         if (storesError || !stores) throw new Error('Error buscando tiendas');
 
         const today = new Date();
@@ -36,15 +36,16 @@ export async function GET(request: Request) {
 
         // 4. El Motor de Decisión
         for (const store of stores) {
-            if (!store.trial_ends_at) continue;
+           const targetDate = store.subscription_ends_at || store.trial_ends_at;
+            if (!targetDate) continue;
 
-            const endsAt = new Date(store.trial_ends_at);
+            const endsAt = new Date(targetDate);
             const diffTime = endsAt.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             let title = '';
             let message = '';
-            let urgency = 'alert'; 
+            let urgency = 'alert';
 
             // Reglas de Retención: [3, 1, 0]
             if (diffDays === 3) {
@@ -53,11 +54,15 @@ export async function GET(request: Request) {
             } else if (diffDays === 1) {
                 title = 'Último Día de Suscripción ⚠️';
                 message = 'Mañana vence tu plan. Asegura tu panel de control renovando hoy mismo.';
-            } else if (diffDays === 0) {
+            } else if (diffDays <= 0) { // Usamos <= 0 por si el Cron falla un día
                 title = 'Suscripción Expirada 🚨';
                 message = 'Tu tienda ha sido pausada. El catálogo público ya no es visible. Renueva ahora para reactivarla.';
                 urgency = 'critical';
-                await supabase.from('stores').update({ subscription_status: 'trial' }).eq('id', store.id);
+                
+                // CRÍTICO: El estado debe ser 'expired' o 'past_due', NUNCA 'trial'
+                await supabase.from('stores')
+                    .update({ subscription_status: 'expired' }) 
+                    .eq('id', store.id);
             } else {
                 continue;
             }

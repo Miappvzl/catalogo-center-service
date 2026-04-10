@@ -71,18 +71,22 @@ export default function SuperAdminPage() {
 
         const daysToAdd = parseInt(days, 10)
         const now = new Date()
-        const currentEndDate = new Date(store.trial_ends_at)
 
-        // LÓGICA FINANCIERA INTELIGENTE:
-        // Si la tienda ya expiró, le sumamos los días desde el momento en que pagó (HOY).
-        // Si la tienda no ha expirado, le sumamos los días a su FECHA DE CORTE para no robarle tiempo.
-        const baseDate = currentEndDate > now ? currentEndDate : now
-        const newDate = new Date(baseDate)
-        newDate.setDate(newDate.getDate() + daysToAdd)
 
+        // LÓGICA FINANCIERA INTELIGENTE (CORREGIDA):
+        // 1. Identificamos cuál es la fecha real de vencimiento (priorizando si ya pagó antes)
+        const targetDateString = store.subscription_ends_at ? store.subscription_ends_at : store.trial_ends_at;
+        const currentEndDate = new Date(targetDateString);
+        
+        // 2. Si la tienda ya expiró, sumamos desde HOY. Si no, desde su FECHA DE CORTE.
+        const baseDate = currentEndDate > now ? currentEndDate : now;
+        const newDate = new Date(baseDate);
+        newDate.setDate(newDate.getDate() + daysToAdd);
+
+        // 3. Actualizamos 'subscription_ends_at' para que el Banner entienda que ya no es trial
         const { error } = await supabase.from('stores').update({
             subscription_status: 'active',
-            trial_ends_at: newDate.toISOString()
+            subscription_ends_at: newDate.toISOString() 
         }).eq('id', store.id)
 
         if (error) {

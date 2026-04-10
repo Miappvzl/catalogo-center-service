@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminNavigation from '@/components/admin/AdminNavigation'
 
-
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -28,12 +27,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/onboarding')
   }
 
-  // INTERCEPCIÓN B: Muro de pago
-  const trialEnds = new Date(store.trial_ends_at)
-  const now = new Date()
-  if (store.subscription_status === 'trial' && trialEnds < now) {
+  // ------------------------------------------------------------------
+  // 🛡️ INTERCEPCIÓN B: Muro de pago (CORREGIDA Y BLINDADA)
+  // ------------------------------------------------------------------
+  const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+  const expirationDate = targetDateString ? new Date(targetDateString) : new Date();
+  const now = new Date();
+
+  // Bloqueamos si la fecha ya pasó (sea trial o active) O si el Cron lo marcó como 'expired'
+  if (expirationDate < now || store.subscription_status === 'expired') {
     redirect('/subscription')
   }
+  // ------------------------------------------------------------------
 
   return (
     <div className="flex min-h-screen bg-[#F8F9FA] selection:bg-black selection:text-white">
@@ -43,7 +48,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* El contenido de la página se inyecta aquí */}
       <div className="flex-1 lg:ml-64 relative z-10">
         {children}
-        
       </div>
     </div>
   )
