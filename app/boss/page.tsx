@@ -111,9 +111,10 @@ export default function SuperAdminPage() {
 
         if (!confirm.isConfirmed) return
 
-        const pastDate = new Date('2000-01-01').toISOString()
+       const pastDate = new Date('2000-01-01').toISOString()
         const { error } = await supabase.from('stores').update({
-            subscription_status: 'trial',
+            subscription_status: 'expired', // <-- AHORA ES EXPIRED
+            subscription_ends_at: pastDate, // <-- CORTAMOS LA FECHA DE SUSCRIPCIÓN
             trial_ends_at: pastDate
         }).eq('id', store.id)
 
@@ -235,7 +236,11 @@ export default function SuperAdminPage() {
     // --- KPIs FINANCIEROS (Conectados a la Fuente de la Verdad) ---
     const kpis = useMemo(() => {
         const now = new Date()
-        const active = stores.filter(s => s.subscription_status === 'active' || new Date(s.trial_ends_at) > now).length
+        const active = stores.filter(s => {
+            if (s.subscription_status === 'expired') return false;
+            const targetDate = s.subscription_ends_at || s.trial_ends_at;
+            return s.subscription_status === 'active' || new Date(targetDate) > now;
+        }).length
         const expired = stores.length - active
         return {
             total: stores.length,
@@ -319,10 +324,10 @@ export default function SuperAdminPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredStores.map(store => {
-                                        const endsAt = new Date(store.trial_ends_at)
-                                        const now = new Date()
-                                        const isExpired = store.subscription_status === 'trial' && endsAt < now
-
+                                       const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+const endsAt = targetDateString ? new Date(targetDateString) : new Date();
+const now = new Date();
+const isExpired = endsAt < now || store.subscription_status === 'expired';
                                         // Días restantes o vencidos
                                         const diffDays = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
