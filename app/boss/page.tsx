@@ -236,12 +236,20 @@ export default function SuperAdminPage() {
     // --- KPIs FINANCIEROS (Conectados a la Fuente de la Verdad) ---
     const kpis = useMemo(() => {
         const now = new Date()
-        const active = stores.filter(s => {
-            if (s.subscription_status === 'expired') return false;
-            const targetDate = s.subscription_ends_at || s.trial_ends_at;
-            return s.subscription_status === 'active' || new Date(targetDate) > now;
-        }).length
-        const expired = stores.length - active
+        
+        // Filtramos usando EXACTAMENTE la misma regla blindada de la tabla
+        const active = stores.filter(store => {
+            const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+            const endsAt = targetDateString ? new Date(targetDateString) : new Date();
+            
+            // Es expirada si el tiempo ya pasó O si su estatus oficial es 'expired'
+            const isExpired = endsAt < now || store.subscription_status === 'expired';
+            
+            return !isExpired; // Si no ha expirado, la contamos como activa para el MRR
+        }).length;
+
+        const expired = stores.length - active;
+
         return {
             total: stores.length,
             active,
