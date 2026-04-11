@@ -261,16 +261,33 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         onClose()
     }
 
-    const handleInquiryWhatsApp = () => {
-        // Un mensaje de consulta, no de orden de compra
-        let message = `¡Hola! 👋 Estaba viendo tu tienda online y tengo una duda sobre este producto:\n\n`;
-        message += `🛍️ *${product.name}*\n`;
-        if (selectedColor || selectedSize) {
-            message += `🔸 Variante que me interesa: ${selectedColor || ''} ${selectedSize || ''}\n`;
-        }
-        message += `\n🔗 Link: https://${storeConfig?.slug}.preziso.shop\n\n`; // Nota: Asume que tienes el slug, si no lo tienes usa window.location.href
-        message += `Mi duda es: `;
+  const handleInquiryWhatsApp = () => {
+        // 1. EL ENLACE EXACTO (Deep Link)
+        // Como el modal no cambia la URL del navegador, la construimos manualmente.
+        // Agregamos ?p=id_del_producto para tener una referencia exacta.
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : `https://${storeConfig?.slug}.preziso.shop`;
+        const productUrl = `${baseUrl}?p=${product?.id || ''}`;
 
+        // 2. LAS VARIANTES
+        const variantText = [selectedColor, selectedSize].filter(Boolean).join(' - ');
+
+        // 3. EMOJIS BLINDADOS (Unicode Escapes ES6)
+        // El navegador los compilará directamente, evadiendo cualquier error de codificación de VS Code.
+        const wave = '\u{1F44B}';      // 👋
+        const cart = '\u{1F6D2}';      // 🛒
+        const sparkles = '\u{2728}';   // ✨
+        const linkIcon = '\u{1F517}';  // 🔗
+
+        // 4. CONSTRUCCIÓN DEL MENSAJE
+        const message = 
+`¡Hola! ${wave} Tengo una consulta sobre un artículo de tu tienda:
+
+${cart} *${product?.name || 'Producto'}*
+${variantText ? `${sparkles} *Opción:* ${variantText}\n` : ''}${linkIcon} *Enlace:* ${productUrl}
+
+Mi duda es la siguiente: `;
+
+        // 5. DISPARO A WHATSAPP
         const waLink = `https://wa.me/${storeConfig?.phone}?text=${encodeURIComponent(message)}`;
         window.open(waLink, '_blank');
     }
