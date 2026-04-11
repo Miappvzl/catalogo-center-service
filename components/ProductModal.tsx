@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -259,6 +259,20 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         const Toast = Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
         Toast.fire({ icon: 'success', title: `Bolsa Actualizada (+${quantity})` })
         onClose()
+    }
+
+    const handleInquiryWhatsApp = () => {
+        // Un mensaje de consulta, no de orden de compra
+        let message = `¡Hola! 👋 Estaba viendo tu tienda online y tengo una duda sobre este producto:\n\n`;
+        message += `🛍️ *${product.name}*\n`;
+        if (selectedColor || selectedSize) {
+            message += `🔸 Variante que me interesa: ${selectedColor || ''} ${selectedSize || ''}\n`;
+        }
+        message += `\n🔗 Link: https://${storeConfig?.slug}.preziso.shop\n\n`; // Nota: Asume que tienes el slug, si no lo tienes usa window.location.href
+        message += `Mi duda es: `;
+
+        const waLink = `https://wa.me/${storeConfig?.phone}?text=${encodeURIComponent(message)}`;
+        window.open(waLink, '_blank');
     }
 
     const nextImage = () => setGalleryIndex((prev) => (prev + 1) % currentGallery.length)
@@ -536,46 +550,51 @@ const isCompletelyOutOfStock = variants.length > 0
                             </div>
 
                             {/* Footer Fijo (Controles de Compra) */}
-                            <div className="p-4 md:p-6 bg-[var(--store-surface)] border-t border-[var(--store-border)] shrink-0 z-10">
+                            <div className="p-4 md:p-6 bg-[var(--store-surface)] border-t border-[var(--store-border)] shrink-0 z-10 flex flex-col gap-3">
+                                
+                              
+
                                 <div className="flex gap-3 md:gap-4">
+                                    {/* Controles de +/- */}
                                     <div className="flex items-center rounded-full p-1 border-[1.8px] border-[var(--store-border)] shrink-0">
-                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] hover:bg-[var(--store-bg)] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Minus size={16} strokeWidth={2.5} />
                                         </button>
-                                        <span className="font-bold text-sm md:text-base w-8 md:w-10 text-center tabular-nums text-[var(--store-text-main)]">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] hover:bg-[var(--store-bg)] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Plus size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
 
+                                    {/* Botón Principal de Agregar (El que queremos que usen) */}
                                     <button
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock}
-                                        className={`flex-1 text-[var(--store-primary-text)] rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all flex items-center justify-center gap-2 overflow-hidden ${
+                                        className={`flex-1 rounded-full font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2  ${
                                             isCompletelyOutOfStock 
-                                                ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)]  opacity-50 cursor-not-allowed' 
+                                                ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
                                                 : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                                    ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-primary)] active:scale-[0.98]' 
-                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] active:scale-[0.98]' 
+                                                    ? 'bg-[var(--store-bg)] text-[var(--store-text-main)]  active:scale-[0.98]' 
+                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] active:scale-[0.98] shadow-lg shadow-black/10' 
                                         }`}
                                     >
                                         <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
-                                        {/* 🚀 CONTENEDOR DE ANIMACIÓN ULTRAFLUIDA */}
                                         <AnimatePresence mode="popLayout" initial={false}>
-                                            <motion.span
-                                                key={buttonText}
-                                                initial={{ opacity: 0, y: 15 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -15 }}
-                                                transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
-                                                className="block whitespace-nowrap"
-                                            >
+                                            <motion.span key={buttonText} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }} className="block whitespace-nowrap">
                                                 {buttonText}
                                             </motion.span>
                                         </AnimatePresence>
                                     </button>
-                                     
                                 </div>
+
+                                {/* 🚀 BOTÓN SECUNDARIO PARA DUDAS (Evita el capture de pantalla) */}
+                                <button
+                                    onClick={handleInquiryWhatsApp}
+                                    className="w-full mt-1 py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <MessageCircle size={14} /> Tengo una duda sobre este artículo
+                                </button>
+                                
                             </div>
 
                         </div>
