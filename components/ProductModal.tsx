@@ -345,7 +345,7 @@ const isCompletelyOutOfStock = variants.length > 0
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative bg-[var(--store-surface)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform"
+                        className="relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform"
                     >
                         {/* ... (El resto del contenido queda igual: el botón de cerrar, la galería, etc) ... */}
                         <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
@@ -376,8 +376,11 @@ const isCompletelyOutOfStock = variants.length > 0
                             )}
                         </div>
 
-                        <div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
-                            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
+                        {/* 🚀 EL CONTENEDOR PADRE DE LA DERECHA: Le agregamos "relative" para anclar el footer */}
+<div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
+    
+    {/* 1. EL ÁREA DE SCROLL: Le agregamos pb-[140px] md:pb-[130px] para que los botones no tapen el texto final */}
+    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-[140px] md:pb-[130px]">
                                 <div>
                                     <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
                                     <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
@@ -473,7 +476,7 @@ const isCompletelyOutOfStock = variants.length > 0
                                                         }}
                                                                 disabled={!c.isAvailable}
                                                                 className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                    ? `w-10 h-10 rounded-full border ${selectedColor === c.name ?'border-3 ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-120 ' : 'border-3 active:scale:120 hover:scale-105 border-[var(--store-border)]'}`
+                                                                    ? `w-10 h-10 rounded-full border ${selectedColor === c.name ?'border-1 ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-120 ' : 'border-3 active:scale:120 hover:scale-105 border-[var(--store-border)]'}`
                                                                     : `px-4 py-2.5 rounded-lg text-xs font-bold border ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
                                                                     } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                                                                 style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
@@ -566,55 +569,53 @@ const isCompletelyOutOfStock = variants.length > 0
                                 )}
                             </div>
 
-                            {/* Footer Fijo (Controles de Compra) */}
-                            <div className="p-4 md:p-6 bg-[var(--store-surface)] border-t border-[var(--store-border)] shrink-0 z-10 flex flex-col gap-3">
-                                
-                              
+                            
+                        {/* 2. EL FOOTER ABSOLUTO: Lo sacamos del flujo, lo anclamos abajo y le ponemos el cristal */}
+    <div className="absolute bottom-0 left-0 right-0 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+        
+        <div className="flex gap-3 md:gap-4">
+            {/* Controles de +/- */}
+            <div className="flex items-center rounded-full p-1 border-1 border-[var(--store-border)] shrink-0 bg-[var(--store-bg)]/50">
+                <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
+                    <Minus size={16} strokeWidth={2.5} />
+                </button>
+                <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
+                <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
+                    <Plus size={16} strokeWidth={2.5} />
+                </button>
+            </div>
 
-                                <div className="flex gap-3 md:gap-4">
-                                    {/* Controles de +/- */}
-                                    <div className="flex items-center rounded-full p-1 border-[1.8px] border-[var(--store-border)] shrink-0">
-                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
-                                            <Minus size={16} strokeWidth={2.5} />
-                                        </button>
-                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
-                                            <Plus size={16} strokeWidth={2.5} />
-                                        </button>
-                                    </div>
+            {/* Botón Principal de Agregar */}
+            <button
+                onClick={handleAddToCart}
+                disabled={isCompletelyOutOfStock}
+                className={`flex-1 rounded-full font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2  ${
+                    isCompletelyOutOfStock 
+                        ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
+                        : (variants.length > 0 && (!selectedColor || !selectedSize))
+                            ? 'bg-[var(--store-bg)] text-[var(--store-text-main)]  active:scale-[0.98] border border-[var(--store-border)]' 
+                            : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] active:scale-[0.98] shadow-lg shadow-[var(--store-primary)]/20' 
+                }`}
+            >
+                <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
+                <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span key={buttonText} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }} className="block whitespace-nowrap">
+                        {buttonText}
+                    </motion.span>
+                </AnimatePresence>
+            </button>
+        </div>
 
-                                    {/* Botón Principal de Agregar (El que queremos que usen) */}
-                                    <button
-                                        onClick={handleAddToCart}
-                                        disabled={isCompletelyOutOfStock}
-                                        className={`flex-1 rounded-full font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2  ${
-                                            isCompletelyOutOfStock 
-                                                ? 'bg-gray-300 border-gray-300 opacity-50 cursor-not-allowed' 
-                                                : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                                    ? 'bg-[var(--store-bg)] text-[var(--store-text-main)]  active:scale-[0.98]' 
-                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] active:scale-[0.98] shadow-lg shadow-black/10' 
-                                        }`}
-                                    >
-                                        <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
-                                        <AnimatePresence mode="popLayout" initial={false}>
-                                            <motion.span key={buttonText} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }} className="block whitespace-nowrap">
-                                                {buttonText}
-                                            </motion.span>
-                                        </AnimatePresence>
-                                    </button>
-                                </div>
-
-                                {/* 🚀 BOTÓN SECUNDARIO PARA DUDAS (Evita el capture de pantalla) */}
-                                <button
-                                    onClick={handleInquiryWhatsApp}
-                                    className="w-full mt-1 py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
-                                >
-                                    <MessageCircle size={14} /> Tengo una duda sobre este artículo
-                                </button>
-                                
-                            </div>
-
-                        </div>
+        {/* Botón Secundario */}
+        <button
+            onClick={handleInquiryWhatsApp}
+            className="w-full py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
+        >
+            <MessageCircle size={14} /> Tengo una duda sobre este artículo
+        </button>
+        
+    </div>
+</div>
                     </motion.div>
                 </div>
             )}

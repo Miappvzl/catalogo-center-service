@@ -176,11 +176,11 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             {/* 🚀 GATILLO MOBILE (El Dock Nativo de cristal) */}
             <AnimatePresence>
                 {!isOpen && items.length > 0 && (
-                    <motion.div 
-                        initial={{ y: "100%" }} 
-                        animate={{ y: 0 }} 
-                        exit={{ y: "100%" }} 
-                        transition={{ type: "spring", damping: 25, stiffness: 200 }} 
+                    <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
                         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
                     >
                         {/* 1. IZQUIERDA: Icono interactivo + Precios */}
@@ -194,7 +194,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                     {totalItemsCount}
                                 </span>
                             </div>
-                            
+
                             <div className="flex flex-col items-start">
                                 {/* Total en $ y Bs como solicitaste */}
                                 <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
@@ -203,9 +203,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         </div>
 
                         {/* 2. DERECHA: Botón de Pagar Estructural */}
-                        <button 
-                            onClick={handleOpenModal} 
-                            className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-black/10"
+                        <button
+                            onClick={handleOpenModal}
+                            className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20"
                         >
                             Pagar
                         </button>
@@ -265,17 +265,19 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             )}
 
                             {/* CONTENEDOR MULTI-PASO */}
-                            <div className="flex-1 relative overflow-hidden bg-[var(--store-bg)]">
+                            <div className="flex-1 relative overflow-hidden bg-[var(--store-surface)]">
                                 <AnimatePresence mode="wait">
 
                                     {/* --- PASO 1: LA BOLSA --- */}
                                     {step === 1 && (
-                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col h-full w-full">
-                                            <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth no-scrollbar">
+                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full">
+
+                                            {/* 1. EL CONTENEDOR DE SCROLL: Le agregamos pb-[140px] (o el alto aproximado de tu footer) para que los últimos items se puedan ver bien al bajar del todo */}
+                                            <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth no-scrollbar pb-[140px]">
                                                 <div className="space-y-0 flex-1">
                                                     {cartEngine.processedItems.map((item) => (
-                                                        <div key={item.id} className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]">
-                                                            <div className="w-20 h-20 bg-[var(--store-bg)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
+                                                        <div key={item.id} className="flex gap-4 p-4 bg-[var(--store-surface)]">
+                                                            <div className="w-20 h-20 bg-[var(--store-surface)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
                                                                 <Image
                                                                     src={getOptimizedUrl(item.image)}
                                                                     alt={item.name}
@@ -289,7 +291,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                     {item.badge && <span className="inline-block text-[9px] font-black text-white bg-[#1b1b1b] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
                                                                     <div className="flex justify-between items-start">
                                                                         <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
-                                                                        <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors bg-[var(--store-bg)] p-1.5 rounded-md hover:bg-red-50"><Trash2 size={14} /></button>
+                                                                        <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors  p-1.5 rounded-md hover:bg-[var(--store-primary)]/20"><Trash2 size={14} /></button>
                                                                     </div>
                                                                     <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
                                                                 </div>
@@ -315,7 +317,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                         </span>
                                                                     </div>
 
-                                                                    <div className="flex items-center p-1 gap-3 rounded-full bg-[var(--store-bg)] border border-[var(--store-border)]/60">
+                                                                    <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60">
                                                                         <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                                                                             <Minus size={14} strokeWidth={3} />
                                                                         </button>
@@ -330,7 +332,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     ))}
                                                 </div>
 
-                                               {/* CROSS-SELLING */}
+                                                {/* CROSS-SELLING */}
                                                 {recommendedProducts.length > 0 && (
                                                     <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)] pt-8 pb-4 bg-[var(--store-surface)]">
                                                         <div className="flex items-center justify-between mb-4">
@@ -343,17 +345,17 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                 const cashPrice = Number(product.usd_cash_price || 0)
                                                                 const markup = Number(product.usd_penalty || 0)
                                                                 const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
-                                                                
-                                                                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0 
-                                                                  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-                                                                  : (product.stock || 0) <= 0;
+
+                                                                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                                                                    ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                                                                    : (product.stock || 0) <= 0;
 
                                                                 return (
                                                                     <div key={product.id} className="w-[150px] md:w-[160px] shrink-0 snap-start flex flex-col [&>div]:h-full">
-                                                                        <ProductCard 
-                                                                            product={product} 
-                                                                            pricing={pricing} 
-                                                                            onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }} 
+                                                                        <ProductCard
+                                                                            product={product}
+                                                                            pricing={pricing}
+                                                                            onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
                                                                             isOutOfStock={isCompletelyOutOfStock}
                                                                             index={index}
                                                                         />
@@ -379,8 +381,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 )}
                                             </div>
 
-                                            {/* FOOTER PASO 1 */}
-                                            <div className="bg-[var(--store-surface)] px-5 py-5 shrink-0 z-20 border-t border-[var(--store-border)] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                            {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
+                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
                                                     <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
                                                     <div className="flex flex-col items-end">
@@ -388,7 +390,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => setStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 border border-[var(--store-border)]">
+                                                <button onClick={() => setStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 border border-[var(--store-border)]">
                                                     Ir al Checkout <ChevronRight size={16} />
                                                 </button>
                                             </div>

@@ -113,8 +113,8 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
 
         {/* NUDGE HONESTO Y LIMPIO */}
         {penalty > 0 && !isOutOfStock && (
-          <div className="mt-3 inline-flex items-center gap-1.5  border border-[var(--store-incentive)] text-[9px] md:text-[10px] font-bold text-[var(--store-incentive)]  px-2 py-1.5 rounded-full self-start transition-colors group-hover:bg-[var(--store-incentive)]/20">
-            <Flame size={12} className="text-[var(--store-incentive)] shrink-0" />
+          <div className="mt-3 inline-flex items-center gap-1.5   text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)]   py-1 rounded-full self-start transition-colors">
+            <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
             <span>Paga ${cashPrice.toFixed(2)} en DIvisas</span>
           </div>
         )}
