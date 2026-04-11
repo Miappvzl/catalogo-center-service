@@ -604,19 +604,19 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
 
       {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
-      <div className="mt-8 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
+      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
         <a
           href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
           target="_blank"
           rel="noopener noreferrer"
           className="group inline-flex flex-col items-center gap-1.5"
         >
-          <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
+          <span className="text-[10px] font-bold  text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
             Experiencia de compra impulsada por
           </span>
           <div className="flex items-center gap-1.5">
             <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
-            <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+            <ArrowUpRight size={15} strokeWidth={2} className="text-[var(--store-surface-text)] animate-pulse" />
           </div>
         </a>
       </div>
