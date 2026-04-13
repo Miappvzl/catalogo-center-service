@@ -80,7 +80,7 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
           </div>
         </div>
 
-        <div className="flex bg-gray-100 p-1 rounded-(--radius-btn) border border-gray-200 w-fit shrink-0 shadow-inner">
+        <div className="flex bg-gray-100 p-1 rounded-(--radius-btn)  w-fit shrink-0 shadow-inner">
           <button
             onClick={() => setTimeRange('7d')}
             className={`px-5 py-2 text-xs font-bold rounded-(--radius-badge) transition-all duration-300 flex items-center gap-1.5 ${timeRange === '7d' ? 'bg-white text-black shadow-subtle' : 'text-gray-500 hover:text-black'}`}
