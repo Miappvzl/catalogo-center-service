@@ -91,7 +91,7 @@ export default function CashRegisterPage() {
 
     const [movementData, setMovementData] = useState({
         type: "out",
-        amount: "",
+        amount: "" as number | "", // 🚀 MAGIA DE TYPESCRIPT AQUÍ
         currency: "usd",
         paymentMethod: "cash",
         description: "",
@@ -1073,11 +1073,12 @@ export default function CashRegisterPage() {
     step="0.01"
     required
     value={movementData.amount}
-    onChangeValue={(val) => setMovementData({ ...movementData, amount: String(val) })}
+    onChangeValue={(val) => setMovementData({ ...movementData, amount: val })} // 🚀 ADIÓS AL String()
+    className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
+    placeholder="0.00"
+/>
 
-                                                    className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
-                                                    placeholder="0.00"
-                                                />
+                                                  
                                             </div>
                                         </div>
                                         <div>
