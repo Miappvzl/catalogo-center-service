@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 
-// 🚀 CAMBIO CLAVE: Hacemos Omit a 'value' y le decimos que acepte números O strings vacíos
+// 🚀 CAMBIO CLAVE: Cambiamos "number | ''" por "number | string"
 interface Props extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
-  value?: number | ''; 
+  value?: number | string; 
   onChangeValue?: (value: number) => void;
 }
 

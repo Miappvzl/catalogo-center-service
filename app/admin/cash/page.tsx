@@ -1070,15 +1070,11 @@ export default function CashRegisterPage() {
                                                     {movementData.currency === "usd" ? "$" : "Bs"}
                                                 </span>
                                                 <NumberInput
-                                                    step="0.01"
-                                                    required
-                                                    value={movementData.amount}
-                                                    onChange={(e) =>
-                                                        setMovementData({
-                                                            ...movementData,
-                                                            amount: e.target.value,
-                                                        })
-                                                    }
+    step="0.01"
+    required
+    value={movementData.amount}
+    onChangeValue={(val) => setMovementData({ ...movementData, amount: String(val) })}
+
                                                     className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
                                                     placeholder="0.00"
                                                 />
@@ -1242,10 +1238,10 @@ export default function CashRegisterPage() {
                                                             placeholder="Monto Real..."
                                                             className=" w-full bg-[#F4F4F5] border border-transparent focus:bg-white focus:border-black/40 focus:shadow-none rounded-xl pl-8 pr-4 py-3 font-black text-[#111] outline-none transition-all placeholder:font-bold"
                                                             value={(reportedTotals as any)[row.key]}
-                                                            onChange={(e) =>
+                                                            onChangeValue={(val) =>
                                                                 setReportedTotals({
                                                                     ...reportedTotals,
-                                                                    [row.key]: e.target.value,
+                                                                    [row.key]: val,
                                                                 })
                                                             }
                                                         />
