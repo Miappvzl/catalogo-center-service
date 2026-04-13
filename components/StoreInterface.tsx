@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
@@ -9,7 +9,8 @@ import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
 
 const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button
@@ -67,6 +68,28 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
   const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
+
+const searchParams = useSearchParams()
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
+  const [showPromoModal, setShowPromoModal] = useState(false)
+
+ useEffect(() => {
+    const ref = searchParams?.get('ref');
+    const storedRef = sessionStorage.getItem('preziso_ref');
+
+    if (ref && store?.affiliate_config?.active) {
+      setAffiliateCode(ref);
+      if (storedRef !== ref) {
+        sessionStorage.setItem('preziso_ref', ref);
+        setShowPromoModal(true); // 🚀 REEMPLAZO AQUÍ
+        // Cerramos el modal automáticamente después de 5 segundos
+        setTimeout(() => setShowPromoModal(false), 5000); 
+      }
+    } else if (storedRef) {
+      setAffiliateCode(storedRef);
+    }
+  }, [searchParams, store]);
+
   if (!store) return (
     <div className="min-h-screen bg-[var(--store-surface)] pb-32 font-sans w-full overflow-hidden no-scrollbar [scrollbar-gutter:auto] [&::-webkit-scrollbar]:hidden pointer-events-none select-none">
       {/* SKELETON: HERO SECTION */}
@@ -600,6 +623,33 @@ export default function StoreInterface({ store, products, rates, promotions = []
           )}
         </>
 
+        {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
+            <AnimatePresence>
+                {showPromoModal && affiliateCode && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
+                    >
+                        <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
+                            <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
+                                <Tag size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
+                                <p className="text-sm font-black leading-tight">
+                                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
+                                </p>
+                            </div>
+                            <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
       </main>
 
 
@@ -629,6 +679,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         storeConfig={store}
         products={products}
         promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
+        affiliateCode={affiliateCode} // 🚀 INYECCIÓN AQUÍ
       />
 
       <ProductModal

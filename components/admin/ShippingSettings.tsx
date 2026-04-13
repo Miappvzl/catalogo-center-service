@@ -6,6 +6,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import { motion } from 'framer-motion'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Swal from 'sweetalert2'
+import { NumberInput } from '../NumberInput'
 
 interface ShippingSettingsProps {
   storeId: string
@@ -117,7 +118,7 @@ const [config, setConfig] = useState({
     }))
   }
 
-  const updateDeliveryZone = (id: string, field: string, value: string) => {
+  const updateDeliveryZone = (id: string, field: string, value: string | number) => {
     setIsDirty(true)
     setConfig(prev => ({
         ...prev,
@@ -244,12 +245,11 @@ const [config, setConfig] = useState({
                                             </div>
                                             <div className="w-24 relative shrink-0 bg-gray-50 rounded-[var(--radius-badge)] border border-gray-100 focus-within:border-black focus-within:shadow-subtle transition-all">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm"><DollarSign size={14}/></span>
-                                                <input 
-                                                    type="number" 
-                                                    value={zone.cost} 
-                                                    onChange={(e) => updateDeliveryZone(zone.id, 'cost', e.target.value)} 
-                                                    className="w-full bg-transparent pl-7 pr-3 py-2 text-sm font-black outline-none text-gray-900"
-                                                />
+                                               <NumberInput
+    value={zone.cost} 
+    onChangeValue={(val) => updateDeliveryZone(zone.id, 'cost', val)} 
+    className="w-full bg-transparent pl-7 pr-3 py-2 text-sm font-black outline-none text-gray-900"
+/>
                                             </div>
                                             <button onClick={() => removeDeliveryZone(zone.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-[var(--radius-badge)] transition-colors shrink-0">
                                                 <Trash2 size={18}/>

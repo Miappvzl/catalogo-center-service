@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { NumberInput } from '@/components/NumberInput'
 
 // Constantes de diseño unificadas
 const CARD_RADIUS = 'rounded-[var(--radius-card)]';
@@ -367,7 +368,7 @@ export default function PromotionsPage() {
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Porcentaje a descontar</label>
                                             <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-xl border focus-within:border-black border-gray-100 shadow-inner">
                                                 <span className="text-gray-400 font-bold text-base">%</span>
-                                                <input type="number" min="1" max="99" value={currentPromo.discount_percentage || ''} onChange={e => setCurrentPromo({ ...currentPromo, discount_percentage: e.target.value })} placeholder="Ej: 30" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-gray-900 w-full tracking-tight tabular-nums" />
+                                                <NumberInput  min="1" max="99" value={currentPromo.discount_percentage || ''} onChangeValue={(val) => setCurrentPromo({ ...currentPromo, discount_percentage: val })} placeholder="Ej: 30" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-gray-900 w-full tracking-tight tabular-nums" />
                                             </div>
                                         </div>
                                         <p className="text-xs md:text-sm text-gray-600 font-medium md:flex-1 text-center md:text-left leading-relaxed">Se restará este porcentaje <b className="text-gray-900">automáticamente</b> al Precio Base de todos los productos vinculados en la vitrina, checkout y mensajes de WhatsApp.</p>
@@ -378,13 +379,13 @@ export default function PromotionsPage() {
                                         <div className="w-full">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">El cliente LLEVA (Q. Total)</label>
                                             <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-xl border focus-within:border-black border-gray-100 shadow-inner">
-                                                <input type="number" min="2" value={currentPromo.bogo_buy || ''} onChange={e => setCurrentPromo({ ...currentPromo, bogo_buy: e.target.value })} placeholder="4" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-gray-900 w-full tracking-tight tabular-nums text-center" />
+                                                <NumberInput  min="2" value={currentPromo.bogo_buy || ''} onChangeValue={(val) => setCurrentPromo({ ...currentPromo, bogo_buy: val })} placeholder="4" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-gray-900 w-full tracking-tight tabular-nums text-center" />
                                             </div>
                                         </div>
                                         <div className="w-full">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Pero PAGA solo</label>
                                             <div className="flex items-center gap-2 bg-emerald-50 px-4 py-3 rounded-xl border focus-within:border-emerald-600 border-emerald-100 shadow-inner">
-                                                <input type="number" min="1" value={currentPromo.bogo_pay || ''} onChange={e => setCurrentPromo({ ...currentPromo, bogo_pay: e.target.value })} placeholder="2" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-emerald-600 w-full tracking-tight tabular-nums text-center" />
+                                                <NumberInput  min="1" value={currentPromo.bogo_pay || ''} onChangeValue={(val) => setCurrentPromo({ ...currentPromo, bogo_pay: val })} placeholder="2" className="bg-transparent border-none outline-none font-black text-3xl md:text-4xl text-emerald-600 w-full tracking-tight tabular-nums text-center" />
                                             </div>
                                         </div>
                                         <p className="col-span-1 md:col-span-2 text-xs md:text-sm text-gray-600 font-medium leading-relaxed bg-white/50 p-4 rounded-xl border border-gray-100">El carrito calculará el descuento sobre los artículos de menor valor. Ej: 4x2 descontará los 2 productos más baratos.</p>

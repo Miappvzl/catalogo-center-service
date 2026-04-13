@@ -12,6 +12,7 @@ import RateWidget from '@/components/admin/RateWidget'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AnalyticsChart from '@/components/admin/AnalyticsChart'
 import TopPerformers from '@/components/admin/TopPerformers'
+import FeatureOnboarding from '@/components/FeatureOnboarding'
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies()
@@ -212,6 +213,7 @@ export default async function AdminDashboard() {
         </div>
       </main>
       {/* Inyección del Modal One-Time */}
+      <FeatureOnboarding />
             <FeatureAnnouncement />
     </div>
   )

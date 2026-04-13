@@ -10,6 +10,7 @@ import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { NumberInput } from './NumberInput'
 
 interface ProductEditorProps {
     productId?: string
@@ -729,21 +730,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base) *</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <input type="number" min="0" value={formData.price} onChange={e => updateForm('price', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
+                            <NumberInput  min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
                         </div>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Anterior (Tachado)</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500 transition-colors">$</span>
-                            <input type="number" min="0" value={formData.compareAt} onChange={e => updateForm('compareAt', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
+                            <NumberInput  min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
                         </div>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen Conversión (Opcional)</label>
                         <div className="relative group">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <input type="number" min="0" value={formData.penalty} onChange={e => updateForm('penalty', e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
+                            <NumberInput  min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
                         </div>
                     </div>
                 </div>
@@ -782,7 +783,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     {!hasVariants ? (
                         <div className="bg-gray-50 rounded-(--radius-card) p-6 border border-transparent animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-sm">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Stock Disponible</label>
-                            <input type="number" min="0" value={simpleStock} onChange={e => { setSimpleStock(e.target.value === '' ? '' : parseInt(e.target.value)); setIsDirty(true) }} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none transition-all shadow-sm" />
+                            <NumberInput  min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none transition-all shadow-sm" />
                             <p className="text-xs font-medium text-gray-500 mt-3 ml-1">No se pedirán medidas ni colores al cliente.</p>
                         </div>
                     ) : (
@@ -846,7 +847,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                         </div>
                                         <div className="flex-1 w-full min-w-0">
                                             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Stock x Variante</label>
-                                            <input type="number" min="0" value={variantInput.defaultStock} onChange={e => updateVariantInput('defaultStock', e.target.value === '' ? '' : parseInt(e.target.value))} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none text-center transition-all h-14 shadow-sm" />
+                                            <NumberInput  min="0" value={variantInput.defaultStock} onChangeValue={(val) => updateVariantInput('defaultStock', val)} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none text-center transition-all h-14 shadow-sm" />
                                         </div>
                                     </div>
 
@@ -856,21 +857,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Precio Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <input type="number" placeholder="Hereda" value={variantInput.priceOverride} onChange={e => updateVariantInput('priceOverride', e.target.value)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                         <div className="min-w-0">
                                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1.5 block">Tachado Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <input type="number" placeholder="Hereda" value={variantInput.compareAtOverride} onChange={e => updateVariantInput('compareAtOverride', e.target.value)} className="w-full bg-white border border-red-200 focus:border-red-500 focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-red-200 focus:border-red-500 focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                         <div className="min-w-0">
                                             <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Margen Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <input type="number" placeholder="Hereda" value={variantInput.penaltyOverride} onChange={e => updateVariantInput('penaltyOverride', e.target.value)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                     </div>
@@ -985,7 +986,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     </div>
                                                                     <div>
                                                                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Stock</label>
-                                                                        <input type="number" min="0" value={v.stock} onChange={(e) => updateVariantOverride(v.id, 'stock', e.target.value === '' ? 0 : parseInt(e.target.value))} className="w-full bg-white border border-gray-200 focus:border-black rounded-lg px-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all" />
+                                                                        <NumberInput  min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-gray-200 focus:border-black rounded-lg px-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all" />
                                                                     </div>
                                                                     <div className="sm:col-span-2">
                                                                         <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 flex justify-between items-center">
@@ -1009,21 +1010,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     <label className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 block">Sobrescribir Precio $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <input type="number" placeholder="Hereda" value={v.override_usd_price ?? ''} onChange={(e) => updateVariantOverride(v.id, 'override_usd_price', e.target.value)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1.5 block">Sobrescribir Tachado $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <input type="number" placeholder="Hereda" value={v.override_compare_at_usd ?? ''} onChange={(e) => updateVariantOverride(v.id, 'override_compare_at_usd', e.target.value)} className="w-full bg-white border border-red-100 focus:border-red-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-red-100 focus:border-red-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 block">Sobrescribir Margen $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <input type="number" placeholder="Hereda" value={v.override_usd_penalty ?? ''} onChange={(e) => updateVariantOverride(v.id, 'override_usd_penalty', e.target.value)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                             </div>

@@ -19,6 +19,9 @@ export interface CheckoutProcessProps {
     cartEngine: any;
     wholesaleDiscountList: number;
     wholesaleDiscountCash: number;
+    affiliateCode?: string | null; // 🚀 NUEVO
+    affiliateDiscountList?: number; // 🚀 NUEVO
+    affiliateDiscountCash?: number; // 🚀 NUEVO
     onSuccess: (orderNumber: number, whatsappUrl: string) => void;
     onBack: () => void;
 }
@@ -57,7 +60,7 @@ const BrandLogos = {
 }
 
 export default function CheckoutProcess({
-    storeId, storeConfig, currency, rates, phone, cartEngine, wholesaleDiscountList, wholesaleDiscountCash, onSuccess, onBack
+    storeId, storeConfig, currency, rates, phone, cartEngine, wholesaleDiscountList, wholesaleDiscountCash, onSuccess, onBack, affiliateCode, affiliateDiscountList, affiliateDiscountCash
 }: CheckoutProcessProps) {
 
     const { items, clearCart } = useCart()
@@ -120,11 +123,10 @@ export default function CheckoutProcess({
         return 0
     }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones])
 
-    // --- MOTOR LIQUID-SPLIT ---
-    const totalListUSD = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList) + deliveryCost);
-    const totalCashUSD = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash) + deliveryCost);
+   // --- MOTOR LIQUID-SPLIT (CON AFILIADOS) ---
+    const totalListUSD = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
+    const totalCashUSD = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
     const fxMultiplier = totalCashUSD > 0 ? totalListUSD / totalCashUSD : 1;
-
     // 🚀 NUEVO: Lector del Feature Flag y Modalidad
     const allowSplitPayments = payments?.allow_split_payments === true;
     const [paymentMode, setPaymentMode] = useState<'single' | 'split'>('single');
@@ -310,8 +312,9 @@ export default function CheckoutProcess({
                     split_payments: uploadedPayments,
                     shipping_method: clientData.deliveryType,
                     delivery_info: deliveryInfoFull,
-                    shipping_cost: Number(deliveryCost.toFixed(2)),
-                    discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts).toFixed(2))
+                   shipping_cost: Number(deliveryCost.toFixed(2)),
+                    discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                    affiliate_code: affiliateCode || null // 🚀 EL DISPARADOR DEL TRIGGER
                 }).select().single();
 
             if (orderError) {
@@ -392,8 +395,9 @@ export default function CheckoutProcess({
 
             message += `\n*RESUMEN FINANCIERO:*\n`
             message += `Subtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`
-            if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`
+           if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`
             if (wholesaleDiscountList > 0) message += `Desc. Mayorista: -$${wholesaleDiscountList.toFixed(2)}\n`
+            if (affiliateDiscountList! > 0) message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n` // 🚀 NUEVO
             if (actualFxSavings > 0) message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`
             if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`
             message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`

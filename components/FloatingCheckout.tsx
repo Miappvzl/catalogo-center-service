@@ -8,6 +8,7 @@ import ProductCard from './ProductCard'
 import CheckoutProcess from './CheckoutProcess'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { useSearchParams } from 'next/navigation'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -18,9 +19,10 @@ interface CheckoutProps {
     storeConfig: any
     products: any[]
     promotions?: any[]
+    affiliateCode?: string | null // 🚀 NUEVO
 }
 
-export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [] }: CheckoutProps) {
+export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null }: CheckoutProps) {
     const { items, removeItem, updateQuantity } = useCart()
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
@@ -157,9 +159,16 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
     const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
 
-    const step1GrandTotalUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList);
+    // 🚀 NUEVO: MOTOR MATEMÁTICO DE AFILIADOS
+    const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
+    const isAffiliateActive = affiliate.active && affiliateCode;
+    const affiliateDiscountList = isAffiliateActive ? (cartEngine.finalBsModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
+    const affiliateDiscountCash = isAffiliateActive ? (cartEngine.finalCashModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
+
+    // Actualizamos los totales restando el descuento del afiliado
+    const step1GrandTotalUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList - affiliateDiscountList);
     const step1GrandTotalBs = step1GrandTotalUSD * activeRate;
-    const step1CashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash);
+    const step1CashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash - affiliateDiscountCash);
     const step1FxSavings = Math.max(0, step1GrandTotalUSD - step1CashUSD);
 
     if (!isMounted) return null
@@ -408,6 +417,10 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             cartEngine={cartEngine}
                                             wholesaleDiscountList={wholesaleDiscountList}
                                             wholesaleDiscountCash={wholesaleDiscountCash}
+                                            // 🚀 INYECCIONES AQUÍ:
+                                            affiliateCode={affiliateCode}
+                                            affiliateDiscountList={affiliateDiscountList}
+                                            affiliateDiscountCash={affiliateDiscountCash}
                                             onSuccess={(orderNumber, waUrl) => {
                                                 setGeneratedOrderNumber(orderNumber);
                                                 setWhatsappUrl(waUrl);
@@ -435,6 +448,21 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     Volver a la Tienda
                                                 </button>
                                             </div>
+{/* 🚀 VIRAL LOOP DE AFILIADOS (DISEÑO HORIZONTAL ULTRA-COMPACTO) */}
+{storeConfig?.affiliate_config?.active && (
+    <div className="mt-6 mb-2 p-3 sm:p-4  rounded-xl w-full border border-[var(--store-primary)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 ">
+        <div className="flex-1 text-left w-full">
+            <span className="text-[10px] font-black text-[var(--store-text-main)] uppercase tracking-widest block mb-0.5">Conviértete en Embajador.</span>
+            <p className="text-xs font-medium text-[var(--store-surface-text)] leading-tight">
+                Recomiéndanos y gana un <strong className="font-black">{storeConfig.affiliate_config.global_commission_pct}% en efectivo</strong> por cada venta nueva que generes.
+            </p>
+        </div>
+        
+        <a href="/promotor" target="_blank" className="shrink-0 w-full sm:w-auto bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-[var(--store-primary)]/80 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-subtle">
+            Generar enlace <ArrowUpRight size={14} strokeWidth={3} />
+        </a>
+    </div>
+)}
                                             {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
                                             <div className="mt-8 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
                                                 <a
