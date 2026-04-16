@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
+import Link from 'next/link'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
 import NumberTicker from './NumberTicker'
@@ -63,6 +64,71 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
   )
 }
 
+
+// 🚀 INYECCIÓN: BANNER DE RECUPERACIÓN DE PRESUPUESTO (CORREGIDO)
+const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
+    const [savedQuote, setSavedQuote] = useState<{ id: string, total: number } | null>(null)
+    const [isVisible, setIsVisible] = useState(false)
+
+    useEffect(() => {
+        const stored = localStorage.getItem('preziso_pending_quote')
+        if (stored) {
+            try {
+                const data = JSON.parse(stored)
+                // Validamos que el presupuesto pertenezca a la tienda actual
+                if (data.slug === currentSlug) {
+                    setSavedQuote(data)
+                    setIsVisible(true) // Dispara la animación de entrada
+                }
+            } catch (e) { }
+        }
+    }, [currentSlug])
+
+    // Función manejadora para un cierre suave
+    const handleClose = () => {
+        setIsVisible(false) // 1. Dispara la animación de salida
+        
+        // 2. Espera 300ms a que termine la animación para destruir los datos
+        setTimeout(() => {
+            localStorage.removeItem('preziso_pending_quote')
+            setSavedQuote(null)
+        }, 300) 
+    }
+
+    return (
+        <AnimatePresence>
+            {isVisible && savedQuote && (
+                <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-xl origin-top"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-1.5 rounded-full shrink-0"><FileText size={16} /></div>
+                        <div className="flex flex-col min-w-0">
+                            <p className="font-bold uppercase tracking-widest text-[9px] text-gray-400">Cotización Pendiente</p>
+                            <p className="font-medium text-xs truncate">Monto a pagar: <span className="font-black text-white">${Number(savedQuote.total).toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Link 
+                            href={`/quote/${savedQuote.id}`} /* 🚀 CORRECCIÓN: Ruta relativa limpia sin duplicar el slug */
+                            className="bg-white text-black px-4 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                        >
+                            Retomar <ArrowRight size={12} strokeWidth={3} />
+                        </Link>
+                        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white transition-colors active:scale-90">
+                            <X size={16} />
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    )
+}
+
 interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
@@ -91,6 +157,7 @@ const searchParams = useSearchParams()
   }, [searchParams, store]);
 
   if (!store) return (
+    
     <div className="min-h-screen bg-[var(--store-surface)] pb-32 font-sans w-full overflow-hidden no-scrollbar [scrollbar-gutter:auto] [&::-webkit-scrollbar]:hidden pointer-events-none select-none">
       {/* SKELETON: HERO SECTION */}
       <div className="w-full h-[35vh] md:h-[25vh] bg-[var(--store-border)] animate-pulse relative flex items-start border-b border-[var(--store-border)]">
@@ -389,6 +456,9 @@ const searchParams = useSearchParams()
   
       } as React.CSSProperties}
     >
+
+      {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
+      <QuoteRecoveryBanner currentSlug={store.slug} />
 
 
 

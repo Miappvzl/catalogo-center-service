@@ -39,6 +39,7 @@ export default function CashRegisterPage() {
         usdCash: 0,
         zelle: 0,
         bsTransfer: 0,
+        other: 0, // 🚀 NUEVO: Bucket para POS/Zinli/Otros
         ordersCount: 0,
     });
     const [lastClosureDate, setLastClosureDate] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export default function CashRegisterPage() {
         cash: "",
         zelle: "",
         bs: "",
+        other: "", // 🚀 NUEVO
     });
     const [closureNotes, setClosureNotes] = useState("");
 
@@ -124,7 +126,7 @@ export default function CashRegisterPage() {
     // 2. Motores de Datos
     const fetchHistoryAndContext = useCallback(async () => {
         if (!storeId) return
-        
+
         // 1. Obtener Historial de Cierres
         const { data: closures } = await supabase
             .from('cash_closures')
@@ -159,7 +161,8 @@ export default function CashRegisterPage() {
                     .from("orders")
                     .select("status, total_usd, total_bs, split_payments, payment_method")
                     .eq("store_id", storeId)
-                    .is("closure_id", null),
+                    .is("closure_id", null)
+                    .in("status", ["paid", "shipped", "completed"]), // 🚀 PROTECCIÓN: Ignora cotizaciones y cancelados
                 supabase
                     .from("cash_movements")
                     .select("type, amount, payment_method")
@@ -170,108 +173,57 @@ export default function CashRegisterPage() {
             const floatingOrders = ordersRes.data;
             const floatingMovements = movementsRes.data;
 
-            let tCash = 0,
-                tZelle = 0,
-                tBs = 0;
+           let tCash = 0, tZelle = 0, tBs = 0, tOther = 0;
+
+            // 🚀 RESTAURACIÓN: El objeto que alimenta tu Gráfico de Anillo
             const stats = {
-                pending: {
-                    count: 0,
-                    usd: 0,
-                    bs: 0,
-                    color: "#F59E0B",
-                    label: "Pendientes",
-                    key: "pending",
-                },
-                paid: {
-                    count: 0,
-                    usd: 0,
-                    bs: 0,
-                    color: "#10B981",
-                    label: "Pagados",
-                    key: "paid",
-                },
-                shipped: {
-                    count: 0,
-                    usd: 0,
-                    bs: 0,
-                    color: "#3B82F6",
-                    label: "Enviados",
-                    key: "shipped",
-                },
-                cancelled: {
-                    count: 0,
-                    usd: 0,
-                    bs: 0,
-                    color: "#EF4444",
-                    label: "Cancelados",
-                    key: "cancelled",
-                },
+                pending: { count: 0, usd: 0, bs: 0, color: "#F59E0B", label: "Pendientes", key: "pending" },
+                paid: { count: 0, usd: 0, bs: 0, color: "#10B981", label: "Pagados", key: "paid" },
+                shipped: { count: 0, usd: 0, bs: 0, color: "#3B82F6", label: "Enviados", key: "shipped" },
+                cancelled: { count: 0, usd: 0, bs: 0, color: "#EF4444", label: "Cancelados", key: "cancelled" },
+            };
+
+            // 🚀 MOTOR DE ENRUTAMIENTO OMNICANAL
+            const routeFunds = (method: string, amountUsd: number, amountBs: number) => {
+                const m = (method || "").toLowerCase();
+                if (m.includes("efectivo") || m === "cash" || m === "usd") {
+                    tCash += amountUsd;
+                } else if (m.includes("zelle") || m.includes("binance")) {
+                    tZelle += amountUsd;
+                } else if (m.includes("pago móvil") || m.includes("pago movil") || m.includes("transferencia")) {
+                    tBs += amountBs;
+                } else {
+                    tOther += amountUsd; // 🚀 CATCH-ALL: Punto de Venta, Zinli, Otros (Asume Dólares por defecto)
+                }
             };
 
             floatingOrders?.forEach((order: any) => {
-                // 1. Clasificación Logística (Para el Gráfico)
-                // Nota: Si el status es 'completed', lo contamos visualmente como 'shipped/entregado' para mantener el anillo limpio.
                 const rawStatus = order.status || "pending";
-                const st = (
-                    rawStatus === "completed" ? "shipped" : rawStatus
-                ) as keyof typeof stats;
-
+                const st = (rawStatus === "completed" ? "shipped" : rawStatus) as keyof typeof stats;
                 if (stats[st]) {
                     stats[st].count += 1;
                     stats[st].usd += Number(order.total_usd || 0);
                     stats[st].bs += Number(order.total_bs || 0);
                 }
 
-                // 2. Clasificación Financiera (El motor de la caja)
-                // 🚀 LA SOLUCIÓN: El dinero entra a la caja si está Pagado, Enviado o Completado.
-                const isFinanciallyPaid = ["paid", "shipped", "completed"].includes(
-                    rawStatus,
-                );
-
-                if (isFinanciallyPaid) {
-                    // Validamos que split_payments sea un array válido y no un string vacío
-                    if (
-                        Array.isArray(order.split_payments) &&
-                        order.split_payments.length > 0
-                    ) {
-                        order.split_payments.forEach((p: any) => {
-                            const m = (p.method || "").toLowerCase();
-                            if (m.includes("efectivo") || m === "cash" || m === "usd")
-                                tCash += Number(p.amount_usd);
-                            else if (m.includes("zelle") || m.includes("binance"))
-                                tZelle += Number(p.amount_usd);
-                            else tBs += Number(p.amount_bs);
-                        });
+                if (["paid", "shipped", "completed"].includes(rawStatus)) {
+                    if (Array.isArray(order.split_payments) && order.split_payments.length > 0) {
+                        order.split_payments.forEach((p: any) => routeFunds(p.method, Number(p.amount_usd || 0), Number(p.amount_bs || 0)));
                     } else {
-                        // Soporte para órdenes antiguas de pago único
-                        const m = (order.payment_method || "").toLowerCase();
-                        if (m.includes("efectivo") || m === "cash" || m === "usd")
-                            tCash += Number(order.total_usd);
-                        else if (m.includes("zelle") || m.includes("binance"))
-                            tZelle += Number(order.total_usd);
-                        else tBs += Number(order.total_bs || order.total_usd);
+                        const amountUsd = Number(order.total_usd || 0);
+                        routeFunds(order.payment_method, amountUsd, Number(order.total_bs || amountUsd * order.exchange_rate));
                     }
                 }
             });
 
             floatingMovements?.forEach((mov: any) => {
                 const amt = Number(mov.amount) * (mov.type === "out" ? -1 : 1);
-                const m = (mov.payment_method || "").toLowerCase();
-
-                if (m === "cash" || m.includes("efectivo")) tCash += amt;
-                else if (m === "zelle" || m.includes("binance")) tZelle += amt;
-                else tBs += amt;
+                routeFunds(mov.payment_method, amt, amt); // En movimientos asume el valor como base
             });
 
-            // Sumamos para el badge solo las que requieren atención de arqueo
             const ordersToClose = stats.paid.count + stats.shipped.count;
 
-            setTotals({
-                usdCash: tCash,
-                zelle: tZelle,
-                bsTransfer: tBs,
-                ordersCount: ordersToClose,
-            });
+            setTotals({ usdCash: tCash, zelle: tZelle, bsTransfer: tBs, other: tOther, ordersCount: ordersToClose });
             setOrderStats(stats);
         } catch (e) {
             console.error(e);
@@ -350,21 +302,10 @@ export default function CashRegisterPage() {
     const handleFinalClosure = async () => {
         if (!storeId || totals.ordersCount === 0) return;
         setIsSubmitting(true);
-        const expected = {
-            cash: totals.usdCash,
-            zelle: totals.zelle,
-            bs: totals.bsTransfer,
-        };
-        const reported = {
-            cash: Number(reportedTotals.cash),
-            zelle: Number(reportedTotals.zelle),
-            bs: Number(reportedTotals.bs),
-        };
-        const diffs = {
-            cash: reported.cash - expected.cash,
-            zelle: reported.zelle - expected.zelle,
-            bs: reported.bs - expected.bs,
-        };
+        // Reemplaza los bloques 'expected', 'reported' y 'diffs' por estos:
+        const expected = { cash: totals.usdCash, zelle: totals.zelle, bs: totals.bsTransfer, other: totals.other };
+        const reported = { cash: Number(reportedTotals.cash), zelle: Number(reportedTotals.zelle), bs: Number(reportedTotals.bs), other: Number(reportedTotals.other) };
+        const diffs = { cash: reported.cash - expected.cash, zelle: reported.zelle - expected.zelle, bs: reported.bs - expected.bs, other: reported.other - expected.other };
         try {
             const { error } = await supabase.rpc("close_cash_register", {
                 p_store_id: storeId,
@@ -382,7 +323,7 @@ export default function CashRegisterPage() {
                 customClass: { popup: "rounded-[var(--radius-card)]" },
             });
             setIsClosureDrawerOpen(false);
-            setReportedTotals({ cash: "", zelle: "", bs: "" });
+            setReportedTotals({ cash: "", zelle: "", bs: "", other: "" });
             setClosureNotes("");
             await calculateFloatingCash();
             await fetchHistoryAndContext() // <--- 🚀 AÑADE ESTA LÍNEA AQUÍ
@@ -398,7 +339,8 @@ export default function CashRegisterPage() {
         const date = new Date(ticket.closed_at).toLocaleString("es-VE");
         const t = ticket.reported_totals;
         const d = ticket.differences;
-        let text = `*CIERRE DE CAJA - PREZISO*\nFecha: ${date}\n\n*ARQUEO FÍSICO (REPORTADO):*\n💵 Efectivo USD: *$${t.cash.toFixed(2)}*\n📱 Zelle: *$${t.zelle.toFixed(2)}*\n🏦 Pago Móvil: *Bs ${t.bs.toLocaleString("es-VE")}*\n\n*DIFERENCIAS DETECTADAS:*\nEfectivo: ${d.cash === 0 ? "Exacto ✅" : d.cash > 0 ? `Sobra $${d.cash} ⚠️` : `Falta $${Math.abs(d.cash)} ❌`}\nZelle: ${d.zelle === 0 ? "Exacto ✅" : d.zelle > 0 ? `Sobra $${d.zelle} ⚠️` : `Falta $${Math.abs(d.zelle)} ❌`}\nPago Móvil: ${d.bs === 0 ? "Exacto ✅" : d.bs > 0 ? `Sobra Bs ${d.bs} ⚠️` : `Falta Bs ${Math.abs(d.bs)} ❌`}\n`;
+        // Actualiza el string de texto (Añade la línea de 'Otros'):
+        let text = `*CIERRE DE CAJA - PREZISO*\nFecha: ${date}\n\n*ARQUEO FÍSICO (REPORTADO):*\n💵 Efectivo USD: *$${t.cash.toFixed(2)}*\n📱 Zelle: *$${t.zelle.toFixed(2)}*\n💳 Otros (POS/Digital): *$${t.other?.toFixed(2) || '0.00'}*\n🏦 Pago Móvil: *Bs ${t.bs.toLocaleString("es-VE")}*\n\n*DIFERENCIAS DETECTADAS:*\nEfectivo: ${d.cash === 0 ? "Exacto ✅" : d.cash > 0 ? `Sobra $${d.cash} ⚠️` : `Falta $${Math.abs(d.cash)} ❌`}\nZelle: ${d.zelle === 0 ? "Exacto ✅" : d.zelle > 0 ? `Sobra $${d.zelle} ⚠️` : `Falta $${Math.abs(d.zelle)} ❌`}\nOtros: ${d.other === 0 ? "Exacto ✅" : d.other > 0 ? `Sobra $${d.other} ⚠️` : `Falta $${Math.abs(d.other)} ❌`}\nPago Móvil: ${d.bs === 0 ? "Exacto ✅" : d.bs > 0 ? `Sobra Bs ${d.bs} ⚠️` : `Falta Bs ${Math.abs(d.bs)} ❌`}\n`;
         if (ticket.notes) text += `\n*NOTAS:*\n_${ticket.notes}_\n`;
         navigator.clipboard.writeText(text);
         const Toast = Swal.mixin({
@@ -414,91 +356,88 @@ export default function CashRegisterPage() {
     };
 
     const handleDownloadExcel = async (ticket: any) => {
-    if (!ticket) return;
+        if (!ticket) return;
 
-    // 1. Inicializar el Libro y la Hoja de Trabajo
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Preziso';
-    const sheet = workbook.addWorksheet('Cierre de Caja');
+        // 1. Inicializar el Libro y la Hoja de Trabajo
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Preziso';
+        const sheet = workbook.addWorksheet('Cierre de Caja');
 
-    const date = new Date(ticket.closed_at).toLocaleString('es-VE');
-    const expected = ticket.expected_totals;
-    const reported = ticket.reported_totals;
-    const diffs = ticket.differences;
+        const date = new Date(ticket.closed_at).toLocaleString('es-VE');
+        const expected = ticket.expected_totals;
+        const reported = ticket.reported_totals;
+        const diffs = ticket.differences;
 
-    // 2. Configurar Anchos de Columna Automáticos
-    sheet.columns = [
-        { key: 'concepto', width: 25 },
-        { key: 'esperado', width: 22 },
-        { key: 'reportado', width: 22 },
-        { key: 'diferencia', width: 20 }
-    ];
+        // 2. Configurar Anchos de Columna Automáticos
+        // Cambia sheet.columns a:
+        sheet.columns = [{ key: 'concepto', width: 25 }, { key: 'esperado', width: 22 }, { key: 'reportado', width: 22 }, { key: 'diferencia', width: 20 }];
 
-    // 3. Construir la Cabecera Visual (Celdas Combinadas)
-    sheet.mergeCells('A1:D1');
-    const titleCell = sheet.getCell('A1');
-    titleCell.value = 'REPORTE DE CIERRE DE CAJA - PREZISO';
-    titleCell.font = { name: 'Arial', family: 4, size: 14, bold: true };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        // 3. Construir la Cabecera Visual (Celdas Combinadas)
+        sheet.mergeCells('A1:D1');
+        const titleCell = sheet.getCell('A1');
+        titleCell.value = 'REPORTE DE CIERRE DE CAJA - PREZISO';
+        titleCell.font = { name: 'Arial', family: 4, size: 14, bold: true };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    sheet.addRow(['ID de Cierre', ticket.id.toUpperCase(), '', '']);
-    sheet.addRow(['Fecha y Hora', date, '', '']);
-    sheet.addRow([]); // Fila vacía para respirar
+        sheet.addRow(['ID de Cierre', ticket.id.toUpperCase(), '', '']);
+        sheet.addRow(['Fecha y Hora', date, '', '']);
+        sheet.addRow([]); // Fila vacía para respirar
 
-    // 4. Cabeceras de la Tabla de Datos
-    const headerRow = sheet.addRow(['CONCEPTO', 'SISTEMA (ESPERADO)', 'ARQUEO (REPORTADO)', 'DIFERENCIA']);
-    headerRow.font = { bold: true };
-    headerRow.alignment = { horizontal: 'center' };
-    
-    // Borde inferior para separar cabeceras
-    headerRow.eachCell((cell) => {
-        cell.border = { bottom: { style: 'thin' } };
-    });
+        // 4. Cabeceras de la Tabla de Datos
+        const headerRow = sheet.addRow(['CONCEPTO', 'SISTEMA (ESPERADO)', 'ARQUEO (REPORTADO)', 'DIFERENCIA']);
+        headerRow.font = { bold: true };
+        headerRow.alignment = { horizontal: 'center' };
 
-    // 5. Inserción de Datos (Números Reales, NO Strings)
-    const addFinancialRow = (concepto: string, exp: number, rep: number, diff: number, symbol: string) => {
-        const row = sheet.addRow([concepto, exp, rep, diff]);
-        
-        // Formateo nativo de Excel: Se adapta a la PC del usuario pero muestra el símbolo correcto
-        const format = `"${symbol}" #,##0.00;[Red]-"${symbol}" #,##0.00`;
-        row.getCell(2).numFmt = format;
-        row.getCell(3).numFmt = format;
-        row.getCell(4).numFmt = format;
+        // Borde inferior para separar cabeceras
+        headerRow.eachCell((cell) => {
+            cell.border = { bottom: { style: 'thin' } };
+        });
+
+        // 5. Inserción de Datos (Números Reales, NO Strings)
+        const addFinancialRow = (concepto: string, exp: number, rep: number, diff: number, symbol: string) => {
+            const row = sheet.addRow([concepto, exp, rep, diff]);
+
+            // Formateo nativo de Excel: Se adapta a la PC del usuario pero muestra el símbolo correcto
+            const format = `"${symbol}" #,##0.00;[Red]-"${symbol}" #,##0.00`;
+            row.getCell(2).numFmt = format;
+            row.getCell(3).numFmt = format;
+            row.getCell(4).numFmt = format;
+        };
+
+        addFinancialRow('Efectivo (USD)', expected.cash, reported.cash, diffs.cash, '$');
+        addFinancialRow('Zelle / Digital (USD)', expected.zelle, reported.zelle, diffs.zelle, '$');
+        addFinancialRow('Otros (POS/Zinli/USD)', expected.other || 0, reported.other || 0, diffs.other || 0, '$'); // 🚀 NUEVO
+        addFinancialRow('Pago Móvil (Bs)', expected.bs, reported.bs, diffs.bs, 'Bs');
+
+        sheet.addRow([]); // Fila vacía
+
+        // 6. Notas del Cajero
+        const notesLabel = sheet.addRow(['NOTAS DEL CAJERO']);
+        notesLabel.font = { bold: true };
+
+        sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`); // Combinar celdas para el texto largo
+        const notesContent = sheet.addRow([ticket.notes || 'Sin notas registradas']);
+        notesContent.alignment = { wrapText: true }; // Permitir salto de línea si es muy largo
+
+        // 7. Generar y Descargar el Archivo (Buffer)
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        const shortId = ticket.id.split('-')[0].toUpperCase();
+        const cleanDate = new Date(ticket.closed_at).toISOString().split('T')[0];
+
+        link.href = url;
+        link.setAttribute('download', `Cierre_Caja_${shortId}_${cleanDate}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url); // Limpiar memoria
+
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl text-xs font-bold bg-black text-white' } });
+        Toast.fire({ icon: 'success', title: 'Excel Contable Descargado' });
     };
-
-    addFinancialRow('Efectivo (USD)', expected.cash, reported.cash, diffs.cash, '$');
-    addFinancialRow('Zelle / Digital (USD)', expected.zelle, reported.zelle, diffs.zelle, '$');
-    addFinancialRow('Pago Móvil (Bs)', expected.bs, reported.bs, diffs.bs, 'Bs');
-
-    sheet.addRow([]); // Fila vacía
-
-    // 6. Notas del Cajero
-    const notesLabel = sheet.addRow(['NOTAS DEL CAJERO']);
-    notesLabel.font = { bold: true };
-    
-    sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`); // Combinar celdas para el texto largo
-    const notesContent = sheet.addRow([ticket.notes || 'Sin notas registradas']);
-    notesContent.alignment = { wrapText: true }; // Permitir salto de línea si es muy largo
-
-    // 7. Generar y Descargar el Archivo (Buffer)
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    const shortId = ticket.id.split('-')[0].toUpperCase();
-    const cleanDate = new Date(ticket.closed_at).toISOString().split('T')[0];
-    
-    link.href = url;
-    link.setAttribute('download', `Cierre_Caja_${shortId}_${cleanDate}.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url); // Limpiar memoria
-
-    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl text-xs font-bold bg-black text-white' } });
-    Toast.fire({ icon: 'success', title: 'Excel Contable Descargado' });
-};
     // --- VARIANTES DE ANIMACIÓN ---
     const drawerVariants: Variants = {
         hidden: { x: "100%", opacity: 0.5 },
@@ -625,9 +564,9 @@ export default function CashRegisterPage() {
                             <Loader2 className="animate-spin text-gray-300" size={32} />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
                             {/* Tarjetas de Efectivo... (Intactas) */}
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px] sm:col-span-2 lg:col-span-1 after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#00cd6133] after:rounded-full after:blur-2xl">
+                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#00cd6133] after:rounded-full after:blur-2xl">
                                 <div className="flex justify-between items-start mb-4">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
                                         Efectivo
@@ -644,7 +583,7 @@ export default function CashRegisterPage() {
                                     ${totals.usdCash.toFixed(2)}
                                 </p>
                             </div>
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px] sm:col-span-2 lg:col-span-1 after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#8b44ff5e] after:rounded-full after:blur-2xl">
+                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#8b44ff5e] after:rounded-full after:blur-2xl">
                                 <div className="flex justify-between items-start mb-4">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
                                         Zelle /<br />
@@ -660,7 +599,7 @@ export default function CashRegisterPage() {
                                     ${totals.zelle.toFixed(2)}
                                 </p>
                             </div>
-                           <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px] sm:col-span-2 lg:col-span-1 after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#44a2ff5e] after:rounded-full after:blur-2xl">
+                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#44a2ff5e] after:rounded-full after:blur-2xl">
                                 <div className="flex justify-between items-start mb-4">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
                                         Transferencias
@@ -679,6 +618,13 @@ export default function CashRegisterPage() {
                                         maximumFractionDigits: 2,
                                     })}
                                 </p>
+                            </div>
+                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)] flex flex-col justify-between min-h-[140px] after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#f59e0b5e] after:rounded-full after:blur-2xl">
+                                <div className="flex justify-between items-start mb-4">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">Otros<br />POS / Digitales</p>
+                                    <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0"><CreditCard size={18} strokeWidth={2.5} /></div>
+                                </div>
+                                <p className={`text-4xl font-black tracking-tighter ${totals.other < 0 ? "text-red-500" : "text-[#111]"}`}>${totals.other.toFixed(2)}</p>
                             </div>
                         </div>
                     )}
@@ -817,7 +763,7 @@ export default function CashRegisterPage() {
                     </div>
                 </section>
 
-               {/* SECCIÓN 2: ACCIONES OPERATIVAS */}
+                {/* SECCIÓN 2: ACCIONES OPERATIVAS */}
                 <section>
                     <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
                         Acciones Operativas
@@ -1070,15 +1016,15 @@ export default function CashRegisterPage() {
                                                     {movementData.currency === "usd" ? "$" : "Bs"}
                                                 </span>
                                                 <NumberInput
-    step="0.01"
-    required
-    value={movementData.amount}
-    onChangeValue={(val) => setMovementData({ ...movementData, amount: val })} // 🚀 ADIÓS AL String()
-    className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
-    placeholder="0.00"
-/>
+                                                    step="0.01"
+                                                    required
+                                                    value={movementData.amount}
+                                                    onChangeValue={(val) => setMovementData({ ...movementData, amount: val })} // 🚀 ADIÓS AL String()
+                                                    className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
+                                                    placeholder="0.00"
+                                                />
 
-                                                  
+
                                             </div>
                                         </div>
                                         <div>
@@ -1099,6 +1045,7 @@ export default function CashRegisterPage() {
                                             >
                                                 <option value="cash">Efectivo USD</option>
                                                 <option value="zelle">Zelle / Binance</option>
+                                                <option value="other">Otros (POS/Zinli)</option>
                                                 <option value="transfer">Pago Móvil (Bs)</option>
                                             </select>
                                         </div>
@@ -1197,12 +1144,14 @@ export default function CashRegisterPage() {
                                             expected: totals.zelle,
                                             symbol: "$",
                                         },
+                                        { label: "Otros (POS/Digital)", key: "other", expected: totals.other, symbol: "$" }, // 🚀 NUEVO INPUT
                                         {
                                             label: "Pago Móvil Bs",
                                             key: "bs",
                                             expected: totals.bsTransfer,
                                             symbol: "Bs ",
                                         },
+
                                     ].map((row) => {
                                         const diff =
                                             Number((reportedTotals as any)[row.key]) - row.expected;
@@ -1389,6 +1338,10 @@ export default function CashRegisterPage() {
                                                 )}
                                             </span>
                                         </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="font-bold text-gray-500">Otros (Digital/POS)</span>
+                                            <span className="font-black font-mono text-[#111]">${(selectedTicket.reported_totals.other || 0).toFixed(2)}</span>
+                                        </div>
                                     </div>
 
                                     {/* DIFERENCIAS */}
@@ -1396,20 +1349,23 @@ export default function CashRegisterPage() {
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                             Diferencias (Faltantes/Sobrantes)
                                         </p>
-                                        {["cash", "zelle", "bs"].map((key) => {
-                                            const diff = selectedTicket.differences[key];
+                                        {["cash", "zelle", "other", "bs"].map((key) => {
+                                            // 🚀 ESCUDO ANTI-CRASH: Si el ticket es viejo y no tiene 'other', asume 0.
+                                            const diff = selectedTicket.differences[key] || 0; 
                                             const isPerfect = diff === 0;
                                             return (
                                                 <div
                                                     key={key}
                                                     className={`flex justify-between items-center text-xs font-bold p-2.5 rounded-lg ${isPerfect ? "bg-emerald-50 text-emerald-700" : diff > 0 ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700"}`}
                                                 >
-                                                    <span className="uppercase tracking-wide">
+<span className="uppercase tracking-wide">
                                                         {key === "cash"
                                                             ? "EFECTIVO"
                                                             : key === "zelle"
                                                                 ? "ZELLE"
-                                                                : "PM BS"}
+                                                                : key === "other"
+                                                                    ? "OTROS"
+                                                                    : "PM BS"}
                                                     </span>
                                                     <span className="font-black font-mono">
                                                         {isPerfect

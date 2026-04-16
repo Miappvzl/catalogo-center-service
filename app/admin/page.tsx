@@ -13,6 +13,7 @@ import AdminHeader from '@/components/admin/AdminHeader'
 import AnalyticsChart from '@/components/admin/AnalyticsChart'
 import TopPerformers from '@/components/admin/TopPerformers'
 import FeatureOnboarding from '@/components/FeatureOnboarding'
+import FeatureLaunchModal from '@/components/FeatureLauchModal'
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies()
@@ -215,6 +216,7 @@ export default async function AdminDashboard() {
       {/* Inyección del Modal One-Time */}
       <FeatureOnboarding />
             <FeatureAnnouncement />
+            <FeatureLaunchModal />
     </div>
   )
 }

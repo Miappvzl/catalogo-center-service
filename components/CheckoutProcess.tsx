@@ -296,6 +296,9 @@ export default function CheckoutProcess({
             else if (clientData.deliveryType === 'local_delivery') deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || 'Zona'} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || 'N/A'} | Tlf: ${clientData.phone}`;
             else if (clientData.deliveryType === 'pickup') deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
 
+           // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
+            const finalPaymentMethod = uploadedPayments.length === 1 ? uploadedPayments[0].method : 'Mixto';
+
             // 2. Insertar Orden
             const { data: order, error: orderError } = await supabase
                 .from('orders')
@@ -308,15 +311,14 @@ export default function CheckoutProcess({
                     exchange_rate: activeRate,
                     currency_type: currency,
                     status: 'pending',
-                    payment_method: 'Mixto',
+                    payment_method: finalPaymentMethod, // 🚀 INYECCIÓN: Etiqueta dinámica real
                     split_payments: uploadedPayments,
                     shipping_method: clientData.deliveryType,
                     delivery_info: deliveryInfoFull,
-                   shipping_cost: Number(deliveryCost.toFixed(2)),
+                    shipping_cost: Number(deliveryCost.toFixed(2)),
                     discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
-                    affiliate_code: affiliateCode || null // 🚀 EL DISPARADOR DEL TRIGGER
+                    affiliate_code: affiliateCode || null 
                 }).select().single();
-
             if (orderError) {
                 console.error("Order DB Error Técnico:", orderError);
                 throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
@@ -402,7 +404,13 @@ export default function CheckoutProcess({
             if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`
             message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`
 
-            message += `\n*PAGOS (FRACCIONADO):*\n`
+            // 🚀 COPYWRITING DINÁMICO: Cambia el título si es único o mixto
+            if (uploadedPayments.length > 1) {
+                message += `\n*PAGOS (MIXTO):*\n`
+            } else {
+                message += `\n*MÉTODO DE PAGO:*\n`
+            }
+            
             uploadedPayments.forEach((p: any) => {
                 message += `✔️ ${p.method}: ${p.currency === 'usd' ? '$' + p.amount_usd.toFixed(2) : 'Bs ' + p.amount_bs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}\n`
                 if (p.receipt_url) message += `   🔗 Comprobante: ${p.receipt_url}\n`

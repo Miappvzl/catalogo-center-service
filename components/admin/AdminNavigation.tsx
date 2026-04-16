@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
@@ -12,15 +12,24 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 
 const NAV_LINKS = [
-  { name: 'Inicio', href: '/admin', icon: LayoutGrid },
-  { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
- { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true },
-  { name: 'Nuevo', href: '/admin/product/new', icon: Plus, isAction: true },
-  { name: 'Inventario', href: '/admin/inventory', icon: Package },
-  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true },
-  { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true }, // 🚀 INYECCIÓN: Nueva pestaña
-  { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true }, // 🚀 INYECCIÓN: El Libro Mayor
-  { name: 'Ajustes', href: '/admin/settings', icon: Settings },
+  // 📌 General
+  { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General' },
+  { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General' },
+  
+  // 📌 Punto de Venta
+  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
+  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
+  { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
+  
+  // 📌 Catálogo
+  { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo' },
+  { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo' },
+  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo' },
+  
+  // 📌 Negocio
+  { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio' },
+  { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio' },
+  { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio' },
 ]
 
 // 🚀 ENVOLTORIO PROTEGIDO ULTRA-RÁPIDO (Prefetching + Caché en RAM)
@@ -33,28 +42,28 @@ const GuardedLink = ({ href, children, className }: any) => {
   const handleClick = (e: React.MouseEvent) => {
     // Si ya estamos en la ruta, ignoramos el clic
     if (pathname === href) {
-        e.preventDefault()
-        return 
+      e.preventDefault()
+      return
     }
-    
+
     // Si hay cambios sin guardar, detenemos la navegación ultra-rápida y mostramos la alerta
     if (isDirty) {
-      e.preventDefault() 
+      e.preventDefault()
       Swal.fire({
-          title: '¿Salir sin guardar?',
-          text: 'Tienes cambios pendientes en el producto. Si sales ahora, se perderán.',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#ef4444', 
-          cancelButtonColor: '#000000', 
-          confirmButtonText: 'Sí, salir',
-          cancelButtonText: 'Quedarme',
-          customClass: { popup: 'rounded-[var(--radius-card)]' }
+        title: '¿Salir sin guardar?',
+        text: 'Tienes cambios pendientes en el producto. Si sales ahora, se perderán.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#000000',
+        confirmButtonText: 'Sí, salir',
+        cancelButtonText: 'Quedarme',
+        customClass: { popup: 'rounded-[var(--radius-card)]' }
       }).then((result) => {
-          if (result.isConfirmed) {
-              setDirty(false)
-              router.push(href) // Navegación programática manual
-          }
+        if (result.isConfirmed) {
+          setDirty(false)
+          router.push(href) // Navegación programática manual
+        }
       })
     }
     // 🔥 EL TRUCO: Si NO está dirty, NO hacemos e.preventDefault(). 
@@ -62,16 +71,22 @@ const GuardedLink = ({ href, children, className }: any) => {
   }
 
   return (
-    <Link 
-        href={href} 
-        onClick={handleClick} 
-        className={className}
-        prefetch={true} // 🚀 EL MOTOR DE VELOCIDAD: Fuerza la descarga silenciosa
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={className}
+      prefetch={true} // 🚀 EL MOTOR DE VELOCIDAD: Fuerza la descarga silenciosa
     >
-        {children}
+      {children}
     </Link>
   )
 }
+
+const NewBadge = () => (
+  <span className="ml-auto flex h-4 items-center border border-[#5500ffb2] justify-center rounded-full bg-[#ffffff] px-1.5 text-[8px] font-black uppercase tracking-wider text-[#4c00ffab]">
+    Nuevo
+  </span>
+);
 
 // --- DESKTOP SIDEBAR ---
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
@@ -83,98 +98,119 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  } 
+  }
 
   return (
     <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-6 border-r border-gray-100">
       <div className="mb-10 flex items-center gap-3 px-2">
-       
-          <Link href="/" className="flex items-center group active:scale-95 transition-transform">
-                  <Image 
-                    src={getOptimizedUrl("/pezisologo.png")} 
-                    alt="Preziso Logo" 
-                    width={200} 
-                    height={90} 
-                    className="h-10 md:h-15 w-auto object-contain"
-                    priority
-                  />
-                </Link>
+
+        <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+          <Image
+            src={getOptimizedUrl("/pezisologo.png")}
+            alt="Preziso Logo"
+            width={200}
+            height={90}
+            className="h-10 md:h-15 w-auto object-contain"
+            priority
+          />
+        </Link>
       </div>
 
-      <nav className="flex-1 space-y-1.5 relative">
-        {NAV_LINKS.map((link) => {
-          if (link.isAction) return null
-          const isActive = pathname === link.href
+      {/* 🚀 CORRECCIÓN: overflow-y-auto y no-scrollbar para evitar que empuje el footer */}
+      <nav className="flex-1 overflow-y-auto no-scrollbar space-y-6 relative pb-6 -mx-2 px-2">
+        
+        {/* 🚀 LÓGICA DE AGRUPACIÓN (Pattern de Vercel/Stripe) */}
+        {['General', 'Ventas', 'Catálogo', 'Negocio'].map((category) => {
+          const linksInCategory = NAV_LINKS.filter(link => link.category === category);
+          if (linksInCategory.length === 0) return null;
 
           return (
-            <GuardedLink 
-                key={link.href} 
-                href={link.href} 
-                className={`relative flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-sm font-bold transition-colors duration-200 group ${
-                    isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900'
-                }`}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="desktop-nav-indicator"
-                  className="absolute inset-0 bg-gray-50 rounded-[var(--radius-btn)] -z-10"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
+            <div key={category} className="space-y-0.2">
+              {/* Título de la Categoría (Sutil y Elegante) */}
+              <h3 className="px-4 text-[10px] font-medium font-black uppercase tracking-widest text-gray-400 mb-1">
+                {category}
+              </h3>
+              
+              {linksInCategory.map((link) => {
+                if (link.isAction) return null;
+                const isActive = pathname === link.href;
+
+                return (
+                  <GuardedLink
+                    key={link.href}
+                    href={link.href}
+                    className={`relative flex items-center gap-3 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-medium transition-all duration-200 group ${
+                      isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="desktop-nav-indicator"
+                        className="absolute inset-0 bg-gray-50 rounded-[var(--radius-btn)] -z-10"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
+                    <span className="relative z-10">{link.name}</span>
+                    {link.isNew && <NewBadge />}
+                  </GuardedLink>
+                );
+              })}
+
+              {/* Botón especial para Nuevo Producto dentro de la categoría Catálogo */}
+              {category === 'Catálogo' && (
+                <div className="pt-2">
+                  <GuardedLink
+                    href="/admin/product/new"
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-btn)] text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all border border-transparent border-dashed hover:border-black"
+                  >
+                    <Plus size={18} /> Nuevo Producto
+                  </GuardedLink>
+                </div>
               )}
-              <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
-              <span className="relative z-10">{link.name}</span>
-            </GuardedLink>
-          )
+            </div>
+          );
         })}
-        <div className="pt-4">
-            <GuardedLink 
-                href="/admin/product/new" 
-                className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all border border-transparent border-dashed hover:border-black"
-            >
-                <Plus size={20} /> Nuevo Producto
-            </GuardedLink>
-        </div>
       </nav>
-
       <div className="mt-auto pt-6 border-t border-gray-100 space-y-3">
-        
 
-    
+
+
         {store && (
           <div className="flex items-center justify-between p-1 rounded-[var(--radius-btn)] bg-gray-50">
-            <Link 
-                href={`/${store.slug}`} 
-                target="_blank" 
-                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-[var(--radius-badge)] text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
+            <Link
+              href={`/${store.slug}`}
+              target="_blank"
+              className="flex-1 flex items-center gap-2 px-3 py-2 rounded-[var(--radius-badge)] text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
             >
-                <Store size={15} /> Ver mi Tienda
+              <Store size={15} /> Ver mi Tienda
             </Link>
             <div className="w-px h-5 bg-gray-200 mx-1"></div>
-            <button 
-                onClick={copyLink} 
-                className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-badge)] bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
+            <button
+              onClick={copyLink}
+              className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-badge)] bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
             >
-                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
             </button>
           </div>
         )}
 
         {/* ENLACE DE SOPORTE TÉCNICO */}
-        <a 
-            href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all w-full text-left"
+        <a
+          href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all w-full text-left"
         >
-            <Headset size={16} /> Soporte Técnico
+          <Headset size={16} /> Soporte Técnico
         </a>
 
-        
-        <button 
-            onClick={onLogout} 
-            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
+
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
         >
-            <LogOut size={16} /> Cerrar Sesión
+          <LogOut size={16} /> Cerrar Sesión
         </button>
       </div>
     </aside>
@@ -209,13 +245,13 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
   // 🚀 OPTIMIZACIÓN 1: Curvas Bezier nativas y eliminación de opacidad en el panel
   const sidebarVariants: Variants = {
     hidden: { x: '100%' }, // Cero cálculos de opacidad
-    visible: { 
-      x: 0, 
-      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.4 } 
+    visible: {
+      x: 0,
+      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.4 }
     },
-    exit: { 
-      x: '100%', 
-      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.3 } 
+    exit: {
+      x: '100%',
+      transition: { type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.3 }
     }
   }
 
@@ -231,40 +267,40 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-[70] flex justify-end">
           {/* Fonde difuminado */}
-          <motion.div 
+          <motion.div
             variants={backdropVariants}
-            initial="hidden" 
-            animate="visible" 
-            exit="exit" 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity]" 
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity]"
             onPointerDown={(e) => {
               e.stopPropagation();
               setIsOpen(false);
-            }} 
+            }}
           />
-          
+
           {/* Panel Lateral */}
-          <motion.div 
-            variants={sidebarVariants} 
-            initial="hidden" 
-            animate="visible" 
+          <motion.div
+            variants={sidebarVariants}
+            initial="hidden"
+            animate="visible"
             exit="exit"
             // 🚀 OPTIMIZACIÓN 3: Hardware Acceleration forzado
             className="relative w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col will-change-transform"
           >
             <div className="p-6 flex items-center justify-between border-b border-gray-100">
               <div className="flex items-center gap-3">
-               
-                 <Link href="/" className="flex items-center group active:scale-95 transition-transform">
-          <Image 
-            src={getOptimizedUrl("/pezisologo.png")} 
-            alt="Preziso Logo" 
-            width={200} 
-            height={90} 
-            className="h-15 md:h-20 w-auto object-contain"
-            priority
-          />
-        </Link>
+
+                <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+                  <Image
+                    src={getOptimizedUrl("/pezisologo.png")}
+                    alt="Preziso Logo"
+                    width={200}
+                    height={90}
+                    className="h-15 md:h-20 w-auto object-contain"
+                    priority
+                  />
+                </Link>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-2 bg-[#F8F9FA] hover:bg-gray-100 rounded-full text-gray-500 active:scale-95 transition-colors">
                 <X size={20} />
@@ -277,64 +313,65 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                 const isActive = pathname === link.href
 
                 return (
-                  <GuardedLink 
-                      key={link.href} 
-                      href={link.href} 
-                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
-                          isActive ? 'bg-[#F8F9FA] text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  <GuardedLink
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${isActive ? 'bg-[#F8F9FA] text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
                     <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-black" : "text-gray-400"} />
                     {link.name}
+                    {link.isNew && <NewBadge />}
                   </GuardedLink>
+
                 )
               })}
               <div className="pt-4 mt-4 border-t border-gray-100">
-                  <GuardedLink 
-                      href="/admin/product/new" 
-                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-gray-500 bg-[#F8F9FA] border border-transparent border-dashed hover:border-black transition-all"
-                  >
-                      <Plus size={20} /> Nuevo Producto
-                  </GuardedLink>
+                <GuardedLink
+                  href="/admin/product/new"
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-gray-500 bg-[#F8F9FA] border border-transparent border-dashed hover:border-black transition-all"
+                >
+                  <Plus size={20} /> Nuevo Producto
+                </GuardedLink>
               </div>
             </nav>
 
-            <div className="p-4 border-t border-gray-100 space-y-3 bg-white">
+            <div className=" p-4 border-t border-gray-100 space-y-3 bg-white">
 
-               
+
               {store && (
                 <div className="flex items-center justify-between p-1 rounded-xl bg-[#F8F9FA] border border-gray-100">
-                  <Link 
-                      href={`/${store.slug}`} 
-                      target="_blank" 
-                      className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
+                  <Link
+                    href={`/${store.slug}`}
+                    target="_blank"
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
                   >
-                      <Store size={15} /> Ver mi Tienda
+                    <Store size={15} /> Ver mi Tienda
                   </Link>
                   <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button 
-                      onClick={copyLink} 
-                      className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
+                  <button
+                    onClick={copyLink}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
                   >
-                      {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                    {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
                   </button>
                 </div>
               )}
- {/* ENLACE DE SOPORTE TÉCNICO MÓVIL */}
-              <a 
-                  href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-gray-600  hover:bg-gray-100 hover:text-black transition-all w-full text-left"
+              {/* ENLACE DE SOPORTE TÉCNICO MÓVIL */}
+              <a
+                href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-gray-600  hover:bg-gray-100 hover:text-black transition-all w-full text-left"
               >
-                  <Headset size={16} /> Hablar con Soporte
+                <Headset size={16} /> Hablar con Soporte
               </a>
-            
-              <button 
-                  onClick={onLogout} 
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500  hover:bg-red-100 transition-all w-full text-left"
+
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500  hover:bg-red-100 transition-all w-full text-left"
               >
-                  <LogOut size={16} /> Cerrar Sesión
+                <LogOut size={16} /> Cerrar Sesión
               </button>
             </div>
           </motion.div>
@@ -364,24 +401,23 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => (
         }
 
         return (
-          <GuardedLink 
-              key={link.href} 
-              href={link.href} 
-              className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${
-                  isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'
+          <GuardedLink
+            key={link.href}
+            href={link.href}
+            className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'
               }`}
           >
             <div className="relative w-12 h-8 flex items-center justify-center z-10">
-               {isActive && (
-                 <motion.div
-                   layoutId="mobile-nav-indicator"
-                   className="absolute inset-0 bg-gray-50 rounded-full -z-10"
-                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                 />
-               )}
-               <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}>
-                  <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "opacity-100" : "opacity-80"} />
-               </div>
+              {isActive && (
+                <motion.div
+                  layoutId="mobile-nav-indicator"
+                  className="absolute inset-0 bg-gray-50 rounded-full -z-10"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}>
+                <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "opacity-100" : "opacity-80"} />
+              </div>
             </div>
             <span className="text-[10px] font-bold tracking-wide">
               {link.name}
