@@ -381,53 +381,67 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
   )
 }
 
-// --- MOBILE BOTTOM BAR ---
-const MobileBottomBar = ({ pathname }: { pathname: string }) => (
-  <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-50 pb-[env(safe-area-inset-bottom)] transform-gpu">
-    <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
-      {NAV_LINKS.filter(link => !link.hideOnBottomBar).map((link) => {
-        const isActive = pathname === link.href
+// --- MOBILE BOTTOM BAR (Centrado Perfecto Garantizado) ---
+const MobileBottomBar = ({ pathname }: { pathname: string }) => {
+  // 🚀 CIRUGÍA: Extraemos los enlaces normales y el botón de acción por separado
+  const normalLinks = NAV_LINKS.filter(link => !link.hideOnBottomBar && !link.isAction)
+  const actionLink = NAV_LINKS.find(link => link.isAction)
+  
+  // Reconstruimos el array forzando la simetría: 2 a la izquierda, 1 en el medio, 2 a la derecha
+  const bottomBarLinks = [
+    normalLinks[0], // Inicio
+    normalLinks[1], // Pedidos
+    actionLink,     // 🎯 Botón Central (Nuevo Producto)
+    normalLinks[2], // Inventario
+    normalLinks[3]  // Ajustes
+  ].filter(Boolean) // Protegemos el código por si falta algún enlace
 
-        if (link.isAction) {
-          return (
-            <div key={link.href} className="flex-shrink-0 relative -top-2 px-2">
-              <GuardedLink href={link.href} className="block group shadow-subtle rounded-full">
-                <div className="w-11 h-11 bg-[#070707f3] text-white rounded-full flex items-center justify-center group-active:scale-95 transition-transform duration-200">
-                  <Plus size={26} strokeWidth={1.4} />
-                </div>
-              </GuardedLink>
-            </div>
-          )
-        }
+  return (
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-[80] pb-[env(safe-area-inset-bottom)] transform-gpu">
+      <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
+        {bottomBarLinks.map((link: any) => {
+          const isActive = pathname === link.href
 
-        return (
-          <GuardedLink
-            key={link.href}
-            href={link.href}
-            className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'
-              }`}
-          >
-            <div className="relative w-12 h-8 flex items-center justify-center z-10">
-              {isActive && (
-                <motion.div
-                  layoutId="mobile-nav-indicator"
-                  className="absolute inset-0 bg-gray-50 rounded-full -z-10"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}>
-                <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "opacity-100" : "opacity-80"} />
+          if (link.isAction) {
+            return (
+              <div key={link.href} className="flex-shrink-0 relative -top-2 px-2">
+                <GuardedLink href={link.href} className="block group shadow-subtle rounded-full">
+                  <div className="w-11 h-11 bg-[#070707f3] text-white rounded-full flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+                    <Plus size={26} strokeWidth={1.4} />
+                  </div>
+                </GuardedLink>
               </div>
-            </div>
-            <span className="text-[10px] font-bold tracking-wide">
-              {link.name}
-            </span>
-          </GuardedLink>
-        )
-      })}
+            )
+          }
+
+          return (
+            <GuardedLink
+              key={link.href}
+              href={link.href}
+              className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'}`}
+            >
+              <div className="relative w-12 h-8 flex items-center justify-center z-10">
+                {isActive && (
+                  <motion.div
+                    layoutId="mobile-nav-indicator"
+                    className="absolute inset-0 bg-gray-50 rounded-full -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}>
+                  <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "opacity-100" : "opacity-80"} />
+                </div>
+              </div>
+              <span className="text-[10px] font-bold tracking-wide">
+                {link.name}
+              </span>
+            </GuardedLink>
+          )
+        })}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 interface NavProps { store: any }
 export default function AdminNavigation({ store }: NavProps) {

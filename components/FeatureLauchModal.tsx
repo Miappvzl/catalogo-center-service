@@ -75,10 +75,12 @@ export default function FeatureLaunchModal() {
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                         // 🚀 SOMBRA ULTRA-DIFUMINADA, CERO BORDES, MUCHO BLANCO
-                        className="relative bg-white w-full max-w-4xl rounded-[32px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] flex flex-col"
+                        // 🚀 CORRECCIÓN: max-h-[90vh] para que no se salga de la pantalla y overflow-y-auto para hacer scroll interno
+                        className="relative bg-white w-full max-w-4xl max-h-[90vh] md:max-h-[85vh] rounded-[24px] md:rounded-[32px] overflow-y-auto no-scrollbar shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] flex flex-col"
                     >
-                        {/* HEADER LIMPIO */}
-                        <div className="flex justify-between items-start pt-10 px-10 pb-6">
+                       {/* HEADER LIMPIO */}
+                        {/* 🚀 CORRECCIÓN: pt-6 px-6 en móvil, pt-10 px-10 en desktop */}
+                        <div className="flex justify-between items-start pt-6 px-6 pb-4 md:pt-10 md:px-10 md:pb-6 shrink-0">
                             <div>
                                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-[10px] font-black uppercase tracking-widest text-violet-600 rounded-full mb-4">
                                     <Sparkles size={12} /> Omnicanalidad Activada
@@ -94,9 +96,9 @@ export default function FeatureLaunchModal() {
                                 <X size={20} />
                             </button>
                         </div>
-
-                        {/* ÁREA INTERACTIVA DINÁMICA */}
-                        <div className="flex flex-col md:flex-row px-10 pb-10 gap-10">
+{/* ÁREA INTERACTIVA DINÁMICA */}
+                        {/* 🚀 CORRECCIÓN: px-6 en móvil, px-10 en desktop */}
+                        <div className="flex flex-col md:flex-row px-6 md:px-10 pb-6 md:pb-10 gap-6 md:gap-10">
                             
                             {/* IZQUIERDA: Acordeón Suave */}
                             <div className="w-full md:w-1/2 flex flex-col justify-center gap-2">
@@ -139,8 +141,9 @@ export default function FeatureLaunchModal() {
                                 })}
                             </div>
 
-                            {/* DERECHA: Visualizador Abstracto (Toque BlueViolet) */}
-                            <div className="w-full md:w-1/2 bg-[#FAFAFA] rounded-[24px] p-8 flex items-center justify-center relative overflow-hidden min-h-[250px]">
+                           {/* DERECHA: Visualizador Abstracto */}
+                            {/* 🚀 CORRECCIÓN: min-h-[180px] en móvil para que no ocupe toda la pantalla */}
+                            <div className="w-full md:w-1/2 bg-[#FAFAFA] rounded-[24px] p-6 md:p-8 flex items-center justify-center relative overflow-hidden min-h-[180px] md:min-h-[250px]">
                                 {/* 🚀 GLOW ULTRA-DIFUMINADO BLUEVIOLET */}
                                 <div className="absolute inset-0 flex items-center justify-center opacity-[0.12] pointer-events-none">
                                     <motion.div
@@ -187,7 +190,8 @@ export default function FeatureLaunchModal() {
                         </div>
 
                         {/* FOOTER CALL TO ACTION */}
-                        <div className="px-10 pb-10 flex flex-col sm:flex-row items-center gap-4">
+                        {/* 🚀 CORRECCIÓN: px-6 pb-6 en móvil */}
+                        <div className="px-6 pb-6 md:px-10 md:pb-10 flex flex-col sm:flex-row items-center gap-3 md:gap-4 shrink-0">
                             <Link 
                                 href="/admin/pos" 
                                 onClick={handleClose} 
