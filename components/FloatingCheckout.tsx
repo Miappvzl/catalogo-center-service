@@ -266,6 +266,11 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             initial={{ width: 0 }}
                                             animate={{ width: `${Math.min(100, (totalItemsCount / wholesale.min_items) * 100)}%` }}
                                             className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
+
+
+
+
+                                               
                                         />
                                     </div>
                                     <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
