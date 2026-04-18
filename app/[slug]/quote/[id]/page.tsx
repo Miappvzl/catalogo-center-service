@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
-import { Loader2, FileText, CheckCircle2, Upload, Check, Copy, ArrowRight, ShieldCheck, MapPin, PackageX, Download, CreditCard, Store } from 'lucide-react'
+import { Loader2, FileText, CheckCircle2, Upload, Check, Copy, ArrowRight, ShieldCheck, MapPin, PackageX, Download, CreditCard, Store, Clock } from 'lucide-react'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -36,6 +36,8 @@ export default function QuotePublicPage() {
     
     const [stockIssues, setStockIssues] = useState<string[]>([])
     const isQuoteActive = order?.status === 'quote'
+    // 🚀 NUEVA REGLA DE NEGOCIO: El pago solo es real si el admin lo marcó como pagado, enviado o completado
+    const isPaymentVerified = ['paid', 'shipped', 'completed'].includes(order?.status)
 
     const [selectedMethod, setSelectedMethod] = useState<string>('')
     const [reference, setReference] = useState('')
@@ -46,8 +48,21 @@ export default function QuotePublicPage() {
     const [copiedUsd, setCopiedUsd] = useState(false)
     const [copiedBs, setCopiedBs] = useState(false)
 
+    // 🚀 NUEVO: Conversor de Logo a Base64 para impresión nativa sin fallos de CORS
+    const [logoBase64, setLogoBase64] = useState<string | null>(null)
+    useEffect(() => {
+        if (store?.logo_url) {
+            fetch(getOptimizedUrl(store.logo_url))
+                .then(res => res.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setLogoBase64(reader.result as string);
+                    reader.readAsDataURL(blob);
+                })
+                .catch(e => console.error("Error cargando logo en Base64", e));
+        }
+    }, [store?.logo_url])
     
-
     useEffect(() => {
         const fetchQuoteData = async () => {
             try {
@@ -59,7 +74,6 @@ export default function QuotePublicPage() {
                 if (!orderData) throw new Error('Presupuesto no encontrado')
                 setOrder(orderData)
            
-
                 // 🚀 INYECCIÓN: MEMORIA PERSISTENTE (Guardamos el ID localmente)
                 if (orderData.status === 'quote') {
                     localStorage.setItem('preziso_pending_quote', JSON.stringify({ 
@@ -68,7 +82,6 @@ export default function QuotePublicPage() {
                         slug: storeData.slug
                     }))
                 } else {
-                    // Si ya se pagó o canceló, borramos la memoria para que no moleste el banner
                     localStorage.removeItem('preziso_pending_quote')
                 }
 
@@ -76,7 +89,6 @@ export default function QuotePublicPage() {
                 const { data: rateData } = await supabase.from('app_config').select('usd_rate, eur_rate').single()
                 if (rateData) setRates({ usd_rate: rateData.usd_rate, eur_rate: rateData.eur_rate })
 
-                // Ahora que arreglamos el RLS, esto traerá los ítems correctamente
                 const { data: itemsData } = await supabase
                     .from('order_items')
                     .select('*, product:products(stock), variant:product_variants(stock)')
@@ -103,48 +115,28 @@ export default function QuotePublicPage() {
         if (slug && orderId) fetchQuoteData()
     }, [slug, orderId, supabase])
 
-  // 🚀 MOTOR DE SINCRONIZACIÓN TOTAL (Realtime Blindado)
+    // 🚀 MOTOR DE SINCRONIZACIÓN TOTAL (Realtime Blindado)
     useEffect(() => {
         if (!store?.id) return;
 
-        console.log("📡 Conectando antenas Realtime...");
-
-        // 1. Escuchar cambios en la Tienda (Switch de moneda USD/EUR)
         const storeChannel = supabase
             .channel(`store-changes-${store.id}`)
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'stores', filter: `id=eq.${store.id}` },
-                (payload:any) => {
-                    console.log("⚡ ¡Cambio de Tienda detectado!", payload.new);
-                    // Usamos función de callback para fusionar sin perder datos previos
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stores', filter: `id=eq.${store.id}` }, (payload:any) => {
                     setStore((prevStore: any) => ({ ...prevStore, ...payload.new }));
-                }
-            )
-            .subscribe();
+            }).subscribe();
 
-        // 2. Escuchar cambios en App Config (Valor numérico de la tasa Bs)
         const rateChannel = supabase
             .channel('rates-changes')
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'app_config' },
-                (payload:any) => {
-                    console.log("⚡ ¡Cambio de Tasas detectado!", payload.new);
-                    // Fusionamos para que si solo cambia USD, no se borre el EUR
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_config' }, (payload:any) => {
                     setRates((prevRates: any) => ({ ...prevRates, ...payload.new }));
-                }
-            )
-            .subscribe();
+            }).subscribe();
 
         return () => {
-            console.log("🔌 Desconectando antenas...");
             supabase.removeChannel(storeChannel);
             supabase.removeChannel(rateChannel);
         };
     }, [store?.id, supabase]);
 
- // Verifica que tus cálculos se vean así:
     const activeCurrency = useMemo(() => store?.currency_type || order?.currency_type || 'usd', [store, order]);
     const activeRate = useMemo(() => activeCurrency === 'eur' ? rates.eur_rate : rates.usd_rate, [activeCurrency, rates]);
     const totalBs = useMemo(() => Number(order?.total_usd || 0) * activeRate, [order, activeRate]);
@@ -160,7 +152,6 @@ export default function QuotePublicPage() {
         return pm
     }, [store?.payment_config])
 
-    // --- FUNCIONES DE COPIADO INDIVIDUALES ---
     const handleCopy = (text: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
         navigator.clipboard.writeText(text)
         setter(true)
@@ -190,7 +181,7 @@ export default function QuotePublicPage() {
                 status: 'pending',
                 payment_method: selectedMethod,
                 total_bs: totalBs,
-                exchange_rate: activeRate, // 🚀 Tasa aplicada real (Dinámica)
+                exchange_rate: activeRate,
                 receipt_url: receiptPublicUrl,
                 delivery_info: order.delivery_info + (reference ? ` | Ref: ${reference}` : '')
             }).eq('id', order.id)
@@ -206,25 +197,25 @@ export default function QuotePublicPage() {
             Swal.fire({
                 icon: 'success', title: 'Pago Reportado', 
                 text: 'Tu pago ha sido enviado a la tienda para su verificación. ¡Gracias por tu compra!',
-                confirmButtonColor: '#000', customClass: { popup: 'rounded-3xl shadow-2xl' }
+                confirmButtonColor: '#000', customClass: { popup: 'rounded-xl shadow-2xl' }
             })
 
         } catch (error: any) {
-            Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: error.message || 'Intenta nuevamente.', confirmButtonColor: '#000', customClass: { popup: 'rounded-3xl shadow-2xl' } })
+            Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: error.message || 'Intenta nuevamente.', confirmButtonColor: '#000', customClass: { popup: 'rounded-xl shadow-2xl' } })
         } finally {
             setSubmitting(false)
         }
     }
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]"><Loader2 className="animate-spin text-gray-300" size={40} /></div>
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]"><Loader2 className="animate-spin text-zinc-300" size={40} /></div>
     if (!order) return null
 
-   const paymentKeysMap: Record<string, string> = { 'Pago Móvil': 'pago_movil', 'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli' }
+    const paymentKeysMap: Record<string, string> = { 'Pago Móvil': 'pago_movil', 'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli' }
 
-    // 🚀 ESTÉTICA Y LOGOS (Adaptado para el Clean Look del Quote)
+    // 🚀 ESTÉTICA Y LOGOS
     const getPaymentConfig = (pm: string) => {
-        const baseSelected = 'bg-black text-white border-black shadow-md'
-        const baseIdle = 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-900'
+        const baseSelected = 'bg-zinc-900 text-white border-zinc-900 shadow-md'
+        const baseIdle = 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'
 
         switch (pm) {
             case 'Pago Móvil': return { icon: BrandLogos.PagoMovil, btnSelected: baseSelected, btnIdle: baseIdle }
@@ -236,100 +227,150 @@ export default function QuotePublicPage() {
         }
     }
 
-
-
-
     return (
         <>
-        {/* 🚀 CSS PARA IMPRESIÓN PDF NATIVA */}
-        <style dangerouslySetInnerHTML={{__html: `
-            @media print {
-                body { background-color: white !important; }
-                .print-hidden { display: none !important; }
-                .print-break-inside-avoid { page-break-inside: avoid; }
-                .shadow-subtle { box-shadow: none !important; }
+        {/* 🚀 CSS PARA IMPRESIÓN BLINDADO (Awwwards Grade) */}
+        <style dangerouslySetInnerHTML={{
+            __html: `
+            @media print { 
+                @page { margin: 10mm; size: A4 portrait; } 
+                body, html, main { background-color: white !important; margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; } 
+                .print-hidden { display: none !important; } 
+                .avoid-break { page-break-inside: avoid; break-inside: avoid; } 
+                .shadow-subtle, .shadow-sm, .shadow-lg { box-shadow: none !important; } 
+                /* Forzamos a que el contenedor principal ocupe el 100% sin márgenes */
+                #invoice-container { max-width: 100% !important; border: none !important; padding: 0 !important; margin: 0 !important; }
             }
-        `}} />
+            `
+        }} />
 
-        <div className="min-h-screen bg-[#FAFAFA] font-sans text-gray-900 py-10 md:py-20 px-4 flex justify-center">
-            <div className="w-full max-w-[800px]">
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-zinc-900 py-6 md:py-12 px-4 flex justify-center selection:bg-zinc-200">
+            <div className="w-full max-w-[850px] flex flex-col gap-6">
                 
-                {/* BRAND HEADER */}
-                <div className="flex flex-col items-center mb-10 md:mb-16">
-                    {store.logo_url ? (
-                        <div className="w-16 h-16 rounded-full overflow-hidden mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 print-hidden">
-                            <Image src={getOptimizedUrl(store.logo_url)} alt={store.name} width={64} height={64} className="object-cover" />
-                        </div>
-                    ) : (
-                        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm border border-gray-100 text-gray-400 print-hidden">
-                            <Store size={24} />
-                        </div>
-                    )}
-                    <h1 className="text-xl font-black tracking-tight">{store.name}</h1>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Documento Comercial</p>
+                {/* 🚀 ACTION BAR (Solo en pantalla) */}
+                <div className="flex justify-between items-center print-hidden mb-6">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-colors ${
+                        order.status === 'quote' ? 'bg-zinc-100 text-zinc-600 border-zinc-200' : 
+                        !isPaymentVerified ? 'bg-amber-50 text-amber-700 border-amber-200' : 
+                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                    }`}>
+                        {order.status === 'quote' ? <><FileText size={12} /> Pendiente</> : 
+                         !isPaymentVerified ? <><Clock size={12} /> En Verificación</> : 
+                         <><CheckCircle2 size={12} /> Procesado</>}
+                    </span>
+                    <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white rounded-lg text-xs font-bold uppercase tracking-widest transition-all shadow-sm">
+                        <Download size={14} /> Imprimir / PDF
+                    </button>
                 </div>
 
-                {/* MAIN INVOICE PAPER (CLEAN LOOK) */}
-                <div className="bg-white rounded-[32px] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.03)] border border-gray-50 mb-8 print-break-inside-avoid">
+                {/* 🚀 DOCUMENTO A4 (Editorial Letterhead) */}
+                <div id="invoice-container" className="bg-white rounded-xl md:rounded-2xl p-8 md:p-14 shadow-sm border border-zinc-200">
                     
-                    {/* ESTADO Y ACCIONES */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-gray-100">
-                        <div>
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4 ${isQuoteActive ? 'bg-gray-100 text-gray-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                {isQuoteActive ? <><FileText size={12} /> Presupuesto Pendiente</> : <><CheckCircle2 size={12} /> Procesado y Reportado</>}
-                            </span>
-                            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 leading-none">#{order.order_number}</h2>
-                            <p className="text-xs font-mono font-medium text-gray-400 mt-2">{new Date(order.created_at).toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    {/* ENCABEZADO ESTRUCTURAL */}
+                    <div className="flex flex-col md:flex-row justify-between items-start border-b border-zinc-200 pb-8 mb-8 gap-8">
+                        {/* Izquierda: Empresa */}
+                        <div className="flex flex-col items-start max-w-[50%]">
+                            {store.logo_url ? (
+                                <div className="h-12 md:h-14 mb-4">
+                                    <img src={logoBase64 || getOptimizedUrl(store.logo_url)} alt={store.name} className="h-full w-auto object-contain" />
+                                </div>
+                            ) : (
+                                <div className="h-12 w-12 rounded-xl bg-zinc-100 flex items-center justify-center mb-4 text-zinc-400">
+                                    <Store size={24} />
+                                </div>
+                            )}
+                            <h1 className="text-xl md:text-2xl font-black tracking-tight leading-none text-zinc-900 mb-1">{store.name}</h1>
+                            
+                            {/* 🚀 LÓGICA DE VISIBILIDAD LEGAL: 
+                                - Se muestra siempre si es un Presupuesto (en verificación).
+                                - Se muestra si es una Factura confirmada.
+                                - Se OCULTA si es una Nota de Entrega confirmada. */}
+                            {(!isPaymentVerified || order.document_type === 'invoice') && (
+                                <div className="text-xs text-zinc-500 space-y-0.5 mt-2 transition-all duration-500">
+                                    {store.legal_name && <p className="font-medium text-zinc-700">{store.legal_name}</p>}
+                                    {store.legal_id && <p className="font-mono">RIF/CI: {store.legal_id}</p>}
+                                    {store.fiscal_address && <p className="leading-tight">{store.fiscal_address}</p>}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="md:text-right flex flex-col justify-end">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Cliente</p>
-                            <p className="text-lg font-bold text-gray-900 leading-tight">{order.customer_name}</p>
-                            {order.customer_phone && <p className="text-xs font-mono text-gray-500 mt-0.5">{order.customer_phone}</p>}
+                       {/* Derecha: Meta de la Factura */}
+                        <div className="flex flex-col md:items-end text-left md:text-right w-full md:w-auto">
+                            {/* 🚀 EL TÍTULO MUTANTE */}
+                            <p className="text-2xl md:text-3xl font-serif font-black tracking-tighter text-zinc-900 uppercase transition-all duration-500">
+                                {!isPaymentVerified ? 'Presupuesto' : (order.document_type === 'note' ? 'Nota de Entrega' : 'Factura Comercial')}
+                            </p>
+                            <p className="text-sm font-mono font-bold text-zinc-500 mt-1">Nº {order.order_number}</p>
                             
-                            {/* 🚀 BOTÓN DESCARGAR PDF NATIVO */}
-                            <button onClick={() => window.print()} className="print-hidden mt-4 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors self-start md:self-end">
-                                <Download size={14} /> Descargar PDF
-                            </button>
+                            <div className="mt-4 text-xs text-zinc-500 space-y-1">
+                                <div className="flex justify-between md:justify-end gap-4">
+                                    <span className="font-bold uppercase tracking-widest text-[9px] text-zinc-400">Fecha Emisión:</span>
+                                    <span className="font-mono">{new Date(order.created_at).toLocaleDateString('es-VE')}</span>
+                                </div>
+                                <div className="flex justify-between md:justify-end gap-4">
+                                    <span className="font-bold uppercase tracking-widest text-[9px] text-zinc-400">Moneda Base:</span>
+                                    <span className="font-mono uppercase">{activeCurrency}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* ALERTA DE INVENTARIO */}
+                    {/* SECCIÓN CLIENTE */}
+                    <div className="flex flex-col md:flex-row justify-between gap-8 mb-10">
+                        <div className="flex-1">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Facturado a:</p>
+                            <p className="text-sm font-bold text-zinc-900 mb-1">{order.customer_name}</p>
+                            <div className="text-xs text-zinc-500 font-mono space-y-0.5">
+                                {order.customer_dni && <p>CI/RIF: {order.customer_dni}</p>}
+                                {order.customer_phone && <p>Telf: {order.customer_phone}</p>}
+                                {order.customer_address && <p className="font-sans max-w-[250px] leading-tight mt-1">{order.customer_address}</p>}
+                            </div>
+                        </div>
+                        {order.shipping_method !== 'pickup' && (
+                            <div className="flex-1 md:text-right">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Enviar a:</p>
+                                <p className="text-xs font-medium text-zinc-700 leading-snug md:ml-auto max-w-[250px]">{order.delivery_info}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ALERTA DE INVENTARIO (Solo pantalla) */}
                     {stockIssues.length > 0 && isQuoteActive && (
-                        <div className="bg-red-50 text-red-700 p-5 rounded-2xl mb-10 flex gap-4 items-start print-hidden">
-                            <PackageX size={20} className="shrink-0 mt-0.5" strokeWidth={2.5} />
+                        <div className="bg-red-50/50 border border-red-100 text-red-700 p-4 rounded-lg mb-8 flex gap-3 items-start print-hidden">
+                            <PackageX size={16} className="shrink-0 mt-0.5" strokeWidth={2.5} />
                             <div>
-                                <p className="text-sm font-black tracking-tight mb-1">Inventario Insuficiente</p>
-                                <p className="text-xs font-medium leading-relaxed opacity-90">
-                                    Lo sentimos, el artículo <b>{stockIssues.join(', ')}</b> se agotó. Comunícate con la tienda.
-                                </p>
+                                <p className="text-xs font-bold uppercase tracking-widest mb-1">Stock Insuficiente</p>
+                                <p className="text-xs font-medium">El artículo <b>{stockIssues.join(', ')}</b> se agotó. Contacta a la tienda.</p>
                             </div>
                         </div>
                     )}
 
-                    {/* 🚀 LISTA DE ARTÍCULOS (Ahora sí se verán gracias al paso 1) */}
-                    <div className="mb-12">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">Detalle de la Orden</p>
+                    {/* 🚀 TABLA DE ARTÍCULOS EDITORIAL (Ahorro extremo de espacio vertical) */}
+                    <div className="mb-10 w-full">
+                        {/* Cabecera Tabla */}
+                        <div className="grid grid-cols-12 gap-2 border-b border-zinc-900 pb-2 mb-2 text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+                            <div className="col-span-6 md:col-span-8">Descripción</div>
+                            <div className="col-span-2 text-center">Cant</div>
+                            <div className="col-span-4 md:col-span-2 text-right">Precio / Total</div>
+                        </div>
                         
-                        <div className="space-y-4">
+                        {/* Filas */}
+                        <div className="flex flex-col">
                             {items.length === 0 ? (
-                                <p className="text-sm text-gray-400 italic">Cargando artículos...</p>
+                                <p className="text-xs text-zinc-400 py-4 italic">Cargando artículos...</p>
                             ) : (
                                 items.map(item => (
-                                    <div key={item.id} className="flex justify-between items-center group py-2 border-b border-gray-50 last:border-0">
-                                        <div className="flex gap-4 items-center min-w-0">
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
-                                                <span className="text-xs font-black text-gray-900">{item.quantity}</span>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-bold text-gray-900 truncate">{item.product_name}</p>
-                                                {item.variant_info && <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">{item.variant_info}</p>}
-                                            </div>
+                                    <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-3 border-b border-zinc-100 items-start">
+                                        <div className="col-span-6 md:col-span-8 pr-4">
+                                            <p className="text-xs font-bold text-zinc-900">{item.product_name}</p>
+                                            {item.variant_info && <p className="text-[10px] text-zinc-500 mt-0.5">{item.variant_info}</p>}
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <p className="text-sm font-black text-gray-900 tabular-nums">${item.price_at_purchase.toFixed(2)}</p>
-                                          {/* A esto: */}
-<p className="text-[10px] font-mono text-gray-400">Bs {(item.price_at_purchase * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                        <div className="col-span-2 text-center">
+                                            <span className="text-xs font-mono font-medium text-zinc-600">{item.quantity}</span>
+                                        </div>
+                                        <div className="col-span-4 md:col-span-2 text-right flex flex-col justify-start">
+                                            <p className="text-xs font-bold text-zinc-900 tabular-nums">${item.price_at_purchase.toFixed(2)}</p>
+                                            <p className="text-[9px] font-mono text-zinc-400 mt-0.5">Bs {(item.price_at_purchase * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                         </div>
                                     </div>
                                 ))
@@ -337,74 +378,78 @@ export default function QuotePublicPage() {
                         </div>
                     </div>
 
-                   {/* ZONA LOGÍSTICA (Oculta automáticamente si es retiro en mostrador) */}
-                    {order.shipping_method !== 'pickup' && (
-                        <div className="bg-gray-50 p-5 rounded-2xl mb-12 flex items-start gap-4 border border-gray-100 print-hidden">
-                            <MapPin size={18} className="text-gray-400 shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Logística / Envío a:</p>
-                                <p className="text-sm font-medium text-gray-700 leading-snug">{order.delivery_info}</p>
-                            </div>
+                    {/* 🚀 TOTALES ESTRUCTURADOS */}
+                    <div className="avoid-break flex flex-col md:flex-row justify-between items-end md:items-start pt-4 gap-8">
+                        
+                       <div className="w-full md:w-[40%] text-xs text-zinc-500 leading-relaxed">
+                            {/* 🚀 El mensaje aplica para cualquier orden no verificada */}
+                            {!isPaymentVerified && (
+                                <p className="bg-zinc-50 p-3 rounded-lg border border-zinc-100">
+                                    <ShieldCheck size={14} className="inline mr-1.5 mb-0.5 text-zinc-400"/>
+                                    Montos en divisa fijos. El monto en Bs. se calculará en base a la tasa del día del pago efectivo.
+                                </p>
+                            )}
                         </div>
-                    )}
 
-                    {/* TOTALES GIGANTES CON BOTONES DE COPIAR */}
-                    <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-                        {isQuoteActive ? (
-                            <div className="flex items-center gap-2 text-gray-400 max-w-[250px]">
-                                <ShieldCheck size={18} className="shrink-0"/>
-                                <span className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">
-                                    Precio en USD blindado. El monto en Bs se calcula a la tasa del día de pago.
+                        <div className="w-full md:w-auto min-w-[240px]">
+                            {order.is_tax_applied && (
+                                <div className="space-y-2 border-b border-zinc-200 pb-3 mb-3">
+                                    <div className="flex justify-between text-xs text-zinc-500">
+                                        <span>Subtotal</span>
+                                        <span className="font-mono">${Number(order.subtotal_usd || order.total_usd).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-zinc-500">
+                                        <span>I.V.A. (16%)</span>
+                                        <span className="font-mono">${Number(order.tax_amount_usd || 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Total USD */}
+                            <div className="flex justify-between items-center group/usd cursor-pointer mb-2" onClick={() => handleCopy(Number(order.total_usd).toFixed(2), setCopiedUsd)}>
+                                <span className="text-[10px] font-bold text-zinc-900 uppercase tracking-widest flex items-center gap-2">
+                                    Total 
+                                    {copiedUsd ? <Check size={12} className="text-emerald-500 print-hidden"/> : <Copy size={12} className="text-zinc-300 opacity-0 group-hover/usd:opacity-100 print-hidden transition-opacity"/>}
                                 </span>
-                            </div>
-                        ) : <div></div>}
-
-                        <div className="flex flex-col items-start md:items-end w-full md:w-auto">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total a Pagar</span>
-                            
-                            {/* Fila USD */}
-                            <div className="flex items-center gap-3 group/usd cursor-pointer" onClick={() => handleCopy(Number(order.total_usd).toFixed(2), setCopiedUsd)}>
-                                <span className="text-5xl md:text-6xl font-black tracking-tighter leading-none text-gray-900">
+                                <span className="text-2xl md:text-3xl font-black tracking-tighter text-zinc-900 tabular-nums">
                                     ${Number(order.total_usd).toFixed(2)}
                                 </span>
-                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover/usd:bg-gray-100 group-hover/usd:text-black transition-colors print-hidden">
-                                    {copiedUsd ? <Check size={14} className="text-emerald-500"/> : <Copy size={14}/>}
-                                </div>
                             </div>
-                            
-                            {/* Fila Bs con Micro-Badge Dinámico */}
-                            <div className="flex items-center gap-2 mt-3 group/bs cursor-pointer" onClick={() => handleCopy(totalBs.toFixed(2), setCopiedBs)}>
-                                <span className="text-sm md:text-base font-mono font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-100 flex items-center gap-2">
-                                    Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    {/* 🚀 ETIQUETA DE TRANSPARENCIA PARA EL CLIENTE */}
-                                    <span className="text-[9px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-sm uppercase tracking-widest border border-gray-300">
-                                        Tasa {activeCurrency}
-                                    </span>
+
+                            {/* Total Bs */}
+                            <div className="flex justify-between items-center group/bs cursor-pointer" onClick={() => handleCopy(totalBs.toFixed(2), setCopiedBs)}>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    Equivalente
+                                    {copiedBs ? <Check size={10} className="text-emerald-500 print-hidden"/> : <Copy size={10} className="text-zinc-300 opacity-0 group-hover/bs:opacity-100 print-hidden transition-opacity"/>}
                                 </span>
-                                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center text-gray-400 group-hover/bs:bg-gray-100 group-hover/bs:text-black transition-colors print-hidden">
-                                    {copiedBs ? <Check size={12} className="text-emerald-500"/> : <Copy size={12}/>}
+                                <div className="text-right">
+                                    <span className="text-sm font-mono font-bold text-zinc-500 tabular-nums">
+                                        Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                    <p className="text-[8px] uppercase tracking-widest text-zinc-400 mt-0.5">Tasa calculada: {activeRate.toFixed(2)}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* MODAL DE PAGO INLINE (Se oculta al imprimir) */}
+                {/* 🚀 MODAL DE PAGO INLINE (Awwwards Grade - No Imprimible) */}
                 {isQuoteActive && stockIssues.length === 0 && (
-                    <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.03)] border border-gray-50 print-hidden">
-                        <h3 className="text-lg font-black tracking-tight mb-8">Completar Pago</h3>
+                    <div className="bg-white rounded-xl md:rounded-2xl p-8 shadow-sm border border-zinc-200 print-hidden">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-900 mb-6 flex items-center gap-2">
+                            <CreditCard size={16} /> Procesar Pago
+                        </h3>
                         
-                       {/* BOTONES CON ICONOS */}
-                        <div className="flex flex-wrap gap-3 mb-8">
+                        <div className="flex flex-wrap gap-2 mb-8">
                             {activePaymentMethods.map(pm => {
                                 const config = getPaymentConfig(pm);
                                 return (
                                     <button 
                                         key={pm} 
                                         onClick={() => setSelectedMethod(pm)}
-                                        className={`flex items-center justify-center gap-2 px-5 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all border ${selectedMethod === pm ? config.btnSelected : config.btnIdle}`}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${selectedMethod === pm ? config.btnSelected : config.btnIdle}`}
                                     >
-                                        <config.icon size={18} className={selectedMethod === pm ? 'text-white' : 'text-gray-500'} /> 
+                                        <config.icon size={14} className={selectedMethod === pm ? 'text-white' : 'text-zinc-400'} /> 
                                         {pm}
                                     </button>
                                 )
@@ -412,22 +457,21 @@ export default function QuotePublicPage() {
                         </div>
 
                         {selectedMethod && (
-                            <div className="animate-in fade-in slide-in-from-top-4 space-y-8">
+                            <div className="animate-in fade-in slide-in-from-top-2 space-y-6">
                                 
-                                {/* 🚀 LECTURA DIRECTA EXACTA COMO EL CHECKOUT */}
                                 {store.payment_config[paymentKeysMap[selectedMethod]]?.details && (
-                                    <div className="bg-[#FAFAFA] p-6 rounded-2xl border border-gray-100">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Datos para Transferir</span>
+                                    <div className="bg-zinc-50 p-5 rounded-lg border border-zinc-100">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Instrucciones de Pago</span>
                                             <button 
                                                 onClick={() => handleCopy(store.payment_config[paymentKeysMap[selectedMethod]]?.details || '', setCopiedData)} 
-                                                className="text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-black transition-colors flex items-center gap-1.5"
+                                                className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-900 transition-colors flex items-center gap-1"
                                             >
-                                                {copiedData ? <Check size={12} className="text-emerald-500"/> : <Copy size={12}/>} 
-                                                {copiedData ? 'Copiado' : 'Copiar'}
+                                                {copiedData ? <Check size={10} className="text-emerald-500"/> : <Copy size={10}/>} 
+                                                {copiedData ? 'Copiado' : 'Copiar Datos'}
                                             </button>
                                         </div>
-                                        <p className="text-sm font-mono font-medium text-gray-600 leading-relaxed whitespace-pre-wrap">
+                                        <p className="text-xs font-mono font-medium text-zinc-700 leading-relaxed whitespace-pre-wrap">
                                             {store.payment_config[paymentKeysMap[selectedMethod]]?.details}
                                         </p>
                                     </div>
@@ -435,21 +479,21 @@ export default function QuotePublicPage() {
 
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block ml-1">Referencia (Opcional)</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">Nº Referencia (Opcional)</label>
                                         <input 
                                             type="text" 
                                             value={reference} 
                                             onChange={(e) => setReference(e.target.value)}
-                                            className="w-full bg-white border border-gray-200 focus:border-black rounded-2xl px-5 py-4 text-sm font-bold outline-none transition-all"
+                                            className="w-full bg-white border border-zinc-200 focus:border-zinc-900 rounded-lg px-4 py-3 text-xs font-bold outline-none transition-all"
                                             placeholder="Ej: 123456"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block ml-1">Comprobante *</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">Comprobante / Capture *</label>
                                         <div className="relative w-full">
                                             <input type="file" accept="image/*" onChange={(e) => e.target.files && setReceiptFile(e.target.files[0])} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                            <div className={`w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl border transition-all text-sm font-bold ${receiptFile ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-900'}`}>
-                                                {receiptFile ? <><CheckCircle2 size={16} /> {receiptFile.name.substring(0, 15)}...</> : <><Upload size={16} /> Subir Capture</>}
+                                            <div className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all text-xs font-bold ${receiptFile ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'}`}>
+                                                {receiptFile ? <><CheckCircle2 size={14} /> {receiptFile.name.substring(0, 15)}...</> : <><Upload size={14} /> Subir Imagen</>}
                                             </div>
                                         </div>
                                     </div>
@@ -458,18 +502,18 @@ export default function QuotePublicPage() {
                                 <button 
                                     onClick={handleProcessPayment}
                                     disabled={submitting}
-                                    className="w-full bg-black text-white py-4 md:py-5 rounded-full font-black uppercase tracking-widest text-sm hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    className="w-full bg-zinc-900 text-white py-4 rounded-lg font-bold uppercase tracking-widest text-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
-                                    {submitting ? <Loader2 className="animate-spin" size={18} /> : <><ArrowRight size={18} /> Procesar mi Pago</>}
+                                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <><ArrowRight size={16} /> Confirmar Pago</>}
                                 </button>
                             </div>
                         )}
                     </div>
                 )}
                 
-                <div className="mt-12 text-center opacity-40 hover:opacity-100 transition-opacity print-hidden">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-900 flex items-center justify-center gap-1.5">
-                        Tecnología Financiera por <span className="font-black text-[12px] tracking-tight ml-0.5">PREZISO</span>
+                <div className="mt-8 text-center opacity-30 hover:opacity-100 transition-opacity print-hidden">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-900 flex items-center justify-center gap-1.5">
+                        Generado por <span className="font-black tracking-tight ml-0.5">PREZISO SaaS</span>
                     </p>
                 </div>
             </div>

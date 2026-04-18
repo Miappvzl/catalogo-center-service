@@ -4,7 +4,10 @@ import Link from 'next/link'
 import FeatureAnnouncement from '@/components/FeatureAnnouncement'
 import { 
   Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,  
-  Clock, DollarSign, Truck, Box, ChevronRight, XCircle
+  Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
+  SquareArrowOutUpRight,
+  ChartNoAxesColumnIncreasing,
+  LineChart
 } from 'lucide-react'
 
 // COMPONENTES IMPORTADOS
@@ -51,7 +54,7 @@ export default async function AdminDashboard() {
   const recentOrders = recentOrdersRes.data || []
 
   return (
-    <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
+    <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative no-scrrollbar">
       <AdminHeader store={store} />
       
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
@@ -75,7 +78,7 @@ export default async function AdminDashboard() {
                     <div className="p-3.5 pl-[1.5px] text-black">
                         <DollarSign size={24} strokeWidth={2.5}/>
                     </div>
-                    <span className="text-[10px] font-bold bg-green-50 text-green-700 px-2.5 py-1 rounded-[var(--radius-badge)] uppercase tracking-wide">
+                    <span className="text-[10px] font-bold bg-[#5500ff0b]  text-[#5500ffa1] px-2.5 py-1 rounded-[var(--radius-badge)] uppercase tracking-wide">
                         Hoy
                     </span>
                 </div>
@@ -83,9 +86,9 @@ export default async function AdminDashboard() {
                     <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none">
                         {currencySymbol}{salesTodayUSD.toFixed(2)}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-2 opacity-60">
-                        <TrendingUp size={12} className="text-green-600"/>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ingreso Neto</p>
+                    <div className="flex items-center gap-1.5 mt-2">
+                        <LineChart size={12} className="text-[#5500ffa1]"/>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide  opacity-60">Ingreso Neto</p>
                     </div>
                 </div>
             </div>

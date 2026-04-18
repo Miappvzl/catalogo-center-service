@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent } from 'lucide-react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent, FileText } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -30,6 +30,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const [whatsappUrl, setWhatsappUrl] = useState('')
     const [generatedOrderNumber, setGeneratedOrderNumber] = useState<number | null>(null)
+    const [generatedOrderId, setGeneratedOrderId] = useState<string | null>(null) // 🚀 NUEVO ESTADO
 
     useEffect(() => {
         setIsMounted(true)
@@ -41,7 +42,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const handleOpenModal = () => { setStep(1); setIsOpen(true); }
     const handleCloseModal = () => {
         setIsOpen(false);
-        setTimeout(() => { setStep(1); setGeneratedOrderNumber(null); }, 300);
+        setTimeout(() => { setStep(1); setGeneratedOrderNumber(null); setGeneratedOrderId(null); }, 300); // 🚀 Limpiamos
     }
 
     const isEurMode = currency === 'eur'
@@ -421,48 +422,66 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             affiliateCode={affiliateCode}
                                             affiliateDiscountList={affiliateDiscountList}
                                             affiliateDiscountCash={affiliateDiscountCash}
-                                            onSuccess={(orderNumber, waUrl) => {
+                                            onSuccess={(orderNumber, waUrl, orderId) => { // 🚀 RECIBIMOS orderId
                                                 setGeneratedOrderNumber(orderNumber);
                                                 setWhatsappUrl(waUrl);
+                                                setGeneratedOrderId(orderId); // 🚀 LO GUARDAMOS
                                                 setStep(3);
                                             }}
                                             onBack={() => setStep(1)}
                                         />
                                     )}
 
-                                    {/* --- PASO 3: ÉXITO --- */}
+                                   {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
                                         <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
+                                            
                                             <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
                                                 <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
                                             </div>
+                                            
                                             <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">¡Pedido #{generatedOrderNumber}!</h2>
-                                            <p className="text-[var(--store-surface-text)] text-sm leading-relaxed max-w-xs mx-auto mb-8">
-                                                Tu orden ha sido guardada. Si WhatsApp no se abrió automáticamente, presiona el botón abajo para enviarnos tu comprobante.
-                                            </p>
-                                            <div className="w-full flex flex-col gap-3">
-                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] hover:text-[var(--store-surface-text)] transition-all flex items-center justify-center gap-2 active:scale-95">
+                                            
+                                            {/* 🚀 NUDGE EDUCATIVO: Explicamos la protección del Documento Vivo */}
+                                            <div className="max-w-sm mx-auto mb-8  p-4">
+                                                <p className="text-[var(--store-text-main)] text-sm font-bold mb-1">
+                                                    Tu solicitud ha sido registrada.
+                                                </p>
+                                                <p className="text-[var(--store-surface-text)] text-xs leading-relaxed">
+                                                    Estamos verificando tu pago. Una vez nuestro equipo lo confirme, tu comprobante digital se actualizará automáticamente a su estado definitivo.
+                                                </p>
+                                            </div>
+
+                                            <div className="w-full flex flex-col gap-3 max-w-sm mx-auto">
+                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm border border-[var(--store-border)]">
                                                     <MessageCircle size={18} /> Enviar a WhatsApp
                                                 </a>
+                                                {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL */}
+                                                {generatedOrderId && (
+                                                    <a href={`/quote/${generatedOrderId}`} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]">
+                                                        <FileText size={18} /> Ver Comprobante (PDF)
+                                                    </a>
+                                                )}
                                                 <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
                                                     Volver a la Tienda
                                                 </button>
                                             </div>
-{/* 🚀 VIRAL LOOP DE AFILIADOS (DISEÑO HORIZONTAL ULTRA-COMPACTO) */}
-{storeConfig?.affiliate_config?.active && (
-    <div className="mt-6 mb-2 p-3 sm:p-4  rounded-xl w-full border border-[var(--store-primary)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 ">
-        <div className="flex-1 text-left w-full">
-            <span className="text-[10px] font-black text-[var(--store-text-main)] uppercase tracking-widest block mb-0.5">Conviértete en Embajador.</span>
-            <p className="text-xs font-medium text-[var(--store-surface-text)] leading-tight">
-                Recomiéndanos y gana un <strong className="font-black">{storeConfig.affiliate_config.global_commission_pct}% en efectivo</strong> por cada venta nueva que generes.
-            </p>
-        </div>
-        
-        <a href="/promotor" target="_blank" className="shrink-0 w-full sm:w-auto bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-[var(--store-primary)]/80 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-subtle">
-            Generar enlace <ArrowUpRight size={14} strokeWidth={3} />
-        </a>
-    </div>
-)}
+                                            
+                                            {/* 🚀 VIRAL LOOP DE AFILIADOS (DISEÑO HORIZONTAL ULTRA-COMPACTO) */}
+                                            {storeConfig?.affiliate_config?.active && (
+                                                <div className="mt-6 mb-2 p-3 sm:p-4  rounded-xl w-full border border-[var(--store-primary)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 ">
+                                                    <div className="flex-1 text-left w-full">
+                                                        <span className="text-[10px] font-black text-[var(--store-text-main)] uppercase tracking-widest block mb-0.5">Conviértete en Embajador.</span>
+                                                        <p className="text-xs font-medium text-[var(--store-surface-text)] leading-tight">
+                                                            Recomiéndanos y gana un <strong className="font-black">{storeConfig.affiliate_config.global_commission_pct}% en efectivo</strong> por cada venta nueva que generes.
+                                                        </p>
+                                                    </div>
+
+                                                    <a href="/promotor" target="_blank" className="shrink-0 w-full sm:w-auto bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-[var(--store-primary)]/80 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-subtle">
+                                                        Generar enlace <ArrowUpRight size={14} strokeWidth={3} />
+                                                    </a>
+                                                </div>
+                                            )}
                                             {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
                                             <div className="mt-8 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
                                                 <a

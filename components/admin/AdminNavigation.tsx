@@ -101,7 +101,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-6 border-r border-gray-100">
+    <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-3 pl-[8px] border-r border-gray-100">
       <div className="mb-10 flex items-center gap-3 px-2">
 
         <Link href="/" className="flex items-center group active:scale-95 transition-transform">

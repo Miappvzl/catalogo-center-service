@@ -36,14 +36,14 @@ interface Order {
     shipping_cost?: number
     discount_amount?: number
     order_items: OrderItem[]
-   is_quote?: boolean; 
-    source?: string;    
-    currency_type?: string; // 🚀 NUEVO
+    is_quote?: boolean;
+    source?: string;
+    currency_type?: string; 
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
     const styles: Record<string, string> = {
-        quote: 'bg-[#232325] text-white', // 🚀 NUEVO: Estilo Clean Look para Cotizaciones
+        quote: 'bg-[#232325] text-white', 
         pending: 'bg-yellow-50 text-yellow-700',
         paid: 'bg-emerald-50 text-emerald-700',
         shipped: 'bg-blue-50 text-blue-700',
@@ -63,7 +63,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     const Icon = status === 'quote' ? FileText : status === 'pending' ? Clock : status === 'paid' ? DollarSign : status === 'shipped' ? Truck : status === 'cancelled' ? XCircle : CheckCircle2
 
     return (
-        <span className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${styles[status] || styles.pending}`}>
+        <span className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-(--radius-badge) text-[10px] font-bold uppercase tracking-wide shrink-0 ${styles[status] || styles.pending}`}>
             <Icon size={12} strokeWidth={3} />
             {labels[status] || status}
         </span>
@@ -93,12 +93,15 @@ export default function OrdersPage() {
 
     const [trackingInput, setTrackingInput] = useState('')
     const [copiedAddress, setCopiedAddress] = useState(false)
-    const [copiedQuote, setCopiedQuote] = useState<string | null>(null) // 🚀 Estado de copiado rápido
+    const [copiedQuote, setCopiedQuote] = useState<string | null>(null) 
+
+    // 🚀 ESTADOS DE CONCILIACIÓN (Con memoria del estado destino)
+    const [reconcileModal, setReconcileModal] = useState({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid' })
 
     const [kpiStats, setKpiStats] = useState({ total: 0, pending: 0, salesTodayUSD: 0, salesTodayBs: 0 })
 
     const [storeId, setStoreId] = useState<string | null>(null)
-    const [storeSlug, setStoreSlug] = useState<string | null>(null) // 🚀 Necesario para el link
+    const [storeSlug, setStoreSlug] = useState<string | null>(null) 
 
     useEffect(() => {
         const initStore = async () => {
@@ -114,7 +117,6 @@ export default function OrdersPage() {
         initStore()
     }, [supabase])
 
-    // 🚀 FUNCIÓN GENERADORA DEL LINK
     const getQuoteLink = (orderId: string) => {
         if (!storeSlug) return ''
         const host = window.location.host.replace('www.', '')
@@ -122,7 +124,7 @@ export default function OrdersPage() {
     }
 
     const handleCopyQuote = (e: React.MouseEvent, orderId: string) => {
-        e.stopPropagation() // Evita que se abra el Drawer al hacer clic en copiar
+        e.stopPropagation() 
         const link = getQuoteLink(orderId)
         navigator.clipboard.writeText(link)
         setCopiedQuote(orderId)
@@ -137,7 +139,7 @@ export default function OrdersPage() {
         const { data: allOrders } = await supabase.from('orders').select('id, status').eq('store_id', storeId)
         const { data: todayOrders } = await supabase
             .from('orders').select('status, total_usd, total_bs, exchange_rate').eq('store_id', storeId)
-            .gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled').neq('status', 'quote') // Excluimos quotes de las ventas de hoy
+            .gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled').neq('status', 'quote') 
 
         if (allOrders && todayOrders) {
             setKpiStats({
@@ -200,10 +202,24 @@ export default function OrdersPage() {
         return () => { supabase.removeChannel(channel) }
     }, [supabase, fetchKPIs, selectedOrder, storeId])
 
+   // 🚀 1. EL INTERCEPTOR BLINDADO (Ataca Cotizaciones y Pendientes)
+    const handleStatusClick = (orderId: string, status: string) => {
+        // Regla de Negocio: Si la orden actual es 'quote' o 'pending', 
+        // y se intenta mover a un estado de éxito ('paid' o 'shipped'), EXIGE conciliación.
+        const needsReconciliation = 
+            (selectedOrder?.status === 'quote' || selectedOrder?.status === 'pending') && 
+            (status === 'paid' || status === 'shipped');
+
+        if (needsReconciliation) {
+            setReconcileModal({ isOpen: true, orderId, method: 'Pago Móvil', reference: '', targetStatus: status })
+        } else {
+            // Transiciones libres: pasar a cancelado, pasar a pendiente, o de pagado a enviado
+            updateStatus(orderId, status)
+        }
+    }
     const updateStatus = async (orderId: string, newStatus: string) => {
         setUpdatingId(orderId)
         const previousOrders = [...orders]
-
         try {
             const payload: any = { status: newStatus }
             if (newStatus === 'shipped') payload.tracking_number = trackingInput.trim() || null
@@ -214,14 +230,52 @@ export default function OrdersPage() {
             const { error } = await supabase.from('orders').update(payload).eq('id', orderId)
             if (error) throw error
 
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-xl font-bold text-xs bg-black text-white' } })
-            Toast.fire({ icon: 'success', title: 'Actualizado' })
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Actualizado', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-xl font-bold text-xs bg-black text-white' } })
             fetchKPIs()
         } catch (error) {
             setOrders(previousOrders)
             Swal.fire('Error', 'No se pudo actualizar.', 'error')
         } finally {
             setUpdatingId(null)
+        }
+    }
+
+    // 🚀 3. EL MOTOR DE CONCILIACIÓN
+    const processReconciliation = async () => {
+        setUpdatingId(reconcileModal.orderId)
+        try {
+            const { data: rates } = await supabase.from('app_config').select('usd_rate, eur_rate').single()
+            const targetOrder = orders.find(o => o.id === reconcileModal.orderId)
+            
+            const activeRate = targetOrder?.currency_type === 'eur' ? rates?.eur_rate : rates?.usd_rate
+            const totalBs = Number(targetOrder?.total_usd || 0) * (activeRate || 0)
+
+            const payload: any = { 
+                status: reconcileModal.targetStatus, // 🚀 AHORA RESPETA SI ES 'paid' o 'shipped'
+                payment_method: reconcileModal.method,
+                delivery_info: targetOrder?.delivery_info + (reconcileModal.reference ? ` | Ref: ${reconcileModal.reference}` : ''),
+            }
+
+            // Si no tenía tasa (era Presupuesto), la congelamos en este instante
+            if (!targetOrder?.exchange_rate) {
+                payload.exchange_rate = activeRate
+                payload.total_bs = totalBs
+            }
+            
+            setOrders(prev => prev.map(o => o.id === reconcileModal.orderId ? { ...o, ...payload } : o))
+            if (selectedOrder?.id === reconcileModal.orderId) setSelectedOrder(prev => prev ? { ...prev, ...payload } : null)
+
+            const { error } = await supabase.from('orders').update(payload).eq('id', reconcileModal.orderId)
+            if (error) throw error
+
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Pago Conciliado', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl bg-black text-white' } })
+            fetchKPIs()
+        } catch(e) {
+            Swal.fire('Error', 'No se pudo conciliar el pago.', 'error')
+        } finally {
+            setUpdatingId(null)
+            // 🚀 LIMPIAMOS MEMORIA COMPLETA
+            setReconcileModal({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid' })
         }
     }
 
@@ -252,7 +306,7 @@ export default function OrdersPage() {
             {/* HEADER STICKY */}
             <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-4">
-                    <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-[var(--radius-btn)] transition-all group shrink-0">
+                    <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-(--radius-btn) transition-all group shrink-0">
                         <ArrowLeft size={18} className="text-gray-500 group-hover:text-black" />
                     </Link>
                     <div>
@@ -260,26 +314,26 @@ export default function OrdersPage() {
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestión de Ventas</p>
                     </div>
                 </div>
-                <button onClick={() => { fetchOrders(0, true); fetchKPIs(); }} className="p-2 hover:bg-gray-100 rounded-[var(--radius-btn)] transition-colors active:rotate-180 duration-500 shrink-0" title="Sincronizar Forzado">
+                <button onClick={() => { fetchOrders(0, true); fetchKPIs(); }} className="p-2 hover:bg-gray-100 rounded-(--radius-btn) transition-colors active:rotate-180 duration-500 shrink-0" title="Sincronizar Forzado">
                     <Clock size={18} className="text-gray-400" />
                 </button>
             </div>
 
             <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
-                <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8">
+                <div className="max-w-350 mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8">
 
                     {/* KPI CARDS */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
-                        <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive min-w-0 border border-transparent hover:border-gray-200">
+                        <div className="bg-white p-6 rounded-(--radius-card) card-interactive min-w-0 border border-transparent hover:border-gray-200">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Pendientes</p>
                             <span className="text-2xl font-black text-yellow-600 truncate">{kpiStats.pending}</span>
                         </div>
-                        <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-center min-w-0 border border-transparent hover:border-gray-200">
+                        <div className="bg-white p-6 rounded-(--radius-card) card-interactive flex flex-col justify-center min-w-0 border border-transparent hover:border-gray-200">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Ventas Hoy</p>
                             <p className="text-2xl font-black text-gray-900 leading-none truncate">${kpiStats.salesTodayUSD.toFixed(2)}</p>
                             <p className="text-xs font-mono font-bold text-gray-400 mt-1 truncate">Bs {kpiStats.salesTodayBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive col-span-2 md:col-span-1 min-w-0 border border-transparent hover:border-gray-200">
+                        <div className="bg-white p-6 rounded-(--radius-card) card-interactive col-span-2 md:col-span-1 min-w-0 border border-transparent hover:border-gray-200">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Total Histórico</p>
                             <p className="text-2xl font-black text-gray-900 truncate">{kpiStats.total} <span className="text-sm text-gray-400 font-medium">Pedidos</span></p>
                         </div>
@@ -287,7 +341,7 @@ export default function OrdersPage() {
 
                     {/* FILTERS & SEARCH */}
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] shrink-0 w-full overflow-x-auto no-scrollbar lg:w-auto max-w-full">
+                        <div className="flex bg-[#ffffff] p-1 rounded-(--radius-btn) shrink-0 w-full overflow-x-auto no-scrollbar lg:w-auto max-w-full">
                             {['all', 'quote', 'pending', 'paid', 'shipped'].map(status => (
                                 <button
                                     key={status}
@@ -307,7 +361,7 @@ export default function OrdersPage() {
                             <input
                                 value={search} onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Buscar pedido o cliente..."
-                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-9 pr-4 py-2.5 text-sm font-medium outline-none transition-all"
+                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-9 pr-4 py-2.5 text-sm font-medium outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -316,8 +370,8 @@ export default function OrdersPage() {
                     {loading && orders.length === 0 ? (
                         <div className="text-center py-20"><Loader2 className="animate-spin text-gray-300 mx-auto" size={32} /></div>
                     ) : filteredOrders.length === 0 ? (
-                        <div className="text-center py-20 bg-white rounded-[var(--radius-card)] card-interactive">
-                            <div className="w-16 h-16 bg-gray-50 rounded-[var(--radius-btn)] flex items-center justify-center mx-auto mb-4 text-gray-400"><Package size={24} /></div>
+                        <div className="text-center py-20 bg-white rounded-(--radius-card) card-interactive">
+                            <div className="w-16 h-16 bg-gray-50 rounded-(--radius-btn) flex items-center justify-center mx-auto mb-4 text-gray-400"><Package size={24} /></div>
                             <p className="text-gray-400 font-bold text-sm">No se encontraron pedidos.</p>
                         </div>
                     ) : (
@@ -325,19 +379,18 @@ export default function OrdersPage() {
                             {/* VISTA MÓVIL */}
                             <div className="md:hidden space-y-3 w-full">
                                 {filteredOrders.map(order => (
-                                    <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-[var(--radius-card)] border border-transparent hover:border-gray-200 p-4 active:bg-gray-50 transition-colors cursor-pointer w-full relative">
+                                    <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-(--radius-card) border border-transparent hover:border-gray-200 p-4 active:bg-gray-50 transition-colors cursor-pointer w-full relative">
                                         <div className="flex justify-between items-start mb-3">
-                                       
-                                           <div className="min-w-0 pr-2">
+                                            <div className="min-w-0 pr-2">
                                                 <p className="text-xs font-black text-gray-900 truncate">#{order.order_number}</p>
                                                 <p className="text-[10px] text-gray-400 font-mono truncate mb-1.5">{new Date(order.created_at).toLocaleDateString()}</p>
                                                 
                                                 {/* 🚀 MICRO-BADGES (MÓVIL) */}
                                                 <div className="flex gap-1.5 flex-wrap">
                                                     {order.is_quote ? <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-purple-100">Cotización</span> :
-                                                     order.source === 'pos' ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
-                                                     <span className="px-2 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Tienda Web</span>}
-                                                    
+                                                        order.source === 'pos' ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
+                                                            <span className="px-2 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Tienda Web</span>}
+
                                                     {order.payment_method && (
                                                         <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-wider rounded-sm border border-slate-200">
                                                             {order.payment_method}
@@ -359,7 +412,7 @@ export default function OrdersPage() {
                                             <div className="text-right shrink-0 ml-auto">
                                                 <p className="font-black text-base text-gray-900 leading-none flex items-center justify-end gap-1.5">
                                                     ${Number(order.total_usd).toFixed(2)}
-                                                    <span className="text-[8px]  text-gray-500 px-1.5 py-0.5">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
+                                                    <span className="text-[8px] text-gray-500 px-1.5 py-0.5">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
                                                 </p>
                                                 <p className="text-[10px] text-gray-400 font-mono mt-1 text-right">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                             </div>
@@ -369,7 +422,7 @@ export default function OrdersPage() {
                             </div>
 
                             {/* VISTA DESKTOP (Tabla) */}
-                            <div className="hidden md:block bg-white rounded-[var(--radius-card)] overflow-hidden w-full max-w-full border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                            <div className="hidden md:block bg-white rounded-(--radius-card) overflow-hidden w-full max-w-full border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                 <div className="overflow-x-auto w-full">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-gray-50/50 border-b border-gray-100 text-[10px] uppercase tracking-widest text-gray-500">
@@ -384,15 +437,15 @@ export default function OrdersPage() {
                                         <tbody className="divide-y divide-gray-50">
                                             {filteredOrders.map(order => (
                                                 <tr key={order.id} onClick={() => openDrawer(order)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
-                                              <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="font-black text-gray-900 group-hover:text-black transition-colors block mb-1.5">#{order.order_number}</span>
-                                                        
+
                                                         {/* 🚀 MICRO-BADGES (DESKTOP) */}
-                                                        <div className="flex gap-1.5 flex-wrap max-w-[160px]">
+                                                        <div className="flex gap-1.5 flex-wrap max-w-40">
                                                             {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-purple-100">Cotización</span> :
-                                                             order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
-                                                             <span className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Web</span>}
-                                                            
+                                                                order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
+                                                                    <span className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Web</span>}
+
                                                             {order.payment_method && (
                                                                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-wider rounded-sm border border-slate-200">
                                                                     {order.payment_method}
@@ -403,7 +456,7 @@ export default function OrdersPage() {
                                                     <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 text-xs">
                                                         {new Date(order.created_at).toLocaleDateString()}
                                                     </td>
-                                                    <td className="px-6 py-4 min-w-[200px]">
+                                                    <td className="px-6 py-4 min-w-50">
                                                         <div className="flex items-center justify-between">
                                                             <span className="font-bold text-gray-900 truncate block">{order.customer_name}</span>
                                                             {order.status === 'quote' && (
@@ -416,8 +469,6 @@ export default function OrdersPage() {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <StatusBadge status={order.status} />
                                                     </td>
-                                                    
-                                                    {/* 🚀 TOTALES CON ATRIBUCIÓN DE MONEDA */}
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <p className="font-black text-gray-900 flex items-center justify-end gap-1.5">
                                                             ${Number(order.total_usd).toFixed(2)}
@@ -453,10 +504,10 @@ export default function OrdersPage() {
             {/* --- CAJÓN LATERAL (SLIDE-OVER DRAWER) --- */}
             <AnimatePresence>
                 {isDrawerOpen && selectedOrder && (
-                    <div className="fixed inset-0 z-[100] flex justify-end">
+                    <div className="fixed inset-0 z-100 flex justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
 
-                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full md:w-[450px] bg-white h-full flex flex-col shadow-2xl">
+                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full md:w-112.5 bg-white h-full flex flex-col shadow-2xl">
                             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white shrink-0">
                                 <div className="min-w-0 pr-4">
                                     <div className="flex items-center gap-3">
@@ -465,42 +516,49 @@ export default function OrdersPage() {
                                     </div>
                                     <p className="text-xs font-mono text-gray-500 mt-1.5">{new Date(selectedOrder.created_at).toLocaleString()}</p>
                                 </div>
-                                <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-gray-50 rounded-[var(--radius-btn)] hover:bg-gray-100 hover:text-black text-gray-400 transition-colors shrink-0"><XCircle size={20} strokeWidth={2} /></button>
+                                <button onClick={() => setIsDrawerOpen(false)} className="p-2 bg-gray-50 rounded-(--radius-btn) hover:bg-gray-100 hover:text-black text-gray-400 transition-colors shrink-0"><XCircle size={20} strokeWidth={2} /></button>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-8 no-scrollbar">
 
-                                {/* 🚀 EL BLOQUE DE COTIZACIÓN (Solo visible si es quote) */}
-                                {selectedOrder.status === 'quote' && (
-                                    <div className="mt-6 p-5 bg-[#FAFAFA] border border-gray-100 rounded-[20px] flex flex-col gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                                                <FileText size={18} className="text-gray-900" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Enlace de Presupuesto</p>
-                                                <p className="text-xs text-gray-500 font-medium mt-0.5">Comparte para completar la venta</p>
-                                            </div>
+                              {/* 🚀 BLOQUE OMNICANAL DE DOCUMENTOS LEGALES Y COTIZACIONES */}
+                                <div className="mt-6 p-5 bg-[#FAFAFA] border border-gray-200/60 rounded-[24px] flex flex-col gap-4 shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shrink-0 shadow-sm">
+                                            {selectedOrder.status === 'pending' ? <Clock size={20} className="text-amber-500" /> : <FileText size={20} className="text-gray-900" />}
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-2.5 bg-white border border-gray-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-1.5 text-gray-700">
-                                                {copiedQuote === selectedOrder.id ? <Check size={14} className="text-green-500" /> : <Copy size={14} />} Copiar
-                                            </button>
-                                            <a href={getQuoteLink(selectedOrder.id)} target="_blank" rel="noopener noreferrer" className="flex-1 py-2.5 bg-black text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-all flex items-center justify-center gap-1.5">
-                                                Abrir <ArrowUpRight size={14} />
-                                            </a>
+                                        <div>
+                                            <p className="text-xs font-black text-gray-900 uppercase tracking-widest leading-none">
+                                                {selectedOrder.status === 'quote' ? 'Presupuesto Activo' : 
+                                                 selectedOrder.status === 'pending' ? 'Doc. en Verificación' :
+                                                 ((selectedOrder as any).document_type === 'invoice' ? 'Factura Comercial' : 'Nota de Entrega')}
+                                            </p>
+                                            <p className="text-xs text-gray-500 font-medium mt-1.5 leading-tight">
+                                                {selectedOrder.status === 'quote' ? 'Comparte el enlace para concretar la venta.' : 
+                                                 selectedOrder.status === 'pending' ? 'Concilia el pago para liberar el documento legal.' :
+                                                 'Documento definitivo emitido y procesado.'}
+                                            </p>
                                         </div>
                                     </div>
-                                )}
+                                    <div className="flex gap-2 mt-2">
+                                        <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-3 bg-white border border-gray-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-gray-300 transition-all flex items-center justify-center gap-1.5 text-gray-700 active:scale-95 shadow-sm">
+                                            {copiedQuote === selectedOrder.id ? <Check size={14} className="text-green-500" /> : <Copy size={14} />} Link
+                                        </button>
+                                        <a href={getQuoteLink(selectedOrder.id)} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 border border-transparent">
+                                            Ver PDF <ArrowUpRight size={14} />
+                                        </a>
+                                    </div>
+                                </div>
+                                
 
-                                {/* CENTRO DE CONCILIACIÓN VISUAL (Liquid-Split Engine) */}
+                                {/* CENTRO DE CONCILIACIÓN VISUAL */}
                                 {selectedOrder.status !== 'quote' && (
                                     <div className="space-y-3 mt-6">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Desglose de Pagos</p>
                                         {selectedOrder.split_payments && selectedOrder.split_payments.length > 0 ? (
                                             <div className="grid grid-cols-1 gap-2.5">
                                                 {selectedOrder.split_payments.map((payment: any, index: number) => (
-                                                    <div key={index} className="bg-gray-50 rounded-[var(--radius-card)] p-3 border border-gray-100 flex items-center justify-between gap-3">
+                                                    <div key={index} className="bg-gray-50 rounded-(--radius-card) p-3 border border-gray-100 flex items-center justify-between gap-3">
                                                         <div className="flex items-center gap-3 min-w-0">
                                                             <div className="w-10 h-10 bg-white border border-gray-100 rounded-lg flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
                                                                 {payment.receipt_url ? (
@@ -521,7 +579,7 @@ export default function OrdersPage() {
                                                 ))}
                                             </div>
                                         ) : selectedOrder.receipt_url ? (
-                                            <div className="bg-gray-50 rounded-[var(--radius-card)] p-2.5 border border-gray-100 flex items-center justify-between gap-3">
+                                            <div className="bg-gray-50 rounded-(--radius-card) p-2.5 border border-gray-100 flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-3 overflow-hidden">
                                                     <div className="w-12 h-12 bg-white rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100">
                                                         <Image src={getOptimizedUrl(selectedOrder.receipt_url)} alt="Comprobante Antiguo" width={80} height={80} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
@@ -545,9 +603,9 @@ export default function OrdersPage() {
                                 <div className={`flex justify-between items-start pt-6 border-t border-gray-100 ${selectedOrder.status === 'quote' && 'mt-6'}`}>
                                     <div className="min-w-0 pr-4">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cliente</p>
-                                        <p className="font-bold text-lg text-gray-900 break-words">{selectedOrder.customer_name}</p>
+                                        <p className="font-bold text-lg text-gray-900 wrap-break-word">{selectedOrder.customer_name}</p>
                                         {selectedOrder.customer_phone && (
-                                            <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-green-700 hover:text-green-800 mt-1 w-fit bg-green-50 px-2.5 py-1.5 rounded-[var(--radius-badge)] truncate transition-colors">
+                                            <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-green-700 hover:text-green-800 mt-1 w-fit bg-green-50 px-2.5 py-1.5 rounded-(--radius-badge) truncate transition-colors">
                                                 <MessageCircle size={14} className="shrink-0" /> <span className="truncate">{selectedOrder.customer_phone}</span>
                                             </a>
                                         )}
@@ -559,13 +617,13 @@ export default function OrdersPage() {
                                     </div>
                                 </div>
 
-                                <div className="bg-gray-50 rounded-[var(--radius-card)] p-5 space-y-4">
+                                <div className="bg-gray-50 rounded-(--radius-card) p-5 space-y-4">
                                     <div>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dirección de Entrega</p>
-                                        <div className="flex items-start gap-3 bg-white p-3 rounded-[var(--radius-btn)] shadow-sm">
+                                        <div className="flex items-start gap-3 bg-white p-3 rounded-(--radius-btn) shadow-sm">
                                             <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5" />
-                                            <p className="text-sm font-medium text-gray-700 leading-snug flex-1 break-words">{selectedOrder.delivery_info || 'Retiro en Tienda'}</p>
-                                            <button onClick={() => handleCopyAddress(selectedOrder.delivery_info || '')} disabled={!selectedOrder.delivery_info} className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded-[var(--radius-badge)] transition-colors disabled:opacity-30 shrink-0">
+                                            <p className="text-sm font-medium text-gray-700 leading-snug flex-1 wrap-break-word">{selectedOrder.delivery_info || 'Retiro en Tienda'}</p>
+                                            <button onClick={() => handleCopyAddress(selectedOrder.delivery_info || '')} disabled={!selectedOrder.delivery_info} className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded-(--radius-badge) transition-colors disabled:opacity-30 shrink-0">
                                                 {copiedAddress ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
                                             </button>
                                         </div>
@@ -583,12 +641,12 @@ export default function OrdersPage() {
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Artículos ({selectedOrder.order_items.length})</p>
                                     <div className="space-y-2 mb-6">
                                         {selectedOrder.order_items.map((item) => (
-                                            <div key={item.id} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-[var(--radius-btn)] border border-transparent">
+                                            <div key={item.id} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-(--radius-btn) border border-transparent">
                                                 <div className="min-w-0 flex-1 pr-4">
                                                     <p className="font-bold text-gray-900 truncate">{item.product_name}</p>
-                                                    {item.variant_info && <p className="text-xs text-gray-500 truncate">{item.variant_info}</p>}
+                                                    {item.variant_info && item.variant_info !== 'N/A' && <p className="text-xs text-gray-500 truncate">{item.variant_info}</p>}
                                                 </div>
-                                                <p className="font-mono font-bold text-gray-900 bg-white px-2 py-1 rounded-[var(--radius-badge)] shrink-0 shadow-sm border border-gray-100">x{item.quantity}</p>
+                                                <p className="font-mono font-bold text-gray-900 bg-white px-2 py-1 rounded-(--radius-badge) shrink-0 shadow-sm border border-gray-100">x{item.quantity}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -597,10 +655,9 @@ export default function OrdersPage() {
                                 <div className="pt-6 border-t border-gray-100">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Actualizar Estado</p>
                                     <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1 w-full max-w-full">
-                                        {/* Solo mostramos estados válidos para avanzar el flujo */}
                                         {['pending', 'paid', 'shipped', 'cancelled'].map(status => (
                                             <button
-                                                key={status} onClick={() => updateStatus(selectedOrder.id, status)} disabled={updatingId === selectedOrder.id || (selectedOrder.status === status && status !== 'shipped')}
+                                                key={status} onClick={() => handleStatusClick(selectedOrder.id, status)} disabled={updatingId === selectedOrder.id || (selectedOrder.status === status && status !== 'shipped')}
                                                 className={`shrink-0 px-5 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${selectedOrder.status === status ? 'bg-black text-white shadow-md opacity-100' : 'bg-white text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400'}`}
                                             >
                                                 {updatingId === selectedOrder.id && selectedOrder.status !== status ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -611,6 +668,50 @@ export default function OrdersPage() {
                                 </div>
 
                                 <div className="h-12 shrink-0"></div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* 🚀 MODAL DE CONCILIACIÓN DE PAGOS */}
+            <AnimatePresence>
+                {reconcileModal.isOpen && (
+                    <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-sm rounded-4xl overflow-hidden shadow-2xl flex flex-col p-8">
+                            <h3 className="font-black text-2xl text-gray-900 mb-1">Conciliar Pago</h3>
+                            <p className="text-xs font-medium text-gray-500 mb-6">Elige cómo pagó el cliente para cuadrar la caja.</p>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 block">Método de Pago</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Pago Móvil', 'Zelle', 'Efectivo', 'Binance', 'Zinli', 'Otro'].map(pm => (
+                                            <button
+                                                key={pm} onClick={() => setReconcileModal({ ...reconcileModal, method: pm })}
+                                                className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${reconcileModal.method === pm ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-600 border-transparent hover:border-gray-200'}`}
+                                            >
+                                                {pm}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Referencia (Opcional)</label>
+                                    <input
+                                        type="text" value={reconcileModal.reference} onChange={(e) => setReconcileModal({ ...reconcileModal, reference: e.target.value })}
+                                        placeholder="Ej: 123456"
+                                        className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all"
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 mt-4 pt-2">
+                                    <button onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })} className="flex-1 bg-gray-100 text-gray-700 font-bold uppercase tracking-widest text-[10px] py-4 rounded-[20px] hover:bg-gray-200 transition-all">Cancelar</button>
+                                    <button onClick={processReconciliation} disabled={updatingId === reconcileModal.orderId} className="flex-1 bg-black text-white font-black uppercase tracking-widest text-[10px] py-4 rounded-[20px] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {updatingId === reconcileModal.orderId ? <Loader2 size={16} className="animate-spin" /> : <DollarSign size={16} />} Marcar Pagado
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </div>

@@ -3,15 +3,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
-import { Search, Plus, Minus, Trash2, Calculator, FileText, User, Phone, ShoppingBag, X, Loader2, DollarSign, Truck, Store, MapPin, Hash, Package, Banknote, ChevronDown } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, Calculator, FileText, User, Phone, ShoppingBag, X, Loader2, DollarSign, Truck, Store, MapPin, Hash, Package, Banknote, ChevronDown, PenSquare, Receipt } from 'lucide-react'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
+import { NumberInput } from '@/components/NumberInput'
 
 // --- TIPOS ESTRICTOS ---
 type Variant = { id: string, size: string, color_name: string, stock: number, override_usd_price: number | null }
 type Product = { id: number, name: string, image_url: string, usd_cash_price: number, stock: number, product_variants: Variant[] }
-type CartItem = { cartId: string, productId: number, variantId?: string, name: string, variantInfo?: string, price: number, qty: number, maxStock: number, image: string }
-
+// 🚀 CIRUGÍA: productId ahora acepta 'null' para permitir ítems personalizados
+type CartItem = { cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, price: number, qty: number, maxStock: number, image: string }
 export default function POSPage() {
     const supabase = getSupabase()
     
@@ -26,15 +27,27 @@ export default function POSPage() {
     const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
     const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null)
 
+    // 🚀 NUEVO: ESTADOS PARA ÍTEMS PERSONALIZADOS
+    const [isCustomItemModalOpen, setIsCustomItemModalOpen] = useState(false)
+    const [customItem, setCustomItem] = useState({ name: '', price: '' })
+
     // CARRITO Y LOGÍSTICA
     const [cart, setCart] = useState<CartItem[]>([])
+ // 🚀 NUEVO: DATOS FISCALES DEL CLIENTE
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
+    const [customerDNI, setCustomerDNI] = useState('')
+    const [customerAddress, setCustomerAddress] = useState('')
+    
     const [shippingMethod, setShippingMethod] = useState<'pickup' | 'local_delivery' | 'courier'>('pickup')
     const [shippingAddress, setShippingAddress] = useState('')
     
-    // MODO DE OPERACIÓN
+    // 🚀 NUEVO: MODO DE OPERACIÓN E IMPUESTOS
     const [operationMode, setOperationMode] = useState<'paid' | 'quote'>('paid')
+    // 🚀 NUEVO: MOTOR DE DOCUMENTOS E IVA
+    const [documentType, setDocumentType] = useState<'invoice' | 'note'>('note')
+    const [applyTax, setApplyTax] = useState(false)
+    const [taxPercentage, setTaxPercentage] = useState(16) // 🚀 NUEVO: Memoria del porcentaje
     
     // PAGOS
     const [activePaymentMethods, setActivePaymentMethods] = useState<string[]>([])
@@ -48,13 +61,24 @@ export default function POSPage() {
             if (!user) return
 
            const [storeRes, productsRes, ratesRes] = await Promise.all([
-                supabase.from('stores').select('id, slug, name, payment_config, shipping_config, currency_type').eq('user_id', user.id).single(),
+                supabase.from('stores').select('id, slug, name, payment_config, shipping_config, currency_type, default_tax_active, default_tax_percentage').eq('user_id', user.id).single(),
                 supabase.from('products').select('id, name, image_url, usd_cash_price, stock, product_variants(id, size, color_name, stock, override_usd_price)').eq('user_id', user.id).eq('status', 'active'),
                 supabase.from('app_config').select('usd_rate, eur_rate').single()
             ])
 
-            if (storeRes.data) {
+         if (storeRes.data) {
                 setStore(storeRes.data)
+                
+            
+                
+                // 🚀 CARGAMOS CONFIGURACIÓN DE IMPUESTOS POR DEFECTO
+                const defaultTax = storeRes.data.default_tax_active || false
+                setApplyTax(defaultTax)
+                setDocumentType(defaultTax ? 'invoice' : 'note')
+                setTaxPercentage(storeRes.data.default_tax_percentage ?? 16) // 🚀 Carga el 16% o el que haya configurado
+
+                // ... (continúa el código de payment_config)
+
                 const pConfig = storeRes.data.payment_config || {}
                 const pm = []
                 if (pConfig.cash?.active) pm.push('Efectivo')
@@ -77,13 +101,36 @@ export default function POSPage() {
         return products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
     }, [products, searchQuery])
 
-    const totalUSD = cart.reduce((acc, item) => acc + (item.price * item.qty), 0)
+// 🚀 MOTOR MATEMÁTICO CON IVA DINÁMICO
+    const subtotalUSD = cart.reduce((acc, item) => acc + (item.price * item.qty), 0)
+    const taxAmountUSD = applyTax ? subtotalUSD * (taxPercentage / 100) : 0 // 🚀 Ahora usa la variable
+    const totalUSD = subtotalUSD + taxAmountUSD
     
-    
-    // 🚀 MOTOR DE TASAS DINÁMICO
     const isEur = store?.currency_type === 'eur'
     const activeRate = isEur ? rates.eur_rate : rates.usd_rate
     const totalBS = totalUSD * activeRate
+
+    // 🚀 FUNCIÓN: AÑADIR ÍTEM AL VUELO
+    const handleAddCustomItem = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!customItem.name.trim() || Number(customItem.price) <= 0) return
+        
+        const cartId = `custom-${Date.now()}`
+        setCart(prev => [...prev, {
+            cartId,
+            productId: null, // No existe en la BD de catálogo
+            name: customItem.name.trim(),
+            variantInfo: 'Personalizado',
+            price: Number(customItem.price),
+            qty: 1,
+            maxStock: 9999, // Stock infinito
+            image: '' // Sin imagen
+        }])
+        
+        setCustomItem({ name: '', price: '' })
+        setIsCustomItemModalOpen(false)
+        Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-2xl' } }).fire({ icon: 'success', title: 'Ítem añadido' })
+    }
 
     // --- ACCIONES DEL CARRITO ---
     const handleAddToCart = (product: Product, variant?: Variant) => {
@@ -124,9 +171,24 @@ export default function POSPage() {
 
     // --- TRANSACT ENGINE ---
     const handleCheckout = async (type: 'paid' | 'quote') => {
-        if (cart.length === 0) return
+
+        
+        // 🚀 VALIDACIÓN ESTRICTA DE PRESUPUESTOS
         if (type === 'quote' && !customerName.trim()) {
             return Swal.fire({ icon: 'warning', title: 'Nombre Requerido', text: 'Ingresa el nombre del cliente para guardar el presupuesto.', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl' } })
+        }
+        
+        // 🚀 ESCUDO LEGAL: VALIDACIÓN ESTRICTA DE FACTURAS
+        if (type === 'paid' && documentType === 'invoice') {
+            if (!customerName.trim() || !customerDNI.trim() || !customerAddress.trim()) {
+                return Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Datos Fiscales Incompletos', 
+                    text: 'Para emitir una Factura Comercial válida para el SENIAT, el Nombre/Razón Social, CI/RIF y Dirección Fiscal son obligatorios.', 
+                    confirmButtonColor: '#000', 
+                    customClass: { popup: 'rounded-2xl' } 
+                })
+            }
         }
         if (selectedPayment === 'Otro' && !customPayment.trim() && type === 'paid') {
             return Swal.fire({ icon: 'warning', title: 'Método Inválido', text: 'Especifica qué método de pago usó el cliente.', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl' } })
@@ -138,35 +200,50 @@ export default function POSPage() {
             let deliveryInfoFull = shippingMethod === 'pickup' ? 'Venta en Mostrador / Retiro Personal' : `Envío a: ${shippingAddress}`
             if (paymentReference && type === 'paid') deliveryInfoFull += ` | Ref: ${paymentReference}`
 
-           // 2. Insertar Orden
+           // 2. Insertar Orden (Con soporte de IVA y Datos Legales)
             const { data: order, error: orderError } = await supabase
                 .from('orders')
                 .insert({
                     store_id: store.id,
                     customer_name: customerName.trim() || 'Cliente Mostrador',
                     customer_phone: customerPhone.trim() || null,
+                    customer_dni: customerDNI.trim() || null, // 🚀 NUEVO
+                    customer_address: customerAddress.trim() || null, // 🚀 NUEVO
+                    
+                    document_type: type === 'quote' ? 'quote' : documentType, 
+                    is_tax_applied: applyTax, 
+                    subtotal_usd: subtotalUSD, 
+                    tax_amount_usd: taxAmountUSD, 
+                    tax_percentage: applyTax ? taxPercentage : 0, // 🚀 CONGELAMOS EL PORCENTAJE HISTÓRICO
                     total_usd: totalUSD,
                     total_bs: type === 'paid' ? totalBS : null,
-                    exchange_rate: type === 'paid' ? activeRate : null, // 🚀 Tasa calculada
+                    
+                    exchange_rate: type === 'paid' ? activeRate : null,
                     status: type, 
                     is_quote: type === 'quote', 
                     source: 'pos', 
                     payment_method: finalPaymentMethod,
                     shipping_method: shippingMethod,
                     delivery_info: deliveryInfoFull,
-                    currency_type: isEur ? 'eur' : 'usd' // 🚀 INYECCIÓN: Inmutabilidad histórica
+                    currency_type: isEur ? 'eur' : 'usd'
                 })
                 .select('id, order_number').single()
             if (orderError) throw orderError
 
             const orderItems = cart.map(item => ({
-                order_id: order.id, product_id: item.productId, variant_id: item.variantId || null,
-                product_name: item.name, variant_info: item.variantInfo || null, quantity: item.qty, price_at_purchase: item.price
+                order_id: order.id, 
+                product_id: item.productId, // 🚀 Será 'null' para ítems personalizados
+                variant_id: item.variantId || null,
+                product_name: item.name, 
+                variant_info: item.variantInfo || null, 
+                quantity: item.qty, 
+                price_at_purchase: item.price
             }))
             const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
             if (itemsError) throw itemsError
 
-            setCart([]); setCustomerName(''); setCustomerPhone(''); setPaymentReference(''); setCustomPayment(''); setShippingAddress(''); setIsMobileCartOpen(false);
+            setCart([]); setCustomerName(''); setCustomerPhone(''); setPaymentReference(''); setCustomPayment(''); setCustomerDNI(''); setCustomerAddress('');
+             setShippingAddress(''); setIsMobileCartOpen(false);
 
             if (type === 'quote') {
                 const quoteUrl = `${window.location.protocol}//${store.slug}.${window.location.host.replace('www.', '')}/quote/${order.id}`
@@ -175,12 +252,29 @@ export default function POSPage() {
                     html: `Comparte este enlace con el cliente:<br><br><a href="${quoteUrl}" target="_blank" style="color: #666; font-weight: bold; word-break: break-all;">${quoteUrl}</a>`,
                     confirmButtonText: 'Copiar Enlace', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.1)]' }
                 }).then((result) => { if (result.isConfirmed) navigator.clipboard.writeText(quoteUrl) })
-            } else {
+           } else {
+                // 🚀 CIERRE DE VENTA CON ACCESO DIRECTO AL PDF
+                const documentUrl = `${window.location.protocol}//${store.slug}.${window.location.host.replace('www.', '')}/quote/${order.id}`
+                
                 Swal.fire({
-                    icon: 'success', title: 'Venta Procesada',
+                    icon: 'success', 
+                    title: 'Venta Procesada',
                     text: `Orden #${order.order_number} guardada con éxito.`,
-                    confirmButtonText: 'Siguiente', confirmButtonColor: '#000', timer: 3000, customClass: { popup: 'rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.1)]' }
+                    showCancelButton: true,
+                    confirmButtonText: 'Ver Documento (PDF)',
+                    cancelButtonText: 'Nueva Venta',
+                    confirmButtonColor: '#000',
+                    cancelButtonColor: '#f3f4f6',
+                    customClass: { 
+                        popup: 'rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.1)]', 
+                        cancelButton: 'text-black font-bold',
+                        confirmButton: 'font-bold'
+                    }
+                }).then((result) => { 
+                    if (result.isConfirmed) window.open(documentUrl, '_blank') 
                 })
+                
+                // Actualización de stock local
                 setProducts(prev => prev.map(p => {
                     let updated = { ...p }
                     cart.forEach(c => {
@@ -210,14 +304,22 @@ export default function POSPage() {
                 {/* Header Buscador */}
                 <div className="p-4 md:p-8 bg-[#FAFAFA] z-10 shrink-0">
                     <h1 className="text-2xl font-black tracking-tight mb-6 hidden md:block">Punto de Venta</h1>
-                    <div className="relative max-w-2xl">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar en el catálogo..." 
-                            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-11 pr-4 py-4 bg-white border border-transparent focus:border-gray-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-gray-50 outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
-                        />
+                    <div className="flex items-center gap-3 max-w-3xl">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="text" 
+                                placeholder="Buscar en el catálogo..." 
+                                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-11 pr-4 py-4 bg-white border border-transparent focus:border-gray-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-gray-50 outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                            />
+                        </div>
+                        <button 
+                            onClick={() => setIsCustomItemModalOpen(true)}
+                            className="shrink-0 bg-[#FAFAFA] border border-gray-200 text-gray-700 hover:text-black hover:bg-white hover:border-gray-300 px-5 py-4 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95"
+                        >
+                            <PenSquare size={18} /> <span className="hidden sm:inline">Ítem a Medida</span>
+                        </button>
                     </div>
                 </div>
 
@@ -292,20 +394,92 @@ export default function POSPage() {
                         </button>
                     </div>
 
-                    {/* Cliente */}
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 ${operationMode === 'quote' && !customerName ? 'text-gray-900' : 'text-gray-400'}`} size={16} />
-                            <input 
-                                type="text" 
-                                placeholder={operationMode === 'quote' ? "Nombre del Cliente *" : "Nombre del Cliente (Opcional)"} 
-                                value={customerName} onChange={(e) => setCustomerName(e.target.value)} 
-                                className={`w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-gray-100 ${operationMode === 'quote' && !customerName ? 'placeholder:text-gray-400 border border-gray-200' : 'border border-transparent'}`} 
-                            />
+                    {/* 🚀 CLIENTE Y DATOS FISCALES (UI Reactiva) */}
+                    <div className="space-y-3">
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'quote' || (operationMode === 'paid' && documentType === 'invoice') ? "Nombre / Razón Social *" : "Nombre (Opcional)"} 
+                                    value={customerName} onChange={(e) => setCustomerName(e.target.value)} 
+                                    className={`w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-gray-100 transition-all border ${(operationMode === 'quote' || (operationMode === 'paid' && documentType === 'invoice')) && !customerName ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                            <div className="relative flex-1">
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input type="text" placeholder="WhatsApp (Opcional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 transition-all border border-transparent focus:border-gray-200" />
+                            </div>
                         </div>
-                        <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                            <input type="text" placeholder="WhatsApp (Opcional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none transition-all border border-transparent focus:bg-white focus:border-gray-200" />
+                        
+                        {/* Fila Fiscal Reactiva: Solo exige datos si es Factura */}
+                        <div className="flex gap-3">
+                            <div className="relative w-1/3">
+                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'paid' && documentType === 'invoice' ? "CI/RIF *" : "CI/RIF (Opcional)"} 
+                                    value={customerDNI} onChange={(e) => setCustomerDNI(e.target.value.toUpperCase())} 
+                                    className={`w-full pl-11 pr-3 py-3 bg-gray-50 rounded-xl text-xs font-mono font-bold outline-none focus:bg-white focus:ring-2 transition-all border ${(operationMode === 'paid' && documentType === 'invoice') && !customerDNI ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                            <div className="relative w-2/3">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'paid' && documentType === 'invoice' ? "Dirección Fiscal *" : "Dirección (Opcional)"} 
+                                    value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} 
+                                    className={`w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 transition-all border ${(operationMode === 'paid' && documentType === 'invoice') && !customerAddress ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                        </div>
+
+                        
+
+                        {/* 🚀 SELECTOR INTELIGENTE DE DOCUMENTOS E IMPUESTOS */}
+                        <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100/50">
+                            
+                            {operationMode === 'paid' && (
+                                <div className="flex items-center gap-2 mb-3">
+                                    <button onClick={() => { setDocumentType('invoice'); setApplyTax(true); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${documentType === 'invoice' ? 'bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] text-black border border-gray-200' : 'text-gray-400 hover:text-gray-600 bg-transparent'}`}>
+                                        <Receipt size={14} /> Factura
+                                    </button>
+                                    <button onClick={() => { setDocumentType('note'); setApplyTax(false); }} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${documentType === 'note' ? 'bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] text-black border border-gray-200' : 'text-gray-400 hover:text-gray-600 bg-transparent'}`}>
+                                        <FileText size={14} /> Nota / Recibo
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Fila del IVA (Visible en Presupuesto o si eligió Factura) */}
+                            {(operationMode === 'quote' || documentType === 'invoice') && (
+                                <div className={`flex flex-col gap-3 transition-all ${operationMode === 'paid' ? 'pt-3 border-t border-gray-200/50' : ''}`}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-gray-700">Calcular IVA</span>
+                                        <button onClick={() => setApplyTax(!applyTax)} className={`relative w-10 h-6 rounded-full transition-colors ${applyTax ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${applyTax ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+
+                                    {/* 🚀 LOS ATAJOS DE PORCENTAJE (Aparecen si el IVA está ON) */}
+                                    {applyTax && (
+                                        <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
+                                            {[8, 16, 31].map(pct => (
+                                                <button key={pct} onClick={() => setTaxPercentage(pct)} className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${taxPercentage === pct ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'}`}>
+                                                    {pct}%
+                                                </button>
+                                            ))}
+                                            <div className="relative flex-1">
+                                                <NumberInput 
+                                                    value={taxPercentage} 
+                                                    onChangeValue={val => setTaxPercentage(Number(val))} 
+                                                    className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-[11px] font-black text-gray-900 text-center focus:border-black outline-none h-full" 
+                                                />
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-black pointer-events-none">%</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -389,15 +563,29 @@ export default function POSPage() {
                     )}
                 </div>
 
-                {/* Footer Fijo Absoluto */}
-                <div className="absolute bottom-0 left-0 w-full h-[35vh] md:h-[28vh] bg-white/90 backdrop-blur-2xl border-t border-gray-100 p-6 z-30 shadow-[0_-20px_60px_rgba(0,0,0,0.03)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+               {/* Footer Fijo Absoluto */}
+                <div className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-2xl border-t border-gray-100 p-6 z-30 shadow-[0_-20px_60px_rgba(0,0,0,0.03)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                    
+                    {/* 🚀 DESGLOSE MATEMÁTICO */}
+                    {applyTax && (
+                        <div className="mb-3 pb-3 border-b border-gray-100/50 space-y-1 text-xs">
+                            <div className="flex justify-between font-medium text-gray-500">
+                                <span>Base Imponible</span><span>${subtotalUSD.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-gray-700">
+                                <span>I.V.A. (16%)</span><span>${taxAmountUSD.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex justify-between items-end mb-4">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Total</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Total {applyTax ? 'con IVA' : ''}</span>
                         <div className="flex flex-col items-end">
                             <span className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter leading-none">${totalUSD.toFixed(2)}</span>
                             <span className="text-xs font-mono font-bold text-gray-400 mt-2 bg-gray-50 px-3 py-1 rounded-md">Bs {(totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
+                    {/* ... (Tus botones de Crear Presupuesto o Cobrar Orden se mantienen igual aquí abajo) ... */}
 
                     {operationMode === 'quote' ? (
                         <button onClick={() => handleCheckout('quote')} disabled={isSubmitting || cart.length === 0}
@@ -448,6 +636,38 @@ export default function POSPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* 🚀 MODAL DE ÍTEM PERSONALIZADO */}
+            <AnimatePresence>
+                {isCustomItemModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsCustomItemModalOpen(false)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl flex flex-col p-8">
+                            <h3 className="font-black text-2xl text-gray-900 mb-1">Ítem a Medida</h3>
+                            <p className="text-xs font-medium text-gray-500 mb-6">Añade un concepto que no esté en tu catálogo.</p>
+                            
+                            <form onSubmit={handleAddCustomItem} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Descripción del Trabajo/Producto</label>
+                                    <input type="text" autoFocus required value={customItem.name} onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} placeholder="Ej: Diseño de logo..." className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Precio Unitario ($)</label>
+                                    <div className="relative">
+                                        <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input type="number" step="0.01" required value={customItem.price} onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })} placeholder="0.00" className="w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl text-lg font-black text-gray-900 outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <button type="submit" className="w-full bg-black text-white font-black uppercase tracking-widest text-xs py-4 rounded-[20px] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4">
+                                    Añadir al Ticket
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
+
+        
     )
 }

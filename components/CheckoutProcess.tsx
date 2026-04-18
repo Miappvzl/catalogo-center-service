@@ -22,7 +22,7 @@ export interface CheckoutProcessProps {
     affiliateCode?: string | null; // 🚀 NUEVO
     affiliateDiscountList?: number; // 🚀 NUEVO
     affiliateDiscountCash?: number; // 🚀 NUEVO
-    onSuccess: (orderNumber: number, whatsappUrl: string) => void;
+    onSuccess: (orderNumber: number, whatsappUrl: string, orderId: string) => void; // 🚀 AÑADE orderId AQUÍ
     onBack: () => void;
 }
 
@@ -111,8 +111,16 @@ export default function CheckoutProcess({
     // --- ESTADOS LOGÍSTICOS ---
     const [clientData, setClientData] = useState({
         name: '', deliveryType: 'pickup', courier: '',
-        identityCard: '', phone: '', notes: '', state: '', city: '', addressDetail: '', reference: ''
+        identityCard: '', phone: '', notes: '', state: '', city: '', addressDetail: '', reference: '',
+        fiscalAddress: '' // 🚀 NUEVO
     })
+    // 🚀 NUEVO: ESTADOS FISCALES
+    const defaultTaxActive = storeConfig?.default_tax_active || false
+    // 🚀 CAMBIO UX: Forzamos 'note' (Nota de Entrega) y el IVA apagado por defecto para reducir fricción en la compra web
+    const [documentType, setDocumentType] = useState<'invoice' | 'note'>('note')
+    const [applyTax, setApplyTax] = useState(false)
+
+
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>('')
 
     const deliveryCost = useMemo(() => {
@@ -123,9 +131,18 @@ export default function CheckoutProcess({
         return 0
     }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones])
 
-   // --- MOTOR LIQUID-SPLIT (CON AFILIADOS) ---
-    const totalListUSD = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
-    const totalCashUSD = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
+
+   // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
+    const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
+    
+    const totalListUSD_base = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
+    const totalCashUSD_base = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
+    
+    const taxAmountListUSD = applyTax ? (totalListUSD_base * (taxPercentage / 100)) : 0;
+    const taxAmountCashUSD = applyTax ? (totalCashUSD_base * (taxPercentage / 100)) : 0;
+
+    const totalListUSD = totalListUSD_base + taxAmountListUSD;
+    const totalCashUSD = totalCashUSD_base + taxAmountCashUSD;
     const fxMultiplier = totalCashUSD > 0 ? totalListUSD / totalCashUSD : 1;
     // 🚀 NUEVO: Lector del Feature Flag y Modalidad
     const allowSplitPayments = payments?.allow_split_payments === true;
@@ -242,6 +259,12 @@ export default function CheckoutProcess({
     const handleCheckout = async () => {
         if (!clientData.name || !clientData.phone) return Swal.fire({ title: 'Faltan Datos', text: 'Nombre y teléfono son obligatorios', icon: 'warning', confirmButtonColor: '#000' })
 
+            // 🚀 ESCUDO FISCAL
+        if (documentType === 'invoice') {
+            if (!clientData.identityCard) return Swal.fire({ title: 'Faltan Datos', text: 'La Cédula/RIF es obligatoria para emitir Factura', icon: 'warning', confirmButtonColor: '#000' })
+            if (!clientData.fiscalAddress) return Swal.fire({ title: 'Faltan Datos', text: 'La Dirección Fiscal es obligatoria para emitir Factura', icon: 'warning', confirmButtonColor: '#000' })
+        }
+
         if (clientData.deliveryType === 'pickup' && !clientData.addressDetail) return Swal.fire({ title: 'Punto de Retiro', text: 'Selecciona dónde buscarás tu pedido.', icon: 'warning', confirmButtonColor: '#000' })
         if (clientData.deliveryType === 'courier') {
             if (!clientData.courier) return Swal.fire({ title: 'Envío', text: 'Selecciona una empresa de envío', icon: 'warning', confirmButtonColor: '#000' })
@@ -317,7 +340,15 @@ export default function CheckoutProcess({
                     delivery_info: deliveryInfoFull,
                     shipping_cost: Number(deliveryCost.toFixed(2)),
                     discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
-                    affiliate_code: affiliateCode || null 
+                    affiliate_code: affiliateCode || null, 
+                    // 🚀 INYECCIÓN FISCAL OMNICANAL
+                    document_type: documentType,
+                    is_tax_applied: applyTax,
+                    tax_percentage: applyTax ? taxPercentage : 0,
+                    subtotal_usd: Number(totalListUSD_base.toFixed(2)),
+                    tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
+                    customer_dni: documentType === 'invoice' || clientData.deliveryType === 'courier' ? clientData.identityCard : null,
+                    customer_address: documentType === 'invoice' ? clientData.fiscalAddress : null
                 }).select().single();
             if (orderError) {
                 console.error("Order DB Error Técnico:", orderError);
@@ -357,7 +388,7 @@ export default function CheckoutProcess({
                 clearCart();
                 
                 // 3. Forzamos el paso a la pantalla de Éxito (Paso 3) con el link de emergencia
-                onSuccess(order.order_number, fallbackWaLink);
+                onSuccess(order.order_number, fallbackWaLink, order.id); // 🚀 AÑADE order.id
                 
                 // 4. Le explicamos al cliente qué pasó con una alerta suave
                 Swal.fire({
@@ -422,7 +453,7 @@ export default function CheckoutProcess({
             const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 
             clearCart();
-            onSuccess(order.order_number, waLink);
+            onSuccess(order.order_number, waLink, order.id); // 🚀 AÑADE order.id
 
         } catch (error: any) {
             // Extracción del mensaje amigable para el cliente
@@ -479,6 +510,27 @@ export default function CheckoutProcess({
                             className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
                             placeholder="Teléfono / WhatsApp *"
                         />
+
+                        {/* 🚀 NUEVO: SELECTOR FISCAL OMNICANAL */}
+                <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
+                    <label className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Comprobante de Compra</label>
+                    <div className="flex gap-2 p-1 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
+                        <button onClick={() => { setDocumentType('note'); setApplyTax(false); }} className={`flex-1 py-3 rounded-md text-xs font-bold transition-all ${documentType === 'note' ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}>Nota de Entrega</button>
+                        <button onClick={() => { setDocumentType('invoice'); setApplyTax(true); }} className={`flex-1 py-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${documentType === 'invoice' ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] ' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}>Factura Comercial <span className="text-[8px] bg-[var(--store-primary-text)] text-[var(--store-bg)] px-1.5 py-0.5 rounded">+IVA</span></button>
+                    </div>
+
+                    {/* 🚀 Campos Exclusivos de Factura */}
+                    <AnimatePresence>
+                        {documentType === 'invoice' && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                <div className="pt-4 space-y-0">
+                                    <input maxLength={20} value={clientData.identityCard} onChange={e => setClientData({ ...clientData, identityCard: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-surface-text)]" placeholder="CI / RIF Fiscal *" />
+                                    <input maxLength={100} value={clientData.fiscalAddress} onChange={e => setClientData({ ...clientData, fiscalAddress: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-surface-text)]" placeholder="Dirección Fiscal Completa *" />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
                 {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
                 <div className="space-y-6">
                     <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">Entrega</h2>

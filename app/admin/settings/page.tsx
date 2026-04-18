@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users } from 'lucide-react'
+import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -37,6 +37,9 @@ export default function SettingsPage() {
 
     // 🚀 NUEVO: Estado del Programa de Afiliados
     const [affiliate, setAffiliate] = useState({ active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
+    // 🚀 NUEVO: Estado Fiscal
+    const [fiscal, setFiscal] = useState({ legal_name: '', legal_id: '', fiscal_address: '', default_tax_active: false, default_tax_percentage: 16 })
+    
 
     const [isDirty, setIsDirty] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -56,6 +59,14 @@ export default function SettingsPage() {
                 setReceipt(data.receipt_config || { strict_mode: false })
                 // 🚀 NUEVO: Inicializamos el estado desde la BD
                 setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
+                // 🚀 NUEVO: Cargar datos fiscales
+                setFiscal({ 
+                    legal_name: data.legal_name || '', 
+                    legal_id: data.legal_id || '', 
+                    fiscal_address: data.fiscal_address || '',
+                    default_tax_active: data.default_tax_active || false,
+                    default_tax_percentage: data.default_tax_percentage ?? 16
+                })
             }
             setLoading(false)
         }
@@ -110,14 +121,20 @@ export default function SettingsPage() {
         if (!isDirty) return
         setSaving(true)
 
-        const { error } = await supabase
+       const { error } = await supabase
             .from('stores')
             .update({
                 phone: identity.phone,
                 name: identity.name,
                 wholesale_config: wholesale,
                 receipt_config: receipt,
-                affiliate_config: affiliate // 🚀 NUEVO: Guardamos en BD
+                affiliate_config: affiliate,
+                // 🚀 NUEVO: Guardar datos fiscales
+                legal_name: fiscal.legal_name,
+                legal_id: fiscal.legal_id,
+                fiscal_address: fiscal.fiscal_address,
+                default_tax_active: fiscal.default_tax_active,
+                default_tax_percentage: fiscal.default_tax_percentage // 🚀 ESTE ERA EL ESLABÓN PERDIDO
             })
             .eq('id', store.id)
 
@@ -195,6 +212,79 @@ export default function SettingsPage() {
                                 <div onClick={() => heroInputRef.current?.click()} className={`w-full h-32 rounded-[var(--radius-card)] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingHero ? 'border-gray-300 animate-pulse bg-gray-50' : 'border-gray-200 hover:border-black bg-gray-50 hover:bg-white'}`}>
                                     {uploadingHero ? <Loader2 className="animate-spin text-gray-400 mb-2" size={24} /> : <Upload className="text-gray-400 mb-2" size={24} />}
                                     <span className="text-xs font-bold text-gray-900">Subir un Banner (1920x1080px)</span>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* 🚀 NUEVA SECCIÓN: DATOS FISCALES */}
+                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
+                        <div className="mb-6">
+                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><FileText size={20} className="text-black" /> Datos Fiscales y Facturación</h3>
+                            <p className="text-sm text-gray-500 mt-1">Información legal que aparecerá en los encabezados de tus PDF (Facturas y Presupuestos).</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Razón Social Legal (Opcional)</label>
+                                <input
+                                    value={fiscal.legal_name}
+                                    onChange={e => {setFiscal({...fiscal, legal_name: e.target.value}); setIsDirty(true)}}
+                                    placeholder="Ej: Inversiones Preziso C.A."
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">RIF / Documento Identidad</label>
+                                <input
+                                    value={fiscal.legal_id}
+                                    onChange={e => {setFiscal({...fiscal, legal_id: e.target.value.toUpperCase()}); setIsDirty(true)}}
+                                    placeholder="Ej: J-123456789"
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Dirección Fiscal Exacta</label>
+                                <input
+                                    value={fiscal.fiscal_address}
+                                    onChange={e => {setFiscal({...fiscal, fiscal_address: e.target.value}); setIsDirty(true)}}
+                                    placeholder="Ej: Av. Principal, Edificio X, Local 4, Caracas"
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                />
+                            </div>
+                        </div>
+<div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent flex flex-col gap-4">
+                            <div className="flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => { setFiscal({ ...fiscal, default_tax_active: !fiscal.default_tax_active }); setIsDirty(true) }}>
+                                <div className="pr-4">
+                                    <p className="font-bold text-gray-900 text-sm">Cobrar IVA por defecto</p>
+                                    <p className="text-xs text-gray-500 mt-1">Si activas esto, la tienda web y el POS aplicarán el impuesto automáticamente.</p>
+                                </div>
+                                <AnimatedSwitch active={fiscal.default_tax_active} />
+                            </div>
+
+                            {/* 🚀 EL SELECTOR DE PORCENTAJE (Aparece si el IVA está activo) */}
+                            {fiscal.default_tax_active && (
+                                <div className="pt-4 border-t border-gray-200/60 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                                    <p className="text-xs font-bold text-gray-700">Porcentaje de Impuesto:</p>
+                                    <div className="flex gap-2">
+                                        {[8, 16, 31].map(pct => (
+                                            <button 
+                                                key={pct} 
+                                                onClick={() => { setFiscal({ ...fiscal, default_tax_percentage: pct }); setIsDirty(true) }} 
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${fiscal.default_tax_percentage === pct ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'}`}
+                                            >
+                                                {pct}%
+                                            </button>
+                                        ))}
+                                        <div className="relative w-20">
+                                            <NumberInput
+                                                value={fiscal.default_tax_percentage} 
+                                                onChangeValue={val => { setFiscal({ ...fiscal, default_tax_percentage: Number(val) }); setIsDirty(true) }} 
+                                                className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs font-black text-gray-900 text-center focus:border-black outline-none" 
+                                            />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-black pointer-events-none">%</span>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
