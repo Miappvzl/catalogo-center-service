@@ -462,8 +462,17 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     <MessageCircle size={18} /> Enviar a WhatsApp
                                                 </a>
                                                 {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL */}
+                                               {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL (Con Ruteo Inteligente) */}
                                                 {generatedOrderId && (
-                                                    <a href={`/quote/${generatedOrderId}`} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]">
+                                                    <a 
+                                                        href={typeof window !== 'undefined' && storeConfig?.slug && window.location.pathname.startsWith(`/${storeConfig.slug}`) 
+                                                            ? `/${storeConfig.slug}/quote/${generatedOrderId}` 
+                                                            : `/quote/${generatedOrderId}`
+                                                        } 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]"
+                                                    >
                                                         <FileText size={18} /> Ver Comprobante (PDF)
                                                     </a>
                                                 )}
