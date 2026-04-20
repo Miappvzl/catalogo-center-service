@@ -1,0 +1,1617 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: app/[slug]/page.tsx, components/StoreInterface.tsx, components/FloatingCheckout.tsx, app/store/useCart.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/[slug]/page.tsx
+app/store/useCart.ts
+components/FloatingCheckout.tsx
+components/StoreInterface.tsx
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/store/useCart.ts">
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+
+// 1. DEFINICIÓN DE TIPOS (El Contrato Blindado)
+export interface CartItem {
+  id: string
+  productId: string
+  variantId: string | null
+  name: string
+  price: number
+  basePrice: number
+  penalty: number
+  image: string
+  quantity: number
+  variantInfo: string | null
+  category?: string 
+  maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
+  compareAtPrice?: number | null // 
+}
+
+interface CartState {
+  items: CartItem[]
+  addItem: (product: any, variant?: any, quantity?: number) => void
+  removeItem: (itemId: string) => void
+  updateQuantity: (itemId: string, quantity: number) => void
+  clearCart: () => void
+}
+
+export const useCart = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+
+      addItem: (product, variant = null, quantity = 1) => {
+        set((state) => {
+          const variantId = variant ? variant.id : null
+          const productId = product.id
+          
+          // Capturamos el stock máximo de la variante o del producto general
+          const currentMaxStock = variant ? Number(variant.stock) : Number(product.stock || 0)
+          
+          const uniqueId = `${productId}-${variantId || 'base'}`
+          const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId)
+
+          if (existingItemIndex > -1) {
+            // SI EXISTE: Sumamos validando el límite máximo
+            const newItems = [...state.items]
+            const currentItem = newItems[existingItemIndex]
+            
+            // Lógica blindada: No sumar más allá del stock disponible
+            const requestedQuantity = currentItem.quantity + quantity
+            currentItem.quantity = Math.min(requestedQuantity, currentMaxStock)
+            
+            return { items: newItems }
+          } else {
+            // SI ES NUEVO: Guardamos el maxStock en el objeto
+            const newItem: CartItem = {
+              id: uniqueId,
+              productId: productId,
+              variantId: variantId,
+              name: product.name,
+              
+              // 🚀 LÓGICA DE OVERRIDE: Si la variante tiene precio propio, úsalo. Si no (??), usa el del producto.
+              price: Number(variant?.override_usd_price ?? product.usd_cash_price), 
+              basePrice: Number(variant?.override_usd_price ?? product.usd_cash_price),
+              penalty: Number(variant?.override_usd_penalty ?? product.usd_penalty ?? 0),
+              image: variant?.variant_image || product.image_url,
+              quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
+              variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
+              category: product.category,
+              maxStock: currentMaxStock, // <--- 🚀 Se guarda en LocalStorage
+              // 🚀 NUEVO: Lógica de herencia para el precio tachado
+              compareAtPrice: variant?.override_compare_at_usd !== undefined && variant?.override_compare_at_usd !== null 
+                              ? Number(variant.override_compare_at_usd) 
+                              : (product.compare_at_usd ? Number(product.compare_at_usd) : null)
+            }
+
+            return { items: [...state.items, newItem] }
+          }
+        })
+      },
+
+      removeItem: (itemId) => {
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== itemId),
+        }))
+      },
+
+      updateQuantity: (itemId, quantity) => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id === itemId) {
+              // 🚀 LÓGICA BLINDADA: clamp entre 1 y el maxStock (o infinito si es un carrito viejo)
+              const limit = item.maxStock ?? 9999
+              const newQuantity = Math.min(Math.max(1, quantity), limit)
+              return { ...item, quantity: newQuantity }
+            }
+            return item
+          }),
+        }))
+      },
+
+      clearCart: () => set({ items: [] }),
+    }),
+    {
+      name: 'shopping-cart-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+)
+</file>
+
+<file path="app/[slug]/page.tsx">
+import { createClient } from '@/utils/supabaseServer'
+import StoreInterface from '@/components/StoreInterface'
+import { notFound } from 'next/navigation'
+import { Rocket, Sparkles } from 'lucide-react'
+import { Metadata } from 'next' // <-- IMPORTANTE: Tipado de Next.js para SEO
+
+export const dynamic = 'force-dynamic'
+
+// ------------------------------------------------------------------
+// 🚀 GENERADOR DINÁMICO DE OPENGRAPH Y METADATOS (SEO)
+// ------------------------------------------------------------------
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+
+  // Solo pedimos lo estrictamente necesario para el SEO (Súper rápido)
+  const { data: store } = await supabase
+    .from('stores')
+    .select('name, logo_url, hero_url')
+    .eq('slug', slug)
+    .single()
+
+  if (!store) {
+    return {
+      title: 'Tienda no encontrada | Preziso',
+      description: 'Esta tienda no existe o no está disponible.',
+    }
+  }
+
+  // Prioridad de imagen: 1. Banner (Hero) -> 2. Logo -> 3. Imagen por defecto de Preziso
+  const ogImage = store.hero_url || store.logo_url || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1200&auto=format&fit=crop'
+
+  return {
+    title: `${store.name} | Catálogo Oficial`,
+    description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida, segura y sin fricciones.`,
+    openGraph: {
+      title: `${store.name} | Catálogo Oficial`,
+      description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida y segura.`,
+      url: `https://${slug}.preziso.shop`, // <-- SEO de Élite con el subdominio
+      siteName: store.name,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `Catálogo de ${store.name}`,
+        },
+      ],
+      locale: 'es_VE',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${store.name} | Catálogo Oficial`,
+      description: `Explora el catálogo oficial de ${store.name}.`,
+      images: [ogImage],
+    },
+    icons: {
+      icon: store.logo_url || '/favicon.ico',
+    }
+  }
+}
+// ------------------------------------------------------------------
+
+
+export default async function StorePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const supabase = await createClient()
+
+  // 1. OBTENER TIENDA
+  const { data: store } = await supabase
+    .from('stores')
+    .select('*, payment_config, shipping_config, theme_config') 
+    .eq('slug', slug)
+    .single()
+
+  if (!store) {
+    return notFound()
+  }
+
+  // ------------------------------------------------------------------
+  // 🛡️ EL ESCUDO DE REPUTACIÓN (LA LÓGICA DE CADUCIDAD CORREGIDA)
+  // ------------------------------------------------------------------
+  // 1. Tomamos la fecha real de vencimiento (prioridad a suscripción paga, fallback a trial)
+  const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+  const expirationDate = targetDateString ? new Date(targetDateString) : new Date();
+  const now = new Date();
+  
+  // 2. Evaluamos caducidad pura: si la fecha ya pasó, se bloquea (sea trial o active)
+  const isExpired = expirationDate < now;
+
+  if (isExpired) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 text-center font-sans selection:bg-black selection:text-white relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gray-200/40 rounded-full blur-3xl -z-10"></div>
+
+        <div className="bg-white p-10 md:p-14 rounded-3xl border border-gray-200 max-w-md w-full relative z-10">
+            <div className="w-20 h-20 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-8 relative">
+                <div className="absolute inset-0 bg-gray-100 rounded-2xl animate-ping opacity-50"></div>
+                <Rocket size={32} strokeWidth={2} className="text-black relative z-10 -mt-1 -mr-1" />
+                <Sparkles size={16} className="text-gray-400 absolute bottom-4 left-4" />
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-3">
+                Mantenimiento
+            </h1>
+            <p className="text-gray-500 text-sm font-medium leading-relaxed">
+                La tienda <b className="text-black">{store.name}</b> está recibiendo mejoras estructurales en su plataforma. 
+            </p>
+            
+            <div className="mt-8 pt-6 border-t border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+                    Volveremos a estar en línea pronto
+                </p>
+            </div>
+        </div>
+      </div>
+    )
+  }
+  // ------------------------------------------------------------------
+
+  // 2. OBTENER PRODUCTOS (Solo se ejecuta si la tienda está al día)
+  const { data: products } = await supabase
+    .from('products')
+    .select('*, product_variants(*)')
+    .eq('user_id', store.user_id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  // 3. OBTENER TASAS
+  const { data: rates } = await supabase
+    .from('app_config')
+    .select('*')
+    .limit(1)
+    .single()
+
+  // 🚀 4. OBTENER MACRO-PROMOCIONES ACTIVAS (Asegúrate de que esto esté aquí)
+  const { data: promotions } = await supabase
+    .from('promotions')
+    .select('*')
+    .eq('store_id', store.id)
+    .eq('is_active', true)
+
+  return (
+    <StoreInterface 
+      store={store} 
+      products={products || []} 
+      rates={rates || { usd_rate: 0, eur_rate: 0 }}
+      promotions={promotions || []} // 🚀 CRÍTICO: Si falta esto, el banner no sale
+    />
+  )
+}
+</file>
+
+<file path="components/StoreInterface.tsx">
+'use client'
+
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight } from 'lucide-react'
+import { useCart } from '@/app/store/useCart'
+import Link from 'next/link'
+import ProductModal from './ProductModal'
+import FloatingCheckout from './FloatingCheckout'
+import NumberTicker from './NumberTicker'
+import ProductCard from './ProductCard'
+import { getOptimizedUrl } from '@/utils/cdn'
+import Image from 'next/image'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
+
+const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={`px-5 py-2 md:px-6 md:py-2 rounded-full text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
+      ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
+      : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:bg-[var(--store-surface)] hover:text-[var(--store-text-main)]'
+      }`}
+  >
+    {label}
+  </button>
+)
+
+// 🚀 MICRO-COMPONENTE OPTIMIZADO: The Live Pill (Tabular Nums & Pulse)
+const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string }) => {
+  const [timeLeft, setTimeLeft] = useState('')
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date().getTime()
+      const target = new Date(expiresAt).getTime()
+      const distance = target - now
+
+      if (distance < 0) {
+        setTimeLeft('Expirado')
+        clearInterval(interval)
+        return
+      }
+
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt])
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md transition-all ml-1 md:ml-3" style={{ borderColor: `${color}30`, backgroundColor: `${color}10`, color: color }}>
+      <div className="relative flex h-1.5 w-1.5 shrink-0">
+        {timeLeft !== 'Expirado' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }}></span>}
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: color }}></span>
+      </div>
+      <span className="text-[10px] md:text-[11px] font-bold tabular-nums tracking-widest leading-none mt-[1px]">
+        {timeLeft}
+      </span>
+    </div>
+  )
+}
+
+
+// 🚀 INYECCIÓN: BANNER DE RECUPERACIÓN DE PRESUPUESTO (CORREGIDO)
+const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
+    const [savedQuote, setSavedQuote] = useState<{ id: string, total: number } | null>(null)
+    const [isVisible, setIsVisible] = useState(false)
+
+    useEffect(() => {
+        const stored = localStorage.getItem('preziso_pending_quote')
+        if (stored) {
+            try {
+                const data = JSON.parse(stored)
+                // Validamos que el presupuesto pertenezca a la tienda actual
+                if (data.slug === currentSlug) {
+                    setSavedQuote(data)
+                    setIsVisible(true) // Dispara la animación de entrada
+                }
+            } catch (e) { }
+        }
+    }, [currentSlug])
+
+    // Función manejadora para un cierre suave
+    const handleClose = () => {
+        setIsVisible(false) // 1. Dispara la animación de salida
+        
+        // 2. Espera 300ms a que termine la animación para destruir los datos
+        setTimeout(() => {
+            localStorage.removeItem('preziso_pending_quote')
+            setSavedQuote(null)
+        }, 300) 
+    }
+
+    return (
+        <AnimatePresence>
+            {isVisible && savedQuote && (
+                <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-xl origin-top"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-1.5 rounded-full shrink-0"><FileText size={16} /></div>
+                        <div className="flex flex-col min-w-0">
+                            <p className="font-bold uppercase tracking-widest text-[9px] text-gray-400">Cotización Pendiente</p>
+                            <p className="font-medium text-xs truncate">Monto a pagar: <span className="font-black text-white">${Number(savedQuote.total).toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Link 
+                            href={`/quote/${savedQuote.id}`} /* 🚀 CORRECCIÓN: Ruta relativa limpia sin duplicar el slug */
+                            className="bg-white text-black px-4 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                        >
+                            Retomar <ArrowRight size={12} strokeWidth={3} />
+                        </Link>
+                        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white transition-colors active:scale-90">
+                            <X size={16} />
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    )
+}
+
+interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
+
+export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
+  const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
+  const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
+
+const searchParams = useSearchParams()
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
+  const [showPromoModal, setShowPromoModal] = useState(false)
+
+ useEffect(() => {
+    const ref = searchParams?.get('ref');
+    const storedRef = sessionStorage.getItem('preziso_ref');
+
+    if (ref && store?.affiliate_config?.active) {
+      setAffiliateCode(ref);
+      if (storedRef !== ref) {
+        sessionStorage.setItem('preziso_ref', ref);
+        setShowPromoModal(true); // 🚀 REEMPLAZO AQUÍ
+        // Cerramos el modal automáticamente después de 5 segundos
+        setTimeout(() => setShowPromoModal(false), 5000); 
+      }
+    } else if (storedRef) {
+      setAffiliateCode(storedRef);
+    }
+  }, [searchParams, store]);
+
+  if (!store) return (
+    
+    <div className="min-h-screen bg-[var(--store-surface)] pb-32 font-sans w-full overflow-hidden no-scrollbar [scrollbar-gutter:auto] [&::-webkit-scrollbar]:hidden pointer-events-none select-none">
+      {/* SKELETON: HERO SECTION */}
+      <div className="w-full h-[35vh] md:h-[25vh] bg-[var(--store-border)] animate-pulse relative flex items-start border-b border-[var(--store-border)]">
+        <div className="max-w-[1500px] w-full mx-auto px-4 md:px-8 pt-5 md:pt-6 flex items-start justify-between">
+          {/* Logo & Info Skeleton */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[var(--store-border)] rounded-full shrink-0"></div>
+            <div className="flex flex-col gap-2">
+              <div className="w-32 md:w-48 h-3.5 bg-[var(--store-border)] rounded-full"></div>
+              <div className="w-20 h-2 bg-[var(--store-border)] rounded-full"></div>
+            </div>
+          </div>
+          {/* Tasa Skeleton */}
+          <div className="w-24 h-4 bg-[var(--store-border)] rounded-full mt-2 md:mt-3"></div>
+        </div>
+      </div>
+
+      {/* SKELETON: NAVBAR (Buscador y Categorías) */}
+      <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)] pt-4 md:pt-6">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+            {/* Buscador Skeleton */}
+            <div className="w-full md:max-w-md h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
+
+            {/* Categorías Skeleton */}
+            <div className="w-full md:flex-1 flex gap-2 overflow-hidden animate-pulse">
+              <div className="w-16 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
+              <div className="w-24 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
+              <div className="w-20 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden sm:block"></div>
+              <div className="w-28 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden md:block"></div>
+            </div>
+
+            {/* Gatillo Carrito Skeleton */}
+            <div className="hidden md:block w-11 h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* SKELETON: GRID DE PRODUCTOS */}
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          {/* Generamos 10 tarjetas fantasma en memoria dinámicamente */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              {/* Foto del producto */}
+              <div className="w-full aspect-square bg-[var(--store-border)] animate-pulse rounded-[var(--radius-card,1rem)]"></div>
+              {/* Textos */}
+              <div className="space-y-2 px-1">
+                <div className="w-3/4 h-3 bg-[var(--store-border)] animate-pulse rounded-full"></div>
+                <div className="w-1/2 h-2.5 bg-[var(--store-border)]/70 animate-pulse rounded-full"></div>
+                <div className="w-1/3 h-4 bg-gray-200 animate-pulse rounded-full mt-1"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+
+  const { items } = useCart() // <--- TRAEMOS LOS ITEMS PARA EL GATILLO DESKTOP
+  const hasItems = items.length > 0;
+  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0);
+
+  const isEur = store.currency_type === 'eur'
+  const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
+
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('') // 🚀 NUEVO: Estado retrasado
+  const [selectedCategory, setSelectedCategory] = useState('Todos')
+  // 🚀 RECEPTOR DE TELEMETRÍA (Iframe PostMessage)
+  const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      console.log('2. TIENDA RECIBIÓ ALGO:', event.origin, event.data)
+      // Validación robusta: Aceptamos mensajes de tu dominio local o tu dominio de producción
+      const isLocalhost = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
+      const isPrezisoDomain = event.origin.includes('preziso.shop');
+
+      if (!isLocalhost && !isPrezisoDomain) return;
+
+      if (event.data?.type === 'UPDATE_THEME') {
+        setLiveConfig(event.data.config);
+      }
+    };
+
+    // Encendemos el receptor SIEMPRE. Es seguro porque ya filtramos por 'origin' arriba,
+    // y evitamos que los middlewares de Next.js rompan el editor al borrar los parámetros de la URL.
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+  // 🚀 NUEVO: Motor de Debounce (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+
+    // Función de limpieza: destruye el timer si el usuario teclea antes de los 300ms
+    return () => clearTimeout(timer)
+  }, [search])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
+
+  const [isStickyVisible, setIsStickyVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isDarkHero, setIsDarkHero] = useState(true) // Por defecto oscuro (texto blanco)
+
+  const [visibleCount, setVisibleCount] = useState(12)
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setVisibleCount(12)
+  }, [debouncedSearch, selectedCategory]) // Cambiamos 'search' por 'debouncedSearch'
+
+  useEffect(() => {
+    if (!store?.hero_url) return;
+
+    const img = new window.Image()
+    img.crossOrigin = "Anonymous"; // Crucial para evitar bloqueos CORS
+    img.src = store.hero_url;
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = img.width;
+        canvas.height = img.height * 0.2; // Analizamos solo el 20% superior donde vive el header
+
+        ctx.drawImage(img, 0, 0, img.width, img.height * 0.2, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i + 1]; b += data[i + 2];
+        }
+
+        const pixels = data.length / 4;
+        // Fórmula de Luminancia Relativa (YIQ)
+        const luminance = ((r / pixels) * 299 + (g / pixels) * 587 + (b / pixels) * 114) / 1000;
+
+        // Si luminancia es menor a 128, es oscuro -> texto blanco. Si es mayor, es claro -> texto oscuro.
+        setIsDarkHero(luminance < 128);
+      } catch (e) {
+        console.warn("No se pudo analizar el contraste por CORS, usando default oscuro.");
+        setIsDarkHero(true);
+      }
+    };
+  }, [store?.hero_url]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 12)
+        }
+      },
+      { threshold: 0.1 }
+    )
+    if (observerTarget.current) observer.observe(observerTarget.current)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (typeof window !== 'undefined') {
+        const currentScrollY = window.scrollY
+        if (currentScrollY < 350) {
+          setIsStickyVisible(true)
+          setLastScrollY(currentScrollY)
+          return
+        }
+        setIsStickyVisible(currentScrollY <= lastScrollY)
+        setLastScrollY(currentScrollY)
+      }
+    }
+    window.addEventListener('scroll', controlNavbar, { passive: true })
+    return () => window.removeEventListener('scroll', controlNavbar)
+  }, [lastScrollY])
+
+  useEffect(() => {
+    const handleOpenFromCart = (e: any) => {
+      const product = e.detail;
+      if (product) {
+        setSelectedProductForModal(product);
+        setIsModalOpen(true);
+      }
+    };
+    document.addEventListener('openProductModal', handleOpenFromCart);
+    return () => document.removeEventListener('openProductModal', handleOpenFromCart);
+  }, []);
+
+  // 🚀 Auto-Scroll del Carrusel de Promociones
+  useEffect(() => {
+    if (!promotions || promotions.length <= 1) return;
+    const interval = setInterval(() => {
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
+        }
+      }
+    }, 5000); // Cambia cada 5 segundos
+    return () => clearInterval(interval);
+  }, [promotions]);
+
+  const normalizeCategory = (cat: string) => {
+    if (!cat) return ""
+    const trimmed = cat.trim().toLowerCase()
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+  }
+
+  const categories = useMemo(() => {
+    // 1. Extraemos todas las categorías únicas de los productos actuales
+    const rawCats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
+    const uniqueCats = Array.from(new Set(rawCats))
+
+    // 2. Leemos el orden guardado por el admin (si existe)
+    const savedOrder = store?.categories_order || []
+
+    // 3. Ordenamos las categorías respetando el arreglo del admin
+    const sortedCats = uniqueCats.sort((a, b) => {
+      const indexA = savedOrder.indexOf(a)
+      const indexB = savedOrder.indexOf(b)
+
+      // Si ambas están en la lista guardada, respetamos su orden
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+      // Si solo A está en la lista, A va primero
+      if (indexA !== -1) return -1
+      // Si solo B está en la lista, B va primero
+      if (indexB !== -1) return 1
+      // Si ninguna está (ej: categorías nuevas), las ordenamos alfabéticamente al final
+      return a.localeCompare(b)
+    })
+
+    // 4. "Todos" siempre va de primero indiscutiblemente
+    return ['Todos', ...sortedCats]
+  }, [products, store?.categories_order])
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      // Usamos debouncedSearch en lugar de search
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      const productCatClean = normalizeCategory(p.category)
+      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
+
+      // 🚀 BLINDAJE INT8: Coerción absoluta a String
+      const matchesPromo = activePromo
+        ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id))
+        : true
+
+      return matchesSearch && matchesCategory && matchesPromo
+    })
+  }, [products, debouncedSearch, selectedCategory, activePromo]) // Actualizamos las dependencias
+
+  const displayedProducts = filteredProducts.slice(0, visibleCount)
+
+  const handleOpenProduct = (product: any) => {
+    setSelectedProductForModal(product)
+    setIsModalOpen(true)
+  }
+
+  const getProductPricing = (product: any) => {
+    const cashPrice = Number(product.usd_cash_price || 0)
+    const markup = Number(product.usd_penalty || 0)
+    const listPrice = cashPrice + markup
+    const priceInBs = listPrice * activeRate
+    const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
+    return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
+  }
+
+  return (
+    // ✅ AHORA:
+    <div
+      className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]"
+      style={{
+        // Los 3 originales
+        '--store-primary': activeTheme.colors?.primary || '#000000',
+        '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
+        '--store-bg': activeTheme.colors?.background || '#ffffff',
+
+        // 🚀 Los 4 nuevos que le dan soporte absoluto al Modo Oscuro y White-Label
+        '--store-text-main': activeTheme.colors?.text_main || '#111111',
+        '--store-surface': activeTheme.colors?.surface || '#ffffff',
+        '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
+        '--store-border': activeTheme.colors?.border || '#d4d4d499',
+        // 🚀 La nueva variable psicológica
+    '--store-incentive': activeTheme.colors?.incentive || '#059669',
+  
+      } as React.CSSProperties}
+    >
+
+      {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
+      <QuoteRecoveryBanner currentSlug={store.slug} />
+
+
+
+      {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
+      <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]">
+
+        {/* Logo & Store Info */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="relative shrink-0">
+            {store.logo_url ? (
+              <Image src={getOptimizedUrl(store.logo_url)} width={44} height={44} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-[var(--store-border)] shadow-sm" alt="Logo" />
+            ) : (
+              <div className="w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] rounded-full flex items-center justify-center text-[var(--store-surface-text)] border border-[var(--store-border)] shadow-sm">
+                <ShoppingBag size={18} strokeWidth={1.5} />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
+              {store.name}
+            </h1>
+            <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.15em] mt-1 text-[var(--store-surface-text)]">
+              Tienda Oficial
+            </span>
+          </div>
+        </div>
+
+        {/* Tasa BCV Minimalista */}
+        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hidden sm:block">
+              {isEur ? 'Tasa EUR' : 'Tasa BCV'}
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] sm:hidden">
+              {isEur ? 'EUR' : 'BCV'}
+            </span>
+          </div>
+          <div className="h-3 w-[1px] bg-[var(--store-border)]"></div>
+          <span className="font-mono text-xs font-bold tracking-tight text-[var(--store-text-main)]">
+            <NumberTicker value={activeRate} />
+          </span>
+        </div>
+
+      </div>
+
+      {/* --- 2. HERO BANNER (BLUR-PAD TECHNIQUE) --- */}
+      {store.hero_url && (
+        <div className="w-full h-[22vh] md:h-[28vh] relative bg-[var(--store-border)] overflow-hidden flex items-center justify-center border-b border-[var(--store-border)]">
+
+          {/* Fondo difuminado optimizado */}
+          <Image
+            src={getOptimizedUrl(store.hero_url)}
+            className="absolute inset-0 object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
+            crossOrigin="anonymous"
+            alt=""
+            fill
+            sizes="100vw"
+            quality={30} // Bajamos la calidad de la compresión porque solo es un fondo difuminado
+          />
+
+          {/* Imagen real optimizada */}
+          <Image
+            src={getOptimizedUrl(store.hero_url)}
+            alt={`Banner de ${store.name}`}
+            className="relative z-10 object-contain pointer-events-none drop-shadow-sm"
+            crossOrigin="anonymous"
+            fill
+            sizes="100vw"
+          />
+        </div>
+      )}
+
+
+
+      <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)] pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+
+            {/* 1. BUSCADOR (Izquierda) */}
+            {/* 🚀 INYECCIÓN: min-w-0 para evitar desbordamiento del flex-1 */}
+            <div className="relative flex-1 w-full md:max-w-md group min-w-0">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
+              <input
+                type="text"
+                placeholder="Buscar producto..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)] rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* 2. CATEGORÍAS (Centro) */}
+            {/* 🚀 INYECCIÓN: min-w-0 es el cinturón de seguridad que ancla la UI */}
+            <div className="relative w-full md:flex-1 min-w-0 flex items-center">
+              <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar pr-10">
+                {categories.map(cat => (
+                  <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
+                ))}
+              </div>
+
+              {/* Fade Gradient a la derecha */}
+              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-[var(--store-bg)] via-[var(--store-bg)]/80 to-transparent pointer-events-none z-10"></div>
+            </div>
+
+            {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
+            <div className="hidden md:flex shrink-0 w-12 h-11">
+              <button
+                onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
+                className={`relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                title="Ver Bolsa"
+              >
+                {/* El div envoltorio hace que el SVG rote perfectamente */}
+                <div className={hasItems ? "animate-wiggle origin-bottom inline-block" : ""}>
+                  <ShoppingCart size={18} strokeWidth={2.5} />
+                </div>
+
+                {hasItems && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)]">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
+      {promotions && promotions.length > 0 && (
+        <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)] overflow-hidden relative z-30">
+          <div ref={carouselRef} className="flex overflow-x-auto  rounded-[16px] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
+            {promotions.map((promo: any) => {
+              const isActive = activePromo?.id === promo.id;
+              return (
+                <div key={promo.id}
+                  onClick={() => {
+                    setActivePromo(isActive ? null : promo)
+                    window.scrollTo({ top: 400, behavior: 'smooth' })
+                  }}
+                  className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-500 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
+                  style={{ backgroundColor: promo.bg_color || '#000' }}>
+
+                  {/* Brillo interno (Glassmorphism / Hardware feel) */}
+                  <div className="absolute inset-0 border-[0.5px] pointer-events-none" style={{ borderColor: `${promo.text_color}15` }}></div>
+
+                  <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 flex flex-row items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+                      {/* La imagen optimizada flotante */}
+                      {promo.image_url && (
+                        <div className="w-14 h-14 md:w-20 md:h-20 shrink-0 relative flex items-center justify-center">
+                          <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="80px" className="object-contain  drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
+                        </div>
+                      )}
+
+                      {/* Jerarquía Tipográfica Estricta */}
+                      <div className="flex flex-col min-w-0 justify-center">
+                        {promo.tagline && (
+                          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-1 truncate" style={{ color: promo.text_color || '#fff', opacity: 0.8 }}>
+                            {promo.tagline}
+                          </span>
+                        )}
+                        <div className="flex items-center flex-wrap gap-1 md:gap-2">
+                          {/* 🚀 TÍTULO BLINDADO: line-clamp-2 para que envuelva elegante y pr-2 para evitar el corte de fuente */}
+                          <h4 className="font-black text-xl md:text-3xl tracking-tighter leading-none line-clamp-2 pr-2 pb-0.5" style={{ color: promo.text_color || '#fff' }}>
+                            {promo.title}
+                          </h4>
+
+                          {/* 🚀 RELOJ FOMO INTEGRADO */}
+                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 🚀 CTA INEQUÍVOCO (Botón Real de Alto Contraste) */}
+                    <div className="shrink-0 pl-2">
+                      <div
+                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`}
+                        style={{
+                          backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'),
+                          color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'),
+                          border: `1px solid ${isActive ? promo.text_color : 'transparent'}`
+                        }}
+                      >
+                        <span>{isActive ? 'Quitar Filtro ✕' : 'Ver Oferta'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
+
+
+        <>
+          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+            {displayedProducts.map((product, index) => { // 🚀 INYECCIÓN: Agregamos el index
+              const pricing = getProductPricing(product)
+
+              const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                : (product.stock || 0) <= 0;
+
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  pricing={pricing}
+                  onOpen={handleOpenProduct}
+                  isOutOfStock={isCompletelyOutOfStock}
+                  index={index} // 🚀 INYECCIÓN: Enviamos el index a la tarjeta
+                />
+              )
+            })}
+          </div>
+
+          {visibleCount < filteredProducts.length && (
+            <div ref={observerTarget} className="w-full py-12 flex justify-center">
+              <div className="w-6 h-6 border-2 border-[var(--store-border)] border-t-black rounded-full animate-spin"></div>
+            </div>
+          )}
+        </>
+
+        {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
+            <AnimatePresence>
+                {showPromoModal && affiliateCode && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
+                    >
+                        <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
+                            <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
+                                <Tag size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
+                                <p className="text-sm font-black leading-tight">
+                                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
+                                </p>
+                            </div>
+                            <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+      </main>
+
+
+      {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
+      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
+        <a
+          href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group inline-flex flex-col items-center gap-1.5"
+        >
+          <span className="text-[10px] font-bold  text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
+            Experiencia de compra impulsada por
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
+            <ArrowUpRight size={15} strokeWidth={2} className="text-[var(--store-surface-text)] animate-pulse" />
+          </div>
+        </a>
+      </div>
+      <FloatingCheckout
+        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        currency={isEur ? 'eur' : 'usd'}
+        phone={store.phone || '584120000000'}
+        storeName={store.name}
+        storeId={store.id}
+        storeConfig={store}
+        products={products}
+        promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
+        affiliateCode={affiliateCode} // 🚀 INYECCIÓN AQUÍ
+      />
+
+      <ProductModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProductForModal}
+        currency={isEur ? 'eur' : 'usd'}
+        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        promotions={promotions}
+        activePromoContext={activePromo}
+        storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
+      />
+
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  )
+}
+</file>
+
+<file path="components/FloatingCheckout.tsx">
+'use client'
+
+import { useState, useMemo, useEffect } from 'react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent, FileText } from 'lucide-react'
+import { useCart } from '@/app/store/useCart'
+import { AnimatePresence, motion, Variants } from 'framer-motion'
+import ProductCard from './ProductCard'
+import CheckoutProcess from './CheckoutProcess'
+import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
+import { useSearchParams } from 'next/navigation'
+
+interface CheckoutProps {
+    rates: { usd: number, eur: number }
+    currency: 'usd' | 'eur'
+    phone: string
+    storeName: string
+    storeId: string
+    storeConfig: any
+    products: any[]
+    promotions?: any[]
+    affiliateCode?: string | null // 🚀 NUEVO
+}
+
+export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null }: CheckoutProps) {
+    const { items, removeItem, updateQuantity } = useCart()
+    const [isMounted, setIsMounted] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
+    const [step, setStep] = useState(1)
+
+    const [whatsappUrl, setWhatsappUrl] = useState('')
+    const [generatedOrderNumber, setGeneratedOrderNumber] = useState<number | null>(null)
+    const [generatedOrderId, setGeneratedOrderId] = useState<string | null>(null) // 🚀 NUEVO ESTADO
+
+    useEffect(() => {
+        setIsMounted(true)
+        const handleToggleCart = () => { setStep(1); setIsOpen(true); };
+        document.addEventListener('toggleCartDrawer', handleToggleCart);
+        return () => document.removeEventListener('toggleCartDrawer', handleToggleCart);
+    }, [])
+
+    const handleOpenModal = () => { setStep(1); setIsOpen(true); }
+    const handleCloseModal = () => {
+        setIsOpen(false);
+        setTimeout(() => { setStep(1); setGeneratedOrderNumber(null); setGeneratedOrderId(null); }, 300); // 🚀 Limpiamos
+    }
+
+    const isEurMode = currency === 'eur'
+    const activeRate = isEurMode ? rates.eur : rates.usd
+    const currencySymbol = '$'
+
+    const wholesale = storeConfig?.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 }
+
+    // --- 🚀 MOTOR DE RECOMENDACIONES (CROSS-SELLING) ---
+    const recommendedProducts = useMemo(() => {
+        if (items.length === 0 || !products || products.length === 0) return []
+        const cartCategories = Array.from(new Set(items.map(item => item.category?.toLowerCase() || '')))
+        const cartProductIds = new Set(items.map(item => item.productId))
+        const recommendations = products.filter(p => {
+            if (cartProductIds.has(p.id)) return false
+            if ((p.stock || 0) <= 0 && (!p.product_variants || p.product_variants.every((v: any) => (v.stock || 0) <= 0))) return false
+            return cartCategories.includes(p.category?.toLowerCase() || '')
+        })
+        return recommendations.slice(0, 10)
+    }, [items, products])
+
+    // --- 🚀 MOTOR MATEMÁTICO PRINCIPAL ---
+    const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
+
+    const cartEngine = useMemo(() => {
+        let totalListNominal = 0;
+        let totalCashNominal = 0;
+        let listPromoDiscounts = 0;
+        let cashPromoDiscounts = 0;
+        let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
+        const promoCounts: Record<string, number> = {};
+
+        items.forEach(item => {
+            promotions?.forEach(p => {
+                if (p.promo_type === 'bogo' && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) {
+                    promoCounts[p.id] = (promoCounts[p.id] || 0) + item.quantity;
+                }
+            })
+        });
+
+        const processedItems = items.map(item => {
+            const itemBasePrice = Number(item.basePrice || 0);
+            const itemPenalty = Number(item.penalty || 0);
+            const listPrice = itemBasePrice + itemPenalty;
+            const cashPrice = itemBasePrice;
+
+            totalListNominal += listPrice * item.quantity;
+            totalCashNominal += cashPrice * item.quantity;
+
+            let itemListDiscount = 0;
+            let itemCashDiscount = 0;
+            let badge = null;
+
+            const applicablePromos = promotions?.filter((p: any) => p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) || [];
+            let bestPromo = null;
+
+            if (applicablePromos.length > 0) {
+                let maxEffective = 0;
+                applicablePromos.forEach(p => {
+                    let eff = p.promo_type === 'percentage'
+                        ? Number(p.discount_percentage)
+                        : (p.promo_type === 'bogo' && (promoCounts[p.id] || 0) >= p.bogo_buy ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
+                    if (eff > maxEffective) { maxEffective = eff; bestPromo = p; }
+                });
+
+                if (bestPromo) {
+                    if ((bestPromo as any).promo_type === 'percentage') {
+                        const pct = (bestPromo as any).discount_percentage / 100;
+                        itemListDiscount = (listPrice * item.quantity) * pct;
+                        itemCashDiscount = (cashPrice * item.quantity) * pct;
+                        listPromoDiscounts += itemListDiscount;
+                        cashPromoDiscounts += itemCashDiscount;
+
+                        // Guardamos el JSX, no un string
+                        badge = (
+                            <span className="flex items-center gap-1">
+                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
+                                {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
+                            </span>
+                        );
+
+                    } else if ((bestPromo as any).promo_type === 'bogo') {
+                        badge = (
+                            <span className="flex items-center gap-1">
+                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
+                                {(bestPromo as any).title}
+                            </span>
+                        );
+                        // ... resto de tu lógica de bogoPool
+                    }
+                }
+            }
+
+            return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.quantity), finalCashPrice: cashPrice - (itemCashDiscount / item.quantity), badge }
+        });
+
+        Object.values(bogoPool).forEach(pool => {
+            const sortedList = pool.listPrices.sort((a, b) => a - b);
+            const sortedCash = pool.cashPrices.sort((a, b) => a - b);
+            const freeCount = Math.floor(sortedList.length / pool.buy) * (pool.buy - pool.pay);
+            for (let i = 0; i < freeCount; i++) {
+                listPromoDiscounts += sortedList[i];
+                cashPromoDiscounts += sortedCash[i];
+            }
+        });
+
+        const finalBsModeUSD = totalListNominal - listPromoDiscounts;
+        const finalCashModeUSD = totalCashNominal - cashPromoDiscounts;
+
+        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, finalBsModeUSD, finalCashModeUSD, fxSavingsAmount: finalBsModeUSD - finalCashModeUSD };
+    }, [items, promotions]);
+
+    // Variables base para Paso 1 (Antes del Delivery y Liquid Split)
+    const isWholesaleActive = wholesale.active && totalItemsCount >= wholesale.min_items;
+    const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
+    const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
+
+    // 🚀 NUEVO: MOTOR MATEMÁTICO DE AFILIADOS
+    const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
+    const isAffiliateActive = affiliate.active && affiliateCode;
+    const affiliateDiscountList = isAffiliateActive ? (cartEngine.finalBsModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
+    const affiliateDiscountCash = isAffiliateActive ? (cartEngine.finalCashModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
+
+    // Actualizamos los totales restando el descuento del afiliado
+    const step1GrandTotalUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList - affiliateDiscountList);
+    const step1GrandTotalBs = step1GrandTotalUSD * activeRate;
+    const step1CashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash - affiliateDiscountCash);
+    const step1FxSavings = Math.max(0, step1GrandTotalUSD - step1CashUSD);
+
+    if (!isMounted) return null
+
+    const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
+    const modalVariants: Variants = {
+        hidden: { opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0 },
+        visible: { opacity: 1, y: 0, x: 0, transition: { type: "spring", damping: 25, stiffness: 200 } },
+        exit: { opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0, transition: { damping: 25, stiffness: 200 } }
+    }
+
+    return (
+        <>
+            {/* 🚀 GATILLO MOBILE (El Dock Nativo de cristal) */}
+            <AnimatePresence>
+                {!isOpen && items.length > 0 && (
+                    <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                    >
+                        {/* 1. IZQUIERDA: Icono interactivo + Precios */}
+                        <div className="flex items-center gap-3.5 cursor-pointer group" onClick={handleOpenModal}>
+                            <div className="relative">
+                                <div className="bg-[var(--store-primary)]/80  p-2.5 rounded-full transition-colors group-hover:bg-[var(--store-border)]">
+                                    <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                                </div>
+                                {/* El círculo de notificación que solicitaste */}
+                                <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
+                                    {totalItemsCount}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col items-start">
+                                {/* Total en $ y Bs como solicitaste */}
+                                <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+
+                        {/* 2. DERECHA: Botón de Pagar Estructural */}
+                        <button
+                            onClick={handleOpenModal}
+                            className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20"
+                        >
+                            Pagar
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* CAJÓN PRINCIPAL */}
+            <AnimatePresence>
+                {isOpen && (
+                    <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCloseModal} />
+
+                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
+
+                            {/* HEADER (Común para Paso 1 y 2) */}
+                            {step !== 3 && (
+                                <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]">
+                                    <AnimatePresence mode="wait">
+                                        {step === 1 ? (
+                                            <motion.div key="header-1" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+                                                <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Tu Bolsa</h2>
+                                                <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Revisa tus items antes de pagar</p>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div key="header-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex items-center gap-3">
+                                                <button onClick={() => setStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Checkout</h2>
+                                                    <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Completa tu envío y pago</p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <button onClick={handleCloseModal} className="p-2 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full transition-colors text-[var(--store-surface-text)] active:scale-95"><X size={20} /></button>
+                                </div>
+                            )}
+
+                            {/* PROGRESS BAR MAYORISTA (Solo Paso 1) */}
+                            {step === 1 && wholesale.active && (
+                                <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Activado' : 'Ahorra al Mayor'}</span>
+                                        <span className="text-xs font-black text-[var(--store-text-main)]">{totalItemsCount} / {wholesale.min_items}</span>
+                                    </div>
+                                    <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${Math.min(100, (totalItemsCount / wholesale.min_items) * 100)}%` }}
+                                            className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
+
+
+
+
+                                               
+                                        />
+                                    </div>
+                                    <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
+                                        {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento.` : `Agrega ${wholesale.min_items - totalItemsCount} piezas más para un ${wholesale.discount_percentage}% de descuento.`}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* CONTENEDOR MULTI-PASO */}
+                            <div className="flex-1 relative overflow-hidden bg-[var(--store-surface)]">
+                                <AnimatePresence mode="wait">
+
+                                    {/* --- PASO 1: LA BOLSA --- */}
+                                    {step === 1 && (
+                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full">
+
+                                            {/* 1. EL CONTENEDOR DE SCROLL: Le agregamos pb-[140px] (o el alto aproximado de tu footer) para que los últimos items se puedan ver bien al bajar del todo */}
+                                            <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth no-scrollbar pb-[140px]">
+                                                <div className="space-y-0 flex-1">
+                                                    {cartEngine.processedItems.map((item) => (
+                                                        <div key={item.id} className="flex gap-4 p-4 bg-[var(--store-surface)]">
+                                                            <div className="w-20 h-20 bg-[var(--store-surface)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
+                                                                <Image
+                                                                    src={getOptimizedUrl(item.image)}
+                                                                    alt={item.name}
+                                                                    fill
+                                                                    sizes="80px"
+                                                                    className="object-cover "
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 flex flex-col justify-between py-0.5">
+                                                                <div>
+                                                                    {item.badge && <span className="inline-block text-[9px] font-black text-white bg-[#1b1b1b] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
+                                                                    <div className="flex justify-between items-start">
+                                                                        <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
+                                                                        <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors  p-1.5 rounded-md hover:bg-[var(--store-primary)]/20"><Trash2 size={14} /></button>
+                                                                    </div>
+                                                                    <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
+                                                                </div>
+
+                                                                <div className="flex items-end justify-between mt-2">
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        {item.finalListPrice < item.listPrice ? (
+                                                                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
+                                                                                    {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                </span>
+                                                                                <span className="font-black text-base text-red-600 leading-none">
+                                                                                    {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="font-black text-base text-[var(--store-text-main)] leading-none">
+                                                                                {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
+                                                                            Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60">
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                                                            <Minus size={14} strokeWidth={3} />
+                                                                        </button>
+                                                                        <span className="text-xs font-bold w-3 text-center text-[var(--store-text-main)]">{item.quantity}</span>
+                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                                                            <Plus size={14} strokeWidth={3} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* CROSS-SELLING */}
+                                                {recommendedProducts.length > 0 && (
+                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)] pt-8 pb-4 bg-[var(--store-surface)]">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
+                                                            <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
+                                                        </div>
+                                                        {/* 🚀 ASESINO DE SCROLL VERTICAL: Agregamos flex-row, flex-nowrap, overflow-y-hidden y pt-3 */}
+                                                        <div className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
+                                                            {recommendedProducts.map((product, index) => {
+                                                                const cashPrice = Number(product.usd_cash_price || 0)
+                                                                const markup = Number(product.usd_penalty || 0)
+                                                                const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
+
+                                                                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                                                                    ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                                                                    : (product.stock || 0) <= 0;
+
+                                                                return (
+                                                                    <div key={product.id} className="w-[150px] md:w-[160px] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                        <ProductCard
+                                                                            product={product}
+                                                                            pricing={pricing}
+                                                                            onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
+                                                                            isOutOfStock={isCompletelyOutOfStock}
+                                                                            index={index}
+                                                                        />
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* 🚀 NUDGE DE AHORRO PREVIO */}
+                                                {step1FxSavings > 0 && (
+                                                    <div className="px-4 pb-10 bg-[var(--store-bg)] pt-6">
+                                                        <div className="bg-[#1b1b1b] p-4 rounded-xl flex items-center gap-3 border">
+                                                            <BadgeDollarSign size={30} strokeWidth={1.5} className='text-white' />
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold text-white tracking-wide">Paga en Efectivo o Zelle</span>
+                                                                <span className="text-[11px] font-medium text-white mt-0.5">
+                                                                    Y tu total bajará a <b className="text-white ml-0.5 text-sm">{currencySymbol}{step1CashUSD.toFixed(2)}</b>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
+                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                                <div className="flex justify-between items-end mb-4">
+                                                    <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 border border-[var(--store-border)]">
+                                                    Ir al Checkout <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
+                                    {step === 2 && (
+                                        <CheckoutProcess
+                                            storeId={storeId}
+                                            storeConfig={storeConfig}
+                                            currency={currency}
+                                            rates={rates}
+                                            phone={phone}
+                                            cartEngine={cartEngine}
+                                            wholesaleDiscountList={wholesaleDiscountList}
+                                            wholesaleDiscountCash={wholesaleDiscountCash}
+                                            // 🚀 INYECCIONES AQUÍ:
+                                            affiliateCode={affiliateCode}
+                                            affiliateDiscountList={affiliateDiscountList}
+                                            affiliateDiscountCash={affiliateDiscountCash}
+                                            onSuccess={(orderNumber, waUrl, orderId) => { // 🚀 RECIBIMOS orderId
+                                                setGeneratedOrderNumber(orderNumber);
+                                                setWhatsappUrl(waUrl);
+                                                setGeneratedOrderId(orderId); // 🚀 LO GUARDAMOS
+                                                setStep(3);
+                                            }}
+                                            onBack={() => setStep(1)}
+                                        />
+                                    )}
+
+                                   {/* --- PASO 3: ÉXITO --- */}
+                                    {step === 3 && (
+                                        <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
+                                            
+                                            <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
+                                                <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
+                                            </div>
+                                            
+                                            <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">¡Pedido #{generatedOrderNumber}!</h2>
+                                            
+                                            {/* 🚀 NUDGE EDUCATIVO: Explicamos la protección del Documento Vivo */}
+                                            <div className="max-w-sm mx-auto mb-8  p-4">
+                                                <p className="text-[var(--store-text-main)] text-sm font-bold mb-1">
+                                                    Tu solicitud ha sido registrada.
+                                                </p>
+                                                <p className="text-[var(--store-surface-text)] text-xs leading-relaxed">
+                                                    Estamos verificando tu pago. Una vez nuestro equipo lo confirme, tu comprobante digital se actualizará automáticamente a su estado definitivo.
+                                                </p>
+                                            </div>
+
+                                            <div className="w-full flex flex-col gap-3 max-w-sm mx-auto">
+                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm border border-[var(--store-border)]">
+                                                    <MessageCircle size={18} /> Enviar a WhatsApp
+                                                </a>
+                                                {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL */}
+                                                {generatedOrderId && (
+                                                    <a href={`/quote/${generatedOrderId}`} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]">
+                                                        <FileText size={18} /> Ver Comprobante (PDF)
+                                                    </a>
+                                                )}
+                                                <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
+                                                    Volver a la Tienda
+                                                </button>
+                                            </div>
+                                            
+                                            {/* 🚀 VIRAL LOOP DE AFILIADOS (DISEÑO HORIZONTAL ULTRA-COMPACTO) */}
+                                            {storeConfig?.affiliate_config?.active && (
+                                                <div className="mt-6 mb-2 p-3 sm:p-4  rounded-xl w-full border border-[var(--store-primary)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 ">
+                                                    <div className="flex-1 text-left w-full">
+                                                        <span className="text-[10px] font-black text-[var(--store-text-main)] uppercase tracking-widest block mb-0.5">Conviértete en Embajador.</span>
+                                                        <p className="text-xs font-medium text-[var(--store-surface-text)] leading-tight">
+                                                            Recomiéndanos y gana un <strong className="font-black">{storeConfig.affiliate_config.global_commission_pct}% en efectivo</strong> por cada venta nueva que generes.
+                                                        </p>
+                                                    </div>
+
+                                                    <a href="/promotor" target="_blank" className="shrink-0 w-full sm:w-auto bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-[var(--store-primary)]/80 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 shadow-subtle">
+                                                        Generar enlace <ArrowUpRight size={14} strokeWidth={3} />
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial) */}
+                                            <div className="mt-8 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
+                                                <a
+                                                    href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="group inline-flex flex-col items-center gap-1.5"
+                                                >
+                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
+                                                        Experiencia de compra impulsada por
+                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
+                                                        <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </>
+    )
+}
+</file>
+
+</files>

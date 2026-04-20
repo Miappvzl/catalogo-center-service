@@ -1,3 +1,53 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: app/admin/orders/page.tsx
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/admin/orders/page.tsx
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/admin/orders/page.tsx">
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -38,18 +88,12 @@ interface Order {
     order_items: OrderItem[]
     is_quote?: boolean;
     source?: string;
-    currency_type?: string;
-    subtotal_usd?: number;
-    tax_amount_usd?: number;
-    // 🚀 NUEVOS CAMPOS AÑADIDOS PARA EVITAR EL ERROR DE TYPESCRIPT
-    iva_retention_pct?: number;
-    iva_retention_usd?: number;
-    liquid_amount_usd?: number;
+    currency_type?: string; 
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
     const styles: Record<string, string> = {
-        quote: 'bg-[#232325] text-white',
+        quote: 'bg-[#232325] text-white', 
         pending: 'bg-yellow-50 text-yellow-700',
         paid: 'bg-emerald-50 text-emerald-700',
         shipped: 'bg-blue-50 text-blue-700',
@@ -99,14 +143,15 @@ export default function OrdersPage() {
 
     const [trackingInput, setTrackingInput] = useState('')
     const [copiedAddress, setCopiedAddress] = useState(false)
-    const [copiedQuote, setCopiedQuote] = useState<string | null>(null)
+    const [copiedQuote, setCopiedQuote] = useState<string | null>(null) 
 
-    const [reconcileModal, setReconcileModal] = useState({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid', retentionPct: 0 })
+    // 🚀 ESTADOS DE CONCILIACIÓN (Con memoria del estado destino)
+    const [reconcileModal, setReconcileModal] = useState({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid' })
 
     const [kpiStats, setKpiStats] = useState({ total: 0, pending: 0, salesTodayUSD: 0, salesTodayBs: 0 })
 
     const [storeId, setStoreId] = useState<string | null>(null)
-    const [storeSlug, setStoreSlug] = useState<string | null>(null)
+    const [storeSlug, setStoreSlug] = useState<string | null>(null) 
 
     useEffect(() => {
         const initStore = async () => {
@@ -129,7 +174,7 @@ export default function OrdersPage() {
     }
 
     const handleCopyQuote = (e: React.MouseEvent, orderId: string) => {
-        e.stopPropagation()
+        e.stopPropagation() 
         const link = getQuoteLink(orderId)
         navigator.clipboard.writeText(link)
         setCopiedQuote(orderId)
@@ -144,7 +189,7 @@ export default function OrdersPage() {
         const { data: allOrders } = await supabase.from('orders').select('id, status').eq('store_id', storeId)
         const { data: todayOrders } = await supabase
             .from('orders').select('status, total_usd, total_bs, exchange_rate').eq('store_id', storeId)
-            .gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled').neq('status', 'quote')
+            .gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled').neq('status', 'quote') 
 
         if (allOrders && todayOrders) {
             setKpiStats({
@@ -207,18 +252,21 @@ export default function OrdersPage() {
         return () => { supabase.removeChannel(channel) }
     }, [supabase, fetchKPIs, selectedOrder, storeId])
 
+   // 🚀 1. EL INTERCEPTOR BLINDADO (Ataca Cotizaciones y Pendientes)
     const handleStatusClick = (orderId: string, status: string) => {
-        const needsReconciliation =
-            (selectedOrder?.status === 'quote' || selectedOrder?.status === 'pending') &&
+        // Regla de Negocio: Si la orden actual es 'quote' o 'pending', 
+        // y se intenta mover a un estado de éxito ('paid' o 'shipped'), EXIGE conciliación.
+        const needsReconciliation = 
+            (selectedOrder?.status === 'quote' || selectedOrder?.status === 'pending') && 
             (status === 'paid' || status === 'shipped');
 
         if (needsReconciliation) {
-            setReconcileModal({ isOpen: true, orderId, method: 'Pago Móvil', reference: '', targetStatus: status, retentionPct: 0 })
+            setReconcileModal({ isOpen: true, orderId, method: 'Pago Móvil', reference: '', targetStatus: status })
         } else {
+            // Transiciones libres: pasar a cancelado, pasar a pendiente, o de pagado a enviado
             updateStatus(orderId, status)
         }
     }
-
     const updateStatus = async (orderId: string, newStatus: string) => {
         setUpdatingId(orderId)
         const previousOrders = [...orders]
@@ -242,33 +290,28 @@ export default function OrdersPage() {
         }
     }
 
+    // 🚀 3. EL MOTOR DE CONCILIACIÓN
     const processReconciliation = async () => {
         setUpdatingId(reconcileModal.orderId)
         try {
             const { data: rates } = await supabase.from('app_config').select('usd_rate, eur_rate').single()
             const targetOrder = orders.find(o => o.id === reconcileModal.orderId)
-
+            
             const activeRate = targetOrder?.currency_type === 'eur' ? rates?.eur_rate : rates?.usd_rate
             const totalBs = Number(targetOrder?.total_usd || 0) * (activeRate || 0)
 
-            const taxAmount = Number(targetOrder?.tax_amount_usd || 0)
-            const retentionAmountUsd = taxAmount * (reconcileModal.retentionPct / 100)
-            const liquidAmountUsd = Number(targetOrder?.total_usd || 0) - retentionAmountUsd
-
-            const payload: any = {
-                status: reconcileModal.targetStatus,
+            const payload: any = { 
+                status: reconcileModal.targetStatus, // 🚀 AHORA RESPETA SI ES 'paid' o 'shipped'
                 payment_method: reconcileModal.method,
-                delivery_info: (targetOrder?.delivery_info || '') + (reconcileModal.reference ? ` | Ref: ${reconcileModal.reference}` : ''),
-                iva_retention_pct: reconcileModal.retentionPct,
-                iva_retention_usd: Number(retentionAmountUsd.toFixed(2)),
-                liquid_amount_usd: Number(liquidAmountUsd.toFixed(2))
+                delivery_info: targetOrder?.delivery_info + (reconcileModal.reference ? ` | Ref: ${reconcileModal.reference}` : ''),
             }
 
+            // Si no tenía tasa (era Presupuesto), la congelamos en este instante
             if (!targetOrder?.exchange_rate) {
                 payload.exchange_rate = activeRate
                 payload.total_bs = totalBs
             }
-
+            
             setOrders(prev => prev.map(o => o.id === reconcileModal.orderId ? { ...o, ...payload } : o))
             if (selectedOrder?.id === reconcileModal.orderId) setSelectedOrder(prev => prev ? { ...prev, ...payload } : null)
 
@@ -277,12 +320,12 @@ export default function OrdersPage() {
 
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Pago Conciliado', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl bg-black text-white' } })
             fetchKPIs()
-        } catch (e) {
-            console.error(e)
+        } catch(e) {
             Swal.fire('Error', 'No se pudo conciliar el pago.', 'error')
         } finally {
             setUpdatingId(null)
-            setReconcileModal({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid', retentionPct: 0 })
+            // 🚀 LIMPIAMOS MEMORIA COMPLETA
+            setReconcileModal({ isOpen: false, orderId: '', method: 'Pago Móvil', reference: '', targetStatus: 'paid' })
         }
     }
 
@@ -309,6 +352,8 @@ export default function OrdersPage() {
 
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-gray-900 flex flex-col">
+
+            {/* HEADER STICKY */}
             <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-4">
                     <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-(--radius-btn) transition-all group shrink-0">
@@ -326,6 +371,8 @@ export default function OrdersPage() {
 
             <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
                 <div className="max-w-350 mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8">
+
+                    {/* KPI CARDS */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
                         <div className="bg-white p-6 rounded-(--radius-card) card-interactive min-w-0 border border-transparent hover:border-gray-200">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">Pendientes</p>
@@ -342,6 +389,7 @@ export default function OrdersPage() {
                         </div>
                     </div>
 
+                    {/* FILTERS & SEARCH */}
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
                         <div className="flex bg-[#ffffff] p-1 rounded-(--radius-btn) shrink-0 w-full overflow-x-auto no-scrollbar lg:w-auto max-w-full">
                             {['all', 'quote', 'pending', 'paid', 'shipped'].map(status => (
@@ -368,6 +416,7 @@ export default function OrdersPage() {
                         </div>
                     </div>
 
+                    {/* LISTA Y TABLA */}
                     {loading && orders.length === 0 ? (
                         <div className="text-center py-20"><Loader2 className="animate-spin text-gray-300 mx-auto" size={32} /></div>
                     ) : filteredOrders.length === 0 ? (
@@ -377,7 +426,7 @@ export default function OrdersPage() {
                         </div>
                     ) : (
                         <>
-                            {/* VISTA MÓVIL ACTUALIZADA CON RETENCIÓN */}
+                            {/* VISTA MÓVIL */}
                             <div className="md:hidden space-y-3 w-full">
                                 {filteredOrders.map(order => (
                                     <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-(--radius-card) border border-transparent hover:border-gray-200 p-4 active:bg-gray-50 transition-colors cursor-pointer w-full relative">
@@ -385,10 +434,13 @@ export default function OrdersPage() {
                                             <div className="min-w-0 pr-2">
                                                 <p className="text-xs font-black text-gray-900 truncate">#{order.order_number}</p>
                                                 <p className="text-[10px] text-gray-400 font-mono truncate mb-1.5">{new Date(order.created_at).toLocaleDateString()}</p>
+                                                
+                                                {/* 🚀 MICRO-BADGES (MÓVIL) */}
                                                 <div className="flex gap-1.5 flex-wrap">
                                                     {order.is_quote ? <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-purple-100">Cotización</span> :
                                                         order.source === 'pos' ? <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
-                                                            <span className="px-2 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Web</span>}
+                                                            <span className="px-2 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Tienda Web</span>}
+
                                                     {order.payment_method && (
                                                         <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-wider rounded-sm border border-slate-200">
                                                             {order.payment_method}
@@ -400,20 +452,18 @@ export default function OrdersPage() {
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <p className="font-bold text-sm text-gray-900 truncate pr-4">{order.customer_name}</p>
+                                            {order.status === 'quote' && (
+                                                <button onClick={(e) => handleCopyQuote(e, order.id)} className="p-2 bg-gray-50 text-gray-600 rounded-full hover:bg-gray-200 active:scale-95 transition-all">
+                                                    {copiedQuote === order.id ? <Check size={14} className="text-green-500" /> : <LinkIcon size={14} />}
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="flex justify-between items-end mt-3 border-t border-gray-50 pt-2">
                                             <div className="text-right shrink-0 ml-auto">
-                                                <p className="font-black text-base flex items-center justify-end gap-1.5 leading-none">
-                                                    {Number(order.iva_retention_usd || 0) > 0 ? (
-                                                        <span className="text-emerald-600">${Number(order.liquid_amount_usd).toFixed(2)}</span>
-                                                    ) : (
-                                                        <span className="text-gray-900">${Number(order.total_usd).toFixed(2)}</span>
-                                                    )}
+                                                <p className="font-black text-base text-gray-900 leading-none flex items-center justify-end gap-1.5">
+                                                    ${Number(order.total_usd).toFixed(2)}
                                                     <span className="text-[8px] text-gray-500 px-1.5 py-0.5">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
                                                 </p>
-                                                {Number(order.iva_retention_usd || 0) > 0 && (
-                                                    <p className="text-[9px] text-red-500 font-bold mt-1 text-right">Retenido: -${Number(order.iva_retention_usd).toFixed(2)}</p>
-                                                )}
                                                 <p className="text-[10px] text-gray-400 font-mono mt-1 text-right">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                             </div>
                                         </div>
@@ -421,7 +471,7 @@ export default function OrdersPage() {
                                 ))}
                             </div>
 
-                            {/* VISTA DESKTOP ACTUALIZADA CON RETENCIÓN */}
+                            {/* VISTA DESKTOP (Tabla) */}
                             <div className="hidden md:block bg-white rounded-(--radius-card) overflow-hidden w-full max-w-full border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                                 <div className="overflow-x-auto w-full">
                                     <table className="w-full text-left text-sm">
@@ -439,10 +489,13 @@ export default function OrdersPage() {
                                                 <tr key={order.id} onClick={() => openDrawer(order)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="font-black text-gray-900 group-hover:text-black transition-colors block mb-1.5">#{order.order_number}</span>
+
+                                                        {/* 🚀 MICRO-BADGES (DESKTOP) */}
                                                         <div className="flex gap-1.5 flex-wrap max-w-40">
                                                             {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-purple-100">Cotización</span> :
                                                                 order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[8px] font-black uppercase tracking-wider rounded-sm border border-blue-100">POS</span> :
                                                                     <span className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-[8px] font-black uppercase tracking-wider rounded-sm border border-gray-200">Web</span>}
+
                                                             {order.payment_method && (
                                                                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[8px] font-black uppercase tracking-wider rounded-sm border border-slate-200">
                                                                     {order.payment_method}
@@ -456,26 +509,21 @@ export default function OrdersPage() {
                                                     <td className="px-6 py-4 min-w-50">
                                                         <div className="flex items-center justify-between">
                                                             <span className="font-bold text-gray-900 truncate block">{order.customer_name}</span>
+                                                            {order.status === 'quote' && (
+                                                                <button onClick={(e) => handleCopyQuote(e, order.id)} className="opacity-0 group-hover:opacity-100 p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 hover:text-black transition-all" title="Copiar Enlace">
+                                                                    {copiedQuote === order.id ? <Check size={14} className="text-green-500" /> : <LinkIcon size={14} />}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <StatusBadge status={order.status} />
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                        <p className="font-black flex items-center justify-end gap-1.5">
-                                                            {Number(order.iva_retention_usd || 0) > 0 ? (
-                                                                <>
-                                                                    <span className="text-gray-400 line-through text-[10px]">${Number(order.total_usd).toFixed(2)}</span>
-                                                                    <span className="text-emerald-600">${Number(order.liquid_amount_usd).toFixed(2)}</span>
-                                                                </>
-                                                            ) : (
-                                                                <span className="text-gray-900">${Number(order.total_usd).toFixed(2)}</span>
-                                                            )}
+                                                        <p className="font-black text-gray-900 flex items-center justify-end gap-1.5">
+                                                            ${Number(order.total_usd).toFixed(2)}
                                                             <span className="text-[8px] text-gray-500 px-1.5 py-0.5 rounded-sm">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
                                                         </p>
-                                                        {Number(order.iva_retention_usd || 0) > 0 && (
-                                                            <p className="text-[9px] text-red-500 font-bold mt-0.5 text-right">Retenido: -${Number(order.iva_retention_usd).toFixed(2)}</p>
-                                                        )}
                                                         <p className="text-[10px] font-mono text-gray-400 mt-1">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                                     </td>
                                                 </tr>
@@ -485,6 +533,7 @@ export default function OrdersPage() {
                                 </div>
                             </div>
 
+                            {/* BOTÓN CARGAR MÁS */}
                             {hasMore && !search && filterStatus === 'all' && (
                                 <div className="flex justify-center pt-6 pb-2">
                                     <button
@@ -521,6 +570,8 @@ export default function OrdersPage() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-8 no-scrollbar">
+
+                              {/* 🚀 BLOQUE OMNICANAL DE DOCUMENTOS LEGALES Y COTIZACIONES */}
                                 <div className="mt-6 p-5 bg-[#FAFAFA] border border-gray-200/60 rounded-[24px] flex flex-col gap-4 shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shrink-0 shadow-sm">
@@ -528,14 +579,14 @@ export default function OrdersPage() {
                                         </div>
                                         <div>
                                             <p className="text-xs font-black text-gray-900 uppercase tracking-widest leading-none">
-                                                {selectedOrder.status === 'quote' ? 'Presupuesto Activo' :
-                                                    selectedOrder.status === 'pending' ? 'Doc. en Verificación' :
-                                                        ((selectedOrder as any).document_type === 'invoice' ? 'Factura Comercial' : 'Nota de Entrega')}
+                                                {selectedOrder.status === 'quote' ? 'Presupuesto Activo' : 
+                                                 selectedOrder.status === 'pending' ? 'Doc. en Verificación' :
+                                                 ((selectedOrder as any).document_type === 'invoice' ? 'Factura Comercial' : 'Nota de Entrega')}
                                             </p>
                                             <p className="text-xs text-gray-500 font-medium mt-1.5 leading-tight">
-                                                {selectedOrder.status === 'quote' ? 'Comparte el enlace para concretar la venta.' :
-                                                    selectedOrder.status === 'pending' ? 'Concilia el pago para liberar la orden de pedido.' :
-                                                        'Documento definitivo emitido y procesado.'}
+                                                {selectedOrder.status === 'quote' ? 'Comparte el enlace para concretar la venta.' : 
+                                                 selectedOrder.status === 'pending' ? 'Concilia el pago para liberar la orden de pedido.' :
+                                                 'Documento definitivo emitido y procesado.'}
                                             </p>
                                         </div>
                                     </div>
@@ -548,7 +599,9 @@ export default function OrdersPage() {
                                         </a>
                                     </div>
                                 </div>
+                                
 
+                                {/* CENTRO DE CONCILIACIÓN VISUAL */}
                                 {selectedOrder.status !== 'quote' && (
                                     <div className="space-y-3 mt-6">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Desglose de Pagos</p>
@@ -583,7 +636,7 @@ export default function OrdersPage() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-gray-900 truncate">{selectedOrder.payment_method}</p>
-                                                        <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Pago Único</p>
+                                                        <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Pago Único (Legacy)</p>
                                                     </div>
                                                 </div>
                                                 <a href={selectedOrder.receipt_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-white text-gray-700 hover:text-black border border-gray-200 hover:bg-gray-100 rounded-full mr-2 transition-colors shrink-0 shadow-sm"><ArrowUpRight size={16} strokeWidth={2.5} /></a>
@@ -591,7 +644,7 @@ export default function OrdersPage() {
                                         ) : (
                                             <div className="bg-gray-50 border border-gray-100 border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-gray-400">
                                                 <Clock size={20} className="mb-1 opacity-50" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">Sin comprobante en BD</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-center">Esperando o No requiere comprobante</p>
                                             </div>
                                         )}
                                     </div>
@@ -607,25 +660,10 @@ export default function OrdersPage() {
                                             </a>
                                         )}
                                     </div>
-                                    
-                                    {/* 🚀 AQUÍ ESTÁ EL BLOQUE DEL DESGLOSE FINAL CORREGIDO */}
                                     <div className="text-right shrink-0">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Facturado</p>
-                                        <p className={`font-black text-2xl leading-none ${Number(selectedOrder?.iva_retention_usd || 0) > 0 ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                            ${Number(selectedOrder?.total_usd || 0).toFixed(2)}
-                                        </p>
-                                        
-                                        {Number(selectedOrder?.iva_retention_usd || 0) > 0 && (
-                                            <div className="mt-2 text-right animate-in fade-in slide-in-from-top-2">
-                                                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-0.5">Retenido ({selectedOrder?.iva_retention_pct}%)</p>
-                                                <p className="font-bold text-sm text-red-500 leading-none">-${Number(selectedOrder?.iva_retention_usd || 0).toFixed(2)}</p>
-                                                
-                                                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-2 mb-0.5">Monto Líquido (A cobrar)</p>
-                                                <p className="font-black text-2xl text-emerald-600 leading-none">${Number(selectedOrder?.liquid_amount_usd || 0).toFixed(2)}</p>
-                                            </div>
-                                        )}
-
-                                        <p className="text-[10px] font-mono font-bold text-gray-400 mt-2 text-right">Bs {getBsAmount(selectedOrder || {}).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total</p>
+                                        <p className="font-black text-2xl text-gray-900 leading-none">${Number(selectedOrder.total_usd).toFixed(2)}</p>
+                                        <p className="text-[10px] font-mono font-bold text-gray-400 mt-1">Bs {getBsAmount(selectedOrder).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
 
@@ -635,8 +673,12 @@ export default function OrdersPage() {
                                         <div className="flex items-start gap-3 bg-white p-3 rounded-(--radius-btn) shadow-sm">
                                             <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5" />
                                             <p className="text-sm font-medium text-gray-700 leading-snug flex-1 wrap-break-word">{selectedOrder.delivery_info || 'Retiro en Tienda'}</p>
+                                            <button onClick={() => handleCopyAddress(selectedOrder.delivery_info || '')} disabled={!selectedOrder.delivery_info} className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-50 rounded-(--radius-badge) transition-colors disabled:opacity-30 shrink-0">
+                                                {copiedAddress ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+                                            </button>
                                         </div>
                                     </div>
+
                                     {selectedOrder.shipping_method !== 'pickup' && (
                                         <div>
                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Número de Guía / Tracking</p>
@@ -674,6 +716,7 @@ export default function OrdersPage() {
                                         ))}
                                     </div>
                                 </div>
+
                                 <div className="h-12 shrink-0"></div>
                             </div>
                         </motion.div>
@@ -681,6 +724,7 @@ export default function OrdersPage() {
                 )}
             </AnimatePresence>
 
+            {/* 🚀 MODAL DE CONCILIACIÓN DE PAGOS */}
             <AnimatePresence>
                 {reconcileModal.isOpen && (
                     <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
@@ -692,7 +736,7 @@ export default function OrdersPage() {
                             <div className="space-y-5">
                                 <div>
                                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 block">Método de Pago</label>
-                                    <div className="flex flex-wrap gap-2">
+<div className="flex flex-wrap gap-2">
                                         {['Pago Móvil', 'Transferencia', 'Zelle', 'Efectivo', 'Binance', 'Zinli', 'WallyTech', 'Otro'].map(pm => (
                                             <button
                                                 key={pm} onClick={() => setReconcileModal({ ...reconcileModal, method: pm })}
@@ -703,7 +747,7 @@ export default function OrdersPage() {
                                         ))}
                                     </div>
                                 </div>
-                              <div>
+                                <div>
                                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Referencia (Opcional)</label>
                                     <input
                                         type="text" value={reconcileModal.reference} onChange={(e) => setReconcileModal({ ...reconcileModal, reference: e.target.value })}
@@ -711,54 +755,6 @@ export default function OrdersPage() {
                                         className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all"
                                     />
                                 </div>
-
-                                {(() => {
-                                    const targetOrder = orders.find(o => o.id === reconcileModal.orderId);
-                                    const hasTaxes = targetOrder && Number(targetOrder.tax_amount_usd || 0) > 0;
-                                    
-                                    if (!hasTaxes) return null;
-
-                                    const taxAmount = Number(targetOrder.tax_amount_usd);
-                                    const retentionUsd = taxAmount * (reconcileModal.retentionPct / 100);
-                                    const liquidUsd = Number(targetOrder.total_usd) - retentionUsd;
-
-                                    return (
-                                        <div className="pt-4 border-t border-gray-100 animate-in fade-in">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Comprobante de Retención IVA</label>
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">Solo B2B</span>
-                                            </div>
-                                            <div className="flex gap-2 mb-4">
-                                                {[0, 75, 100].map(pct => (
-                                                    <button 
-                                                        key={pct} 
-                                                        onClick={() => setReconcileModal({ ...reconcileModal, retentionPct: pct })}
-                                                        className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${reconcileModal.retentionPct === pct ? 'bg-black text-white border-black shadow-md' : 'bg-gray-50 text-gray-500 border-transparent hover:border-gray-200'}`}
-                                                    >
-                                                        {pct === 0 ? 'No Aplica' : `${pct}%`}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            
-                                            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2">
-                                                <div className="flex justify-between text-[11px] font-bold text-gray-500">
-                                                    <span>Total Facturado:</span>
-                                                    <span>${Number(targetOrder.total_usd).toFixed(2)}</span>
-                                                </div>
-                                                {reconcileModal.retentionPct > 0 && (
-                                                    <div className="flex justify-between text-[11px] font-bold text-red-500">
-                                                        <span>Retenido (Crédito Fiscal):</span>
-                                                        <span>-${retentionUsd.toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                <div className="flex justify-between text-[13px] font-black text-gray-900 pt-2 border-t border-gray-200/50">
-                                                    <span>A depositar en Banco:</span>
-                                                    <span>${liquidUsd.toFixed(2)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
 
                                 <div className="flex gap-3 mt-4 pt-2">
                                     <button onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })} className="flex-1 bg-gray-100 text-gray-700 font-bold uppercase tracking-widest text-[10px] py-4 rounded-[20px] hover:bg-gray-200 transition-all">Cancelar</button>
@@ -774,3 +770,6 @@ export default function OrdersPage() {
         </div>
     )
 }
+</file>
+
+</files>

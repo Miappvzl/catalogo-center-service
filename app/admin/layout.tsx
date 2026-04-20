@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminNavigation from '@/components/admin/AdminNavigation'
+import FiscalGatekeeper from '@/components/admin/FiscalGatekeeper' // 🚀 INYECCIÓN AQUÍ
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
@@ -39,6 +40,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // ------------------------------------------------------------------
 
   return (
+
+    <>
+      {/* 🚀 EL MURO DE CONTENCIÓN (Solo renderiza si es necesario) */}
+      <FiscalGatekeeper store={store} />
+
+
     <div className="flex min-h-screen bg-[#F8F9FA] selection:bg-black selection:text-white relative">
       {/* Pasamos la tienda y el estado de expiración a la navegación */}
      <AdminNavigation store={store} />
@@ -59,5 +66,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       </div>
     </div>
+    </>
   )
 }

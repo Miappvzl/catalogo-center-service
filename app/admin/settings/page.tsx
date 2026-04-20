@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText } from 'lucide-react'
+import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -38,9 +38,14 @@ export default function SettingsPage() {
     // 🚀 NUEVO: Estado del Programa de Afiliados
     const [affiliate, setAffiliate] = useState({ active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
     // 🚀 NUEVO: Estado Fiscal
-    const [fiscal, setFiscal] = useState({ legal_name: '', legal_id: '', fiscal_address: '', default_tax_active: false, default_tax_percentage: 16 })
-    
-
+  // 🚀 CORRECCIÓN TYPESCRIPT: Declaramos 'fiscal_profile' en el estado inicial
+const [fiscal, setFiscal] = useState({ 
+    legal_name: '', 
+    legal_id: '', 
+    fiscal_address: '', 
+    default_tax_percentage: 16,
+    fiscal_profile: 'informal' 
+})
     const [isDirty, setIsDirty] = useState(false)
     const [saving, setSaving] = useState(false)
     const [uploadingHero, setUploadingHero] = useState(false)
@@ -59,12 +64,13 @@ export default function SettingsPage() {
                 setReceipt(data.receipt_config || { strict_mode: false })
                 // 🚀 NUEVO: Inicializamos el estado desde la BD
                 setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
-                // 🚀 NUEVO: Cargar datos fiscales
-                setFiscal({ 
-                    legal_name: data.legal_name || '', 
-                    legal_id: data.legal_id || '', 
+
+                // 🚀 NUEVO: Cargar datos fiscales (Actualizado)
+                setFiscal({
+                    legal_name: data.legal_name || '',
+                    legal_id: data.legal_id || '',
                     fiscal_address: data.fiscal_address || '',
-                    default_tax_active: data.default_tax_active || false,
+                    fiscal_profile: data.fiscal_profile || 'informal', // 🚀 NUEVO
                     default_tax_percentage: data.default_tax_percentage ?? 16
                 })
             }
@@ -121,7 +127,7 @@ export default function SettingsPage() {
         if (!isDirty) return
         setSaving(true)
 
-       const { error } = await supabase
+        const { error } = await supabase
             .from('stores')
             .update({
                 phone: identity.phone,
@@ -129,12 +135,12 @@ export default function SettingsPage() {
                 wholesale_config: wholesale,
                 receipt_config: receipt,
                 affiliate_config: affiliate,
-                // 🚀 NUEVO: Guardar datos fiscales
+               // 🚀 NUEVO: Guardar datos fiscales
                 legal_name: fiscal.legal_name,
                 legal_id: fiscal.legal_id,
                 fiscal_address: fiscal.fiscal_address,
-                default_tax_active: fiscal.default_tax_active,
-                default_tax_percentage: fiscal.default_tax_percentage // 🚀 ESTE ERA EL ESLABÓN PERDIDO
+                fiscal_profile: fiscal.fiscal_profile,
+                default_tax_percentage: fiscal.default_tax_percentage
             })
             .eq('id', store.id)
 
@@ -229,7 +235,7 @@ export default function SettingsPage() {
                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Razón Social Legal (Opcional)</label>
                                 <input
                                     value={fiscal.legal_name}
-                                    onChange={e => {setFiscal({...fiscal, legal_name: e.target.value}); setIsDirty(true)}}
+                                    onChange={e => { setFiscal({ ...fiscal, legal_name: e.target.value }); setIsDirty(true) }}
                                     placeholder="Ej: Inversiones Preziso C.A."
                                     className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
                                 />
@@ -238,7 +244,7 @@ export default function SettingsPage() {
                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">RIF / Documento Identidad</label>
                                 <input
                                     value={fiscal.legal_id}
-                                    onChange={e => {setFiscal({...fiscal, legal_id: e.target.value.toUpperCase()}); setIsDirty(true)}}
+                                    onChange={e => { setFiscal({ ...fiscal, legal_id: e.target.value.toUpperCase() }); setIsDirty(true) }}
                                     placeholder="Ej: J-123456789"
                                     className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
                                 />
@@ -247,43 +253,60 @@ export default function SettingsPage() {
                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Dirección Fiscal Exacta</label>
                                 <input
                                     value={fiscal.fiscal_address}
-                                    onChange={e => {setFiscal({...fiscal, fiscal_address: e.target.value}); setIsDirty(true)}}
+                                    onChange={e => { setFiscal({ ...fiscal, fiscal_address: e.target.value }); setIsDirty(true) }}
                                     placeholder="Ej: Av. Principal, Edificio X, Local 4, Caracas"
                                     className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
                                 />
                             </div>
                         </div>
-<div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent flex flex-col gap-4">
-                            <div className="flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => { setFiscal({ ...fiscal, default_tax_active: !fiscal.default_tax_active }); setIsDirty(true) }}>
-                                <div className="pr-4">
-                                    <p className="font-bold text-gray-900 text-sm">Cobrar IVA por defecto</p>
-                                    <p className="text-xs text-gray-500 mt-1">Si activas esto, la tienda web y el POS aplicarán el impuesto automáticamente.</p>
-                                </div>
-                                <AnimatedSwitch active={fiscal.default_tax_active} />
+                        {/* 🚀 SELECTOR DE PERFIL FISCAL (Clean Look) */}
+                        <div className="mt-6 pt-6 border-t border-black/5">
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4 block">Perfil de Facturación (Providencia 0071)</label>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                {[
+                                    { id: 'informal', title: 'No Formalizado', desc: '0% IVA. Órdenes de Pedido sin exigencia de RIF.' },
+                                    { id: 'ordinary', title: 'Ordinario', desc: 'Cobro de 16% obligatorio al comprador.' },
+                                    { id: 'special', title: 'Especial', desc: '16% obligatorio + Módulo de Retenciones.' }
+                                ].map(p => {
+                                    const isSelected = fiscal.fiscal_profile === p.id;
+                                    return (
+                                        <div 
+                                            key={p.id}
+                                            onClick={() => { setFiscal({ ...fiscal, fiscal_profile: p.id }); setIsDirty(true) }}
+                                            className={`cursor-pointer p-4 rounded-xl border transition-all active:scale-95 flex flex-col gap-1 ${isSelected ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-zinc-50 border-black/5 hover:bg-zinc-100 text-zinc-900'}`}
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h3 className={`font-black text-xs uppercase tracking-widest ${isSelected ? 'text-white' : 'text-zinc-900'}`}>{p.title}</h3>
+                                                {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                                            </div>
+                                            <p className={`text-[10px] leading-relaxed ${isSelected ? 'text-zinc-400' : 'text-zinc-500'}`}>{p.desc}</p>
+                                        </div>
+                                    )
+                                })}
                             </div>
 
-                            {/* 🚀 EL SELECTOR DE PORCENTAJE (Aparece si el IVA está activo) */}
-                            {fiscal.default_tax_active && (
-                                <div className="pt-4 border-t border-gray-200/60 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                                    <p className="text-xs font-bold text-gray-700">Porcentaje de Impuesto:</p>
-                                    <div className="flex gap-2">
-                                        {[8, 16, 31].map(pct => (
-                                            <button 
-                                                key={pct} 
-                                                onClick={() => { setFiscal({ ...fiscal, default_tax_percentage: pct }); setIsDirty(true) }} 
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${fiscal.default_tax_percentage === pct ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'}`}
-                                            >
-                                                {pct}%
-                                            </button>
-                                        ))}
-                                        <div className="relative w-20">
-                                            <NumberInput
-                                                value={fiscal.default_tax_percentage} 
-                                                onChangeValue={val => { setFiscal({ ...fiscal, default_tax_percentage: Number(val) }); setIsDirty(true) }} 
-                                                className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs font-black text-gray-900 text-center focus:border-black outline-none" 
-                                            />
-                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-black pointer-events-none">%</span>
-                                        </div>
+                            {/* El input del porcentaje solo se muestra si NO son informales (Garantía matemática) */}
+                            {fiscal.fiscal_profile !== 'informal' && (
+                                <div className="mt-4 p-4 bg-zinc-50 border border-black/5 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                                    <div>
+                                        <p className="text-xs font-bold text-zinc-900">Impuesto al Valor Agregado (IVA)</p>
+                                        <p className="text-[10px] text-zinc-500 mt-0.5">Tasa general obligatoria según el BCV.</p>
+                                    </div>
+                                    <div className="relative w-24">
+                                      <NumberInput
+    value={fiscal.default_tax_percentage} 
+    onChangeValue={val => { 
+        let num = Number(val);
+        // 🚀 BLINDAJE LEGAL SENIAT: No permitimos menos de 16% ni más de 16.5%
+        if (num < 16) num = 16; 
+        if (num > 16.5) num = 16.5;
+        
+        setFiscal({ ...fiscal, default_tax_percentage: num }); 
+        setIsDirty(true);
+    }} 
+    className="w-full bg-white border border-black/5 rounded-lg py-2 pl-3 pr-6 text-xs font-black text-zinc-900 text-center focus:border-zinc-300 outline-none transition-colors" 
+/>
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 font-black pointer-events-none">%</span>
                                     </div>
                                 </div>
                             )}
@@ -326,7 +349,7 @@ export default function SettingsPage() {
                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">% Descuento al Comprador</label>
                                         <div className="relative">
                                             <NumberInput
-                                               
+
                                                 value={affiliate.buyer_discount_pct}
                                                 onChangeValue={(val) => handleAffiliateChange('buyer_discount_pct', val)}
                                                 className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-3 pr-8 py-2.5 font-bold outline-none transition-all"
@@ -361,7 +384,7 @@ export default function SettingsPage() {
                                     <div>
                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Piezas Mínimas</label>
                                         <NumberInput
-                                            
+
                                             value={wholesale.min_items}
                                             onChangeValue={(val) => handleWholesaleChange('min_items', val)}
                                             className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] px-3 py-2.5 font-bold outline-none transition-all"
@@ -370,7 +393,7 @@ export default function SettingsPage() {
                                     <div>
                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">% Descuento</label>
                                         <NumberInput
-                                           
+
                                             value={wholesale.discount_percentage}
                                             onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
                                             className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] px-3 py-2.5 font-bold outline-none transition-all"

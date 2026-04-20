@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { getSupabase } from '@/lib/supabase-client'
-import { Save, Smartphone, Banknote, Bitcoin, Loader2, DollarSign, CreditCard, AlertTriangle } from 'lucide-react'
+import { Save, Smartphone, Banknote, Bitcoin, Loader2, DollarSign, CreditCard, AlertTriangle, Landmark, Wallet } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import { motion } from 'framer-motion'
@@ -19,13 +19,15 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false) 
   
-  const [methods, setMethods] = useState({
-    allow_split_payments: initialData?.allow_split_payments || false, // 🚀 NUEVO: Feature Flag
+const [methods, setMethods] = useState({
+    allow_split_payments: initialData?.allow_split_payments || false,
+    transferencia: { active: false, details: '', ...initialData?.transferencia }, // 🚀 NUEVO
     pago_movil: { active: false, details: '', ...initialData?.pago_movil },
     zelle: { active: false, details: '', ...initialData?.zelle },
     binance: { active: false, details: '', ...initialData?.binance },
-    cash: { active: false, details: '', ...initialData?.cash },
-    zinli: { active: false, details: '', ...initialData?.zinli }
+    zinli: { active: false, details: '', ...initialData?.zinli }, // 🚀 AHORA SÍ VISIBLE
+    wally: { active: false, details: '', ...initialData?.wally }, // 🚀 NUEVO
+    cash: { active: false, details: '', ...initialData?.cash }
   })
 
   const handleChange = (method: string, field: string, value: any) => {
@@ -154,6 +156,51 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                  onChange={e => handleChange('binance', 'details', e.target.value)} 
                  className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-yellow-500 focus:shadow-subtle outline-none  transition-all"
                />
+             </div>
+          )}
+        </div>
+
+        {/* TRANSFERENCIA BANCARIA (BS) */}
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.transferencia.active ? 'border-transparent shadow-[0px_3px_2px_0px_#33415514]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+          <div className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => handleChange('transferencia', 'active', !methods.transferencia.active)}>
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.transferencia.active ? 'text-slate-700' : 'text-gray-400'}`}>
+              <Landmark size={18} className={methods.transferencia.active ? "text-slate-700" : "text-gray-400"}/> Transferencia
+            </div>
+            <AnimatedSwitch active={methods.transferencia.active} activeColor="bg-slate-700" />
+          </div>
+          {methods.transferencia.active && (
+             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+               <input placeholder="Ej: Banesco, Cuenta Corriente 0134..." value={methods.transferencia.details} onChange={e => handleChange('transferencia', 'details', e.target.value)} className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-slate-500 focus:shadow-subtle outline-none transition-all" />
+             </div>
+          )}
+        </div>
+
+        {/* ZINLI (USD) */}
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.zinli.active ? 'border-transparent shadow-[0px_3px_2px_0px_#e11d4814]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+          <div className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => handleChange('zinli', 'active', !methods.zinli.active)}>
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.zinli.active ? 'text-rose-600' : 'text-gray-400'}`}>
+              <Wallet size={18} className={methods.zinli.active ? "text-rose-600" : "text-gray-400"}/> Zinli
+            </div>
+            <AnimatedSwitch active={methods.zinli.active} activeColor="bg-rose-600" />
+          </div>
+          {methods.zinli.active && (
+             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+               <input placeholder="Correo Zinli" value={methods.zinli.details} onChange={e => handleChange('zinli', 'details', e.target.value)} className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-rose-500 focus:shadow-subtle outline-none transition-all" />
+             </div>
+          )}
+        </div>
+
+        {/* WALLYTECH (USD) */}
+        <div className={`p-4 rounded-[var(--radius-card)] border transition-all duration-300 ${methods.wally.active ? 'border-transparent shadow-[0px_3px_2px_0px_#0284c714]' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+          <div className="flex justify-between items-center mb-3 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => handleChange('wally', 'active', !methods.wally.active)}>
+            <div className={`flex items-center gap-2 font-bold transition-colors ${methods.wally.active ? 'text-sky-600' : 'text-gray-400'}`}>
+              <Wallet size={18} className={methods.wally.active ? "text-sky-600" : "text-gray-400"}/> WallyTech
+            </div>
+            <AnimatedSwitch active={methods.wally.active} activeColor="bg-sky-600" />
+          </div>
+          {methods.wally.active && (
+             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+               <input placeholder="Usuario Wally (@usuario)" value={methods.wally.details} onChange={e => handleChange('wally', 'details', e.target.value)} className="w-full text-sm p-3 rounded-[var(--radius-btn)] border bg-[#f6f6f6] border-transparent focus:bg-white focus:border-sky-500 focus:shadow-subtle outline-none transition-all" />
              </div>
           )}
         </div>

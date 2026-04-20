@@ -1,0 +1,2347 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: app/[slug]/quote/[id]/page.tsx, app/admin/pos/page.tsx, components/CheckoutProcess.tsx
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/[slug]/quote/[id]/page.tsx
+app/admin/pos/page.tsx
+components/CheckoutProcess.tsx
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/[slug]/quote/[id]/page.tsx">
+'use client'
+
+import { useEffect, useState, useMemo } from 'react'
+import { useParams } from 'next/navigation'
+import { getSupabase } from '@/lib/supabase-client'
+import { compressImage } from '@/utils/imageOptimizer'
+import { Loader2, FileText, CheckCircle2, Upload, Check, Copy, ArrowRight, ShieldCheck, MapPin, PackageX, Download, CreditCard, Store, Clock } from 'lucide-react'
+import Swal from 'sweetalert2'
+import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
+import { Icon } from '@iconify/react'
+
+// --- LOGOS DE MÉTODOS DE PAGO (Heredado del Checkout) ---
+const BrandLogos = {
+    Zelle: ({ className, size }: any) => <Icon icon="simple-icons:zelle" className={className} width={size} height={size} />,
+    Binance: ({ className, size }: any) => <Icon icon="simple-icons:binance" className={className} width={size} height={size} />,
+    PagoMovil: ({ className, size }: any) => <Icon icon="fluent:phone-checkmark-24-regular" className={className} width={size} height={size} />,
+    Efectivo: ({ className, size }: any) => <Icon icon="bi:cash" className={className} width={size} height={size} />,
+    Zinli: ({ className, size }: any) => <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />
+}
+
+export default function QuotePublicPage() {
+    const params = useParams()
+    const slug = params.slug as string
+    const orderId = params.id as string
+    const supabase = getSupabase()
+
+    const [loading, setLoading] = useState(true)
+    const [submitting, setSubmitting] = useState(false)
+    
+    const [store, setStore] = useState<any>(null)
+    const [order, setOrder] = useState<any>(null)
+    const [items, setItems] = useState<any[]>([])
+    // 🚀 ESTADO UNIFICADO DE TASAS
+    const [rates, setRates] = useState({ usd_rate: 0, eur_rate: 0 })
+    
+    const [stockIssues, setStockIssues] = useState<string[]>([])
+    const isQuoteActive = order?.status === 'quote'
+    // 🚀 NUEVA REGLA DE NEGOCIO: El pago solo es real si el admin lo marcó como pagado, enviado o completado
+    const isPaymentVerified = ['paid', 'shipped', 'completed'].includes(order?.status)
+
+    const [selectedMethod, setSelectedMethod] = useState<string>('')
+    const [reference, setReference] = useState('')
+    const [receiptFile, setReceiptFile] = useState<File | null>(null)
+    
+    // Estados de copiado independiente
+    const [copiedData, setCopiedData] = useState(false)
+    const [copiedUsd, setCopiedUsd] = useState(false)
+    const [copiedBs, setCopiedBs] = useState(false)
+
+    // 🚀 NUEVO: Conversor de Logo a Base64 para impresión nativa sin fallos de CORS
+    const [logoBase64, setLogoBase64] = useState<string | null>(null)
+    useEffect(() => {
+        if (store?.logo_url) {
+            fetch(getOptimizedUrl(store.logo_url))
+                .then(res => res.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setLogoBase64(reader.result as string);
+                    reader.readAsDataURL(blob);
+                })
+                .catch(e => console.error("Error cargando logo en Base64", e));
+        }
+    }, [store?.logo_url])
+    
+    useEffect(() => {
+        const fetchQuoteData = async () => {
+            try {
+                const { data: storeData } = await supabase.from('stores').select('*').eq('slug', slug).single()
+                if (!storeData) throw new Error('Tienda no encontrada')
+                setStore(storeData)
+
+                const { data: orderData } = await supabase.from('orders').select('*').eq('id', orderId).eq('store_id', storeData.id).single()
+                if (!orderData) throw new Error('Presupuesto no encontrado')
+                setOrder(orderData)
+           
+                // 🚀 INYECCIÓN: MEMORIA PERSISTENTE (Guardamos el ID localmente)
+                if (orderData.status === 'quote') {
+                    localStorage.setItem('preziso_pending_quote', JSON.stringify({ 
+                        id: orderData.id, 
+                        total: orderData.total_usd,
+                        slug: storeData.slug
+                    }))
+                } else {
+                    localStorage.removeItem('preziso_pending_quote')
+                }
+
+               // 🚀 FETCH COMPLETO DE TASAS
+                const { data: rateData } = await supabase.from('app_config').select('usd_rate, eur_rate').single()
+                if (rateData) setRates({ usd_rate: rateData.usd_rate, eur_rate: rateData.eur_rate })
+
+                const { data: itemsData } = await supabase
+                    .from('order_items')
+                    .select('*, product:products(stock), variant:product_variants(stock)')
+                    .eq('order_id', orderId)
+                
+                if (itemsData) {
+                    setItems(itemsData)
+                    if (orderData.status === 'quote') {
+                        const issues: string[] = []
+                        itemsData.forEach((item: any) => {
+                            const currentStock = item.variant_id ? item.variant?.stock : item.product?.stock;
+                            if (currentStock < item.quantity) issues.push(item.product_name)
+                        })
+                        setStockIssues(issues)
+                    }
+                }
+            } catch (error) {
+                console.error(error)
+                Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'El enlace de este presupuesto no es válido o ha expirado.', confirmButtonColor: '#000', showConfirmButton: false })
+            } finally {
+                setLoading(false)
+            }
+        }
+        if (slug && orderId) fetchQuoteData()
+    }, [slug, orderId, supabase])
+
+    // 🚀 MOTOR DE SINCRONIZACIÓN TOTAL (Realtime Blindado)
+    useEffect(() => {
+        if (!store?.id) return;
+
+        const storeChannel = supabase
+            .channel(`store-changes-${store.id}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stores', filter: `id=eq.${store.id}` }, (payload:any) => {
+                    setStore((prevStore: any) => ({ ...prevStore, ...payload.new }));
+            }).subscribe();
+
+        const rateChannel = supabase
+            .channel('rates-changes')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_config' }, (payload:any) => {
+                    setRates((prevRates: any) => ({ ...prevRates, ...payload.new }));
+            }).subscribe();
+
+        return () => {
+            supabase.removeChannel(storeChannel);
+            supabase.removeChannel(rateChannel);
+        };
+    }, [store?.id, supabase]);
+
+    const activeCurrency = useMemo(() => store?.currency_type || order?.currency_type || 'usd', [store, order]);
+    const activeRate = useMemo(() => activeCurrency === 'eur' ? rates.eur_rate : rates.usd_rate, [activeCurrency, rates]);
+    const totalBs = useMemo(() => Number(order?.total_usd || 0) * activeRate, [order, activeRate]);
+
+    const activePaymentMethods = useMemo(() => {
+        if (!store?.payment_config) return []
+        const pConfig = store.payment_config
+        const pm = []
+        if (pConfig.pago_movil?.active) pm.push('Pago Móvil')
+        if (pConfig.zelle?.active) pm.push('Zelle')
+        if (pConfig.binance?.active) pm.push('Binance')
+        if (pConfig.zinli?.active) pm.push('Zinli')
+        return pm
+    }, [store?.payment_config])
+
+    const handleCopy = (text: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+        navigator.clipboard.writeText(text)
+        setter(true)
+        setTimeout(() => setter(false), 2000)
+    }
+
+    const handleProcessPayment = async () => {
+        if (!selectedMethod) return Swal.fire('Faltan Datos', 'Selecciona un método de pago.', 'warning')
+        if (selectedMethod !== 'Zelle' && !receiptFile) return Swal.fire('Faltan Datos', 'Por favor adjunta tu comprobante de pago.', 'warning')
+        
+        setSubmitting(true)
+        try {
+            let receiptPublicUrl = null;
+            if (receiptFile) {
+                const compressed = await compressImage(receiptFile, 800, 0.7)
+                const fileExt = receiptFile.name.split('.').pop() || 'jpg'
+                const fileName = `quote-${order.id}-${Date.now()}.${fileExt}`
+                
+                const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, compressed)
+                if (uploadError) throw new Error('Error al subir el comprobante.')
+                
+                const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName)
+                receiptPublicUrl = publicUrl
+            }
+
+           const { error: updateError } = await supabase.from('orders').update({
+                status: 'pending',
+                payment_method: selectedMethod,
+                total_bs: totalBs,
+                exchange_rate: activeRate,
+                receipt_url: receiptPublicUrl,
+                delivery_info: order.delivery_info + (reference ? ` | Ref: ${reference}` : '')
+            }).eq('id', order.id)
+
+            if (updateError) {
+                if (updateError.message.includes('check_stock') || updateError.message.includes('violates check constraint')) {
+                    throw new Error('Alguien acaba de comprar el último artículo disponible en la tienda. El inventario es insuficiente.')
+                }
+                throw updateError
+            }
+
+            setOrder({ ...order, status: 'pending' })
+            Swal.fire({
+                icon: 'success', title: 'Pago Reportado', 
+                text: 'Tu pago ha sido enviado a la tienda para su verificación. ¡Gracias por tu compra!',
+                confirmButtonColor: '#000', customClass: { popup: 'rounded-xl shadow-2xl' }
+            })
+
+        } catch (error: any) {
+            Swal.fire({ icon: 'error', title: 'No se pudo procesar', text: error.message || 'Intenta nuevamente.', confirmButtonColor: '#000', customClass: { popup: 'rounded-xl shadow-2xl' } })
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]"><Loader2 className="animate-spin text-zinc-300" size={40} /></div>
+    if (!order) return null
+
+    const paymentKeysMap: Record<string, string> = { 'Pago Móvil': 'pago_movil', 'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli' }
+
+    // 🚀 ESTÉTICA Y LOGOS
+    const getPaymentConfig = (pm: string) => {
+        const baseSelected = 'bg-zinc-900 text-white border-zinc-900 shadow-md'
+        const baseIdle = 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'
+
+        switch (pm) {
+            case 'Pago Móvil': return { icon: BrandLogos.PagoMovil, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Zelle': return { icon: BrandLogos.Zelle, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Binance': return { icon: BrandLogos.Binance, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Zinli': return { icon: BrandLogos.Zinli, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Efectivo': return { icon: BrandLogos.Efectivo, btnSelected: baseSelected, btnIdle: baseIdle }
+            default: return { icon: CreditCard, btnSelected: baseSelected, btnIdle: baseIdle }
+        }
+    }
+
+    return (
+        <>
+        {/* 🚀 CSS PARA IMPRESIÓN BLINDADO (Awwwards Grade) */}
+        <style dangerouslySetInnerHTML={{
+            __html: `
+            @media print { 
+                @page { margin: 10mm; size: A4 portrait; } 
+                body, html, main { background-color: white !important; margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; } 
+                .print-hidden { display: none !important; } 
+                .avoid-break { page-break-inside: avoid; break-inside: avoid; } 
+                .shadow-subtle, .shadow-sm, .shadow-lg { box-shadow: none !important; } 
+                /* Forzamos a que el contenedor principal ocupe el 100% sin márgenes */
+                #invoice-container { max-width: 100% !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            }
+            `
+        }} />
+
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-zinc-900 py-6 md:py-12 px-4 flex justify-center selection:bg-zinc-200">
+            <div className="w-full max-w-[850px] flex flex-col gap-6">
+                
+                {/* 🚀 ACTION BAR (Solo en pantalla) */}
+                <div className="flex justify-between items-center print-hidden mb-6">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-colors ${
+                        order.status === 'quote' ? 'bg-zinc-100 text-zinc-600 border-zinc-200' : 
+                        !isPaymentVerified ? 'bg-amber-50 text-amber-700 border-amber-200' : 
+                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                    }`}>
+                        {order.status === 'quote' ? <><FileText size={12} /> Pendiente</> : 
+                         !isPaymentVerified ? <><Clock size={12} /> En Verificación</> : 
+                         <><CheckCircle2 size={12} /> Procesado</>}
+                    </span>
+                    <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-900 hover:text-white rounded-lg text-xs font-bold uppercase tracking-widest transition-all shadow-sm">
+                        <Download size={14} /> Imprimir / PDF
+                    </button>
+                </div>
+
+              {/* 🚀 DOCUMENTO A4 (Alta Densidad - Una Sola Hoja) */}
+                <div id="invoice-container" className="bg-white rounded-xl md:rounded-2xl p-6 md:p-10 shadow-sm border border-zinc-200">
+                    
+                    {/* ENCABEZADO ESTRUCTURAL COMPACTO */}
+                    <div className="flex flex-col md:flex-row justify-between items-start border-b border-zinc-200 pb-4 mb-4 gap-4">
+                        <div className="flex flex-col items-start max-w-[50%]">
+                            {store.logo_url ? (
+                                <div className="h-10 mb-2">
+                                    <img src={logoBase64 || getOptimizedUrl(store.logo_url)} alt={store.name} className="h-full w-auto object-contain" />
+                                </div>
+                            ) : (
+                                <div className="h-10 w-10 rounded-lg bg-zinc-100 flex items-center justify-center mb-2 text-zinc-400">
+                                    <Store size={20} />
+                                </div>
+                            )}
+                            <h1 className="text-lg font-black tracking-tight leading-none text-zinc-900 mb-0.5">{store.name}</h1>
+                            {store?.fiscal_profile !== 'informal' && (
+                                <div className="text-[9px] text-zinc-500 leading-tight">
+                                    {store.legal_name && <span className="font-bold text-zinc-700 mr-1">{store.legal_name}</span>}
+                                    {store.legal_id && <span className="font-mono">| RIF: {store.legal_id}</span>}
+                                    {store.fiscal_address && <p className="mt-0.5">{store.fiscal_address}</p>}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col md:items-end text-left md:text-right w-full md:w-auto">
+                            <p className="text-xl font-black tracking-tighter text-zinc-900 uppercase leading-none">
+                                {!isPaymentVerified ? 'Proforma' : 'Orden de Pedido'}
+                            </p>
+                            <p className="text-xs font-mono font-bold text-zinc-500 mt-1">Nº {order.order_number}</p>
+                            <div className="mt-2 text-[9px] text-zinc-500 flex flex-col md:items-end gap-0.5">
+                                <p className="uppercase tracking-widest font-bold">Emisión: <span className="font-mono font-normal ml-1">{new Date(order.created_at).toLocaleDateString('es-VE')}</span></p>
+                                <p className="uppercase tracking-widest font-bold">Moneda: <span className="font-mono font-normal ml-1">{activeCurrency}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* SECCIÓN CLIENTE */}
+                    <div className="flex flex-col md:flex-row justify-between gap-8 mb-10">
+                        <div className="flex-1">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Facturado a:</p>
+                            <p className="text-sm font-bold text-zinc-900 mb-1">{order.customer_name}</p>
+                            <div className="text-xs text-zinc-500 font-mono space-y-0.5">
+                                {order.customer_dni && <p>CI/RIF: {order.customer_dni}</p>}
+                                {order.customer_phone && <p>Telf: {order.customer_phone}</p>}
+                                {order.customer_address && <p className="font-sans max-w-[250px] leading-tight mt-1">{order.customer_address}</p>}
+                            </div>
+                        </div>
+                        {order.shipping_method !== 'pickup' && (
+                            <div className="flex-1 md:text-right">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Enviar a:</p>
+                                <p className="text-xs font-medium text-zinc-700 leading-snug md:ml-auto max-w-[250px]">{order.delivery_info}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ALERTA DE INVENTARIO (Solo pantalla) */}
+                    {stockIssues.length > 0 && isQuoteActive && (
+                        <div className="bg-red-50/50 border border-red-100 text-red-700 p-4 rounded-lg mb-8 flex gap-3 items-start print-hidden">
+                            <PackageX size={16} className="shrink-0 mt-0.5" strokeWidth={2.5} />
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-widest mb-1">Stock Insuficiente</p>
+                                <p className="text-xs font-medium">El artículo <b>{stockIssues.join(', ')}</b> se agotó. Contacta a la tienda.</p>
+                            </div>
+                        </div>
+                    )}
+
+                   {/* 🚀 TABLA DE ARTÍCULOS ULTRA-COMPACTA */}
+                    <div className="mb-6 w-full">
+                        <div className="grid grid-cols-12 gap-2 border-b border-zinc-300 pb-1.5 mb-1.5 text-[8px] font-bold uppercase tracking-widest text-zinc-500">
+                            <div className="col-span-8">Descripción</div>
+                            <div className="col-span-1 text-center">Cant</div>
+                            <div className="col-span-3 text-right">Total USD / Bs</div>
+                        </div>
+                        
+                        <div className="flex flex-col">
+                            {items.length === 0 ? (
+                                <p className="text-[10px] text-zinc-400 py-2 italic">Cargando artículos...</p>
+                            ) : (
+                                items.map(item => (
+                                    <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-1.5 border-b border-zinc-100 items-center">
+                                        <div className="col-span-8 pr-2">
+                                            <p className="text-[11px] font-bold text-zinc-900 leading-none truncate">{item.product_name}</p>
+                                            {item.variant_info && <p className="text-[9px] text-zinc-400 mt-0.5 truncate">{item.variant_info}</p>}
+                                        </div>
+                                        <div className="col-span-1 text-center">
+                                            <span className="text-[11px] font-mono font-medium text-zinc-700">{item.quantity}</span>
+                                        </div>
+                                        <div className="col-span-3 text-right flex flex-col justify-center">
+                                            <p className="text-[11px] font-black text-zinc-900 tabular-nums leading-none">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
+                                            <p className="text-[8px] font-mono text-zinc-400 mt-0.5">Bs {((item.price_at_purchase * item.quantity) * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                   {/* 🚀 RESUMEN FINANCIERO INTEGRAL (FASE 4 - Polish) */}
+                    <div className="avoid-break flex flex-col md:flex-row justify-between items-end md:items-start pt-2 gap-6">
+                        {/* Notas Legales (Lado izquierdo, muy discreto) */}
+                        <div className="w-full md:w-[45%]">
+                            {!isPaymentVerified && (
+                                <div className="p-3 rounded-lg bg-zinc-50 border border-black/5">
+                                    <p className="text-[9px] text-zinc-400 leading-relaxed italic">
+                                        Esta proforma garantiza el precio en divisas. Los montos en moneda nacional son referenciales y se ajustarán a la tasa BCV oficial al momento de la conciliación del pago.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Columna de Cálculos (Lado derecho) */}
+                       <div className="w-full md:w-[280px]">
+                            <div className="space-y-1 border-b border-zinc-200 pb-2 mb-2">
+                                <div className="flex justify-between text-[10px] text-zinc-500 font-medium">
+                                    <span>Subtotal Base</span>
+                                    <span className="font-mono">${Number(order.subtotal_usd || order.total_usd).toFixed(2)}</span>
+                                </div>
+
+                                {/* 🎁 BLOQUE DE DESCUENTOS (Se activa al leer la BD) */}
+                                {(Number(order.promo_discount_usd) > 0 || Number(order.wholesale_discount_usd) > 0 || Number(order.affiliate_discount_usd) > 0 || Number(order.fx_savings_usd) > 0) && (
+                                    <div className="py-1 my-1 border-y border-zinc-100 space-y-0.5">
+                                        {Number(order.promo_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-[10px] text-red-500 font-bold">
+                                                <span>Desc. Campaña</span>
+                                                <span className="font-mono">-${Number(order.promo_discount_usd).toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.wholesale_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-[10px] text-red-500 font-bold">
+                                                <span>Desc. Mayorista</span>
+                                                <span className="font-mono">-${Number(order.wholesale_discount_usd).toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.affiliate_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-[10px] text-red-500 font-bold">
+                                                <span>Código Promocional</span>
+                                                <span className="font-mono">-${Number(order.affiliate_discount_usd).toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.fx_savings_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-[10px] text-emerald-600 font-bold">
+                                                <span>Ahorro Pago Divisa</span>
+                                                <span className="font-mono">-${Number(order.fx_savings_usd).toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {order.is_tax_applied && (
+                                    <div className="flex justify-between text-[10px] text-zinc-900 font-bold pt-1">
+                                        <span>I.V.A. ({order.tax_percentage}%)</span>
+                                        <span className="font-mono">+${Number(order.tax_amount_usd || 0).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {Number(order.delivery_cost) > 0 && (
+                                    <div className="flex justify-between text-[10px] text-zinc-500">
+                                        <span>Delivery</span>
+                                        <span className="font-mono">+${Number(order.delivery_cost).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-900 pb-1">Total USD</span>
+                                <span className="text-2xl font-black tabular-nums tracking-tighter text-zinc-900 leading-none">
+                                    ${Number(order.total_usd).toFixed(2)}
+                                </span>
+                            </div>
+
+                            {/* DOBLE EXPRESIÓN BCV */}
+                            <div className="p-3 bg-zinc-900 text-white rounded-xl flex justify-between items-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[7px] font-bold uppercase tracking-widest text-zinc-400 mb-0.5">Equivalente BCV</span>
+                                    <span className="text-[8px] text-zinc-500 font-mono">Tasa: {activeRate.toFixed(2)}</span>
+                                </div>
+                                <span className="text-sm font-black tabular-nums tracking-tight">
+                                    Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div> {/* <- Cierra la columna derecha de cálculos */}
+                    </div> {/* <- Cierra el contenedor de Resumen Financiero integral */}
+
+                </div> {/* <- Cierra el #invoice-container (El fondo blanco) */}
+                    
+
+                {/* 🚀 MODAL DE PAGO INLINE (Awwwards Grade - No Imprimible) */}
+                {isQuoteActive && stockIssues.length === 0 && (
+                    <div className="bg-white rounded-xl md:rounded-2xl p-8 shadow-sm border border-zinc-200 print-hidden">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-900 mb-6 flex items-center gap-2">
+                            <CreditCard size={16} /> Procesar Pago
+                        </h3>
+                        
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {activePaymentMethods.map(pm => {
+                                const config = getPaymentConfig(pm);
+                                return (
+                                    <button 
+                                        key={pm} 
+                                        onClick={() => setSelectedMethod(pm)}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${selectedMethod === pm ? config.btnSelected : config.btnIdle}`}
+                                    >
+                                        <config.icon size={14} className={selectedMethod === pm ? 'text-white' : 'text-zinc-400'} /> 
+                                        {pm}
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        {selectedMethod && (
+                            <div className="animate-in fade-in slide-in-from-top-2 space-y-6">
+                                
+                                {store.payment_config[paymentKeysMap[selectedMethod]]?.details && (
+                                    <div className="bg-zinc-50 p-5 rounded-lg border border-zinc-100">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Instrucciones de Pago</span>
+                                            <button 
+                                                onClick={() => handleCopy(store.payment_config[paymentKeysMap[selectedMethod]]?.details || '', setCopiedData)} 
+                                                className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-900 transition-colors flex items-center gap-1"
+                                            >
+                                                {copiedData ? <Check size={10} className="text-emerald-500"/> : <Copy size={10}/>} 
+                                                {copiedData ? 'Copiado' : 'Copiar Datos'}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs font-mono font-medium text-zinc-700 leading-relaxed whitespace-pre-wrap">
+                                            {store.payment_config[paymentKeysMap[selectedMethod]]?.details}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">Nº Referencia (Opcional)</label>
+                                        <input 
+                                            type="text" 
+                                            value={reference} 
+                                            onChange={(e) => setReference(e.target.value)}
+                                            className="w-full bg-white border border-zinc-200 focus:border-zinc-900 rounded-lg px-4 py-3 text-xs font-bold outline-none transition-all"
+                                            placeholder="Ej: 123456"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">Comprobante / Capture *</label>
+                                        <div className="relative w-full">
+                                            <input type="file" accept="image/*" onChange={(e) => e.target.files && setReceiptFile(e.target.files[0])} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            <div className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all text-xs font-bold ${receiptFile ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'}`}>
+                                                {receiptFile ? <><CheckCircle2 size={14} /> {receiptFile.name.substring(0, 15)}...</> : <><Upload size={14} /> Subir Imagen</>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={handleProcessPayment}
+                                    disabled={submitting}
+                                    className="w-full bg-zinc-900 text-white py-4 rounded-lg font-bold uppercase tracking-widest text-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <><ArrowRight size={16} /> Confirmar Pago</>}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                
+                <div className="mt-8 text-center opacity-30 hover:opacity-100 transition-opacity print-hidden">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-900 flex items-center justify-center gap-1.5">
+                        Generado por <span className="font-black tracking-tight ml-0.5">PREZISO SaaS</span>
+                    </p>
+                </div>
+            </div> {/* <- Cierra el contenedor máximo (max-w-4xl) */}
+        </div> {/* <- Cierra el fondo gris de toda la página */}
+        </> 
+    )
+}
+</file>
+
+<file path="app/admin/pos/page.tsx">
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { getSupabase } from '@/lib/supabase-client'
+import { Search, Plus, Minus, Trash2, Calculator, FileText, User, Phone, ShoppingBag, X, Loader2, DollarSign, Truck, Store, MapPin, Hash, Package, Banknote, ChevronDown, PenSquare, Receipt } from 'lucide-react'
+import Swal from 'sweetalert2'
+import Image from 'next/image'
+import { NumberInput } from '@/components/NumberInput'
+
+// --- TIPOS ESTRICTOS ---
+type Variant = { id: string, size: string, color_name: string, stock: number, override_usd_price: number | null }
+type Product = { id: number, name: string, image_url: string, usd_cash_price: number, stock: number, product_variants: Variant[] }
+// 🚀 CIRUGÍA: productId ahora acepta 'null' para permitir ítems personalizados
+type CartItem = { cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, price: number, qty: number, maxStock: number, image: string }
+export default function POSPage() {
+    const supabase = getSupabase()
+    
+    const [loading, setLoading] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [store, setStore] = useState<any>(null)
+    const [rates, setRates] = useState({ usd_rate: 0, eur_rate: 0 })
+    const [products, setProducts] = useState<Product[]>([])
+    
+    // UI & RESPONSIVE
+    const [searchQuery, setSearchQuery] = useState('')
+    const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
+    const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null)
+
+    // 🚀 NUEVO: ESTADOS PARA ÍTEMS PERSONALIZADOS
+    const [isCustomItemModalOpen, setIsCustomItemModalOpen] = useState(false)
+    const [customItem, setCustomItem] = useState({ name: '', price: '' })
+
+    // CARRITO Y LOGÍSTICA
+    const [cart, setCart] = useState<CartItem[]>([])
+ // 🚀 NUEVO: DATOS FISCALES DEL CLIENTE
+    const [customerName, setCustomerName] = useState('')
+    const [customerPhone, setCustomerPhone] = useState('')
+    const [customerDNI, setCustomerDNI] = useState('')
+    const [customerAddress, setCustomerAddress] = useState('')
+    
+    const [shippingMethod, setShippingMethod] = useState<'pickup' | 'local_delivery' | 'courier'>('pickup')
+    const [shippingAddress, setShippingAddress] = useState('')
+    
+    // 🚀 NUEVO: MODO DE OPERACIÓN E IMPUESTOS
+    const [operationMode, setOperationMode] = useState<'paid' | 'quote'>('paid')
+    // 🚀 NUEVO: MOTOR DE DOCUMENTOS E IVA
+    const [documentType, setDocumentType] = useState<'invoice' | 'note'>('note')
+    const [applyTax, setApplyTax] = useState(false)
+    const [taxPercentage, setTaxPercentage] = useState(16) // 🚀 NUEVO: Memoria del porcentaje
+    
+  // PAGOS
+    const [activePaymentMethods, setActivePaymentMethods] = useState<string[]>([])
+    const [quoteAllowedMethods, setQuoteAllowedMethods] = useState<string[]>([]) // 🚀 NUEVO: Memoria de métodos permitidos por presupuesto
+    const [selectedPayment, setSelectedPayment] = useState<string>('Efectivo')
+    const [customPayment, setCustomPayment] = useState('')
+    const [paymentReference, setPaymentReference] = useState('')
+
+    useEffect(() => {
+        const initPOS = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+           const [storeRes, productsRes, ratesRes] = await Promise.all([
+                supabase.from('stores').select('id, slug, name, payment_config, shipping_config, currency_type, default_tax_active, default_tax_percentage').eq('user_id', user.id).single(),
+                supabase.from('products').select('id, name, image_url, usd_cash_price, stock, product_variants(id, size, color_name, stock, override_usd_price)').eq('user_id', user.id).eq('status', 'active'),
+                supabase.from('app_config').select('usd_rate, eur_rate').single()
+            ])
+
+         if (storeRes.data) {
+                setStore(storeRes.data)
+                
+            
+                
+                // 🚀 CARGAMOS CONFIGURACIÓN DE IMPUESTOS POR DEFECTO
+                const defaultTax = storeRes.data.default_tax_active || false
+                setApplyTax(defaultTax)
+                setDocumentType(defaultTax ? 'invoice' : 'note')
+                setTaxPercentage(storeRes.data.default_tax_percentage ?? 16) // 🚀 Carga el 16% o el que haya configurado
+
+                // ... (continúa el código de payment_config)
+
+               const pConfig = storeRes.data.payment_config || {}
+                const pm = []
+                if (pConfig.cash?.active) pm.push('Efectivo')
+                if (pConfig.pago_movil?.active) pm.push('Pago Móvil')
+                if (pConfig.transferencia?.active) pm.push('Transferencia') // 🚀 NUEVO
+                if (pConfig.zelle?.active) pm.push('Zelle')
+                if (pConfig.binance?.active) pm.push('Binance')
+                if (pConfig.zinli?.active) pm.push('Zinli')
+                if (pConfig.wally?.active) pm.push('WallyTech') // 🚀 NUEVO
+                
+                setActivePaymentMethods(pm)
+                setQuoteAllowedMethods(pm) // 🚀 Por defecto, un presupuesto permite todos los métodos globales
+                if (pm.length > 0) setSelectedPayment(pm[0])
+            }
+            if (productsRes.data) setProducts(productsRes.data as Product[])
+            if (ratesRes.data) setRates(ratesRes.data)
+            
+            setLoading(false)
+        }
+        initPOS()
+    }, [supabase])
+
+    const filteredProducts = useMemo(() => {
+        return products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    }, [products, searchQuery])
+
+// 🚀 MOTOR MATEMÁTICO CON IVA DINÁMICO
+    const subtotalUSD = cart.reduce((acc, item) => acc + (item.price * item.qty), 0)
+    const taxAmountUSD = applyTax ? subtotalUSD * (taxPercentage / 100) : 0 // 🚀 Ahora usa la variable
+    const totalUSD = subtotalUSD + taxAmountUSD
+    
+    const isEur = store?.currency_type === 'eur'
+    const activeRate = isEur ? rates.eur_rate : rates.usd_rate
+    const totalBS = totalUSD * activeRate
+
+    // 🚀 FUNCIÓN: AÑADIR ÍTEM AL VUELO
+    const handleAddCustomItem = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!customItem.name.trim() || Number(customItem.price) <= 0) return
+        
+        const cartId = `custom-${Date.now()}`
+        setCart(prev => [...prev, {
+            cartId,
+            productId: null, // No existe en la BD de catálogo
+            name: customItem.name.trim(),
+            variantInfo: 'Personalizado',
+            price: Number(customItem.price),
+            qty: 1,
+            maxStock: 9999, // Stock infinito
+            image: '' // Sin imagen
+        }])
+        
+        setCustomItem({ name: '', price: '' })
+        setIsCustomItemModalOpen(false)
+        Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-2xl' } }).fire({ icon: 'success', title: 'Ítem añadido' })
+    }
+
+    // --- ACCIONES DEL CARRITO ---
+    const handleAddToCart = (product: Product, variant?: Variant) => {
+        if (product.product_variants?.length > 0 && !variant) {
+            setSelectedProductForVariant(product); return;
+        }
+        const maxStock = variant ? variant.stock : product.stock
+        if (maxStock <= 0) return 
+
+        const cartId = variant ? `${product.id}-${variant.id}` : `${product.id}`
+        const price = variant?.override_usd_price || product.usd_cash_price
+        const variantInfo = variant ? `${variant.color_name || ''} ${variant.size || ''}`.trim() : undefined
+
+        setCart(prev => {
+            const existing = prev.find(item => item.cartId === cartId)
+            if (existing) {
+                if (existing.qty >= maxStock) {
+                    Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-2xl' } }).fire({ icon: 'warning', title: 'Stock máximo' })
+                    return prev
+                }
+                return prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + 1 } : item)
+            }
+            return [...prev, { cartId, productId: product.id, variantId: variant?.id, name: product.name, variantInfo, price, qty: 1, maxStock, image: product.image_url }]
+        })
+        setSelectedProductForVariant(null)
+    }
+
+    const updateQty = (cartId: string, delta: number) => {
+        setCart(prev => prev.map(item => {
+            if (item.cartId === cartId) {
+                const newQty = item.qty + delta
+                if (newQty > 0 && newQty <= item.maxStock) return { ...item, qty: newQty }
+            }
+            return item
+        }))
+    }
+    const removeLine = (cartId: string) => setCart(prev => prev.filter(item => item.cartId !== cartId))
+
+    // --- TRANSACT ENGINE ---
+    const handleCheckout = async (type: 'paid' | 'quote') => {
+
+        
+        // 🚀 VALIDACIÓN ESTRICTA DE PRESUPUESTOS
+        if (type === 'quote' && !customerName.trim()) {
+            return Swal.fire({ icon: 'warning', title: 'Nombre Requerido', text: 'Ingresa el nombre del cliente para guardar el presupuesto.', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl' } })
+        }
+        
+        // 🚀 ESCUDO LEGAL: VALIDACIÓN ESTRICTA DE FACTURAS
+        if (type === 'paid' && documentType === 'invoice') {
+            if (!customerName.trim() || !customerDNI.trim() || !customerAddress.trim()) {
+                return Swal.fire({ 
+                    icon: 'error', 
+                    title: 'Datos Fiscales Incompletos', 
+                    text: 'Para emitir una Factura Comercial válida para el SENIAT, el Nombre/Razón Social, CI/RIF y Dirección Fiscal son obligatorios.', 
+                    confirmButtonColor: '#000', 
+                    customClass: { popup: 'rounded-2xl' } 
+                })
+            }
+        }
+        if (selectedPayment === 'Otro' && !customPayment.trim() && type === 'paid') {
+            return Swal.fire({ icon: 'warning', title: 'Método Inválido', text: 'Especifica qué método de pago usó el cliente.', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl' } })
+        }
+
+        setIsSubmitting(true)
+        try {
+           // 🚀 CAPA DE INSTANCIA: Si es presupuesto, guardamos los métodos permitidos como un string ("Zelle,Pago Móvil")
+            const finalPaymentMethod = type === 'quote' ? quoteAllowedMethods.join(',') : (selectedPayment === 'Otro' ? customPayment.trim() : selectedPayment)
+            let deliveryInfoFull = shippingMethod === 'pickup' ? 'Venta en Mostrador / Retiro Personal' : `Envío a: ${shippingAddress}`
+            if (paymentReference && type === 'paid') deliveryInfoFull += ` | Ref: ${paymentReference}`
+
+           // 2. Insertar Orden (Con soporte de IVA y Datos Legales)
+            const { data: order, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                    store_id: store.id,
+                    customer_name: customerName.trim() || 'Cliente Mostrador',
+                    customer_phone: customerPhone.trim() || null,
+                    customer_dni: customerDNI.trim() || null, // 🚀 NUEVO
+                    customer_address: customerAddress.trim() || null, // 🚀 NUEVO
+                    
+                    document_type: type === 'quote' ? 'quote' : documentType, 
+                    is_tax_applied: applyTax, 
+                    subtotal_usd: subtotalUSD, 
+                    tax_amount_usd: taxAmountUSD, 
+                    tax_percentage: applyTax ? taxPercentage : 0, // 🚀 CONGELAMOS EL PORCENTAJE HISTÓRICO
+                    total_usd: totalUSD,
+                    total_bs: type === 'paid' ? totalBS : null,
+                    
+                    // 🚀 NUEVO: Prevenimos que el PDF falle inyectando ceros por defecto
+                    promo_discount_usd: 0,
+                    wholesale_discount_usd: 0,
+                    affiliate_discount_usd: 0,
+                    fx_savings_usd: 0,
+                    
+                    
+                    exchange_rate: type === 'paid' ? activeRate : null,
+                    status: type, 
+                    is_quote: type === 'quote', 
+                    source: 'pos', 
+                    payment_method: finalPaymentMethod,
+                    shipping_method: shippingMethod,
+                    delivery_info: deliveryInfoFull,
+                    currency_type: isEur ? 'eur' : 'usd'
+
+                    
+                })
+                .select('id, order_number').single()
+            if (orderError) throw orderError
+
+            const orderItems = cart.map(item => ({
+                order_id: order.id, 
+                product_id: item.productId, // 🚀 Será 'null' para ítems personalizados
+                variant_id: item.variantId || null,
+                product_name: item.name, 
+                variant_info: item.variantInfo || null, 
+                quantity: item.qty, 
+                price_at_purchase: item.price
+            }))
+            const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+            if (itemsError) throw itemsError
+
+            setCart([]); setCustomerName(''); setCustomerPhone(''); setPaymentReference(''); setCustomPayment(''); setCustomerDNI(''); setCustomerAddress('');
+             setShippingAddress(''); setIsMobileCartOpen(false);
+
+            if (type === 'quote') {
+                const quoteUrl = `${window.location.protocol}//${store.slug}.${window.location.host.replace('www.', '')}/quote/${order.id}`
+                Swal.fire({
+                    icon: 'success', title: 'Presupuesto Creado',
+                    html: `Comparte este enlace con el cliente:<br><br><a href="${quoteUrl}" target="_blank" style="color: #666; font-weight: bold; word-break: break-all;">${quoteUrl}</a>`,
+                    confirmButtonText: 'Copiar Enlace', confirmButtonColor: '#000', customClass: { popup: 'rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.1)]' }
+                }).then((result) => { if (result.isConfirmed) navigator.clipboard.writeText(quoteUrl) })
+           } else {
+                // 🚀 CIERRE DE VENTA CON ACCESO DIRECTO AL PDF
+                const documentUrl = `${window.location.protocol}//${store.slug}.${window.location.host.replace('www.', '')}/quote/${order.id}`
+                
+                Swal.fire({
+                    icon: 'success', 
+                    title: 'Venta Procesada',
+                    text: `Orden #${order.order_number} guardada con éxito.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Ver Documento (PDF)',
+                    cancelButtonText: 'Nueva Venta',
+                    confirmButtonColor: '#000',
+                    cancelButtonColor: '#f3f4f6',
+                    customClass: { 
+                        popup: 'rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.1)]', 
+                        cancelButton: 'text-black font-bold',
+                        confirmButton: 'font-bold'
+                    }
+                }).then((result) => { 
+                    if (result.isConfirmed) window.open(documentUrl, '_blank') 
+                })
+                
+                // Actualización de stock local
+                setProducts(prev => prev.map(p => {
+                    let updated = { ...p }
+                    cart.forEach(c => {
+                        if (c.productId === p.id) {
+                            if (c.variantId) updated.product_variants = updated.product_variants.map(v => v.id === c.variantId ? { ...v, stock: v.stock - c.qty } : v)
+                            else updated.stock = updated.stock - c.qty
+                        }
+                    })
+                    return updated
+                }))
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo procesar.', confirmButtonColor: '#000' })
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    if (loading) return <div className="h-screen flex items-center justify-center bg-[#FAFAFA]"><Loader2 className="animate-spin text-gray-300" size={32} /></div>
+
+    return (
+        <div className="h-screen bg-[#FAFAFA] flex overflow-hidden font-sans text-gray-900 relative">
+            
+            {/* PANEL IZQUIERDO: CATÁLOGO */}
+            <div className="flex-1 flex flex-col min-w-0 w-full h-full relative z-10">
+                
+                {/* Header Buscador */}
+                <div className="p-4 md:p-8 bg-[#FAFAFA] z-10 shrink-0">
+                    <h1 className="text-2xl font-black tracking-tight mb-6 hidden md:block">Punto de Venta</h1>
+                    <div className="flex items-center gap-3 max-w-3xl">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input 
+                                type="text" 
+                                placeholder="Buscar en el catálogo..." 
+                                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-11 pr-4 py-4 bg-white border border-transparent focus:border-gray-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-gray-50 outline-none transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]"
+                            />
+                        </div>
+                        <button 
+                            onClick={() => setIsCustomItemModalOpen(true)}
+                            className="shrink-0 bg-[#FAFAFA] border border-gray-200 text-gray-700 hover:text-black hover:bg-white hover:border-gray-300 px-5 py-4 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95"
+                        >
+                            <PenSquare size={18} /> <span className="hidden sm:inline">Ítem a Medida</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Grid de Productos */}
+                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-32 no-scrollbar">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                        {filteredProducts.map(product => {
+                            const totalStock = product.product_variants?.length > 0 ? product.product_variants.reduce((acc, v) => acc + v.stock, 0) : product.stock;
+                            const isOutOfStock = totalStock <= 0;
+
+                            return (
+                                <button key={product.id} onClick={() => handleAddToCart(product)} disabled={isOutOfStock}
+                                    className={`relative flex flex-col text-left bg-white rounded-2xl p-3 transition-all duration-300 ease-out active:scale-95 ${isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : 'shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] hover:-translate-y-1'}`}
+                                >
+                                    <div className="w-full aspect-square rounded-xl bg-[#FAFAFA] overflow-hidden mb-4 relative">
+                                        {product.image_url ? <Image src={product.image_url} alt={product.name} fill className="object-cover" sizes="200px" /> : <ShoppingBag className="absolute inset-0 m-auto text-gray-200" size={32} />}
+                                        {isOutOfStock && <div className="absolute inset-0 bg-white/60 flex items-center justify-center backdrop-blur-sm"><span className="bg-black text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">Agotado</span></div>}
+                                    </div>
+                                    <h3 className="font-bold text-gray-900 text-xs md:text-sm leading-tight line-clamp-2 w-full mb-2">{product.name}</h3>
+                                    <div className="flex items-center justify-between mt-auto w-full pt-2 border-t border-gray-50">
+                                        <p className="text-black font-black text-sm">${product.usd_cash_price.toFixed(2)}</p>
+                                        <span className="text-[10px] font-bold text-gray-400">{totalStock} disp.</span>
+                                    </div>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* 🚀 BOTÓN FLOTANTE MOBILE (Para abrir el Drawer) */}
+            <AnimatePresence>
+                {!isMobileCartOpen && cart.length > 0 && (
+                    <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="md:hidden fixed bottom-18 left-4 right-4 z-40">
+                        <button onClick={() => setIsMobileCartOpen(true)} className="w-full bg-black text-white px-6 py-4 rounded-[24px] flex items-center justify-between shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] active:scale-95 transition-all duration-300">
+                            <div className="flex items-center gap-4">
+                                <div className="relative bg-white/10 p-2 rounded-full">
+                                    <ShoppingBag size={20} className="text-white" />
+                                    <span className="absolute -top-1 -right-1 bg-white text-black text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full">{cart.reduce((a,b)=>a+b.qty,0)}</span>
+                                </div>
+                                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Ver Ticket</span>
+                            </div>
+                            <span className="text-lg font-black">${totalUSD.toFixed(2)}</span>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 🚀 PANEL DERECHO: EL TICKET (Drawer en Mobile, Fijo en Desktop) */}
+            <div className={`fixed md:relative inset-x-0 bottom-0 md:inset-auto z-50 md:z-20 w-full md:w-[400px] lg:w-[450px] bg-white flex flex-col shrink-0 h-[92vh] md:h-full rounded-t-[32px] md:rounded-none shadow-[0_-20px_60px_rgba(0,0,0,0.08)] md:shadow-[-20px_0_60px_rgba(0,0,0,0.03)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isMobileCartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}>
+                
+                {/* Agarre del Drawer Mobile */}
+                <div className="flex md:hidden justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={() => setIsMobileCartOpen(false)}>
+                    <div className="w-12 h-1.5 bg-gray-200 rounded-full"></div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 pt-2 pb-[17rem] no-scrollbar space-y-8">
+                    
+                    {/* Header Interno */}
+                    <div className="flex justify-between items-center pt-2 md:pt-8 pb-4">
+                        <h2 className="font-black text-2xl text-gray-900 tracking-tight">Caja</h2>
+                        <button className="md:hidden p-2 bg-gray-50 rounded-full text-gray-400 hover:text-black transition-colors" onClick={() => setIsMobileCartOpen(false)}><ChevronDown size={20}/></button>
+                    </div>
+
+                    {/* El Interruptor de Intención */}
+                    <div className="bg-gray-50 p-1.5 rounded-2xl flex gap-1">
+                        <button onClick={() => setOperationMode('paid')} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${operationMode === 'paid' ? 'bg-white text-black shadow-[0_8px_30px_rgba(0,0,0,0.06)]' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <Banknote size={16} strokeWidth={2.5}/> Venta
+                        </button>
+                        <button onClick={() => setOperationMode('quote')} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${operationMode === 'quote' ? 'bg-white text-black shadow-[0_8px_30px_rgba(0,0,0,0.06)]' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <FileText size={16} strokeWidth={2.5}/> Presupuesto
+                        </button>
+                    </div>
+
+                    {/* 🚀 CLIENTE Y DATOS FISCALES (UI Reactiva) */}
+                    <div className="space-y-3">
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'quote' || (operationMode === 'paid' && documentType === 'invoice') ? "Nombre / Razón Social *" : "Nombre (Opcional)"} 
+                                    value={customerName} onChange={(e) => setCustomerName(e.target.value)} 
+                                    className={`w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 focus:ring-gray-100 transition-all border ${(operationMode === 'quote' || (operationMode === 'paid' && documentType === 'invoice')) && !customerName ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                            <div className="relative flex-1">
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input type="text" placeholder="WhatsApp (Opcional)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 transition-all border border-transparent focus:border-gray-200" />
+                            </div>
+                        </div>
+                        
+                        {/* Fila Fiscal Reactiva: Solo exige datos si es Factura */}
+                        <div className="flex gap-3">
+                            <div className="relative w-1/3">
+                                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'paid' && documentType === 'invoice' ? "CI/RIF *" : "CI/RIF (Opcional)"} 
+                                    value={customerDNI} onChange={(e) => setCustomerDNI(e.target.value.toUpperCase())} 
+                                    className={`w-full pl-11 pr-3 py-3 bg-gray-50 rounded-xl text-xs font-mono font-bold outline-none focus:bg-white focus:ring-2 transition-all border ${(operationMode === 'paid' && documentType === 'invoice') && !customerDNI ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                            <div className="relative w-2/3">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input 
+                                    type="text" 
+                                    placeholder={operationMode === 'paid' && documentType === 'invoice' ? "Dirección Fiscal *" : "Dirección (Opcional)"} 
+                                    value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} 
+                                    className={`w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none focus:bg-white focus:ring-2 transition-all border ${(operationMode === 'paid' && documentType === 'invoice') && !customerAddress ? 'border-red-200 focus:border-red-300' : 'border-transparent focus:border-gray-200'}`} 
+                                />
+                            </div>
+                        </div>
+
+                        
+
+                        {/* 🚀 SELECTOR INTELIGENTE DE DOCUMENTOS E IMPUESTOS */}
+                        <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100/50">
+                            
+                            {operationMode === 'paid' ? (
+                                <div className="animate-in fade-in slide-in-from-top-4 pt-2">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Método de Cobro</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[...activePaymentMethods, 'Otro'].map(pm => (
+                                            <button key={pm} onClick={() => setSelectedPayment(pm)} className={`px-5 py-3 rounded-full text-xs font-bold transition-all border ${selectedPayment === pm ? 'bg-black text-white border-black shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                                {pm}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-3 mt-4">
+                                        {selectedPayment === 'Otro' && (
+                                            <input type="text" placeholder="Especificar (Ej: PayPal)" value={customPayment} onChange={(e) => setCustomPayment(e.target.value)} className="w-full px-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-gray-200 border border-transparent transition-all" />
+                                        )}
+                                        <div className="relative">
+                                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input type="text" placeholder="N° de Referencia (Opcional)" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-gray-200 border border-transparent transition-all" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="animate-in fade-in slide-in-from-top-4 pt-2">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Métodos de Pago Permitidos</h3>
+                                    <p className="text-[10px] text-gray-500 mb-4 leading-tight">Apaga los métodos que NO deseas aceptar para este cliente corporativo.</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {activePaymentMethods.map(pm => {
+                                            const isSelected = quoteAllowedMethods.includes(pm)
+                                            return (
+                                                <button key={pm} onClick={() => {
+                                                    if (isSelected) setQuoteAllowedMethods(prev => prev.filter(m => m !== pm))
+                                                    else setQuoteAllowedMethods(prev => [...prev, pm])
+                                                }} className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${isSelected ? 'bg-black text-white border-black shadow-md' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300 opacity-60'}`}>
+                                                    {pm}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                            {/* Fila del IVA (Visible en Presupuesto o si eligió Factura) */}
+                            {(operationMode === 'quote' || documentType === 'invoice') && (
+                                <div className={`flex flex-col gap-3 transition-all ${operationMode === 'paid' ? 'pt-3 border-t border-gray-200/50' : ''}`}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-gray-700">Calcular IVA</span>
+                                        <button onClick={() => setApplyTax(!applyTax)} className={`relative w-10 h-6 rounded-full transition-colors ${applyTax ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${applyTax ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+
+                                    {/* 🚀 LOS ATAJOS DE PORCENTAJE (Aparecen si el IVA está ON) */}
+                                    {applyTax && (
+                                        <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
+                                            {[8, 16, 31].map(pct => (
+                                                <button key={pct} onClick={() => setTaxPercentage(pct)} className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${taxPercentage === pct ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'}`}>
+                                                    {pct}%
+                                                </button>
+                                            ))}
+                                            <div className="relative flex-1">
+                                                <NumberInput 
+                                                    value={taxPercentage} 
+                                                    onChangeValue={val => setTaxPercentage(Number(val))} 
+                                                    className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-[11px] font-black text-gray-900 text-center focus:border-black outline-none h-full" 
+                                                />
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-black pointer-events-none">%</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Lista de Ítems */}
+                    <div>
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Artículos en la Bolsa</h3>
+                        {cart.length === 0 ? (
+                            <div className="py-10 flex flex-col items-center justify-center text-center opacity-50 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                                <ShoppingBag size={32} className="mb-3 text-gray-400" />
+                                <p className="font-bold text-sm">Vacío</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <AnimatePresence initial={false}>
+                                    {cart.map(item => (
+                                        <motion.div key={item.cartId} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white p-4 rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-gray-50 flex gap-4 group transition-all">
+                                            <div className="w-16 h-16 bg-[#FAFAFA] rounded-xl overflow-hidden relative shrink-0">
+                                                {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" sizes="64px" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <h4 className="font-bold text-sm text-gray-900 truncate pr-6">{item.name}</h4>
+                                                {item.variantInfo && <p className="text-[10px] text-gray-500 font-medium mt-0.5">{item.variantInfo}</p>}
+                                                <div className="flex items-end justify-between mt-2">
+                                                    <p className="text-black font-black text-base leading-none">${item.price.toFixed(2)}</p>
+                                                    <div className="flex items-center gap-3 bg-gray-50 rounded-full px-2 py-1">
+                                                        <button onClick={() => updateQty(item.cartId, -1)} className="text-gray-400 hover:text-black transition-colors"><Minus size={14} strokeWidth={3}/></button>
+                                                        <span className="text-xs font-black w-4 text-center">{item.qty}</span>
+                                                        <button onClick={() => updateQty(item.cartId, 1)} disabled={item.qty >= item.maxStock} className="text-gray-400 hover:text-black transition-colors disabled:opacity-30"><Plus size={14} strokeWidth={3}/></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => removeLine(item.cartId)} className="absolute top-4 right-4 text-gray-300 hover:text-gray-900 transition-colors"><X size={16} strokeWidth={2.5} /></button>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Logística y Pagos */}
+                    {cart.length > 0 && (
+                        <div className="space-y-8 pb-10">
+                            <div>
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Logística de Entrega</h3>
+                                <div className="flex gap-2 bg-gray-50 p-1.5 px-3 rounded-2xl">
+                                    <button onClick={() => setShippingMethod('pickup')} className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex justify-center items-center gap-2 transition-all ${shippingMethod === 'pickup' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Store size={14} /> Mostrador</button>
+                                    <button onClick={() => setShippingMethod('local_delivery')} className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex justify-center items-center gap-2 transition-all ${shippingMethod === 'local_delivery' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Truck size={14} /> Delivery</button>
+                                    <button onClick={() => setShippingMethod('courier')} className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex justify-center items-center gap-2 transition-all ${shippingMethod === 'courier' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Package size={14} /> Envío</button>
+                                </div>
+                                {shippingMethod !== 'pickup' && (
+                                    <div className="relative mt-3 animate-in fade-in slide-in-from-top-2">
+                                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                        <input type="text" placeholder="Dirección exacta o Agencia" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:ring-4 focus:ring-gray-100 transition-all border border-transparent focus:border-gray-200" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {operationMode === 'paid' && (
+                                <div className="animate-in fade-in slide-in-from-top-4 pt-2">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Método de Cobro</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[...activePaymentMethods, 'Otro'].map(pm => (
+                                            <button key={pm} onClick={() => setSelectedPayment(pm)} className={`px-5 py-3 rounded-full text-xs font-bold transition-all border ${selectedPayment === pm ? 'bg-black text-white border-black shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                                {pm}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-3 mt-4">
+                                        {selectedPayment === 'Otro' && (
+                                            <input type="text" placeholder="Especificar (Ej: PayPal)" value={customPayment} onChange={(e) => setCustomPayment(e.target.value)} className="w-full px-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-gray-200 border border-transparent transition-all" />
+                                        )}
+                                        <div className="relative">
+                                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input type="text" placeholder="N° de Referencia (Opcional)" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-gray-50 rounded-2xl text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-gray-200 border border-transparent transition-all" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+               {/* Footer Fijo Absoluto */}
+                <div className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-2xl border-t border-gray-100 p-6 z-30 shadow-[0_-20px_60px_rgba(0,0,0,0.03)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                    
+                    {/* 🚀 DESGLOSE MATEMÁTICO */}
+                    {applyTax && (
+                        <div className="mb-3 pb-3 border-b border-gray-100/50 space-y-1 text-xs">
+                            <div className="flex justify-between font-medium text-gray-500">
+                                <span>Base Imponible</span><span>${subtotalUSD.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-gray-700">
+                                <span>I.V.A. (16%)</span><span>${taxAmountUSD.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-end mb-4">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Total {applyTax ? 'con IVA' : ''}</span>
+                        <div className="flex flex-col items-end">
+                            <span className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter leading-none">${totalUSD.toFixed(2)}</span>
+                            <span className="text-xs font-mono font-bold text-gray-400 mt-2 bg-gray-50 px-3 py-1 rounded-md">Bs {(totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+                    {/* ... (Tus botones de Crear Presupuesto o Cobrar Orden se mantienen igual aquí abajo) ... */}
+
+                    {operationMode === 'quote' ? (
+                        <button onClick={() => handleCheckout('quote')} disabled={isSubmitting || cart.length === 0}
+                            className="w-full py-4 px-2 bg-gray-100 text-gray-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors disabled:opacity-50 active:scale-95"
+                        >
+                            {isSubmitting ? <Loader2 size={18} className="animate-spin text-gray-400" /> : <FileText size={18} />} Crear Presupuesto
+                        </button>
+                    ) : (
+                        <button onClick={() => handleCheckout('paid')} disabled={isSubmitting || cart.length === 0}
+                            className="w-full py-4 px-2 bg-black text-white rounded-[20px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(0,0,0,0.15)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 ease-out disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                            {isSubmitting ? <Loader2 size={18} className="animate-spin text-white" /> : <Banknote size={18} />} Cobrar Orden
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* MODAL DE VARIANTES CLEAN LOOK */}
+            <AnimatePresence>
+                {selectedProductForVariant && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedProductForVariant(null)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.1)] flex flex-col max-h-[80vh]">
+                            <div className="p-6 pb-4 flex justify-between items-start shrink-0">
+                                <div>
+                                    <h3 className="font-black text-xl text-gray-900 leading-tight">Opciones</h3>
+                                    <p className="text-xs font-bold text-gray-400 mt-1 truncate max-w-[200px]">{selectedProductForVariant.name}</p>
+                                </div>
+                                <button onClick={() => setSelectedProductForVariant(null)} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"><X size={18} strokeWidth={2.5}/></button>
+                            </div>
+                            <div className="overflow-y-auto p-4 pt-0 flex flex-col gap-2 no-scrollbar mb-4">
+                                {selectedProductForVariant.product_variants.map(v => {
+                                    const isOutOfStock = v.stock <= 0
+                                    return (
+                                        <button key={v.id} disabled={isOutOfStock} onClick={() => handleAddToCart(selectedProductForVariant, v)}
+                                            className={`flex items-center justify-between p-5 rounded-2xl text-left transition-all ${isOutOfStock ? 'bg-gray-50 opacity-50 cursor-not-allowed border border-transparent' : 'bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md active:scale-95'}`}
+                                        >
+                                            <div>
+                                                <span className="font-bold text-sm text-gray-900">{v.color_name || 'Estándar'} {v.size}</span>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Disp: {v.stock}</p>
+                                            </div>
+                                            <span className="font-black text-base text-gray-900">${(v.override_usd_price || selectedProductForVariant.usd_cash_price).toFixed(2)}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* 🚀 MODAL DE ÍTEM PERSONALIZADO */}
+            <AnimatePresence>
+                {isCustomItemModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsCustomItemModalOpen(false)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl flex flex-col p-8">
+                            <h3 className="font-black text-2xl text-gray-900 mb-1">Ítem a Medida</h3>
+                            <p className="text-xs font-medium text-gray-500 mb-6">Añade un concepto que no esté en tu catálogo.</p>
+                            
+                            <form onSubmit={handleAddCustomItem} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Descripción del Trabajo/Producto</label>
+                                    <input type="text" autoFocus required value={customItem.name} onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} placeholder="Ej: Diseño de logo..." className="w-full bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none transition-all" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Precio Unitario ($)</label>
+                                    <div className="relative">
+                                        <DollarSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input type="number" step="0.01" required value={customItem.price} onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })} placeholder="0.00" className="w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-300 rounded-xl text-lg font-black text-gray-900 outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <button type="submit" className="w-full bg-black text-white font-black uppercase tracking-widest text-xs py-4 rounded-[20px] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4">
+                                    Añadir al Ticket
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+
+        
+    )
+}
+</file>
+
+<file path="components/CheckoutProcess.tsx">
+'use client'
+
+import { useState, useMemo, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { User, MapPin, Store, Truck, Package, CreditCard, Check, X, Trash2, Image as ImageIcon, Upload, Loader2, MessageCircle, Copy } from 'lucide-react'
+import { getSupabase } from '@/lib/supabase-client'
+import { compressImage } from '@/utils/imageOptimizer'
+import { useCart } from '@/app/store/useCart'
+import Swal from 'sweetalert2'
+import { Icon } from '@iconify/react'
+
+
+// --- TIPOS ESTRICTOS ---
+export interface CheckoutProcessProps {
+    storeId: string;
+    storeConfig: any;
+    currency: 'usd' | 'eur';
+    rates: { usd: number, eur: number };
+    phone: string;
+    cartEngine: any;
+    wholesaleDiscountList: number;
+    wholesaleDiscountCash: number;
+    affiliateCode?: string | null; // 🚀 NUEVO
+    affiliateDiscountList?: number; // 🚀 NUEVO
+    affiliateDiscountCash?: number; // 🚀 NUEVO
+    onSuccess: (orderNumber: number, whatsappUrl: string, orderId: string) => void; // 🚀 AÑADE orderId AQUÍ
+    onBack: () => void;
+}
+
+interface PaymentBlock {
+    id: string;
+    method: string;
+    amount: number;
+    currency: 'usd' | 'ves';
+    isHardCurrency: boolean;
+    receiptFile: File | null;
+}
+
+const BrandLogos = {
+    Transferencia: ({ className, size }: any) => <Icon icon="ph:bank-bold" className={className} width={size} height={size} />,
+    Zelle: ({ className, size }: any) => <Icon icon="simple-icons:zelle" className={className} width={size} height={size} />,
+    Binance: ({ className, size }: any) => <Icon icon="simple-icons:binance" className={className} width={size} height={size} />,
+    PagoMovil: ({ className, size }: any) => <Icon icon="fluent:phone-checkmark-24-regular" className={className} width={size} height={size} />,
+    Efectivo: ({ className, size }: any) => <Icon icon="bi:cash" className={className} width={size} height={size} />,
+    Zinli: ({ className, size }: any) => <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />,
+    WallyTech: ({ className, size }: any) => <Icon icon="solar:wallet-bold" className={className} width={size} height={size} />
+}
+
+export default function CheckoutProcess({
+    storeId, storeConfig, currency, rates, phone, cartEngine, wholesaleDiscountList, wholesaleDiscountCash, onSuccess, onBack, affiliateCode, affiliateDiscountList, affiliateDiscountCash
+}: CheckoutProcessProps) {
+
+    const { items, clearCart } = useCart()
+    const [loading, setLoading] = useState(false)
+    const [supabase] = useState(() => getSupabase())
+
+    // 🚀 LÓGICA DE PORTAPAPELES (Para el Brand Portal)
+    const [copied, setCopied] = useState(false)
+    const handleCopy = (text: string) => {
+        if (!text) return
+        navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
+
+    const isEurMode = currency === 'eur'
+    const activeRate = isEurMode ? rates.eur : rates.usd
+    const currencySymbol = '$'
+
+    // --- CONFIGURACIONES ---
+    const payments = storeConfig?.payment_config || {}
+    const shipping = storeConfig?.shipping_config || {}
+    const receiptConfig = storeConfig?.receipt_config || { strict_mode: false }
+    const wholesale = storeConfig?.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 }
+    const deliveryZones = shipping.delivery_zones || []
+
+   // 🚀 LÓGICA DE MÉTODOS Y DIVISAS
+    const paymentKeysMap: { [key: string]: string } = { 
+        'Transferencia': 'transferencia', 'Pago Móvil': 'pago_movil', 
+        'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli', 'WallyTech': 'wally', 'Efectivo': 'cash' 
+    }
+    // Zinli y Wally son Dólares. Transferencia asume Bolívares por defecto.
+    const hardCurrencyMethods = ['Zelle', 'Binance', 'Zinli', 'WallyTech', 'Efectivo']
+
+    const activePaymentMethods = useMemo(() => {
+        const active = []
+        if (payments.transferencia?.active) active.push('Transferencia')
+        if (payments.pago_movil?.active) active.push('Pago Móvil')
+        if (payments.zelle?.active) active.push('Zelle')
+        if (payments.binance?.active) active.push('Binance')
+        if (payments.zinli?.active) active.push('Zinli')
+        if (payments.wally?.active) active.push('WallyTech')
+        if (payments.cash?.active) active.push('Efectivo')
+        
+        return active
+    }, [payments])
+
+    const activeCouriers = useMemo(() => {
+        const active = []
+        if (shipping.methods?.mrw) active.push('MRW')
+        if (shipping.methods?.zoom) active.push('Zoom')
+        if (shipping.methods?.tealca) active.push('Tealca')
+        return active
+    }, [shipping])
+
+    // --- ESTADOS LOGÍSTICOS ---
+    const [clientData, setClientData] = useState({
+        name: '', deliveryType: 'pickup', courier: '',
+        identityCard: '', phone: '', notes: '', state: '', city: '', addressDetail: '', reference: '',
+        fiscalAddress: '' // 🚀 NUEVO
+    })
+    // 🚀 NUEVO: LECTOR DEL PERFIL FISCAL (Gatekeeper de Negocio)
+    const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
+    const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+
+    // 🚀 LÓGICA DETERMINISTA: Si es estricto, aplicamos IVA y asumimos 'invoice'. 
+    // Si no lo es, 0% de IVA y asumimos 'note'. El cliente ya no decide.
+    const [documentType, setDocumentType] = useState<'invoice' | 'note'>(isStrictTax ? 'invoice' : 'note');
+    const [applyTax, setApplyTax] = useState<boolean>(isStrictTax);
+
+    // 🚀 NUEVO ESTADO: Para preguntar si el cliente quiere RIF en su factura (Solo visible en modo estricto)
+    const [wantsFiscalData, setWantsFiscalData] = useState<boolean>(false);
+
+
+    const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>('')
+
+    const deliveryCost = useMemo(() => {
+        if (clientData.deliveryType === 'local_delivery' && selectedDeliveryZone) {
+            const zone = deliveryZones.find((z: any) => z.id === selectedDeliveryZone)
+            return zone ? Number(zone.cost) : 0
+        }
+        return 0
+    }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones])
+
+
+    // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
+    const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
+
+    const totalListUSD_base = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
+    const totalCashUSD_base = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
+
+    const taxAmountListUSD = applyTax ? (totalListUSD_base * (taxPercentage / 100)) : 0;
+    const taxAmountCashUSD = applyTax ? (totalCashUSD_base * (taxPercentage / 100)) : 0;
+
+    const totalListUSD = totalListUSD_base + taxAmountListUSD;
+    const totalCashUSD = totalCashUSD_base + taxAmountCashUSD;
+    const fxMultiplier = totalCashUSD > 0 ? totalListUSD / totalCashUSD : 1;
+    // 🚀 NUEVO: Lector del Feature Flag y Modalidad
+    const allowSplitPayments = payments?.allow_split_payments === true;
+    const [paymentMode, setPaymentMode] = useState<'single' | 'split'>('single');
+
+    const [splitPayments, setSplitPayments] = useState<PaymentBlock[]>([]);
+    const [activePaymentInput, setActivePaymentInput] = useState<string | null>(null);
+    const [paymentAmount, setPaymentAmount] = useState<string>('');
+
+    const { paidHardUSD, paidBs, paidListEquivalentUSD, actualFxSavings } = useMemo(() => {
+        let hard = 0; let bs = 0;
+        splitPayments.forEach(p => { if (p.isHardCurrency) hard += p.amount; else bs += p.amount; });
+        const listEq = (hard * fxMultiplier) + (bs / activeRate);
+        const realUsdPaid = hard + (bs / activeRate);
+        return { paidHardUSD: hard, paidBs: bs, paidListEquivalentUSD: listEq, actualFxSavings: listEq - realUsdPaid }
+    }, [splitPayments, fxMultiplier, activeRate]);
+
+    const remainingListUSD = Math.max(0, totalListUSD - paidListEquivalentUSD);
+    const remainingBs = remainingListUSD * activeRate;
+    const remainingCashUSD = remainingListUSD / fxMultiplier;
+    const isPaidInFull = remainingListUSD <= 0.01 && splitPayments.length > 0;
+    const missingReceipts = splitPayments.some(p =>
+        receiptConfig.strict_mode && p.method !== 'Efectivo' && !p.receiptFile
+    );
+
+    // Alias Dinámicos para el Footer
+    const exactFxSavings = actualFxSavings;
+    const grandTotalUSD = Math.max(0, totalListUSD - exactFxSavings);
+    const grandTotalBs = grandTotalUSD * activeRate;
+    const isHardCurrencyPayment = paidHardUSD > 0;
+
+    // --- FUNCIONES DE PAGO ---
+    const openPaymentInput = (method: string) => {
+        const isHard = hardCurrencyMethods.includes(method);
+
+        if (paymentMode === 'single') {
+            // 🚀 MODO ÚNICO: Liquida el 100% automáticamente y sobreescribe cualquier selección anterior
+            const amount = isHard ? totalCashUSD : (totalListUSD * activeRate);
+            setSplitPayments([{
+                id: `pay-${Date.now()}`,
+                method,
+                amount,
+                currency: isHard ? 'usd' : 'ves',
+                isHardCurrency: isHard,
+                receiptFile: null
+            }]);
+            setActivePaymentInput(method);
+        } else {
+            // 🚀 MODO MIXTO: Abre el input para ingresar un monto parcial
+            setPaymentAmount(isHard ? remainingCashUSD.toFixed(2) : remainingBs.toFixed(2));
+            setActivePaymentInput(method);
+        }
+    }
+
+    const confirmPaymentBlock = () => {
+        const amount = parseFloat(paymentAmount);
+        if (isNaN(amount) || amount <= 0) return;
+
+        const isHard = hardCurrencyMethods.includes(activePaymentInput!);
+
+        // 1. Calculamos el límite exacto según la moneda seleccionada
+        const maxAllowed = isHard ? remainingCashUSD : remainingBs;
+
+        // 2. Escudo Anti-Sobrepago (Permitimos 0.01 de tolerancia por redondeos de JavaScript)
+        if (amount > maxAllowed + 0.01) {
+            Swal.fire({
+                title: 'Monto Excedido',
+                text: `Solo debes ${isHard ? '$' : 'Bs'} ${maxAllowed.toFixed(2)}. No puedes ingresar un monto mayor.`,
+                icon: 'warning',
+                confirmButtonColor: '#000',
+                customClass: { popup: 'rounded-xl' }
+            });
+            // Auto-completamos el input con el máximo permitido para ayudar al usuario (UX de élite)
+            setPaymentAmount(maxAllowed.toFixed(2));
+            return;
+        }
+
+        setSplitPayments([...splitPayments, { id: `pay-${Date.now()}`, method: activePaymentInput!, amount, currency: isHard ? 'usd' : 'ves', isHardCurrency: isHard, receiptFile: null }]);
+        setActivePaymentInput(null);
+        setPaymentAmount('');
+    }
+
+    const removePaymentBlock = (id: string) => setSplitPayments(splitPayments.filter(p => p.id !== id));
+
+    const handleAttachReceipt = (id: string, file: File | null) => {
+        if (file) {
+            // 1. Validar Mime Type real
+            if (!file.type.startsWith('image/')) {
+                return Swal.fire({ title: 'Formato inválido', text: 'Por seguridad, solo se permiten imágenes (JPG, PNG, WEBP).', icon: 'error', confirmButtonColor: '#000' });
+            }
+            // 2. Limitar tamaño máximo a 5MB (Prevención de saturación de memoria)
+            if (file.size > 5 * 1024 * 1024) {
+                return Swal.fire({ title: 'Archivo muy pesado', text: 'El comprobante no debe superar los 5MB.', icon: 'error', confirmButtonColor: '#000' });
+            }
+        }
+        setSplitPayments(splitPayments.map(p => p.id === id ? { ...p, receiptFile: file } : p));
+    }
+    // 🚀 ESTÉTICA BRUTALISTA / NEO-EDITORIAL PARA LOS MÉTODOS
+    const getPaymentConfig = (pm: string) => {
+        const baseSelected = 'bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-md transition-all'
+        const baseIdle = 'bg-transparent text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all'
+
+     switch (pm) {
+            case 'Transferencia': return { icon: BrandLogos.Transferencia, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Pago Móvil': return { icon: BrandLogos.PagoMovil, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Zelle': return { icon: BrandLogos.Zelle, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Binance': return { icon: BrandLogos.Binance, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Zinli': return { icon: BrandLogos.Zinli, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'WallyTech': return { icon: BrandLogos.WallyTech, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'Efectivo': return { icon: BrandLogos.Efectivo, btnSelected: baseSelected, btnIdle: baseIdle }
+            default: return { icon: CreditCard, btnSelected: baseSelected, btnIdle: baseIdle }
+        }
+    }
+
+    // --- PROCESAR ORDEN A BASE DE DATOS ---
+    const handleCheckout = async () => {
+        if (!clientData.name || !clientData.phone) return Swal.fire({ title: 'Faltan Datos', text: 'Nombre y teléfono son obligatorios', icon: 'warning', confirmButtonColor: '#000' })
+
+        // 🚀 ESCUDO FISCAL BLINDADO
+        if (isStrictTax && wantsFiscalData) {
+            if (!clientData.identityCard) return Swal.fire({ title: 'Faltan Datos', text: 'La Cédula/RIF es obligatoria si solicitas datos fiscales.', icon: 'warning', confirmButtonColor: '#000' })
+            if (!clientData.fiscalAddress) return Swal.fire({ title: 'Faltan Datos', text: 'La Dirección Fiscal es obligatoria si solicitas datos fiscales.', icon: 'warning', confirmButtonColor: '#000' })
+        }
+
+        if (clientData.deliveryType === 'pickup' && !clientData.addressDetail) return Swal.fire({ title: 'Punto de Retiro', text: 'Selecciona dónde buscarás tu pedido.', icon: 'warning', confirmButtonColor: '#000' })
+        if (clientData.deliveryType === 'courier') {
+            if (!clientData.courier) return Swal.fire({ title: 'Envío', text: 'Selecciona una empresa de envío', icon: 'warning', confirmButtonColor: '#000' })
+            if (!clientData.state || !clientData.city || !clientData.addressDetail) return Swal.fire({ title: 'Dirección Incompleta', text: 'Llena los campos', icon: 'warning', confirmButtonColor: '#000' })
+            if (!clientData.identityCard) return Swal.fire({ title: 'Identificación', text: 'La cédula es requerida para envíos', icon: 'warning', confirmButtonColor: '#000' })
+        }
+        if (clientData.deliveryType === 'local_delivery' && !selectedDeliveryZone) return Swal.fire({ title: 'Zona de Delivery', text: 'Selecciona la zona a la que enviaremos tu pedido', icon: 'warning', confirmButtonColor: '#000' })
+
+        if (!isPaidInFull) return Swal.fire({ title: 'Saldo Pendiente', text: 'Debes completar el 100% del pago para procesar la orden.', icon: 'warning', confirmButtonColor: '#000' })
+        if (missingReceipts) return Swal.fire({ title: 'Comprobantes Faltantes', text: 'Debes adjuntar el comprobante en los métodos que lo requieren.', icon: 'warning', confirmButtonColor: '#000' })
+
+        setLoading(true)
+
+        try {
+            // 1. Upload Paralelo con Prevención de Colisiones
+            const uploadedPayments = await Promise.all(splitPayments.map(async (p) => {
+                let receiptPublicUrl = null;
+                if (p.receiptFile) {
+                    let compressedReceipt;
+                    try {
+                        compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
+                    } catch (compErr) {
+                        console.error("Compresión fallida:", compErr);
+                        throw new Error("El formato de la imagen no es válido o es muy pesada. Por favor, intenta con un capture diferente.");
+                    }
+
+                    const fileExt = p.receiptFile.name.split('.').pop() || 'jpg';
+                    const uniqueUploadId = Date.now().toString().slice(-6);
+                    const fileName = `receipt-${p.id}-${uniqueUploadId}.${fileExt}`;
+
+                    const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, compressedReceipt, { upsert: true });
+
+                    if (uploadError) {
+                        console.error("Storage Error Técnico:", uploadError);
+                        throw new Error("Tuvimos un problema de conexión al subir tu comprobante. Por favor, verifica tu internet e intenta de nuevo.");
+                    }
+
+                    const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
+                    receiptPublicUrl = publicUrl;
+                }
+                return {
+                    method: p.method,
+                    amount_usd: p.currency === 'usd' ? p.amount : Number((p.amount / activeRate).toFixed(2)),
+                    amount_bs: p.currency === 'ves' ? p.amount : Number((p.amount * activeRate).toFixed(2)),
+                    currency: p.currency,
+                    receipt_url: receiptPublicUrl
+                }
+            }));
+
+            let deliveryInfoFull = 'Retiro Personal';
+            if (clientData.deliveryType === 'courier') deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || 'N/A'} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+            else if (clientData.deliveryType === 'local_delivery') deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || 'Zona'} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || 'N/A'} | Tlf: ${clientData.phone}`;
+            else if (clientData.deliveryType === 'pickup') deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+
+            // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
+            const finalPaymentMethod = uploadedPayments.length === 1 ? uploadedPayments[0].method : 'Mixto';
+
+            // 2. Insertar Orden
+            const { data: order, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                    store_id: storeId,
+                    customer_name: clientData.name,
+                    customer_phone: clientData.phone,
+                    total_usd: Number(grandTotalUSD.toFixed(2)),
+                    total_bs: Number(grandTotalBs.toFixed(2)),
+                    exchange_rate: activeRate,
+                    currency_type: currency,
+                    status: 'pending',
+                    payment_method: finalPaymentMethod, // 🚀 INYECCIÓN: Etiqueta dinámica real
+                    split_payments: uploadedPayments,
+                    shipping_method: clientData.deliveryType,
+                    delivery_info: deliveryInfoFull,
+                    shipping_cost: Number(deliveryCost.toFixed(2)),
+                    discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                    affiliate_code: affiliateCode || null,
+                    // 🚀 INYECCIÓN FISCAL OMNICANAL Y DETERMINISTA
+                    document_type: isStrictTax ? 'invoice' : 'note',
+                    is_tax_applied: applyTax,
+                    tax_percentage: applyTax ? taxPercentage : 0,
+                    subtotal_usd: Number(totalListUSD_base.toFixed(2)),
+                    tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
+                    // 🚀 NUEVO: PERSISTENCIA DE DESCUENTOS PARA EL PDF
+                    promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                    wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                    affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                    fx_savings_usd: Number(actualFxSavings.toFixed(2)),
+                    // Si quiere datos fiscales, guardamos su cédula/dirección, sino, guardamos la de envío o null
+                    customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === 'courier' ? clientData.identityCard : null,
+                    customer_address: (isStrictTax && wantsFiscalData) ? clientData.fiscalAddress : null
+                }).select().single();
+            if (orderError) {
+                console.error("Order DB Error Técnico:", orderError);
+                throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
+            }
+
+
+
+            // 3. Insertar Items
+            const orderItemsPayload = items.map(item => ({
+                order_id: order.id,
+                product_id: item.productId,
+                product_name: item.name,
+                variant_info: item.variantInfo || 'N/A',
+                quantity: item.quantity,
+                price_at_purchase: item.basePrice,
+                variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null
+            }));
+
+            const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+
+            if (itemsError) {
+                console.error("Order Items DB Error Técnico:", itemsError);
+
+                // 🚀 ESTRATEGIA FAIL-FORWARD: Salvamos la venta y bloqueamos reintentos
+
+                // 1. Armamos el mensaje de WhatsApp de rescate (explicando la situación a la tienda)
+                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n`;
+                fallbackMessage += `*Intento de Pedido:* #${order.order_number}\n`;
+                fallbackMessage += `*Cliente:* ${clientData.name}\n`;
+                fallbackMessage += `*Teléfono:* ${clientData.phone}\n\n`;
+                fallbackMessage += `Hola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
+
+                const fallbackWaLink = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
+
+                // 2. Vaciamos el carrito para matar la data local
+                clearCart();
+
+                // 3. Forzamos el paso a la pantalla de Éxito (Paso 3) con el link de emergencia
+                onSuccess(order.order_number, fallbackWaLink, order.id); // 🚀 AÑADE order.id
+
+                // 4. Le explicamos al cliente qué pasó con una alerta suave
+                Swal.fire({
+                    title: 'Interrupción de red',
+                    text: 'Registramos tu pago, pero tu carrito tuvo un problema al sincronizarse. Te enviaremos a WhatsApp para que la tienda te confirme manualmente.',
+                    icon: 'info',
+                    iconColor: '#000',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#000',
+                    customClass: { popup: 'rounded-xl border border-[var(--store-border)]', title: 'font-black text-xl text-[var(--store-text-main)]' }
+                });
+
+                setLoading(false);
+                return; // <-- CRÍTICO: Detenemos la función aquí. No entra al catch. No genera órdenes basura.
+            }
+
+            // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (AWAIT OBLIGATORIO)
+            await fetch('/api/web-push/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storeId: storeId,
+                    orderNumber: order.order_number,
+                    totalUsd: grandTotalUSD.toFixed(2),
+                    customerName: clientData.name
+                })
+            }).catch(err => console.error("Error silencioso en notificación Push:", err));
+
+
+
+            // 4. Formatear Mensaje WhatsApp
+            let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`
+            cartEngine.processedItems.forEach((item: any) => {
+                const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`
+                message += `🔸 ${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ''} ${priceText}\n`
+            })
+
+           message += `\n*RESUMEN FINANCIERO:*\n`
+            message += `Subtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`
+            if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`
+            if (wholesaleDiscountList > 0) message += `Desc. Mayorista: -$${wholesaleDiscountList.toFixed(2)}\n`
+            if (affiliateDiscountList! > 0) message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n`
+            if (actualFxSavings > 0) message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`
+            
+            // 🚀 INYECCIÓN DETERMINISTA DE IVA EN WHATSAPP
+            if (applyTax && taxAmountListUSD > 0) {
+                message += `I.V.A (${taxPercentage}%): +$${taxAmountListUSD.toFixed(2)}\n`
+            }
+            
+            if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`
+            message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`
+
+            // 🚀 COPYWRITING DINÁMICO: Cambia el título si es único o mixto
+            if (uploadedPayments.length > 1) {
+                message += `\n*PAGOS (MIXTO):*\n`
+            } else {
+                message += `\n*MÉTODO DE PAGO:*\n`
+            }
+
+            uploadedPayments.forEach((p: any) => {
+                message += `✔️ ${p.method}: ${p.currency === 'usd' ? '$' + p.amount_usd.toFixed(2) : 'Bs ' + p.amount_bs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}\n`
+                if (p.receipt_url) message += `   🔗 Comprobante: ${p.receipt_url}\n`
+            })
+
+            message += `\n*LOGÍSTICA:*\nEnvío: ${deliveryInfoFull}\n`
+            if (clientData.notes) message += `Notas: ${clientData.notes}\n`
+
+            const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+
+            clearCart();
+            onSuccess(order.order_number, waLink, order.id); // 🚀 AÑADE order.id
+
+        } catch (error: any) {
+            // Extracción del mensaje amigable para el cliente
+            let friendlyMessage = "Ocurrió un error inesperado al procesar tu pedido por una falla de conexión. Por favor intenta de nuevo.";
+
+            if (typeof error === 'string') {
+                friendlyMessage = error;
+            } else if (error instanceof Error) {
+                friendlyMessage = error.message;
+            } else if (error?.message && !error.message.includes('fetch') && !error.message.includes('JSON')) {
+                // Filtramos errores de fetch genéricos que asustan
+                friendlyMessage = error.message;
+            }
+
+            // Alerta enfocada en la tranquilidad del cliente (Brutalist UX)
+            Swal.fire({
+                title: 'Falla de Conexión',
+                text: friendlyMessage,
+                icon: 'info', // Usamos 'info' o 'warning' en lugar de 'error' para reducir la ansiedad
+                iconColor: '#000',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#000',
+                customClass: {
+                    title: 'font-black text-xl text-[var(--store-text-main)]',
+                    popup: 'rounded-xl border border-[var(--store-border)]',
+                }
+            });
+        } finally {
+            setLoading(false);
+        }
+
+    }
+
+    const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
+
+    return (
+        <motion.div key="step-2" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)]">
+
+            <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
+
+                <input
+                    maxLength={50} // Límite estricto de base de datos
+                    value={clientData.name}
+                    // Eliminamos los caracteres < y > para evitar inyecciones XSS
+                    onChange={e => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, '') })}
+                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                    placeholder="Nombre completo *"
+                />
+                <input
+                    maxLength={20} // Un teléfono no necesita más
+                    value={clientData.phone}
+                    // Permite SOLO números y el símbolo +
+                    onChange={e => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                    placeholder="Teléfono / WhatsApp *"
+                />
+
+               {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
+                        <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
+                            {isStrictTax ? (
+                                // 🟢 MODO CORPORATIVO: Ordinario / Especial
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3 p-4 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
+                                        <div className="mt-0.5 w-4 h-4 rounded-full border-2 border-[var(--store-primary)] flex items-center justify-center shrink-0">
+                                            <div className="w-2 h-2 rounded-full bg-[var(--store-primary)]" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-widest leading-none mb-1">Impuesto de Ley Aplicado</p>
+                                            <p className="text-[10px] font-medium text-[var(--store-surface-text)] leading-relaxed">Por normativa del SENIAT, esta orden incluye el cálculo del {taxPercentage}% de I.V.A.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <label className="flex items-center gap-3 p-4 border border-[var(--store-border)] rounded-xl cursor-pointer hover:bg-[var(--store-bg)] transition-colors group">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 accent-[var(--store-primary)] border-[var(--store-border)] rounded shadow-sm focus:ring-0 cursor-pointer"
+                                            checked={wantsFiscalData}
+                                            onChange={(e) => setWantsFiscalData(e.target.checked)}
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-[var(--store-text-main)] transition-colors group-hover:text-[var(--store-primary)]">
+                                                Deseo comprobante con mis datos fiscales (RIF)
+                                            </span>
+                                            <span className="text-[10px] text-[var(--store-surface-text)] font-medium">Si no lo seleccionas, se emitirá a Consumidor Final.</span>
+                                        </div>
+                                    </label>
+
+                                    <AnimatePresence>
+                                        {wantsFiscalData && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                                <div className="pt-2 space-y-0">
+                                                    <input maxLength={20} value={clientData.identityCard} onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^JVEG0-9-]/gi, '').toUpperCase() })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Ej: J-12345678-9 *" />
+                                                    <input maxLength={100} value={clientData.fiscalAddress} onChange={e => setClientData({ ...clientData, fiscalAddress: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección Fiscal Completa *" />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            ) : (
+                                // 🔴 MODO INFORMAL: Emprendedor
+                                // No mostramos nada relacionado al IVA, la orden sigue limpia.
+                                <div className="hidden"></div>
+                            )}
+                        </div>
+                {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
+                <div className="space-y-6">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">Entrega</h2>
+                    <div className="grid grid-cols-1 gap-3">
+                        {shipping.methods?.pickup && (
+                            <div onClick={() => { setClientData({ ...clientData, deliveryType: 'pickup', addressDetail: '' }); setSelectedDeliveryZone('') }}
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'pickup' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Store size={20} className={clientData.deliveryType === 'pickup' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
+                                <div>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
+                                </div>
+                            </div>
+                        )}
+                        {shipping.methods?.delivery && deliveryZones.length > 0 && (
+                            <div onClick={() => setClientData({ ...clientData, deliveryType: 'local_delivery', addressDetail: '' })}
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'local_delivery' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Truck size={20} className={clientData.deliveryType === 'local_delivery' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
+                                <div>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Entregas a domicilio.</p>
+                                </div>
+                            </div>
+                        )}
+                        {(shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca) && (
+                            <div onClick={() => { setClientData({ ...clientData, deliveryType: 'courier', addressDetail: '' }); setSelectedDeliveryZone('') }}
+                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === 'courier' ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                <Package size={20} className={clientData.deliveryType === 'courier' ? 'text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)]'} />
+                                <div>
+                                    <p className="font-bold text-sm text-[var(--store-text-main)]">Envío Nacional</p>
+                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envíos por agencia.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Sub-opciones de Logística (Naked Inputs) */}
+                    {clientData.deliveryType === 'pickup' && (
+                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
+                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">¿Dónde lo buscas? *</label>
+                            <div className="grid gap-3">
+                                {shipping.main_address && (
+                                    <label className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" checked={clientData.addressDetail === shipping.main_address} onChange={() => setClientData({ ...clientData, addressDetail: shipping.main_address })} />
+                                        <div>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">Tienda Física</p>
+                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">{shipping.main_address}</p>
+                                        </div>
+                                    </label>
+                                )}
+                                {shipping.pickup_locations?.map((loc: string, idx: number) => (
+                                    <label key={idx} className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]' : 'border-[var(--store-border)] hover:border-[var(--store-border)]'}`}>
+                                        <input type="radio" name="pickupLocation" className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" checked={clientData.addressDetail === loc} onChange={() => setClientData({ ...clientData, addressDetail: loc })} />
+                                        <div>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">Punto de Entrega</p>
+                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">{loc}</p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {clientData.deliveryType === 'local_delivery' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                            <div>
+                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Selecciona tu zona *</label>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {deliveryZones.map((z: any) => (
+                                        <button key={z.id} onClick={() => setSelectedDeliveryZone(z.id)} className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]'}`}>
+                                            <span className="font-bold text-sm">{z.name}</span>
+                                            <span className="font-black text-sm">+{currencySymbol}{Number(z.cost).toFixed(2)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {selectedDeliveryZone && (
+                                <div className="grid grid-cols-1 gap-6 animate-in fade-in pt-2">
+                                    <input value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value })} className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección exacta *" />
+                                    <input value={clientData.reference} onChange={e => setClientData({ ...clientData, reference: e.target.value })} className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Punto de referencia (Opcional)" />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {clientData.deliveryType === 'courier' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                            <div>
+                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Agencia de Envío *</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {activeCouriers.map(c => (
+                                        <button key={c} onClick={() => setClientData({ ...clientData, courier: c })} className={`py-4 rounded-md text-xs font-bold transition-all border ${clientData.courier === c ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]'}`}>{c}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {clientData.courier && (
+                                <div className="space-y-6 animate-in fade-in pt-2">
+                                    <input
+                                        maxLength={15}
+                                        value={clientData.identityCard}
+                                        // Permite solo letras y números (ej: V12345678)
+                                        onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, '') })}
+                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Cédula de Identidad *"
+                                    />
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <input maxLength={40} value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Estado *" />
+                                        <input maxLength={40} value={clientData.city} onChange={e => setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)]     transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Ciudad *" />
+                                    </div>
+                                    <input maxLength={150} value={clientData.addressDetail} onChange={e => setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección exacta *" />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
+                <div className="space-y-6">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">Pagos</h2>
+
+                    {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
+                    {allowSplitPayments && (
+                        <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
+                            <button
+                                onClick={() => { setPaymentMode('single'); setSplitPayments([]); setActivePaymentInput(null); }}
+                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'single' ? 'border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent'}`}
+                            >
+                                Pago Único
+                            </button>
+                            <button
+                                onClick={() => { setPaymentMode('split'); setSplitPayments([]); setActivePaymentInput(null); }}
+                                className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === 'split' ? 'border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent'}`}
+                            >
+                                Pago Mixto
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
+                    {remainingListUSD > 0.01 ? (
+                        <div className="py-4 flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">Total Pendiente</span>
+                            <div className="flex items-baseline justify-center gap-1.5">
+                                <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">Bs</span>
+                                <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                    {remainingBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">Ref: ${remainingListUSD.toFixed(2)}</span>
+
+                            {/* Nudge sin caja */}
+                            {remainingListUSD > 0.01 && fxMultiplier > 1 && (
+                                <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
+                                    {isHardCurrencyPayment ? 'Resta en Divisa' : 'Si pagas en divisa'}: <span className="font-black">${remainingCashUSD.toFixed(2)}</span>
+                                </span>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
+                            <Check size={40} strokeWidth={2} className="mb-4 text-[var(--store-incentive)]" />
+                            <p className="font-black text-2xl tracking-tight">Monto Cubierto</p>
+                            <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
+                                {paymentMode === 'single' ? 'Adjunta el comprobante para finalizar.' : 'El total ha sido cubierto. Envía el pedido.'}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* 2. LISTA DE PAGOS AÑADIDOS (Solo Mixto - Líneas Finas) */}
+                    <AnimatePresence>
+                        {paymentMode === 'split' && splitPayments.length > 0 && (
+                            <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
+                                {splitPayments.map(block => {
+                                    // Validación correcta: Si Strict Mode está activo, y NO es Efectivo, se pide captura.
+                                    const requiresReceipt = receiptConfig.strict_mode && block.method !== 'Efectivo';
+
+                                    return (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} key={block.id} className="py-5 overflow-hidden">
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex items-center gap-3 text-[var(--store-text-main)]">
+                                                    <span className="font-bold text-sm">{block.method}</span>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">{block.currency === 'usd' ? `$${block.amount.toFixed(2)}` : `Bs ${block.amount.toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}</span>
+                                                    <button onClick={() => removePaymentBlock(block.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                                                </div>
+                                            </div>
+
+                                            {/* MICRO-UPLOADER NAKED CORREGIDO */}
+                                            {requiresReceipt && (
+                                                <div className="mt-4 pt-2">
+                                                    {!block.receiptFile ? (
+                                                        <div className="relative">
+                                                            <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => e.target.files && handleAttachReceipt(block.id, e.target.files[0])} />
+                                                            <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
+                                                                <Upload size={14} /> Subir Capture de {block.method} *
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                            <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                <Check size={16} className="shrink-0 text-[var(--store-incentive)]" />
+                                                                <span className="text-xs font-bold truncate">{block.receiptFile.name}</span>
+                                                            </div>
+                                                            <button onClick={() => handleAttachReceipt(block.id, null)} className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"><X size={14} strokeWidth={3} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* 3. SELECTOR DE MÉTODOS (Clean Grid) */}
+                    {(paymentMode === 'single' || remainingListUSD > 0.01) && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                            {activePaymentMethods.map(pm => {
+                                const config = getPaymentConfig(pm);
+                                return (
+                                    <button key={pm} onClick={() => openPaymentInput(pm)} className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-md transition-all duration-200 active:scale-[0.98] ${activePaymentInput === pm ? config.btnSelected : config.btnIdle}`}>
+                                        <config.icon size={20} className={activePaymentInput === pm ? 'text-[var(--store-primary-text)]' : 'text-[var(--store-text-main)]'} /> {pm}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    {/* 4. EL PORTAL DE PAGO INLINE (Acordeón Bifurcado UI Limpia) */}
+                    <AnimatePresence>
+                        {activePaymentInput && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                {(() => {
+                                    const requiresReceipt = receiptConfig.strict_mode && activePaymentInput !== 'Efectivo' && activePaymentInput !== 'Zelle';
+                                    const singlePaymentBlock = paymentMode === 'single' ? splitPayments.find(p => p.method === activePaymentInput) : null;
+
+                                    return (
+                                        <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
+
+                                            {paymentMode === 'split' ? (
+                                                // 🚀 PORTAL MODO MIXTO (Naked Input Gigante)
+                                                <>
+                                                    <div className="flex justify-between items-end gap-6">
+                                                        <div className="relative flex-1 group">
+                                                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">Monto con {activePaymentInput}</label>
+                                                            <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
+                                                                <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
+                                                                    {hardCurrencyMethods.includes(activePaymentInput) ? '$' : 'Bs'}
+                                                                </span>
+                                                                <input
+                                                                    type="text"
+                                                                    inputMode="decimal"
+                                                                    autoFocus
+                                                                    // 🚀 1. EL ESPEJO VISUAL (Vista Venezolana)
+                                                                    // Toma el valor "4678.67", le pone puntos a los miles y cambia el punto por coma.
+                                                                    value={paymentAmount ? paymentAmount.split('.').map((p, i) => i === 0 ? p.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : p).join(',') : ''}
+                                                                    onChange={e => {
+                                                                        let val = e.target.value;
+
+                                                                        // 🚀 2. LA INGENIERÍA INVERSA (Formato Máquina)
+                                                                        // A. Quitamos los puntos visuales que el usuario acaba de ver/escribir
+                                                                        val = val.replace(/\./g, '');
+                                                                        // B. Transformamos la coma venezolana en un punto decimal gringo para JavaScript
+                                                                        val = val.replace(/,/g, '.');
+
+                                                                        // 3. Limpiamos basura (Letras, símbolos, etc.)
+                                                                        val = val.replace(/[^0-9.]/g, '');
+
+                                                                        // 4. Bloqueamos colisiones de múltiples puntos decimales (Ej: 15.50.3)
+                                                                        const parts = val.split('.');
+                                                                        if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+
+                                                                        // 5. Bloqueamos a un máximo de 2 decimales reales
+                                                                        if (parts[1] && parts[1].length > 2) val = parts[0] + '.' + parts[1].substring(0, 2);
+
+                                                                        // 6. Límite de longitud máxima para evitar ataques DoS
+                                                                        if (val.length > 12) return;
+
+                                                                        // Guardamos el número en formato puro (Ej: "4678.67")
+                                                                        setPaymentAmount(val);
+                                                                    }}
+                                                                    className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                                    placeholder="0,00"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={confirmPaymentBlock} className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0">
+                                                            Añadir
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                // 🚀 PORTAL MODO ÚNICO (Tipografía Directa y Uploader Inteligente)
+                                                (() => {
+                                                    const canUploadReceipt = activePaymentInput !== 'Efectivo';
+                                                    const isMandatory = receiptConfig.strict_mode && canUploadReceipt;
+
+                                                    return (
+                                                        <>
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Total a cancelar</p>
+                                                                    <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                                                        {hardCurrencyMethods.includes(activePaymentInput) ? `$${totalCashUSD.toFixed(2)}` : `Bs ${(totalListUSD * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {canUploadReceipt && singlePaymentBlock && (
+                                                                <div className="pt-2">
+                                                                    {!singlePaymentBlock.receiptFile ? (
+                                                                        <div className="relative">
+                                                                            <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => e.target.files && handleAttachReceipt(singlePaymentBlock.id, e.target.files[0])} />
+                                                                            <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
+                                                                                <Upload size={16} /> Subir Capture de {activePaymentInput} {isMandatory ? '*' : <span className="font-medium text-[var(--store-surface-text)]">(Opcional)</span>}
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                            <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                                <Check size={16} className="shrink-0 text-[var(--store-incentive)]" />
+                                                                                <span className="text-xs font-bold truncate">{singlePaymentBlock.receiptFile.name}</span>
+                                                                            </div>
+                                                                            <button onClick={() => handleAttachReceipt(singlePaymentBlock.id, null)} className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"><X size={16} /></button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()
+                                            )}
+
+                                            {/* RECIBO DE DATOS BANCARIOS (Bloque Técnico) */}
+                                            {payments[paymentKeysMap[activePaymentInput]]?.details && (
+                                                <div className="bg-[var(--store-bg)] rounded-md p-5 border border-[var(--store-border)] mt-2">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">Datos para Transferir</span>
+                                                        <button onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || '')} className="text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase">
+                                                            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copiado' : 'Copiar'}
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-sm font-mono font-medium text-[var(--store-surface-text)] leading-relaxed whitespace-pre-wrap">
+                                                        {payments[paymentKeysMap[activePaymentInput]]?.details}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+
+
+                {/* 🚀 NUEVO: EL RESUMEN FINANCIERO SE MUEVE AL SCROLL */}
+                {/* Ahora hace scroll natural con el contenido, liberando el 40% de la pantalla */}
+                <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">Resumen de la Orden</h2>
+
+                    <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
+                            <span>Subtotal (Precio de Lista)</span>
+                            <span className={cartEngine.listPromoDiscounts > 0 ? "line-through decoration-[var(--store-border)]" : ""}>
+                                {currencySymbol}{cartEngine.totalListNominal.toFixed(2)}
+                            </span>
+                        </div>
+
+                        {cartEngine.listPromoDiscounts > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
+                                <span>Descuento de Campaña</span>
+                                <span>-{currencySymbol}{cartEngine.listPromoDiscounts.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 🚀 INYECCIÓN DEL RENGLÓN DE IMPUESTO (SOLO SI APLICA) */}
+                        {applyTax && taxAmountListUSD > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2">
+                                <span>I.V.A ({taxPercentage}%)</span>
+                                <span>+{currencySymbol}{taxAmountListUSD.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]">
+                            <span>Subtotal Neto</span>
+                            <span>{currencySymbol}{(cartEngine.finalBsModeUSD).toFixed(2)}</span>
+                        </div>
+
+                        {wholesaleDiscountList > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
+                                <span>Descuento Mayorista</span>
+                                <span>-{currencySymbol}{wholesaleDiscountList.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        <AnimatePresence>
+                            {isHardCurrencyPayment && actualFxSavings > 0 && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
+                                    <span>Beneficio Pago en Divisa</span>
+                                    <span>-{currencySymbol}{actualFxSavings.toFixed(2)}</span>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {deliveryCost > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                                <span>Delivery / Envío</span>
+                                <span>+{currencySymbol}{deliveryCost.toFixed(2)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            </div> {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */}
+
+            {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
+            {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
+            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <div className="flex items-center gap-5">
+
+                    {/* Total a la izquierda */}
+                    <div className="flex flex-col shrink-0">
+                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">Total Final</span>
+                        <div className="flex items-end gap-2">
+                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">{currencySymbol}{grandTotalUSD.toFixed(2)}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1.5">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                    </div>
+
+                    {/* Botón a la derecha */}
+                    <button
+                        onClick={handleCheckout}
+                        disabled={loading || !isPaidInFull || missingReceipts}
+                        className={`flex-1 h-[52px] rounded-full font-black text-xs md:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${missingReceipts && isPaidInFull
+                            ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed'
+                            : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10'
+                            }`}
+                    >
+                        {loading ? (
+                            <Loader2 className="animate-spin" size={18} />
+                        ) : missingReceipts && isPaidInFull ? (
+                            <><Upload size={16} className="mb-0.5" /> Adjunta Recibos</>
+                        ) : (
+                            <><MessageCircle size={16} className="mb-0.5" /> Enviar Pedido</>
+                        )}
+                    </button>
+
+                </div>
+            </div>
+        </motion.div>
+    )
+}
+</file>
+
+</files>

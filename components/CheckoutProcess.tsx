@@ -9,6 +9,7 @@ import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 import { Icon } from '@iconify/react'
 
+
 // --- TIPOS ESTRICTOS ---
 export interface CheckoutProcessProps {
     storeId: string;
@@ -35,28 +36,14 @@ interface PaymentBlock {
     receiptFile: File | null;
 }
 
-// --- LOGOS DE MÉTODOS DE PAGO ---
 const BrandLogos = {
-    Zelle: ({ className, size }: any) => (
-        // Reemplaza "simple-icons:zelle" con el que tienes tú
-        <Icon icon="simple-icons:zelle" className={className} width={size} height={size} />
-    ),
-    Binance: ({ className, size }: any) => (
-        // Reemplaza "simple-icons:binance" con el que tienes tú
-        <Icon icon="simple-icons:binance" className={className} width={size} height={size} />
-    ),
-    PagoMovil: ({ className, size }: any) => (
-        // Reemplaza este string con el icono de Pago Móvil que elegiste
-        <Icon icon="fluent:phone-checkmark-24-regular" className={className} width={size} height={size} />
-    ),
-    Efectivo: ({ className, size }: any) => (
-        // Reemplaza este string con el de Efectivo
-        <Icon icon="bi:cash" className={className} width={size} height={size} />
-    ),
-    Zinli: ({ className, size }: any) => (
-        // Reemplaza este string con el de Zinli
-        <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />
-    )
+    Transferencia: ({ className, size }: any) => <Icon icon="ph:bank-bold" className={className} width={size} height={size} />,
+    Zelle: ({ className, size }: any) => <Icon icon="simple-icons:zelle" className={className} width={size} height={size} />,
+    Binance: ({ className, size }: any) => <Icon icon="simple-icons:binance" className={className} width={size} height={size} />,
+    PagoMovil: ({ className, size }: any) => <Icon icon="fluent:phone-checkmark-24-regular" className={className} width={size} height={size} />,
+    Efectivo: ({ className, size }: any) => <Icon icon="bi:cash" className={className} width={size} height={size} />,
+    Zinli: ({ className, size }: any) => <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />,
+    WallyTech: ({ className, size }: any) => <Icon icon="solar:wallet-bold" className={className} width={size} height={size} />
 }
 
 export default function CheckoutProcess({
@@ -87,16 +74,24 @@ export default function CheckoutProcess({
     const wholesale = storeConfig?.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 }
     const deliveryZones = shipping.delivery_zones || []
 
-    const paymentKeysMap: { [key: string]: string } = { 'Pago Móvil': 'pago_movil', 'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli', 'Efectivo': 'cash' }
-    const hardCurrencyMethods = ['Zelle', 'Binance', 'Zinli', 'Efectivo']
+   // 🚀 LÓGICA DE MÉTODOS Y DIVISAS
+    const paymentKeysMap: { [key: string]: string } = { 
+        'Transferencia': 'transferencia', 'Pago Móvil': 'pago_movil', 
+        'Zelle': 'zelle', 'Binance': 'binance', 'Zinli': 'zinli', 'WallyTech': 'wally', 'Efectivo': 'cash' 
+    }
+    // Zinli y Wally son Dólares. Transferencia asume Bolívares por defecto.
+    const hardCurrencyMethods = ['Zelle', 'Binance', 'Zinli', 'WallyTech', 'Efectivo']
 
-    const activePaymentMethods = useMemo(() => {
+   const activePaymentMethods = useMemo(() => {
         const active = []
+        if (payments.transferencia?.active) active.push('Transferencia')
         if (payments.pago_movil?.active) active.push('Pago Móvil')
         if (payments.zelle?.active) active.push('Zelle')
         if (payments.binance?.active) active.push('Binance')
         if (payments.zinli?.active) active.push('Zinli')
+        if (payments.wally?.active) active.push('WallyTech')
         if (payments.cash?.active) active.push('Efectivo')
+        
         return active
     }, [payments])
 
@@ -114,11 +109,17 @@ export default function CheckoutProcess({
         identityCard: '', phone: '', notes: '', state: '', city: '', addressDetail: '', reference: '',
         fiscalAddress: '' // 🚀 NUEVO
     })
-    // 🚀 NUEVO: ESTADOS FISCALES
-    const defaultTaxActive = storeConfig?.default_tax_active || false
-    // 🚀 CAMBIO UX: Forzamos 'note' (Nota de Entrega) y el IVA apagado por defecto para reducir fricción en la compra web
-    const [documentType, setDocumentType] = useState<'invoice' | 'note'>('note')
-    const [applyTax, setApplyTax] = useState(false)
+    // 🚀 NUEVO: LECTOR DEL PERFIL FISCAL (Gatekeeper de Negocio)
+    const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
+    const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+
+    // 🚀 LÓGICA DETERMINISTA: Si es estricto, aplicamos IVA y asumimos 'invoice'. 
+    // Si no lo es, 0% de IVA y asumimos 'note'. El cliente ya no decide.
+    const [documentType, setDocumentType] = useState<'invoice' | 'note'>(isStrictTax ? 'invoice' : 'note');
+    const [applyTax, setApplyTax] = useState<boolean>(isStrictTax);
+
+    // 🚀 NUEVO ESTADO: Para preguntar si el cliente quiere RIF en su factura (Solo visible en modo estricto)
+    const [wantsFiscalData, setWantsFiscalData] = useState<boolean>(false);
 
 
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>('')
@@ -132,12 +133,12 @@ export default function CheckoutProcess({
     }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones])
 
 
-   // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
+    // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
     const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
-    
+
     const totalListUSD_base = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
     const totalCashUSD_base = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
-    
+
     const taxAmountListUSD = applyTax ? (totalListUSD_base * (taxPercentage / 100)) : 0;
     const taxAmountCashUSD = applyTax ? (totalCashUSD_base * (taxPercentage / 100)) : 0;
 
@@ -200,9 +201,9 @@ export default function CheckoutProcess({
     const confirmPaymentBlock = () => {
         const amount = parseFloat(paymentAmount);
         if (isNaN(amount) || amount <= 0) return;
-        
+
         const isHard = hardCurrencyMethods.includes(activePaymentInput!);
-        
+
         // 1. Calculamos el límite exacto según la moneda seleccionada
         const maxAllowed = isHard ? remainingCashUSD : remainingBs;
 
@@ -227,7 +228,7 @@ export default function CheckoutProcess({
 
     const removePaymentBlock = (id: string) => setSplitPayments(splitPayments.filter(p => p.id !== id));
 
-   const handleAttachReceipt = (id: string, file: File | null) => {
+    const handleAttachReceipt = (id: string, file: File | null) => {
         if (file) {
             // 1. Validar Mime Type real
             if (!file.type.startsWith('image/')) {
@@ -245,11 +246,13 @@ export default function CheckoutProcess({
         const baseSelected = 'bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-md transition-all'
         const baseIdle = 'bg-transparent text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all'
 
-        switch (pm) {
+     switch (pm) {
+            case 'Transferencia': return { icon: BrandLogos.Transferencia, btnSelected: baseSelected, btnIdle: baseIdle }
             case 'Pago Móvil': return { icon: BrandLogos.PagoMovil, btnSelected: baseSelected, btnIdle: baseIdle }
             case 'Zelle': return { icon: BrandLogos.Zelle, btnSelected: baseSelected, btnIdle: baseIdle }
             case 'Binance': return { icon: BrandLogos.Binance, btnSelected: baseSelected, btnIdle: baseIdle }
             case 'Zinli': return { icon: BrandLogos.Zinli, btnSelected: baseSelected, btnIdle: baseIdle }
+            case 'WallyTech': return { icon: BrandLogos.WallyTech, btnSelected: baseSelected, btnIdle: baseIdle }
             case 'Efectivo': return { icon: BrandLogos.Efectivo, btnSelected: baseSelected, btnIdle: baseIdle }
             default: return { icon: CreditCard, btnSelected: baseSelected, btnIdle: baseIdle }
         }
@@ -259,10 +262,10 @@ export default function CheckoutProcess({
     const handleCheckout = async () => {
         if (!clientData.name || !clientData.phone) return Swal.fire({ title: 'Faltan Datos', text: 'Nombre y teléfono son obligatorios', icon: 'warning', confirmButtonColor: '#000' })
 
-            // 🚀 ESCUDO FISCAL
-        if (documentType === 'invoice') {
-            if (!clientData.identityCard) return Swal.fire({ title: 'Faltan Datos', text: 'La Cédula/RIF es obligatoria para emitir Factura', icon: 'warning', confirmButtonColor: '#000' })
-            if (!clientData.fiscalAddress) return Swal.fire({ title: 'Faltan Datos', text: 'La Dirección Fiscal es obligatoria para emitir Factura', icon: 'warning', confirmButtonColor: '#000' })
+        // 🚀 ESCUDO FISCAL BLINDADO
+        if (isStrictTax && wantsFiscalData) {
+            if (!clientData.identityCard) return Swal.fire({ title: 'Faltan Datos', text: 'La Cédula/RIF es obligatoria si solicitas datos fiscales.', icon: 'warning', confirmButtonColor: '#000' })
+            if (!clientData.fiscalAddress) return Swal.fire({ title: 'Faltan Datos', text: 'La Dirección Fiscal es obligatoria si solicitas datos fiscales.', icon: 'warning', confirmButtonColor: '#000' })
         }
 
         if (clientData.deliveryType === 'pickup' && !clientData.addressDetail) return Swal.fire({ title: 'Punto de Retiro', text: 'Selecciona dónde buscarás tu pedido.', icon: 'warning', confirmButtonColor: '#000' })
@@ -285,23 +288,23 @@ export default function CheckoutProcess({
                 if (p.receiptFile) {
                     let compressedReceipt;
                     try {
-                     compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
+                        compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
                     } catch (compErr) {
                         console.error("Compresión fallida:", compErr);
                         throw new Error("El formato de la imagen no es válido o es muy pesada. Por favor, intenta con un capture diferente.");
                     }
 
                     const fileExt = p.receiptFile.name.split('.').pop() || 'jpg';
-                    const uniqueUploadId = Date.now().toString().slice(-6); 
+                    const uniqueUploadId = Date.now().toString().slice(-6);
                     const fileName = `receipt-${p.id}-${uniqueUploadId}.${fileExt}`;
-                    
+
                     const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, compressedReceipt, { upsert: true });
-                    
+
                     if (uploadError) {
                         console.error("Storage Error Técnico:", uploadError);
                         throw new Error("Tuvimos un problema de conexión al subir tu comprobante. Por favor, verifica tu internet e intenta de nuevo.");
                     }
-                    
+
                     const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
                     receiptPublicUrl = publicUrl;
                 }
@@ -319,7 +322,7 @@ export default function CheckoutProcess({
             else if (clientData.deliveryType === 'local_delivery') deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || 'Zona'} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || 'N/A'} | Tlf: ${clientData.phone}`;
             else if (clientData.deliveryType === 'pickup') deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
 
-           // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
+            // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
             const finalPaymentMethod = uploadedPayments.length === 1 ? uploadedPayments[0].method : 'Mixto';
 
             // 2. Insertar Orden
@@ -340,56 +343,62 @@ export default function CheckoutProcess({
                     delivery_info: deliveryInfoFull,
                     shipping_cost: Number(deliveryCost.toFixed(2)),
                     discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
-                    affiliate_code: affiliateCode || null, 
-                    // 🚀 INYECCIÓN FISCAL OMNICANAL
-                    document_type: documentType,
+                    affiliate_code: affiliateCode || null,
+                    // 🚀 INYECCIÓN FISCAL OMNICANAL Y DETERMINISTA
+                    document_type: isStrictTax ? 'invoice' : 'note',
                     is_tax_applied: applyTax,
                     tax_percentage: applyTax ? taxPercentage : 0,
                     subtotal_usd: Number(totalListUSD_base.toFixed(2)),
                     tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
-                    customer_dni: documentType === 'invoice' || clientData.deliveryType === 'courier' ? clientData.identityCard : null,
-                    customer_address: documentType === 'invoice' ? clientData.fiscalAddress : null
+                    // 🚀 NUEVO: PERSISTENCIA DE DESCUENTOS PARA EL PDF
+                    promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                    wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                    affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                    fx_savings_usd: Number(actualFxSavings.toFixed(2)),
+                    // Si quiere datos fiscales, guardamos su cédula/dirección, sino, guardamos la de envío o null
+                    customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === 'courier' ? clientData.identityCard : null,
+                    customer_address: (isStrictTax && wantsFiscalData) ? clientData.fiscalAddress : null
                 }).select().single();
             if (orderError) {
                 console.error("Order DB Error Técnico:", orderError);
                 throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
             }
 
-         
-            
+
+
             // 3. Insertar Items
-            const orderItemsPayload = items.map(item => ({ 
-                order_id: order.id, 
-                product_id: item.productId, 
-                product_name: item.name, 
-                variant_info: item.variantInfo || 'N/A', 
-                quantity: item.quantity, 
-                price_at_purchase: item.basePrice, 
-                variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null 
+            const orderItemsPayload = items.map(item => ({
+                order_id: order.id,
+                product_id: item.productId,
+                product_name: item.name,
+                variant_info: item.variantInfo || 'N/A',
+                quantity: item.quantity,
+                price_at_purchase: item.basePrice,
+                variant_id: (item.variantId && item.variantId.length === 36) ? item.variantId : null
             }));
-            
+
             const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-            
+
             if (itemsError) {
                 console.error("Order Items DB Error Técnico:", itemsError);
-                
+
                 // 🚀 ESTRATEGIA FAIL-FORWARD: Salvamos la venta y bloqueamos reintentos
-                
+
                 // 1. Armamos el mensaje de WhatsApp de rescate (explicando la situación a la tienda)
                 let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n`;
                 fallbackMessage += `*Intento de Pedido:* #${order.order_number}\n`;
                 fallbackMessage += `*Cliente:* ${clientData.name}\n`;
                 fallbackMessage += `*Teléfono:* ${clientData.phone}\n\n`;
                 fallbackMessage += `Hola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
-                
+
                 const fallbackWaLink = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
-                
+
                 // 2. Vaciamos el carrito para matar la data local
                 clearCart();
-                
+
                 // 3. Forzamos el paso a la pantalla de Éxito (Paso 3) con el link de emergencia
                 onSuccess(order.order_number, fallbackWaLink, order.id); // 🚀 AÑADE order.id
-                
+
                 // 4. Le explicamos al cliente qué pasó con una alerta suave
                 Swal.fire({
                     title: 'Interrupción de red',
@@ -400,11 +409,11 @@ export default function CheckoutProcess({
                     confirmButtonColor: '#000',
                     customClass: { popup: 'rounded-xl border border-[var(--store-border)]', title: 'font-black text-xl text-[var(--store-text-main)]' }
                 });
-                
+
                 setLoading(false);
                 return; // <-- CRÍTICO: Detenemos la función aquí. No entra al catch. No genera órdenes basura.
             }
-       
+
             // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (AWAIT OBLIGATORIO)
             await fetch('/api/web-push/notify', {
                 method: 'POST',
@@ -417,7 +426,7 @@ export default function CheckoutProcess({
                 })
             }).catch(err => console.error("Error silencioso en notificación Push:", err));
 
-          
+
 
             // 4. Formatear Mensaje WhatsApp
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`
@@ -426,12 +435,18 @@ export default function CheckoutProcess({
                 message += `🔸 ${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ''} ${priceText}\n`
             })
 
-            message += `\n*RESUMEN FINANCIERO:*\n`
+           message += `\n*RESUMEN FINANCIERO:*\n`
             message += `Subtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`
-           if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`
+            if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`
             if (wholesaleDiscountList > 0) message += `Desc. Mayorista: -$${wholesaleDiscountList.toFixed(2)}\n`
-            if (affiliateDiscountList! > 0) message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n` // 🚀 NUEVO
+            if (affiliateDiscountList! > 0) message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n`
             if (actualFxSavings > 0) message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`
+            
+            // 🚀 INYECCIÓN DETERMINISTA DE IVA EN WHATSAPP
+            if (applyTax && taxAmountListUSD > 0) {
+                message += `I.V.A (${taxPercentage}%): +$${taxAmountListUSD.toFixed(2)}\n`
+            }
+            
             if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`
             message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`
 
@@ -441,7 +456,7 @@ export default function CheckoutProcess({
             } else {
                 message += `\n*MÉTODO DE PAGO:*\n`
             }
-            
+
             uploadedPayments.forEach((p: any) => {
                 message += `✔️ ${p.method}: ${p.currency === 'usd' ? '$' + p.amount_usd.toFixed(2) : 'Bs ' + p.amount_bs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}\n`
                 if (p.receipt_url) message += `   🔗 Comprobante: ${p.receipt_url}\n`
@@ -458,7 +473,7 @@ export default function CheckoutProcess({
         } catch (error: any) {
             // Extracción del mensaje amigable para el cliente
             let friendlyMessage = "Ocurrió un error inesperado al procesar tu pedido por una falla de conexión. Por favor intenta de nuevo.";
-            
+
             if (typeof error === 'string') {
                 friendlyMessage = error;
             } else if (error instanceof Error) {
@@ -484,7 +499,7 @@ export default function CheckoutProcess({
         } finally {
             setLoading(false);
         }
-    
+
     }
 
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
@@ -494,43 +509,70 @@ export default function CheckoutProcess({
 
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
 
-               <input
-                            maxLength={50} // Límite estricto de base de datos
-                            value={clientData.name}
-                            // Eliminamos los caracteres < y > para evitar inyecciones XSS
-                            onChange={e => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, '') })}
-                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                            placeholder="Nombre completo *"
-                        />
-                        <input
-                            maxLength={20} // Un teléfono no necesita más
-                            value={clientData.phone}
-                            // Permite SOLO números y el símbolo +
-                            onChange={e => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, '') })}
-                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                            placeholder="Teléfono / WhatsApp *"
-                        />
+                <input
+                    maxLength={50} // Límite estricto de base de datos
+                    value={clientData.name}
+                    // Eliminamos los caracteres < y > para evitar inyecciones XSS
+                    onChange={e => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, '') })}
+                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                    placeholder="Nombre completo *"
+                />
+                <input
+                    maxLength={20} // Un teléfono no necesita más
+                    value={clientData.phone}
+                    // Permite SOLO números y el símbolo +
+                    onChange={e => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                    placeholder="Teléfono / WhatsApp *"
+                />
 
-                        {/* 🚀 NUEVO: SELECTOR FISCAL OMNICANAL */}
-                <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
-                    <label className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Comprobante de Compra</label>
-                    <div className="flex gap-2 p-1 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
-                        <button onClick={() => { setDocumentType('note'); setApplyTax(false); }} className={`flex-1 py-3 rounded-md text-xs font-bold transition-all ${documentType === 'note' ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}>Nota de Entrega</button>
-                        <button onClick={() => { setDocumentType('invoice'); setApplyTax(true); }} className={`flex-1 py-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${documentType === 'invoice' ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] ' : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}>Factura Comercial <span className="text-[8px] bg-[var(--store-primary-text)] text-[var(--store-bg)] px-1.5 py-0.5 rounded">+IVA</span></button>
-                    </div>
+               {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
+                        <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
+                            {isStrictTax ? (
+                                // 🟢 MODO CORPORATIVO: Ordinario / Especial
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3 p-4 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
+                                        <div className="mt-0.5 w-4 h-4 rounded-full border-2 border-[var(--store-primary)] flex items-center justify-center shrink-0">
+                                            <div className="w-2 h-2 rounded-full bg-[var(--store-primary)]" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-widest leading-none mb-1">Impuesto de Ley Aplicado</p>
+                                            <p className="text-[10px] font-medium text-[var(--store-surface-text)] leading-relaxed">Por normativa del SENIAT, esta orden incluye el cálculo del {taxPercentage}% de I.V.A.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <label className="flex items-center gap-3 p-4 border border-[var(--store-border)] rounded-xl cursor-pointer hover:bg-[var(--store-bg)] transition-colors group">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 accent-[var(--store-primary)] border-[var(--store-border)] rounded shadow-sm focus:ring-0 cursor-pointer"
+                                            checked={wantsFiscalData}
+                                            onChange={(e) => setWantsFiscalData(e.target.checked)}
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-[var(--store-text-main)] transition-colors group-hover:text-[var(--store-primary)]">
+                                                Deseo comprobante con mis datos fiscales (RIF)
+                                            </span>
+                                            <span className="text-[10px] text-[var(--store-surface-text)] font-medium">Si no lo seleccionas, se emitirá a Consumidor Final.</span>
+                                        </div>
+                                    </label>
 
-                    {/* 🚀 Campos Exclusivos de Factura */}
-                    <AnimatePresence>
-                        {documentType === 'invoice' && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="pt-4 space-y-0">
-                                    <input maxLength={20} value={clientData.identityCard} onChange={e => setClientData({ ...clientData, identityCard: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-surface-text)]" placeholder="CI / RIF Fiscal *" />
-                                    <input maxLength={100} value={clientData.fiscalAddress} onChange={e => setClientData({ ...clientData, fiscalAddress: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-surface-text)]" placeholder="Dirección Fiscal Completa *" />
+                                    <AnimatePresence>
+                                        {wantsFiscalData && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                                <div className="pt-2 space-y-0">
+                                                    <input maxLength={20} value={clientData.identityCard} onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^JVEG0-9-]/gi, '').toUpperCase() })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Ej: J-12345678-9 *" />
+                                                    <input maxLength={100} value={clientData.fiscalAddress} onChange={e => setClientData({ ...clientData, fiscalAddress: e.target.value })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Dirección Fiscal Completa *" />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                            ) : (
+                                // 🔴 MODO INFORMAL: Emprendedor
+                                // No mostramos nada relacionado al IVA, la orden sigue limpia.
+                                <div className="hidden"></div>
+                            )}
+                        </div>
                 {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
                 <div className="space-y-6">
                     <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">Entrega</h2>
@@ -628,12 +670,12 @@ export default function CheckoutProcess({
                             </div>
                             {clientData.courier && (
                                 <div className="space-y-6 animate-in fade-in pt-2">
-                                   <input 
+                                    <input
                                         maxLength={15}
-                                        value={clientData.identityCard} 
+                                        value={clientData.identityCard}
                                         // Permite solo letras y números (ej: V12345678)
-                                        onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, '') })} 
-                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Cédula de Identidad *" 
+                                        onChange={e => setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, '') })}
+                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Cédula de Identidad *"
                                     />
                                     <div className="grid grid-cols-2 gap-6">
                                         <input maxLength={40} value={clientData.state} onChange={e => setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, '') })} className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]" placeholder="Estado *" />
@@ -780,35 +822,35 @@ export default function CheckoutProcess({
                                                                 <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
                                                                     {hardCurrencyMethods.includes(activePaymentInput) ? '$' : 'Bs'}
                                                                 </span>
-                                                               <input
-                                                                    type="text" 
+                                                                <input
+                                                                    type="text"
                                                                     inputMode="decimal"
                                                                     autoFocus
                                                                     // 🚀 1. EL ESPEJO VISUAL (Vista Venezolana)
                                                                     // Toma el valor "4678.67", le pone puntos a los miles y cambia el punto por coma.
-                                                                    value={paymentAmount ? paymentAmount.split('.').map((p, i) => i === 0 ? p.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : p).join(',') : ''} 
+                                                                    value={paymentAmount ? paymentAmount.split('.').map((p, i) => i === 0 ? p.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : p).join(',') : ''}
                                                                     onChange={e => {
                                                                         let val = e.target.value;
-                                                                        
+
                                                                         // 🚀 2. LA INGENIERÍA INVERSA (Formato Máquina)
                                                                         // A. Quitamos los puntos visuales que el usuario acaba de ver/escribir
-                                                                        val = val.replace(/\./g, ''); 
+                                                                        val = val.replace(/\./g, '');
                                                                         // B. Transformamos la coma venezolana en un punto decimal gringo para JavaScript
-                                                                        val = val.replace(/,/g, '.'); 
-                                                                        
+                                                                        val = val.replace(/,/g, '.');
+
                                                                         // 3. Limpiamos basura (Letras, símbolos, etc.)
                                                                         val = val.replace(/[^0-9.]/g, '');
-                                                                        
+
                                                                         // 4. Bloqueamos colisiones de múltiples puntos decimales (Ej: 15.50.3)
                                                                         const parts = val.split('.');
                                                                         if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
-                                                                        
+
                                                                         // 5. Bloqueamos a un máximo de 2 decimales reales
                                                                         if (parts[1] && parts[1].length > 2) val = parts[0] + '.' + parts[1].substring(0, 2);
-                                                                        
+
                                                                         // 6. Límite de longitud máxima para evitar ataques DoS
                                                                         if (val.length > 12) return;
-                                                                        
+
                                                                         // Guardamos el número en formato puro (Ej: "4678.67")
                                                                         setPaymentAmount(val);
                                                                     }}
@@ -905,6 +947,14 @@ export default function CheckoutProcess({
                             <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
                                 <span>Descuento de Campaña</span>
                                 <span>-{currencySymbol}{cartEngine.listPromoDiscounts.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 🚀 INYECCIÓN DEL RENGLÓN DE IMPUESTO (SOLO SI APLICA) */}
+                        {applyTax && taxAmountListUSD > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2">
+                                <span>I.V.A ({taxPercentage}%)</span>
+                                <span>+{currencySymbol}{taxAmountListUSD.toFixed(2)}</span>
                             </div>
                         )}
 
