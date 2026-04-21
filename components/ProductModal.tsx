@@ -130,25 +130,17 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                 setCurrentGallery(defaultGallery)
                 setGalleryIndex(0)
                 setQuantity(1)
-
-                if (vars && vars.length > 0) {
+if (vars && vars.length > 0) {
                     setVariants(vars)
 
-                    const availableVar = vars.find((v: any) => v.stock > 0) || vars[0]
-                    setSelectedColor(availableVar.color_name)
-                    
-                    // 🚀 AUTO-SELECCIÓN INICIAL (Capa 1)
-                    const sizesForFirstColor = vars.filter((v: any) => v.color_name === availableVar.color_name);
-                    if (sizesForFirstColor.length === 1) {
-                        setSelectedSize(sizesForFirstColor[0].size);
-                    }
+                    // 🚀 SOLUCIÓN UX: "Fricción Intencional" (Forced Choice)
+                    // Eliminamos la auto-selección. Obligamos al usuario a tomar una decisión 
+                    // consciente para reducir la tasa de pedidos erróneos (ODR).
+                    setSelectedColor(null)
+                    setSelectedSize(null)
 
-                    let images = []
-                    if (availableVar.gallery && availableVar.gallery.length > 0) images = availableVar.gallery
-                    else if (availableVar.variant_image) images = [availableVar.variant_image]
-                    else images = defaultGallery
-
-                    setCurrentGallery(images)
+                    // Al no tener variante seleccionada, mostramos la galería base del producto
+                    setCurrentGallery(defaultGallery)
                 } else {
                     setVariants([])
                     setSelectedColor(null)

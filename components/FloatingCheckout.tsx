@@ -473,7 +473,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         rel="noopener noreferrer" 
                                                         className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]"
                                                     >
-                                                        <FileText size={18} /> Ver Comprobante (PDF)
+                                                        <FileText size={18} /> Ver orden de pedido
                                                     </a>
                                                 )}
                                                 <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
