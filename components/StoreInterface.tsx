@@ -13,6 +13,8 @@ import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 
+
+
 const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
@@ -84,6 +86,8 @@ const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
         }
     }, [currentSlug])
 
+    
+
     // Función manejadora para un cierre suave
     const handleClose = () => {
         setIsVisible(false) // 1. Dispara la animación de salida
@@ -94,6 +98,8 @@ const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
             setSavedQuote(null)
         }, 300) 
     }
+
+    
 
     return (
         <AnimatePresence>
@@ -404,23 +410,27 @@ const searchParams = useSearchParams()
     return ['Todos', ...sortedCats]
   }, [products, store?.categories_order])
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      // Usamos debouncedSearch en lugar de search
+ // 🚀 MOTOR DE CLASIFICACIÓN UNIVERSAL (Respeta el orden del servidor)
+  const { featured:featuredProducts, standard:standardProducts } = useMemo(() => {
+    // 1. Aplicamos búsqueda y filtros de categoría
+    const baseFiltered = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       const productCatClean = normalizeCategory(p.category)
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
-
-      // 🚀 BLINDAJE INT8: Coerción absoluta a String
+      
       const matchesPromo = activePromo
         ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id))
         : true
 
       return matchesSearch && matchesCategory && matchesPromo
     })
-  }, [products, debouncedSearch, selectedCategory, activePromo]) // Actualizamos las dependencias
 
-  const displayedProducts = filteredProducts.slice(0, visibleCount)
+    // 2. Clasificación simple: el orden ya viene perfecto desde el servidor
+    const featured = baseFiltered.filter(p => p.is_featured)
+    const standard = baseFiltered // La cuadrícula completa muestra todo en el orden maestro
+
+    return { featured, standard }
+  }, [products, debouncedSearch, selectedCategory, activePromo])
 
   const handleOpenProduct = (product: any) => {
     setSelectedProductForModal(product)
@@ -662,11 +672,44 @@ const searchParams = useSearchParams()
 
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
 
-
         <>
-          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
+          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+          {featuredProducts.length > 0 && !debouncedSearch && (
+              <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
+                      <div>
+                          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] mt-1">Selección Premium</p>
+                      </div>
+                  </div>
+                  
+                  {/* Carrusel Horizontal */}
+                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 snap-x snap-mandatory">
+                     {featuredProducts.map((product: any, idx: number) => {
+                          const pricing = getProductPricing(product)
+                          const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                              ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                              : (product.stock || 0) <= 0;
+
+                          return (
+                              <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
+                                  <ProductCard 
+                                      product={product} 
+                                      pricing={pricing} 
+                                      onOpen={handleOpenProduct}
+                                      isOutOfStock={isCompletelyOutOfStock}
+                                      index={idx}
+                                  />
+                              </div>
+                          )
+                      })}
+                  </div>
+              </section>
+          )}
+
+          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid Estándar) */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-            {displayedProducts.map((product, index) => { // 🚀 INYECCIÓN: Agregamos el index
+            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => { // 🚀 Usamos standardProducts
               const pricing = getProductPricing(product)
 
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
@@ -680,15 +723,16 @@ const searchParams = useSearchParams()
                   pricing={pricing}
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
-                  index={index} // 🚀 INYECCIÓN: Enviamos el index a la tarjeta
+                  index={index}
                 />
               )
             })}
           </div>
 
-          {visibleCount < filteredProducts.length && (
+          {/* Indicador de Carga / Scroll Infinito */}
+          {visibleCount < standardProducts.length && (
             <div ref={observerTarget} className="w-full py-12 flex justify-center">
-              <div className="w-6 h-6 border-2 border-[var(--store-border)] border-t-black rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-[var(--store-border)] border-t-[var(--store-text-main)] rounded-full animate-spin"></div>
             </div>
           )}
         </>

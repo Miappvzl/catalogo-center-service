@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus, Receipt } from 'lucide-react'
+import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus, Receipt, Star } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { revalidateStoreCache } from '@/app/admin/actions'
@@ -49,7 +49,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         status: 'active',
         shipping_badge_title: '', // NUEVO
         shipping_badge_desc: '',   // NUEVO
-        is_tax_exempt: false // 🚀 NUEVO: Estado fiscal del producto
+        is_tax_exempt: false, // 🚀 NUEVO: Estado fiscal del producto
+        is_featured: false, // 🚀 NUEVO: Merchandising
+        display_order: 0 as number | '' // 🚀 NUEVO: Orden de prioridad
     })
 
     const [productGallery, setProductGallery] = useState<string[]>([])
@@ -198,7 +200,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     status: product.status || 'active',
                     shipping_badge_title: product.shipping_badge_title || '', // NUEVO
                     shipping_badge_desc: product.shipping_badge_desc || '',    // NUEVO
-                    is_tax_exempt: product.is_tax_exempt || false // 🚀 NUEVO: Leer BD
+                    is_tax_exempt: product.is_tax_exempt || false, // 🚀 NUEVO: Leer BD
+                    is_featured: product.is_featured || false, // 🚀 NUEVO
+                    display_order: product.display_order || 0  // 🚀 NUEVO
                 })
 
                 setProductGallery(product.gallery || [])
@@ -464,7 +468,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 stock: hasVariants ? 0 : (Number(simpleStock) || 0),
                 shipping_badge_title: formData.shipping_badge_title || null, // NUEVO (Null para heredar)
                 shipping_badge_desc: formData.shipping_badge_desc || null,
-                is_tax_exempt: formData.is_tax_exempt // 🚀 NUEVO: Guardar en BD
+                is_tax_exempt: formData.is_tax_exempt, // 🚀 NUEVO: Guardar en BD
+                is_featured: formData.is_featured, // 🚀 NUEVO
             }
 
             let currentId = productId
@@ -667,6 +672,33 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     />
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 🚀 CARD 1.5: MERCHANDISING Y ESCAPARATE */}
+                <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent space-y-6">
+                    <h3 className="text-lg font-black text-gray-900 border-b border-gray-100 pb-3 flex items-center gap-2">
+                        <Star size={20} className="fill-amber-500 text-amber-500" /> Exhibición y Merchandising
+                    </h3>
+                    
+                    {/* Toggle de Destacado (Único control en el editor) */}
+                    <div
+                        className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_featured ? 'bg-black border-black' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+                        onClick={() => updateForm('is_featured', !formData.is_featured)}
+                    >
+                        <div className="pr-4 mb-3 sm:mb-0">
+                            <p className={`font-bold text-sm flex items-center gap-2 ${formData.is_featured ? 'text-white' : 'text-gray-900'}`}>
+                                <Star size={16} className={formData.is_featured ? 'fill-amber-500 text-amber-500' : 'text-gray-500'} />
+                                Destacar en el Escaparate
+                            </p>
+                            <p className={`text-xs mt-1 ${formData.is_featured ? 'text-gray-100' : 'text-gray-500'}`}>
+                                Al encender esto, el producto aparecerá en el carrusel de "Lo más vendido". <br className="hidden sm:block"/>
+                                <span className="font-bold">Para cambiar su posición exacta, usa el botón "Organizar Tienda" en tu Inventario.</span>
+                            </p>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${formData.is_featured ? 'bg-amber-500 border-transparent justify-end shadow-sm' : 'bg-white border-gray-300 justify-start shadow-sm'}`}>
+                            <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_featured ? 'bg-white' : 'bg-gray-300'}`} />
                         </div>
                     </div>
                 </div>

@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap } from 'lucide-react'
+import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { Zain } from 'next/font/google'
 
 // --- TIPOS (Actualizados con isTaxExempt) ---
 interface InventoryItem {
@@ -22,6 +24,8 @@ interface InventoryItem {
     size: string;
     stock: number;
     isTaxExempt: boolean; // 🚀 NUEVO
+    isFeatured: boolean; // 🚀 AÑADIR ESTO
+    displayOrder: number; // 🚀 NUEVO
 }
 
 export default function InventoryPage() {
@@ -29,6 +33,80 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
+// 🚀 ESTADOS DEL MODO MERCHANDISING
+    const [isReordering, setIsReordering] = useState(false)
+    const [reorderList, setReorderList] = useState<any[]>([])
+    const [isSavingOrder, setIsSavingOrder] = useState(false)
+    const [editingIndex, setEditingIndex] = useState<string | null>(null)
+
+    // Abre el modal con TODO el catálogo activo para ordenar la tienda completa
+    const openReorderModal = () => {
+        // Obtenemos productos únicos (agrupando variantes por su productId)
+        const allProducts = Array.from(new Map(
+            items.map(i => [i.productId, { 
+                id: i.productId, 
+                name: i.name, 
+                image: i.image, 
+                displayOrder: i.displayOrder,
+                isFeatured: i.isFeatured // Mantenemos la referencia visual
+            }])
+        ).values()).sort((a, b) => a.displayOrder - b.displayOrder)
+        
+        setReorderList(allProducts)
+        setIsReordering(true)
+    }
+
+    // 🚀 MAGIA: EL SALTO CUÁNTICO (Editar número manualmente)
+    const handleQuantumLeap = (productId: string, newPosStr: string) => {
+        const newPos = parseInt(newPosStr)
+        if (isNaN(newPos) || newPos < 1) return;
+        
+        const currentIndex = reorderList.findIndex(p => p.id === productId)
+        if (currentIndex === -1) return;
+
+        let targetIndex = newPos - 1
+        if (targetIndex > reorderList.length - 1) targetIndex = reorderList.length - 1
+
+        const newList = [...reorderList]
+        const [movedItem] = newList.splice(currentIndex, 1)
+        newList.splice(targetIndex, 0, movedItem) // Inyecta el ítem en la nueva posición y desplaza el resto
+        
+        setReorderList(newList)
+    }
+
+    // Guardado por Lotes (Batch Update a Supabase)
+    const saveReorder = async () => {
+        setIsSavingOrder(true)
+        try {
+            const updates = reorderList.map((item, index) => ({
+                id: item.id,
+                display_order: index + 1 // Convertimos el índice del array en el número real (1, 2, 3...)
+            }))
+            
+            // Enviamos todo a Supabase en paralelo para máxima velocidad
+            await Promise.all(updates.map(u => 
+                supabase.from('products').update({ display_order: u.display_order }).eq('id', u.id)
+            ))
+
+            // Actualizamos la UI local
+            setItems(prev => prev.map(item => {
+                const match = updates.find(u => u.id === item.productId)
+                return match ? { ...item, displayOrder: match.display_order } : item
+            }))
+
+            await revalidateStoreCache() // Destruimos la caché para que el cliente lo vea instantáneo
+            
+            setIsReordering(false)
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: 'Escaparate Reorganizado' })
+        } catch (e) {
+            Swal.fire('Error', 'No se pudo guardar el orden', 'error')
+        } finally {
+            setIsSavingOrder(false)
+        }
+    }
+
+
     const [filterStatus, setFilterStatus] = useState('all')
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
@@ -45,20 +123,20 @@ export default function InventoryPage() {
                 if (!store) return
                 setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
 
-
-                // 🚀 FIX: Añadimos is_tax_exempt al query
-                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
                 if (error) throw error
 
                 const flatInventory: InventoryItem[] = []
                 products?.forEach((prod: any) => {
-                    const isExempt = prod.is_tax_exempt || false // 🚀 Leemos la BD
+                    const isExempt = prod.is_tax_exempt || false
+                    const isFeat = prod.is_featured || false
+                    const dOrder = prod.display_order || 0 // 🚀 NUEVO
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
-                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt })
+                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder})
                         })
                     } else {
-                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt })
+                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder })
                     }
                 })
                 setItems(flatInventory)
@@ -117,6 +195,22 @@ export default function InventoryPage() {
         }
     }
 
+    // 🚀 NUEVA FUNCIÓN: Alternar estatus de Destacado
+    const toggleFeatured = async (productId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus
+        setItems(prev => prev.map(item => item.productId === productId ? { ...item, isFeatured: newStatus } : item))
+
+        try {
+            const { error } = await supabase.from('products').update({ is_featured: newStatus }).eq('id', productId)
+            if (error) throw error
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: newStatus ? 'Añadido a Lo Más Vendido' : 'Removido de Lo Más Vendido' })
+        } catch (error) {
+            setItems(prev => prev.map(item => item.productId === productId ? { ...item, isFeatured: currentStatus } : item))
+            Swal.fire('Error', 'No se pudo actualizar el estatus', 'error')
+        }
+    }
+
     const filteredItems = useMemo(() => {
         return items.filter(item => {
             const textMatch = item.name.toLowerCase().includes(search.toLowerCase()) || item.color.toLowerCase().includes(search.toLowerCase()) || item.size.toLowerCase().includes(search.toLowerCase())
@@ -144,14 +238,14 @@ export default function InventoryPage() {
                 </div>
                 {/* KPI CHIPS (Borderless) */}
                 <div className="hidden md:flex gap-3">
-                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] shadow-sm flex items-center gap-3">
+                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)]  flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                         <div>
                             <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Agotados</span>
                             <span className="block text-sm font-black text-gray-900 leading-none">{stats.out}</span>
                         </div>
                     </div>
-                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] shadow-sm flex items-center gap-3">
+                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
                         <div>
                             <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Poco Stock</span>
@@ -194,6 +288,12 @@ export default function InventoryPage() {
                                 className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-11 pr-4 py-3 text-sm font-medium outline-none transition-all"
                             />
                         </div>
+                        {/* 🚀 BOTÓN ORGANIZAR ESCAPARATE */}
+                        {items.filter(i => i.isFeatured).length > 1 && (
+                        <button onClick={openReorderModal} className="bg-black text-white px-5 py-3 rounded-full text-xs font-bold shadow-subtle hover:bg-gray-800 transition-all flex items-center gap-2 whitespace-nowrap shrink-0">
+                            <Zap size={14} className="fill-white" /> Organizar Tienda
+                        </button>
+                        )}
                     </div>
 
                     {/* TABLA ELITE (Borderless) */}
@@ -215,6 +315,7 @@ export default function InventoryPage() {
                                             <th className="p-4 md:p-6">Producto</th>
                                             <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
                                             <th className="p-4 md:p-6 text-center">Gestión Rápida</th>
+                                            <th className="p-4 md:p-6 text-center">Exhibición</th>
                                             <th className="p-4 md:p-6 text-right">Estado</th>
                                         </tr>
                                     </thead>
@@ -322,6 +423,16 @@ export default function InventoryPage() {
                                                             )}
                                                         </div>
                                                     </td>
+                                                    {/* 🚀 NUEVA CELDA: EXHIBICIÓN */}
+                                                    <td className="p-4 md:p-6 align-middle text-center">
+                                                        <button
+                                                            onClick={() => toggleFeatured(item.productId, item.isFeatured)}
+                                                            className={`p-2.5 rounded-xl transition-all active:scale-90 flex items-center justify-center mx-auto ${item.isFeatured ? 'bg-white  text-amber-500 border border-[#ffbe5d8d] ' : 'bg-gray-50 text-gray-300 border border-transparent hover:border-gray-200'}`}
+                                                            title="Destacar en la tienda (Lo más vendido)"
+                                                        >
+                                                            <Star size={18} fill={item.isFeatured ? "currentColor" : "none"} strokeWidth={2.5} />
+                                                        </button>
+                                                    </td>
                                                     <td className="p-4 md:p-6 text-right align-middle">
                                                         <div className="flex justify-end items-center gap-4">
                                                             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${statusColor}`}>
@@ -342,6 +453,89 @@ export default function InventoryPage() {
                     </div>
                 </div>
             </div>
+            {/* 🚀 MODAL DE REORDENAMIENTO (VISUAL MERCHANDISING) */}
+            <AnimatePresence>
+                {isReordering && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsReordering(false)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-[#F6F6F6] w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border border-gray-100">
+                            
+                            <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-start shrink-0">
+                                <div>
+                                    <h3 className="font-black text-xl text-gray-900 leading-tight">Visual Merchandising</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Arrastra o haz clic en el # para mover</p>
+                                </div>
+                                <button onClick={() => setIsReordering(false)} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"><X size={18} strokeWidth={2.5} /></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar">
+                                {/* 🚀 Framer Motion Reorder Group */}
+                                <Reorder.Group axis="y" values={reorderList} onReorder={setReorderList} className="space-y-3">
+                                    {reorderList.map((item, index) => (
+                                        <Reorder.Item key={item.id} value={item} className="bg-white p-3 rounded-2xl border border-gray-100  flex items-center gap-4 cursor-grab active:cursor-grabbing relative group hover:border-gray-300 transition-colors">
+                                            
+                                            {/* 🚀 El Salto Cuántico (Input Directo) */}
+                                            <div className="shrink-0 flex items-center justify-center w-12">
+                                                {editingIndex === item.id ? (
+                                                    <input 
+                                                        autoFocus
+                                                        type="number"
+                                                        min="1"
+                                                        max={reorderList.length}
+                                                        className="w-10 h-8 text-center font-black text-sm bg-gray-100 border-none rounded-lg outline-none focus:ring-2 focus:ring-black"
+                                                        onBlur={(e) => { setEditingIndex(null); handleQuantumLeap(item.id, e.target.value) }}
+                                                        onKeyDown={(e) => { if(e.key === 'Enter') { setEditingIndex(null); handleQuantumLeap(item.id, e.currentTarget.value) } }}
+                                                    />
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => setEditingIndex(item.id)} 
+                                                        className="w-10 h-8 flex items-center justify-center font-black text-gray-400 hover:text-black hover:bg-gray-50 rounded-lg transition-colors"
+                                                        title="Clic para cambiar posición exacto"
+                                                    >
+                                                        #{index + 1}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Info del Producto */}
+                                            <div className="w-12 h-12 rounded-xl bg-gray-50 overflow-hidden shrink-0 relative border border-gray-100">
+                                                {item.image ? <Image src={getOptimizedUrl(item.image)} alt={item.name} fill sizes="48px" className="object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={16} className="text-gray-300"/></div>}
+                                            </div>
+                                            
+                                           <div className="flex-1 min-w-0 pr-4">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
+                                                    {item.isFeatured && (
+                                                        <Star size={12} className="fill-amber-400 text-amber-500 shrink-0" />
+                                                    )}
+                                                </div>
+                                                {item.isFeatured && (
+                                                    <span className="text-[8px] font-[700] text-[#141414] uppercase -tracking-normal">Aparece en carrusel</span>
+                                                )}
+                                            </div>
+
+                                            <div className="pr-2 text-gray-300 group-hover:text-gray-500 transition-colors">
+                                                <GripVertical size={20} />
+                                            </div>
+                                        </Reorder.Item>
+                                    ))}
+                                </Reorder.Group>
+                            </div>
+
+                            <div className="p-4 md:p-6 bg-white border-t border-gray-100 shrink-0">
+                                <button 
+                                    onClick={saveReorder} 
+                                    disabled={isSavingOrder}
+                                    className="w-full bg-black text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-subtle hover:bg-gray-800 active:scale-98 transition-all disabled:opacity-50"
+                                >
+                                    {isSavingOrder ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                    Guardar Orden Exacto
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

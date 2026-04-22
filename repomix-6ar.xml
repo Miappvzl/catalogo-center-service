@@ -1,0 +1,1496 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: components/StoreInterface.tsx, components/ProductCard.tsx, app/admin/inventory/page.tsx, app/admin/product/edit/[id]/page.tsx, app/admin/product/new/page.tsx, app/store/useCart.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/admin/inventory/page.tsx
+app/admin/product/edit/[id]/page.tsx
+app/admin/product/new/page.tsx
+app/store/useCart.ts
+components/ProductCard.tsx
+components/StoreInterface.tsx
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/admin/product/edit/[id]/page.tsx">
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import ProductEditor from '@/components/ProductEditor'
+
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() } } }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div>No autorizado</div>
+
+  const [configRes, storeRes] = await Promise.all([
+    supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single(),
+    supabase.from('stores').select('id, currency_type, fiscal_profile').eq('user_id', user.id).single()
+  ])
+
+  return (
+    <ProductEditor 
+        productId={id} 
+        rates={{ 
+            usd: configRes.data?.usd_rate || 0, 
+            eur: configRes.data?.eur_rate || 0 
+        }}
+        storeSettings={{
+            id: storeRes.data?.id || '',
+            currency: storeRes.data?.currency_type || 'usd',
+            fiscalProfile: storeRes.data?.fiscal_profile || 'informal' // 🚀 PASAMOS EL PERFIL
+        }}
+    />
+  )
+}
+</file>
+
+<file path="app/admin/product/new/page.tsx">
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import ProductEditor from '@/components/ProductEditor'
+
+export default async function NewProductPage() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() } } }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div>No autorizado</div>
+
+  const [configRes, storeRes] = await Promise.all([
+    supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single(),
+    supabase.from('stores').select('id, currency_type, fiscal_profile').eq('user_id', user.id).single()
+  ])
+
+  return (
+    <ProductEditor 
+        rates={{ 
+            usd: configRes.data?.usd_rate || 0, 
+            eur: configRes.data?.eur_rate || 0 
+        }}
+        storeSettings={{
+            id: storeRes.data?.id || '',
+            currency: storeRes.data?.currency_type || 'usd',
+            fiscalProfile: storeRes.data?.fiscal_profile || 'informal' // 🚀 PASAMOS EL PERFIL
+        }}
+    />
+  )
+}
+</file>
+
+<file path="app/store/useCart.ts">
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+
+// 1. DEFINICIÓN DE TIPOS (El Contrato Blindado)
+export interface CartItem {
+  id: string
+  productId: string
+  variantId: string | null
+  name: string
+  price: number
+  basePrice: number
+  penalty: number
+  image: string
+  quantity: number
+  variantInfo: string | null
+  category?: string 
+  maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
+  compareAtPrice?: number | null // 
+}
+
+interface CartState {
+  items: CartItem[]
+  addItem: (product: any, variant?: any, quantity?: number) => void
+  removeItem: (itemId: string) => void
+  updateQuantity: (itemId: string, quantity: number) => void
+  clearCart: () => void
+}
+
+export const useCart = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+
+      addItem: (product, variant = null, quantity = 1) => {
+        set((state) => {
+          const variantId = variant ? variant.id : null
+          const productId = product.id
+          
+          // Capturamos el stock máximo de la variante o del producto general
+          const currentMaxStock = variant ? Number(variant.stock) : Number(product.stock || 0)
+          
+          const uniqueId = `${productId}-${variantId || 'base'}`
+          const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId)
+
+          if (existingItemIndex > -1) {
+            // SI EXISTE: Sumamos validando el límite máximo
+            const newItems = [...state.items]
+            const currentItem = newItems[existingItemIndex]
+            
+            // Lógica blindada: No sumar más allá del stock disponible
+            const requestedQuantity = currentItem.quantity + quantity
+            currentItem.quantity = Math.min(requestedQuantity, currentMaxStock)
+            
+            return { items: newItems }
+          } else {
+            // SI ES NUEVO: Guardamos el maxStock en el objeto
+            const newItem: CartItem = {
+              id: uniqueId,
+              productId: productId,
+              variantId: variantId,
+              name: product.name,
+              
+              // 🚀 LÓGICA DE OVERRIDE: Si la variante tiene precio propio, úsalo. Si no (??), usa el del producto.
+              price: Number(variant?.override_usd_price ?? product.usd_cash_price), 
+              basePrice: Number(variant?.override_usd_price ?? product.usd_cash_price),
+              penalty: Number(variant?.override_usd_penalty ?? product.usd_penalty ?? 0),
+              image: variant?.variant_image || product.image_url,
+              quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
+              variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
+              category: product.category,
+              maxStock: currentMaxStock, // <--- 🚀 Se guarda en LocalStorage
+              // 🚀 NUEVO: Lógica de herencia para el precio tachado
+              compareAtPrice: variant?.override_compare_at_usd !== undefined && variant?.override_compare_at_usd !== null 
+                              ? Number(variant.override_compare_at_usd) 
+                              : (product.compare_at_usd ? Number(product.compare_at_usd) : null)
+            }
+
+            return { items: [...state.items, newItem] }
+          }
+        })
+      },
+
+      removeItem: (itemId) => {
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== itemId),
+        }))
+      },
+
+      updateQuantity: (itemId, quantity) => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id === itemId) {
+              // 🚀 LÓGICA BLINDADA: clamp entre 1 y el maxStock (o infinito si es un carrito viejo)
+              const limit = item.maxStock ?? 9999
+              const newQuantity = Math.min(Math.max(1, quantity), limit)
+              return { ...item, quantity: newQuantity }
+            }
+            return item
+          }),
+        }))
+      },
+
+      clearCart: () => set({ items: [] }),
+    }),
+    {
+      name: 'shopping-cart-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+)
+</file>
+
+<file path="app/admin/inventory/page.tsx">
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt } from 'lucide-react'
+import Link from 'next/link'
+import { getSupabase } from '@/lib/supabase-client'
+import Swal from 'sweetalert2'
+import { revalidateStoreCache } from '@/app/admin/actions'
+import Image from 'next/image'
+import { getOptimizedUrl } from '@/utils/cdn'
+
+// --- TIPOS (Actualizados con isTaxExempt) ---
+interface InventoryItem {
+    rowId: string;
+    productId: string;
+    name: string;
+    image: string | null;
+    category: string;
+    variantId: string | null;
+    color: string;
+    hex: string;
+    size: string;
+    stock: number;
+    isTaxExempt: boolean; // 🚀 NUEVO
+}
+
+export default function InventoryPage() {
+    const supabase = getSupabase()
+    const [loading, setLoading] = useState(true)
+    const [items, setItems] = useState<InventoryItem[]>([])
+    const [search, setSearch] = useState('')
+    const [filterStatus, setFilterStatus] = useState('all')
+    const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
+    const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
+    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null) // 🚀 NUEVO: Estado del perfil
+
+    useEffect(() => {
+        const fetchInventory = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                // 🚀 ACTUALIZACIÓN: Traemos el fiscal_profile de la tienda
+                const { data: store } = await supabase.from('stores').select('id, fiscal_profile').eq('user_id', user.id).single()
+                if (!store) return
+                setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
+
+
+                // 🚀 FIX: Añadimos is_tax_exempt al query
+                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+                if (error) throw error
+
+                const flatInventory: InventoryItem[] = []
+                products?.forEach((prod: any) => {
+                    const isExempt = prod.is_tax_exempt || false // 🚀 Leemos la BD
+                    if (prod.product_variants && prod.product_variants.length > 0) {
+                        prod.product_variants.forEach((variant: any) => {
+                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt })
+                        })
+                    } else {
+                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt })
+                    }
+                })
+                setItems(flatInventory)
+            } catch (error) { console.error(error) } finally { setLoading(false) }
+        }
+        fetchInventory()
+    }, [supabase])
+
+    const handleStockChange = (id: string, newVal: string) => {
+        if (newVal === '') { setPendingChanges(prev => ({ ...prev, [id]: '' })); return }
+        const val = parseInt(newVal)
+        if (isNaN(val) || val < 0) return
+        setPendingChanges(prev => ({ ...prev, [id]: val }))
+    }
+
+    const saveStock = async (row: InventoryItem) => {
+        const pendingVal = pendingChanges[row.rowId]
+        if (pendingVal === undefined) return
+        const newStock = pendingVal === '' ? 0 : pendingVal
+        setSavingButtons(prev => ({ ...prev, [row.rowId]: true }))
+        try {
+            if (row.variantId) {
+                const { error } = await supabase.from('product_variants').update({ stock: newStock }).eq('id', row.variantId)
+                if (error) throw error
+            } else {
+                const { error } = await supabase.from('products').update({ stock: newStock }).eq('id', row.productId)
+                if (error) throw error
+            }
+            setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
+            await revalidateStoreCache()
+            const remaining = { ...pendingChanges }
+            delete remaining[row.rowId]
+            setPendingChanges(remaining)
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: 'Stock Actualizado' })
+        } catch (error) { Swal.fire('Error', 'No se pudo actualizar', 'error') } finally { setSavingButtons(prev => ({ ...prev, [row.rowId]: false })) }
+    }
+
+    // 🚀 NUEVA FUNCIÓN: Alternar estatus fiscal desde el inventario
+    const toggleTaxExempt = async (productId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus
+
+        // Optimistic Update (Actualizamos la UI de todas las variantes de este producto al instante)
+        setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: newStatus } : item))
+
+        try {
+            const { error } = await supabase.from('products').update({ is_tax_exempt: newStatus }).eq('id', productId)
+            if (error) throw error
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: newStatus ? 'Producto Exento de IVA' : 'IVA Activado' })
+        } catch (error) {
+            // Revertir si falla
+            setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: currentStatus } : item))
+            Swal.fire('Error', 'No se pudo actualizar el estatus fiscal', 'error')
+        }
+    }
+
+    const filteredItems = useMemo(() => {
+        return items.filter(item => {
+            const textMatch = item.name.toLowerCase().includes(search.toLowerCase()) || item.color.toLowerCase().includes(search.toLowerCase()) || item.size.toLowerCase().includes(search.toLowerCase())
+            let statusMatch = true
+            if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3
+            if (filterStatus === 'out') statusMatch = item.stock === 0
+            return textMatch && statusMatch
+        })
+    }, [items, search, filterStatus])
+
+    const stats = useMemo(() => ({ total: items.length, low: items.filter(i => i.stock > 0 && i.stock <= 3).length, out: items.filter(i => i.stock === 0).length }), [items])
+
+    return (
+        <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-gray-900 flex flex-col">
+            {/* HEADER STICKY */}
+            <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
+                <div className="flex items-center gap-4">
+                    <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-full transition-colors group shrink-0">
+                        <ArrowLeft size={18} className="text-gray-500 group-hover:text-black" />
+                    </Link>
+                    <div>
+                        <h1 className="font-black text-xl tracking-tight leading-none">Inventario</h1>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Control de Stock e Impuestos</p>
+                    </div>
+                </div>
+                {/* KPI CHIPS (Borderless) */}
+                <div className="hidden md:flex gap-3">
+                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] shadow-sm flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        <div>
+                            <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Agotados</span>
+                            <span className="block text-sm font-black text-gray-900 leading-none">{stats.out}</span>
+                        </div>
+                    </div>
+                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] shadow-sm flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                        <div>
+                            <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Poco Stock</span>
+                            <span className="block text-sm font-black text-gray-900 leading-none">{stats.low}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
+                <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6">
+                    {/* CONTROLES */}
+                    <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
+                        {/* Filtros Estilo "Clean Look" */}
+                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full md:w-auto max-w-full">
+                            {[
+                                { id: 'all', label: 'Todos' },
+                                { id: 'low', label: 'Poco Stock' },
+                                { id: 'out', label: 'Agotados' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setFilterStatus(tab.id)}
+                                    className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterStatus === tab.id
+                                        ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
+                                        : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Buscador */}
+                        <div className="relative group w-full md:flex-1 shrink-0">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors" size={16} />
+                            <input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Buscar nombre o color..."
+                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-11 pr-4 py-3 text-sm font-medium outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* TABLA ELITE (Borderless) */}
+                    <div className="bg-white rounded-[var(--radius-card)] overflow-hidden w-full max-w-full">
+                        {loading ? (
+                            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300" /></div>
+                        ) : filteredItems.length === 0 ? (
+                            <div className="p-20 text-center flex flex-col items-center gap-3">
+                                <div className="w-16 h-16 bg-gray-50 rounded-[var(--radius-btn)] flex items-center justify-center">
+                                    <Package size={24} className="text-gray-300" />
+                                </div>
+                                <p className="text-gray-400 font-bold text-sm">No se encontraron items.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto w-full max-w-full">
+                                <table className="w-full text-left border-collapse min-w-[600px]">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                            <th className="p-4 md:p-6">Producto</th>
+                                            <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
+                                            <th className="p-4 md:p-6 text-center">Gestión Rápida</th>
+                                            <th className="p-4 md:p-6 text-right">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredItems.map((item) => {
+                                            const isPending = pendingChanges[item.rowId] !== undefined
+                                            const currentStockDisplay = isPending ? pendingChanges[item.rowId] : item.stock
+                                            const isSaving = savingButtons[item.rowId]
+
+                                            let statusColor = 'bg-green-50 text-green-700'
+                                            let StatusIcon = CheckCircle2
+                                            let statusText = 'Disponible'
+
+                                            if (currentStockDisplay === 0 || currentStockDisplay === '') {
+                                                statusColor = 'bg-red-50 text-red-600'
+                                                StatusIcon = XCircle
+                                                statusText = 'Agotado'
+                                            } else if (currentStockDisplay <= 3) {
+                                                statusColor = 'bg-yellow-50 text-yellow-700'
+                                                StatusIcon = AlertTriangle
+                                                statusText = 'Bajo'
+                                            }
+
+                                            return (
+                                                <tr key={item.rowId} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
+                                                    <td className="p-4 md:p-6 align-middle">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0 relative">
+                                                                {item.image ? (
+                                                                    <Image
+                                                                        src={getOptimizedUrl(item.image)}
+                                                                        alt={item.name}
+                                                                        fill
+                                                                        sizes="48px"
+                                                                        className="object-cover mix-blend-multiply"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={16} /></div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="font-bold text-sm text-gray-900 leading-tight group-hover:text-black truncate pr-4">{item.name}</p>
+                                                                <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide font-medium hidden md:block">{item.category}</p>
+                                                                <div className="flex items-center gap-2 mt-1.5 md:hidden">
+                                                                    <div className="flex items-center gap-1.5 px-1.5 py-1 bg-gray-50 rounded-md">
+                                                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.hex }}></span>
+                                                                        <span className="text-[10px] text-gray-600 font-bold capitalize leading-none truncate max-w-[60px]">{item.color}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center px-2 py-1 bg-gray-50 rounded-md">
+                                                                        <span className="text-[10px] text-gray-500 font-mono font-bold leading-none">{item.size}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 md:p-6 hidden md:table-cell align-middle">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="px-3 py-1.5 rounded-[var(--radius-badge)] bg-gray-50 flex items-center gap-2 max-w-[120px]">
+                                                                <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ background: item.hex }}></span>
+                                                                <span className="text-xs font-bold text-gray-700 capitalize truncate">{item.color}</span>
+                                                            </div>
+                                                            <div className="px-3 py-1.5 rounded-[var(--radius-badge)] bg-gray-50 flex items-center">
+                                                                <span className="text-xs font-mono font-bold text-gray-600 leading-none">Talla: {item.size}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 md:p-6 align-middle">
+                                                        <div className="flex flex-col items-center justify-center gap-2">
+                                                            {/* STOCK INPUT */}
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    value={currentStockDisplay}
+                                                                    onChange={(e) => handleStockChange(item.rowId, e.target.value)}
+                                                                    className={`w-16 md:w-20 text-center font-mono font-bold text-sm md:text-base py-2 rounded-[var(--radius-btn)] border transition-all outline-none ${isPending
+                                                                        ? 'border-black bg-white text-black ring-1 ring-black shadow-subtle'
+                                                                        : 'border-transparent bg-gray-50 text-gray-700 hover:bg-gray-100 focus:bg-white'
+                                                                        }`}
+                                                                />
+                                                                {isPending && (
+                                                                    <button
+                                                                        onClick={() => saveStock(item)}
+                                                                        disabled={isSaving}
+                                                                        className="bg-black text-white p-2 md:px-3 md:py-2 rounded-[var(--radius-btn)] shadow-subtle hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-black"
+                                                                        title="Guardar Stock"
+                                                                    >
+                                                                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                                                        <span className="hidden md:block text-xs font-bold">Guardar</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* 🚀 BOTÓN DE EXENCIÓN FISCAL */}
+                                                            {/* 🚀 LOGICA DE ÉLITE: Solo mostramos gestión de IVA si el comercio es Formalizado */}
+                                                            {fiscalProfile !== 'informal' && (
+                                                                <button
+                                                                    onClick={() => toggleTaxExempt(item.productId, item.isTaxExempt)}
+                                                                    className={`flex items-center justify-center gap-1.5 px-2.5 py-1 w-24 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${item.isTaxExempt ? 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                                                                    title="Toca para alternar si este producto paga IVA"
+                                                                >
+                                                                    <Receipt size={10} className={item.isTaxExempt ? "opacity-50" : ""} />
+                                                                    {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 md:p-6 text-right align-middle">
+                                                        <div className="flex justify-end items-center gap-4">
+                                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${statusColor}`}>
+                                                                <StatusIcon size={12} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
+                                                            </div>
+                                                            <Link href={`/admin/product/edit/${item.productId}`} className="text-gray-400 hover:text-black transition-colors bg-transparent hover:bg-gray-50 p-2 rounded-[var(--radius-btn)] shrink-0" title="Editar producto completo">
+                                                                <ArrowUpRight size={16} />
+                                                            </Link>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+</file>
+
+<file path="components/ProductCard.tsx">
+'use client'
+
+import { getOptimizedUrl } from '@/utils/cdn';
+import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
+import Image from 'next/image'
+import { motion } from 'framer-motion' // 🚀 1. RESTAURAMOS EL MOTOR
+
+interface ProductCardProps {
+  product: any;
+  pricing: { cashPrice: number; priceInBs: number; discountPercent: number; hasDiscount: boolean; };
+  onOpen: (product: any) => void;
+  isOutOfStock?: boolean;
+  index?: number;
+}
+
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index = 0 }: ProductCardProps) {
+  const penalty = Number(product.usd_penalty || 0);
+  const cashPrice = Number(product.usd_cash_price || 0);
+  
+  // 🚀 LÓGICA DE PRECIO PÚBLICO SINCERO (Se mantiene de la iteración anterior)
+  const listPrice = cashPrice + penalty;
+  const compareAt = Number(product.compare_at_usd || 0);
+  
+  const activeCompareAt = compareAt > listPrice ? compareAt : listPrice;
+  const isPromo = activeCompareAt > listPrice; 
+  const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
+
+  return (
+    <motion.div 
+      // 🚀 2. TAILWIND CONTROLA EL HOVER: Física ultraligera sin JavaScript
+      className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+      onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      
+      // 🚀 3. FRAMER MOTION CONTROLA EL SCROLL: Solo opacidad, cero problemas de Layout
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: "0px 0px 50px 0px" }}
+      transition={{ 
+        duration: 0.30, 
+        delay: Math.min(index * 0.05, 0.2), // Tope matemático rápido y fluido
+        ease: "easeOut" 
+      }}
+    >
+      {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
+      <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
+        {product.image_url ? (
+          <Image
+            src={getOptimizedUrl(product.image_url)}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] bg-[var(--store-bg)]">
+            <ImageIcon size={32} strokeWidth={1.5} />
+          </div>
+        )}
+        {/* OVERLAY AGOTADO */}
+        {isOutOfStock && (
+             <div className="absolute inset-0 bg-[var(--store-surface)]/40 backdrop-blur-[2px] flex items-center justify-center z-10">
+                 <span className="bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full">Agotado</span>
+             </div>
+        )}
+
+        {/* ETIQUETA DE DESCUENTO ESTILO CLEAN */}
+        {isPromo && !isOutOfStock && (
+            <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-red-600 text-white text-[10px] md:text-xs font-black px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
+                -{promoPercent}%
+            </div>
+        )}
+      </div>
+
+      {/* 🚀 CONTENT CONTAINER: AUTO-ALIGNMENT INYECTADO */}
+      <div className="flex flex-col flex-1 pt-3 pb-1">
+        
+        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-tight leading-snug group-hover:text-[var(--store-surface-text)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
+          {product.name}
+        </h3>
+
+        {/* CONTENEDOR FLEXIBLE QUE EMPUJA EL PRECIO AL FONDO PARA ALINEACIÓN PERFECTA */}
+        {/* ELIMINADO: mt-auto. INYECTADO: flex-1 flex flex-col justify-end */}
+        <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
+          
+          <div className="flex items-end justify-between gap-2 border-t border-[var(--store-border)] pt-3">
+            <div className="flex flex-col min-w-0">
+              {/* PRECIO PÚBLICO REAL */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isPromo && (
+                  <span className="text-[10px] md:text-xs font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
+                    ${activeCompareAt.toFixed(2)}
+                  </span>
+                )}
+                <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
+                  ${listPrice.toFixed(2)}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums">
+                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+              </span>
+            </div>
+
+            {/* 🚀 BOTÓN FIJO: SIEMPRE EN EL MISMO LUGAR */}
+            <button
+              disabled={isOutOfStock}
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-full border text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-[var(--store-border)] text-[var(--store-surface-text)]  cursor-not-allowed' : 'text-[var(--store-surface-text)]   group-hover:bg-[var(--store-primary)]  group-hover:text-[var(--store-primary-text)] active:scale-90'}`}
+              aria-label="Ver producto"
+            >
+              <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
+            </button>
+          </div>
+        </div>
+
+        {/* NUDGE HONESTO Y LIMPIO */}
+        {penalty > 0 && !isOutOfStock && (
+          <div className="mt-3 inline-flex items-center gap-1.5   text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)]   py-1 rounded-full self-start transition-colors">
+            <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
+            <span>Paga ${cashPrice.toFixed(2)} en DIvisas</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+</file>
+
+<file path="components/StoreInterface.tsx">
+'use client'
+
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight } from 'lucide-react'
+import { useCart } from '@/app/store/useCart'
+import Link from 'next/link'
+import ProductModal from './ProductModal'
+import FloatingCheckout from './FloatingCheckout'
+import NumberTicker from './NumberTicker'
+import ProductCard from './ProductCard'
+import { getOptimizedUrl } from '@/utils/cdn'
+import Image from 'next/image'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
+
+const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={`px-5 py-2 md:px-6 md:py-2 rounded-full text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
+      ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
+      : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:bg-[var(--store-surface)] hover:text-[var(--store-text-main)]'
+      }`}
+  >
+    {label}
+  </button>
+)
+
+// 🚀 MICRO-COMPONENTE OPTIMIZADO: The Live Pill (Tabular Nums & Pulse)
+const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string }) => {
+  const [timeLeft, setTimeLeft] = useState('')
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date().getTime()
+      const target = new Date(expiresAt).getTime()
+      const distance = target - now
+
+      if (distance < 0) {
+        setTimeLeft('Expirado')
+        clearInterval(interval)
+        return
+      }
+
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt])
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md transition-all ml-1 md:ml-3" style={{ borderColor: `${color}30`, backgroundColor: `${color}10`, color: color }}>
+      <div className="relative flex h-1.5 w-1.5 shrink-0">
+        {timeLeft !== 'Expirado' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }}></span>}
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: color }}></span>
+      </div>
+      <span className="text-[10px] md:text-[11px] font-bold tabular-nums tracking-widest leading-none mt-[1px]">
+        {timeLeft}
+      </span>
+    </div>
+  )
+}
+
+
+// 🚀 INYECCIÓN: BANNER DE RECUPERACIÓN DE PRESUPUESTO (CORREGIDO)
+const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
+    const [savedQuote, setSavedQuote] = useState<{ id: string, total: number } | null>(null)
+    const [isVisible, setIsVisible] = useState(false)
+
+    useEffect(() => {
+        const stored = localStorage.getItem('preziso_pending_quote')
+        if (stored) {
+            try {
+                const data = JSON.parse(stored)
+                // Validamos que el presupuesto pertenezca a la tienda actual
+                if (data.slug === currentSlug) {
+                    setSavedQuote(data)
+                    setIsVisible(true) // Dispara la animación de entrada
+                }
+            } catch (e) { }
+        }
+    }, [currentSlug])
+
+    // Función manejadora para un cierre suave
+    const handleClose = () => {
+        setIsVisible(false) // 1. Dispara la animación de salida
+        
+        // 2. Espera 300ms a que termine la animación para destruir los datos
+        setTimeout(() => {
+            localStorage.removeItem('preziso_pending_quote')
+            setSavedQuote(null)
+        }, 300) 
+    }
+
+    return (
+        <AnimatePresence>
+            {isVisible && savedQuote && (
+                <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-xl origin-top"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-1.5 rounded-full shrink-0"><FileText size={16} /></div>
+                        <div className="flex flex-col min-w-0">
+                            <p className="font-bold uppercase tracking-widest text-[9px] text-gray-400">Cotización Pendiente</p>
+                            <p className="font-medium text-xs truncate">Monto a pagar: <span className="font-black text-white">${Number(savedQuote.total).toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Link 
+                            href={`/quote/${savedQuote.id}`} /* 🚀 CORRECCIÓN: Ruta relativa limpia sin duplicar el slug */
+                            className="bg-white text-black px-4 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                        >
+                            Retomar <ArrowRight size={12} strokeWidth={3} />
+                        </Link>
+                        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white transition-colors active:scale-90">
+                            <X size={16} />
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    )
+}
+
+interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
+
+export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
+  const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
+  const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
+
+const searchParams = useSearchParams()
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
+  const [showPromoModal, setShowPromoModal] = useState(false)
+
+ useEffect(() => {
+    const ref = searchParams?.get('ref');
+    const storedRef = sessionStorage.getItem('preziso_ref');
+
+    if (ref && store?.affiliate_config?.active) {
+      setAffiliateCode(ref);
+      if (storedRef !== ref) {
+        sessionStorage.setItem('preziso_ref', ref);
+        setShowPromoModal(true); // 🚀 REEMPLAZO AQUÍ
+        // Cerramos el modal automáticamente después de 5 segundos
+        setTimeout(() => setShowPromoModal(false), 5000); 
+      }
+    } else if (storedRef) {
+      setAffiliateCode(storedRef);
+    }
+  }, [searchParams, store]);
+
+  if (!store) return (
+    
+    <div className="min-h-screen bg-[var(--store-surface)] pb-32 font-sans w-full overflow-hidden no-scrollbar [scrollbar-gutter:auto] [&::-webkit-scrollbar]:hidden pointer-events-none select-none">
+      {/* SKELETON: HERO SECTION */}
+      <div className="w-full h-[35vh] md:h-[25vh] bg-[var(--store-border)] animate-pulse relative flex items-start border-b border-[var(--store-border)]">
+        <div className="max-w-[1500px] w-full mx-auto px-4 md:px-8 pt-5 md:pt-6 flex items-start justify-between">
+          {/* Logo & Info Skeleton */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[var(--store-border)] rounded-full shrink-0"></div>
+            <div className="flex flex-col gap-2">
+              <div className="w-32 md:w-48 h-3.5 bg-[var(--store-border)] rounded-full"></div>
+              <div className="w-20 h-2 bg-[var(--store-border)] rounded-full"></div>
+            </div>
+          </div>
+          {/* Tasa Skeleton */}
+          <div className="w-24 h-4 bg-[var(--store-border)] rounded-full mt-2 md:mt-3"></div>
+        </div>
+      </div>
+
+      {/* SKELETON: NAVBAR (Buscador y Categorías) */}
+      <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)] pt-4 md:pt-6">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+            {/* Buscador Skeleton */}
+            <div className="w-full md:max-w-md h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
+
+            {/* Categorías Skeleton */}
+            <div className="w-full md:flex-1 flex gap-2 overflow-hidden animate-pulse">
+              <div className="w-16 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
+              <div className="w-24 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
+              <div className="w-20 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden sm:block"></div>
+              <div className="w-28 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden md:block"></div>
+            </div>
+
+            {/* Gatillo Carrito Skeleton */}
+            <div className="hidden md:block w-11 h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* SKELETON: GRID DE PRODUCTOS */}
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          {/* Generamos 10 tarjetas fantasma en memoria dinámicamente */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              {/* Foto del producto */}
+              <div className="w-full aspect-square bg-[var(--store-border)] animate-pulse rounded-[var(--radius-card,1rem)]"></div>
+              {/* Textos */}
+              <div className="space-y-2 px-1">
+                <div className="w-3/4 h-3 bg-[var(--store-border)] animate-pulse rounded-full"></div>
+                <div className="w-1/2 h-2.5 bg-[var(--store-border)]/70 animate-pulse rounded-full"></div>
+                <div className="w-1/3 h-4 bg-gray-200 animate-pulse rounded-full mt-1"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+
+  const { items } = useCart() // <--- TRAEMOS LOS ITEMS PARA EL GATILLO DESKTOP
+  const hasItems = items.length > 0;
+  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0);
+
+  const isEur = store.currency_type === 'eur'
+  const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
+
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('') // 🚀 NUEVO: Estado retrasado
+  const [selectedCategory, setSelectedCategory] = useState('Todos')
+  // 🚀 RECEPTOR DE TELEMETRÍA (Iframe PostMessage)
+  const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      console.log('2. TIENDA RECIBIÓ ALGO:', event.origin, event.data)
+      // Validación robusta: Aceptamos mensajes de tu dominio local o tu dominio de producción
+      const isLocalhost = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
+      const isPrezisoDomain = event.origin.includes('preziso.shop');
+
+      if (!isLocalhost && !isPrezisoDomain) return;
+
+      if (event.data?.type === 'UPDATE_THEME') {
+        setLiveConfig(event.data.config);
+      }
+    };
+
+    // Encendemos el receptor SIEMPRE. Es seguro porque ya filtramos por 'origin' arriba,
+    // y evitamos que los middlewares de Next.js rompan el editor al borrar los parámetros de la URL.
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+  // 🚀 NUEVO: Motor de Debounce (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+
+    // Función de limpieza: destruye el timer si el usuario teclea antes de los 300ms
+    return () => clearTimeout(timer)
+  }, [search])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
+
+  const [isStickyVisible, setIsStickyVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isDarkHero, setIsDarkHero] = useState(true) // Por defecto oscuro (texto blanco)
+
+  const [visibleCount, setVisibleCount] = useState(12)
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setVisibleCount(12)
+  }, [debouncedSearch, selectedCategory]) // Cambiamos 'search' por 'debouncedSearch'
+
+  useEffect(() => {
+    if (!store?.hero_url) return;
+
+    const img = new window.Image()
+    img.crossOrigin = "Anonymous"; // Crucial para evitar bloqueos CORS
+    img.src = store.hero_url;
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = img.width;
+        canvas.height = img.height * 0.2; // Analizamos solo el 20% superior donde vive el header
+
+        ctx.drawImage(img, 0, 0, img.width, img.height * 0.2, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i + 1]; b += data[i + 2];
+        }
+
+        const pixels = data.length / 4;
+        // Fórmula de Luminancia Relativa (YIQ)
+        const luminance = ((r / pixels) * 299 + (g / pixels) * 587 + (b / pixels) * 114) / 1000;
+
+        // Si luminancia es menor a 128, es oscuro -> texto blanco. Si es mayor, es claro -> texto oscuro.
+        setIsDarkHero(luminance < 128);
+      } catch (e) {
+        console.warn("No se pudo analizar el contraste por CORS, usando default oscuro.");
+        setIsDarkHero(true);
+      }
+    };
+  }, [store?.hero_url]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 12)
+        }
+      },
+      { threshold: 0.1 }
+    )
+    if (observerTarget.current) observer.observe(observerTarget.current)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (typeof window !== 'undefined') {
+        const currentScrollY = window.scrollY
+        if (currentScrollY < 350) {
+          setIsStickyVisible(true)
+          setLastScrollY(currentScrollY)
+          return
+        }
+        setIsStickyVisible(currentScrollY <= lastScrollY)
+        setLastScrollY(currentScrollY)
+      }
+    }
+    window.addEventListener('scroll', controlNavbar, { passive: true })
+    return () => window.removeEventListener('scroll', controlNavbar)
+  }, [lastScrollY])
+
+  useEffect(() => {
+    const handleOpenFromCart = (e: any) => {
+      const product = e.detail;
+      if (product) {
+        setSelectedProductForModal(product);
+        setIsModalOpen(true);
+      }
+    };
+    document.addEventListener('openProductModal', handleOpenFromCart);
+    return () => document.removeEventListener('openProductModal', handleOpenFromCart);
+  }, []);
+
+  // 🚀 Auto-Scroll del Carrusel de Promociones
+  useEffect(() => {
+    if (!promotions || promotions.length <= 1) return;
+    const interval = setInterval(() => {
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
+        }
+      }
+    }, 5000); // Cambia cada 5 segundos
+    return () => clearInterval(interval);
+  }, [promotions]);
+
+  const normalizeCategory = (cat: string) => {
+    if (!cat) return ""
+    const trimmed = cat.trim().toLowerCase()
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+  }
+
+  const categories = useMemo(() => {
+    // 1. Extraemos todas las categorías únicas de los productos actuales
+    const rawCats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
+    const uniqueCats = Array.from(new Set(rawCats))
+
+    // 2. Leemos el orden guardado por el admin (si existe)
+    const savedOrder = store?.categories_order || []
+
+    // 3. Ordenamos las categorías respetando el arreglo del admin
+    const sortedCats = uniqueCats.sort((a, b) => {
+      const indexA = savedOrder.indexOf(a)
+      const indexB = savedOrder.indexOf(b)
+
+      // Si ambas están en la lista guardada, respetamos su orden
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+      // Si solo A está en la lista, A va primero
+      if (indexA !== -1) return -1
+      // Si solo B está en la lista, B va primero
+      if (indexB !== -1) return 1
+      // Si ninguna está (ej: categorías nuevas), las ordenamos alfabéticamente al final
+      return a.localeCompare(b)
+    })
+
+    // 4. "Todos" siempre va de primero indiscutiblemente
+    return ['Todos', ...sortedCats]
+  }, [products, store?.categories_order])
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      // Usamos debouncedSearch en lugar de search
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      const productCatClean = normalizeCategory(p.category)
+      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
+
+      // 🚀 BLINDAJE INT8: Coerción absoluta a String
+      const matchesPromo = activePromo
+        ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id))
+        : true
+
+      return matchesSearch && matchesCategory && matchesPromo
+    })
+  }, [products, debouncedSearch, selectedCategory, activePromo]) // Actualizamos las dependencias
+
+  const displayedProducts = filteredProducts.slice(0, visibleCount)
+
+  const handleOpenProduct = (product: any) => {
+    setSelectedProductForModal(product)
+    setIsModalOpen(true)
+  }
+
+  const getProductPricing = (product: any) => {
+    const cashPrice = Number(product.usd_cash_price || 0)
+    const markup = Number(product.usd_penalty || 0)
+    const listPrice = cashPrice + markup
+    const priceInBs = listPrice * activeRate
+    const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
+    return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
+  }
+
+  return (
+    // ✅ AHORA:
+    <div
+      className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]"
+      style={{
+        // Los 3 originales
+        '--store-primary': activeTheme.colors?.primary || '#000000',
+        '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
+        '--store-bg': activeTheme.colors?.background || '#ffffff',
+
+        // 🚀 Los 4 nuevos que le dan soporte absoluto al Modo Oscuro y White-Label
+        '--store-text-main': activeTheme.colors?.text_main || '#111111',
+        '--store-surface': activeTheme.colors?.surface || '#ffffff',
+        '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
+        '--store-border': activeTheme.colors?.border || '#d4d4d499',
+        // 🚀 La nueva variable psicológica
+    '--store-incentive': activeTheme.colors?.incentive || '#059669',
+  
+      } as React.CSSProperties}
+    >
+
+      {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
+      <QuoteRecoveryBanner currentSlug={store.slug} />
+
+
+
+      {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
+      <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]">
+
+        {/* Logo & Store Info */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="relative shrink-0">
+            {store.logo_url ? (
+              <Image src={getOptimizedUrl(store.logo_url)} width={44} height={44} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-[var(--store-border)] shadow-sm" alt="Logo" />
+            ) : (
+              <div className="w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] rounded-full flex items-center justify-center text-[var(--store-surface-text)] border border-[var(--store-border)] shadow-sm">
+                <ShoppingBag size={18} strokeWidth={1.5} />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
+              {store.name}
+            </h1>
+            <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.15em] mt-1 text-[var(--store-surface-text)]">
+              Tienda Oficial
+            </span>
+          </div>
+        </div>
+
+        {/* Tasa BCV Minimalista */}
+        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hidden sm:block">
+              {isEur ? 'Tasa EUR' : 'Tasa BCV'}
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] sm:hidden">
+              {isEur ? 'EUR' : 'BCV'}
+            </span>
+          </div>
+          <div className="h-3 w-[1px] bg-[var(--store-border)]"></div>
+          <span className="font-mono text-xs font-bold tracking-tight text-[var(--store-text-main)]">
+            <NumberTicker value={activeRate} />
+          </span>
+        </div>
+
+      </div>
+
+      {/* --- 2. HERO BANNER (BLUR-PAD TECHNIQUE) --- */}
+      {store.hero_url && (
+        <div className="w-full h-[22vh] md:h-[28vh] relative bg-[var(--store-border)] overflow-hidden flex items-center justify-center border-b border-[var(--store-border)]">
+
+          {/* Fondo difuminado optimizado */}
+          <Image
+            src={getOptimizedUrl(store.hero_url)}
+            className="absolute inset-0 object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
+            crossOrigin="anonymous"
+            alt=""
+            fill
+            sizes="100vw"
+            quality={30} // Bajamos la calidad de la compresión porque solo es un fondo difuminado
+          />
+
+          {/* Imagen real optimizada */}
+          <Image
+            src={getOptimizedUrl(store.hero_url)}
+            alt={`Banner de ${store.name}`}
+            className="relative z-10 object-contain pointer-events-none drop-shadow-sm"
+            crossOrigin="anonymous"
+            fill
+            sizes="100vw"
+          />
+        </div>
+      )}
+
+
+
+      <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)] pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+
+            {/* 1. BUSCADOR (Izquierda) */}
+            {/* 🚀 INYECCIÓN: min-w-0 para evitar desbordamiento del flex-1 */}
+            <div className="relative flex-1 w-full md:max-w-md group min-w-0">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
+              <input
+                type="text"
+                placeholder="Buscar producto..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)] rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* 2. CATEGORÍAS (Centro) */}
+            {/* 🚀 INYECCIÓN: min-w-0 es el cinturón de seguridad que ancla la UI */}
+            <div className="relative w-full md:flex-1 min-w-0 flex items-center">
+              <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar pr-10">
+                {categories.map(cat => (
+                  <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
+                ))}
+              </div>
+
+              {/* Fade Gradient a la derecha */}
+              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-[var(--store-bg)] via-[var(--store-bg)]/80 to-transparent pointer-events-none z-10"></div>
+            </div>
+
+            {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
+            <div className="hidden md:flex shrink-0 w-12 h-11">
+              <button
+                onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
+                className={`relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                title="Ver Bolsa"
+              >
+                {/* El div envoltorio hace que el SVG rote perfectamente */}
+                <div className={hasItems ? "animate-wiggle origin-bottom inline-block" : ""}>
+                  <ShoppingCart size={18} strokeWidth={2.5} />
+                </div>
+
+                {hasItems && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)]">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
+      {promotions && promotions.length > 0 && (
+        <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)] overflow-hidden relative z-30">
+          <div ref={carouselRef} className="flex overflow-x-auto  rounded-[16px] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
+            {promotions.map((promo: any) => {
+              const isActive = activePromo?.id === promo.id;
+              return (
+                <div key={promo.id}
+                  onClick={() => {
+                    setActivePromo(isActive ? null : promo)
+                    window.scrollTo({ top: 400, behavior: 'smooth' })
+                  }}
+                  className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-500 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
+                  style={{ backgroundColor: promo.bg_color || '#000' }}>
+
+                  {/* Brillo interno (Glassmorphism / Hardware feel) */}
+                  <div className="absolute inset-0 border-[0.5px] pointer-events-none" style={{ borderColor: `${promo.text_color}15` }}></div>
+
+                  <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 flex flex-row items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+                      {/* La imagen optimizada flotante */}
+                      {promo.image_url && (
+                        <div className="w-14 h-14 md:w-20 md:h-20 shrink-0 relative flex items-center justify-center">
+                          <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="80px" className="object-contain  drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
+                        </div>
+                      )}
+
+                      {/* Jerarquía Tipográfica Estricta */}
+                      <div className="flex flex-col min-w-0 justify-center">
+                        {promo.tagline && (
+                          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-1 truncate" style={{ color: promo.text_color || '#fff', opacity: 0.8 }}>
+                            {promo.tagline}
+                          </span>
+                        )}
+                        <div className="flex items-center flex-wrap gap-1 md:gap-2">
+                          {/* 🚀 TÍTULO BLINDADO: line-clamp-2 para que envuelva elegante y pr-2 para evitar el corte de fuente */}
+                          <h4 className="font-black text-xl md:text-3xl tracking-tighter leading-none line-clamp-2 pr-2 pb-0.5" style={{ color: promo.text_color || '#fff' }}>
+                            {promo.title}
+                          </h4>
+
+                          {/* 🚀 RELOJ FOMO INTEGRADO */}
+                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 🚀 CTA INEQUÍVOCO (Botón Real de Alto Contraste) */}
+                    <div className="shrink-0 pl-2">
+                      <div
+                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`}
+                        style={{
+                          backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'),
+                          color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'),
+                          border: `1px solid ${isActive ? promo.text_color : 'transparent'}`
+                        }}
+                      >
+                        <span>{isActive ? 'Quitar Filtro ✕' : 'Ver Oferta'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
+
+
+        <>
+          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+            {displayedProducts.map((product, index) => { // 🚀 INYECCIÓN: Agregamos el index
+              const pricing = getProductPricing(product)
+
+              const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                : (product.stock || 0) <= 0;
+
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  pricing={pricing}
+                  onOpen={handleOpenProduct}
+                  isOutOfStock={isCompletelyOutOfStock}
+                  index={index} // 🚀 INYECCIÓN: Enviamos el index a la tarjeta
+                />
+              )
+            })}
+          </div>
+
+          {visibleCount < filteredProducts.length && (
+            <div ref={observerTarget} className="w-full py-12 flex justify-center">
+              <div className="w-6 h-6 border-2 border-[var(--store-border)] border-t-black rounded-full animate-spin"></div>
+            </div>
+          )}
+        </>
+
+        {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
+            <AnimatePresence>
+                {showPromoModal && affiliateCode && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
+                    >
+                        <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
+                            <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
+                                <Tag size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
+                                <p className="text-sm font-black leading-tight">
+                                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
+                                </p>
+                            </div>
+                            <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+      </main>
+
+
+      {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
+      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
+        <a
+          href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group inline-flex flex-col items-center gap-1.5"
+        >
+          <span className="text-[10px] font-bold  text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
+            Experiencia de compra impulsada por
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
+            <ArrowUpRight size={15} strokeWidth={2} className="text-[var(--store-surface-text)] animate-pulse" />
+          </div>
+        </a>
+      </div>
+      <FloatingCheckout
+        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        currency={isEur ? 'eur' : 'usd'}
+        phone={store.phone || '584120000000'}
+        storeName={store.name}
+        storeId={store.id}
+        storeConfig={store}
+        products={products}
+        promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
+        affiliateCode={affiliateCode} // 🚀 INYECCIÓN AQUÍ
+      />
+
+      <ProductModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProductForModal}
+        currency={isEur ? 'eur' : 'usd'}
+        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        promotions={promotions}
+        activePromoContext={activePromo}
+        storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
+      />
+
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
+  )
+}
+</file>
+
+</files>
