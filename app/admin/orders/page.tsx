@@ -108,6 +108,8 @@ export default function OrdersPage() {
     const [storeId, setStoreId] = useState<string | null>(null)
     const [storeSlug, setStoreSlug] = useState<string | null>(null)
 
+
+    
     useEffect(() => {
         const initStore = async () => {
             const { data: { user } } = await supabase.auth.getUser()

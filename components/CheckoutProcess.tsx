@@ -133,19 +133,32 @@ export default function CheckoutProcess({
     }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones])
 
 
-    // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
+  // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
     const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
 
-    const totalListUSD_base = Math.max(0, (cartEngine.finalBsModeUSD - wholesaleDiscountList - (affiliateDiscountList || 0)) + deliveryCost);
-    const totalCashUSD_base = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - (affiliateDiscountCash || 0)) + deliveryCost);
+    const totalDiscountsList = wholesaleDiscountList + (affiliateDiscountList || 0);
+    const totalDiscountsCash = wholesaleDiscountCash + (affiliateDiscountCash || 0);
 
-    const taxAmountListUSD = applyTax ? (totalListUSD_base * (taxPercentage / 100)) : 0;
-    const taxAmountCashUSD = applyTax ? (totalCashUSD_base * (taxPercentage / 100)) : 0;
+    const totalListUSD_base = Math.max(0, (cartEngine.finalBsModeUSD - totalDiscountsList) + deliveryCost);
+    const totalCashUSD_base = Math.max(0, (cartEngine.finalCashModeUSD - totalDiscountsCash) + deliveryCost);
+
+    // 🚀 LÓGICA FISCAL ESTRICTA (Base Imponible Proporcional)
+    const listDiscountMultiplier = cartEngine.totalListNominal > 0 ? (1 - (totalDiscountsList / cartEngine.totalListNominal)) : 1;
+    const cashDiscountMultiplier = cartEngine.totalCashNominal > 0 ? (1 - (totalDiscountsCash / cartEngine.totalCashNominal)) : 1;
+    
+    // Inferimos la base imponible Cash usando la misma proporción que la de Lista
+    const taxableRatio = cartEngine.totalListNominal > 0 ? (cartEngine.taxableSubtotalList / cartEngine.totalListNominal) : 0;
+    const taxableCashNominal = cartEngine.totalCashNominal * taxableRatio;
+
+    // El IVA se calcula EXCLUSIVAMENTE sobre la porción gravable, nunca sobre el total de la orden
+    const taxAmountListUSD = applyTax ? (cartEngine.taxableSubtotalList * listDiscountMultiplier) * (taxPercentage / 100) : 0;
+    const taxAmountCashUSD = applyTax ? (taxableCashNominal * cashDiscountMultiplier) * (taxPercentage / 100) : 0;
 
     const totalListUSD = totalListUSD_base + taxAmountListUSD;
     const totalCashUSD = totalCashUSD_base + taxAmountCashUSD;
     const fxMultiplier = totalCashUSD > 0 ? totalListUSD / totalCashUSD : 1;
-    // 🚀 NUEVO: Lector del Feature Flag y Modalidad
+
+    // 🚀 RESTAURACIÓN DE LAS VARIABLES DE PAGO MIXTO
     const allowSplitPayments = payments?.allow_split_payments === true;
     const [paymentMode, setPaymentMode] = useState<'single' | 'split'>('single');
 

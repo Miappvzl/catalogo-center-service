@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
@@ -9,8 +9,20 @@ import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 
-// --- TIPOS (Intactos) ---
-interface InventoryItem { rowId: string; productId: string; name: string; image: string | null; category: string; variantId: string | null; color: string; hex: string; size: string; stock: number }
+// --- TIPOS (Actualizados con isTaxExempt) ---
+interface InventoryItem {
+    rowId: string;
+    productId: string;
+    name: string;
+    image: string | null;
+    category: string;
+    variantId: string | null;
+    color: string;
+    hex: string;
+    size: string;
+    stock: number;
+    isTaxExempt: boolean; // 🚀 NUEVO
+}
 
 export default function InventoryPage() {
     const supabase = getSupabase()
@@ -20,25 +32,33 @@ export default function InventoryPage() {
     const [filterStatus, setFilterStatus] = useState('all')
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
+    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null) // 🚀 NUEVO: Estado del perfil
 
-    // LOGICA INTACTA
     useEffect(() => {
         const fetchInventory = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
-                const { data: store } = await supabase.from('stores').select('id').eq('user_id', user.id).single()
+
+                // 🚀 ACTUALIZACIÓN: Traemos el fiscal_profile de la tienda
+                const { data: store } = await supabase.from('stores').select('id, fiscal_profile').eq('user_id', user.id).single()
                 if (!store) return
-                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+                setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
+
+
+                // 🚀 FIX: Añadimos is_tax_exempt al query
+                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
                 if (error) throw error
+
                 const flatInventory: InventoryItem[] = []
                 products?.forEach((prod: any) => {
+                    const isExempt = prod.is_tax_exempt || false // 🚀 Leemos la BD
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
-                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock })
+                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt })
                         })
                     } else {
-                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0 })
+                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt })
                     }
                 })
                 setItems(flatInventory)
@@ -77,6 +97,26 @@ export default function InventoryPage() {
         } catch (error) { Swal.fire('Error', 'No se pudo actualizar', 'error') } finally { setSavingButtons(prev => ({ ...prev, [row.rowId]: false })) }
     }
 
+    // 🚀 NUEVA FUNCIÓN: Alternar estatus fiscal desde el inventario
+    const toggleTaxExempt = async (productId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus
+
+        // Optimistic Update (Actualizamos la UI de todas las variantes de este producto al instante)
+        setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: newStatus } : item))
+
+        try {
+            const { error } = await supabase.from('products').update({ is_tax_exempt: newStatus }).eq('id', productId)
+            if (error) throw error
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: newStatus ? 'Producto Exento de IVA' : 'IVA Activado' })
+        } catch (error) {
+            // Revertir si falla
+            setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: currentStatus } : item))
+            Swal.fire('Error', 'No se pudo actualizar el estatus fiscal', 'error')
+        }
+    }
+
     const filteredItems = useMemo(() => {
         return items.filter(item => {
             const textMatch = item.name.toLowerCase().includes(search.toLowerCase()) || item.color.toLowerCase().includes(search.toLowerCase()) || item.size.toLowerCase().includes(search.toLowerCase())
@@ -99,7 +139,7 @@ export default function InventoryPage() {
                     </Link>
                     <div>
                         <h1 className="font-black text-xl tracking-tight leading-none">Inventario</h1>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Control de Stock</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Control de Stock e Impuestos</p>
                     </div>
                 </div>
                 {/* KPI CHIPS (Borderless) */}
@@ -136,8 +176,8 @@ export default function InventoryPage() {
                                     key={tab.id}
                                     onClick={() => setFilterStatus(tab.id)}
                                     className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterStatus === tab.id
-                                            ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
-                                            : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
+                                        ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
+                                        : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
                                         }`}
                                 >
                                     {tab.label}
@@ -171,10 +211,10 @@ export default function InventoryPage() {
                             <div className="overflow-x-auto w-full max-w-full">
                                 <table className="w-full text-left border-collapse min-w-[600px]">
                                     <thead>
-                                        <tr className="border-b   border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                        <tr className="border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
                                             <th className="p-4 md:p-6">Producto</th>
                                             <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
-                                            <th className="p-4 md:p-6 text-center">Stock Real</th>
+                                            <th className="p-4 md:p-6 text-center">Gestión Rápida</th>
                                             <th className="p-4 md:p-6 text-right">Estado</th>
                                         </tr>
                                     </thead>
@@ -202,21 +242,21 @@ export default function InventoryPage() {
                                                 <tr key={item.rowId} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
                                                     <td className="p-4 md:p-6 align-middle">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0">
+                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0 relative">
                                                                 {item.image ? (
                                                                     <Image
                                                                         src={getOptimizedUrl(item.image)}
                                                                         alt={item.name}
-                                                                        width={64}
-                                                                        height={64}
-                                                                        className="w-full h-full object-cover mix-blend-multiply"
+                                                                        fill
+                                                                        sizes="48px"
+                                                                        className="object-cover mix-blend-multiply"
                                                                     />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={16} /></div>
                                                                 )}
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <p className="font-bold text-sm text-gray-900 leading-tight group-hover:text-black truncate">{item.name}</p>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="font-bold text-sm text-gray-900 leading-tight group-hover:text-black truncate pr-4">{item.name}</p>
                                                                 <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide font-medium hidden md:block">{item.category}</p>
                                                                 <div className="flex items-center gap-2 mt-1.5 md:hidden">
                                                                     <div className="flex items-center gap-1.5 px-1.5 py-1 bg-gray-50 rounded-md">
@@ -242,7 +282,8 @@ export default function InventoryPage() {
                                                         </div>
                                                     </td>
                                                     <td className="p-4 md:p-6 align-middle">
-                                                        <div className="flex justify-center">
+                                                        <div className="flex flex-col items-center justify-center gap-2">
+                                                            {/* STOCK INPUT */}
                                                             <div className="flex items-center gap-2">
                                                                 <input
                                                                     type="text"
@@ -266,6 +307,19 @@ export default function InventoryPage() {
                                                                     </button>
                                                                 )}
                                                             </div>
+
+                                                            {/* 🚀 BOTÓN DE EXENCIÓN FISCAL */}
+                                                            {/* 🚀 LOGICA DE ÉLITE: Solo mostramos gestión de IVA si el comercio es Formalizado */}
+                                                            {fiscalProfile !== 'informal' && (
+                                                                <button
+                                                                    onClick={() => toggleTaxExempt(item.productId, item.isTaxExempt)}
+                                                                    className={`flex items-center justify-center gap-1.5 px-2.5 py-1 w-24 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${item.isTaxExempt ? 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                                                                    title="Toca para alternar si este producto paga IVA"
+                                                                >
+                                                                    <Receipt size={10} className={item.isTaxExempt ? "opacity-50" : ""} />
+                                                                    {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="p-4 md:p-6 text-right align-middle">

@@ -72,6 +72,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         let totalCashNominal = 0;
         let listPromoDiscounts = 0;
         let cashPromoDiscounts = 0;
+        // 🚀 BASE IMPONIBLE: Solo lo que no sea exento
+        let taxableSubtotalList = 0; 
+
         let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
         const promoCounts: Record<string, number> = {};
 
@@ -108,71 +111,84 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     if (eff > maxEffective) { maxEffective = eff; bestPromo = p; }
                 });
 
-                if (bestPromo) {
-                    if ((bestPromo as any).promo_type === 'percentage') {
-                        const pct = (bestPromo as any).discount_percentage / 100;
-                        itemListDiscount = (listPrice * item.quantity) * pct;
-                        itemCashDiscount = (cashPrice * item.quantity) * pct;
-                        listPromoDiscounts += itemListDiscount;
-                        cashPromoDiscounts += itemCashDiscount;
+                if (bestPromo && (bestPromo as any).promo_type === 'percentage') {
+                    const pct = (bestPromo as any).discount_percentage / 100;
+                    itemListDiscount = (listPrice * item.quantity) * pct;
+                    itemCashDiscount = (cashPrice * item.quantity) * pct;
+                    listPromoDiscounts += itemListDiscount;
+                    cashPromoDiscounts += itemCashDiscount;
 
-                        // Guardamos el JSX, no un string
-                        badge = (
-                            <span className="flex items-center gap-1">
-                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
-                                {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
-                            </span>
-                        );
-
-                    } else if ((bestPromo as any).promo_type === 'bogo') {
-                        badge = (
-                            <span className="flex items-center gap-1">
-                                <TicketPercent size={12} strokeWidth={2} className="text-white" />
-                                {(bestPromo as any).title}
-                            </span>
-                        );
-                        // ... resto de tu lógica de bogoPool
-                    }
+                    badge = (
+                        <span className="flex items-center gap-1">
+                            <TicketPercent size={12} strokeWidth={2} className="text-white" />
+                            {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
+                        </span>
+                    );
                 }
+            }
+
+            // 🚀 CÁLCULO DE BASE IMPONIBLE POR ITEM
+            const itemFinalListTotal = (listPrice * item.quantity) - itemListDiscount;
+            
+            // 1. Cruzamos con la base de datos fresca (Mata el bug del LocalStorage viejo)
+            const originalProduct = products.find(p => String(p.id) === String(item.productId));
+            const dbIsExempt = originalProduct?.is_tax_exempt || false;
+
+            // 2. Escudo Gatekeeper: ¿La tienda realmente declara impuestos?
+            const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
+            const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+            
+            // 3. Veredicto Final: Si la tienda es informal, forzamos a falso. Si es formal, manda la BD.
+            const effectiveIsExempt = isStrictTax ? dbIsExempt : false;
+
+            // 4. Sumamos a la caja de impuestos SOLO si no está exento
+            if (!effectiveIsExempt) {
+                taxableSubtotalList += itemFinalListTotal;
             }
 
             return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.quantity), finalCashPrice: cashPrice - (itemCashDiscount / item.quantity), badge }
         });
 
-        Object.values(bogoPool).forEach(pool => {
-            const sortedList = pool.listPrices.sort((a, b) => a - b);
-            const sortedCash = pool.cashPrices.sort((a, b) => a - b);
-            const freeCount = Math.floor(sortedList.length / pool.buy) * (pool.buy - pool.pay);
-            for (let i = 0; i < freeCount; i++) {
-                listPromoDiscounts += sortedList[i];
-                cashPromoDiscounts += sortedCash[i];
-            }
-        });
-
         const finalBsModeUSD = totalListNominal - listPromoDiscounts;
         const finalCashModeUSD = totalCashNominal - cashPromoDiscounts;
 
-        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, finalBsModeUSD, finalCashModeUSD, fxSavingsAmount: finalBsModeUSD - finalCashModeUSD };
-    }, [items, promotions]);
+        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, finalBsModeUSD, finalCashModeUSD, taxableSubtotalList };
+    // 🚀 CRÍTICO: Actualizamos las dependencias de React para que detecte los cambios de BD y Config
+    }, [items, promotions, products, storeConfig]);
 
-    // Variables base para Paso 1 (Antes del Delivery y Liquid Split)
+  // --- VARIABLES BASE: MAYORISTAS Y AFILIADOS ---
     const isWholesaleActive = wholesale.active && totalItemsCount >= wholesale.min_items;
     const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
     const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
 
-    // 🚀 NUEVO: MOTOR MATEMÁTICO DE AFILIADOS
+    // 🚀 FIX: Definición de Affiliate devuelta a la vida
     const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
     const isAffiliateActive = affiliate.active && affiliateCode;
     const affiliateDiscountList = isAffiliateActive ? (cartEngine.finalBsModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
     const affiliateDiscountCash = isAffiliateActive ? (cartEngine.finalCashModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
 
-    // Actualizamos los totales restando el descuento del afiliado
-    const step1GrandTotalUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList - affiliateDiscountList);
-    const step1GrandTotalBs = step1GrandTotalUSD * activeRate;
-    const step1CashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash - affiliateDiscountCash);
-    const step1FxSavings = Math.max(0, step1GrandTotalUSD - step1CashUSD);
+    // --- 🚀 LÓGICA DE IMPUESTOS PÚBLICOS (SENIAT) ---
+    const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
+    const mustApplyTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+    const taxPct = storeConfig?.default_tax_percentage || 16;
 
-    if (!isMounted) return null
+    // CÁLCULO DE IVA PROPORCIONAL
+    // Determinamos cuánto descuento total se aplicó para bajar la base imponible
+    const totalDiscountsList = wholesaleDiscountList + affiliateDiscountList;
+    const discountMultiplier = cartEngine.totalListNominal > 0 
+        ? (1 - (totalDiscountsList / cartEngine.totalListNominal)) 
+        : 1;
+
+    // El IVA se calcula solo sobre los productos gravables, ajustados por los descuentos
+    const step1TaxAmountUSD = mustApplyTax 
+        ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPct / 100) 
+        : 0;
+
+    // --- TOTALES FINALES DEL PASO 1 ---
+    const step1GrandTotalUSD = Math.max(0, (cartEngine.finalBsModeUSD - totalDiscountsList) + step1TaxAmountUSD);
+    const step1GrandTotalBs = step1GrandTotalUSD * activeRate;
+    const step1CashUSD = Math.max(0, (cartEngine.finalCashModeUSD - wholesaleDiscountCash - affiliateDiscountCash) + step1TaxAmountUSD);
+    const step1FxSavings = Math.max(0, step1GrandTotalUSD - step1CashUSD);
 
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
     const modalVariants: Variants = {
@@ -380,7 +396,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         </div>
                                                     </div>
                                                 )}
-                                                {/* 🚀 NUDGE DE AHORRO PREVIO */}
+                                                {/* 🚀 NUDGE DE AHORRO: Actualizado con IVA Proporcional */}
                                                 {step1FxSavings > 0 && (
                                                     <div className="px-4 pb-10 bg-[var(--store-bg)] pt-6">
                                                         <div className="bg-[#1b1b1b] p-4 rounded-xl flex items-center gap-3 border">

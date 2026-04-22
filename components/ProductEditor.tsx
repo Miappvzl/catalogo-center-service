@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus } from 'lucide-react'
+import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus, Receipt } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { revalidateStoreCache } from '@/app/admin/actions'
@@ -15,7 +15,7 @@ import { NumberInput } from './NumberInput'
 interface ProductEditorProps {
     productId?: string
     rates: { usd: number, eur: number }
-    storeSettings?: { id: string, currency: string }
+    storeSettings?: { id: string, currency: string, fiscalProfile: string }
 }
 
 const COMMON_SIZES = ['S', 'M', 'L', 'XL', '38', '40', '42', 'Única']
@@ -48,7 +48,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         compareAt: '' as number | '',
         status: 'active',
         shipping_badge_title: '', // NUEVO
-        shipping_badge_desc: ''   // NUEVO
+        shipping_badge_desc: '',   // NUEVO
+        is_tax_exempt: false // 🚀 NUEVO: Estado fiscal del producto
     })
 
     const [productGallery, setProductGallery] = useState<string[]>([])
@@ -196,7 +197,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     compareAt: product.compare_at_usd || '',
                     status: product.status || 'active',
                     shipping_badge_title: product.shipping_badge_title || '', // NUEVO
-                    shipping_badge_desc: product.shipping_badge_desc || ''    // NUEVO
+                    shipping_badge_desc: product.shipping_badge_desc || '',    // NUEVO
+                    is_tax_exempt: product.is_tax_exempt || false // 🚀 NUEVO: Leer BD
                 })
 
                 setProductGallery(product.gallery || [])
@@ -461,7 +463,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 store_id: storeSettings!.id,
                 stock: hasVariants ? 0 : (Number(simpleStock) || 0),
                 shipping_badge_title: formData.shipping_badge_title || null, // NUEVO (Null para heredar)
-                shipping_badge_desc: formData.shipping_badge_desc || null    // NUEVO
+                shipping_badge_desc: formData.shipping_badge_desc || null,
+                is_tax_exempt: formData.is_tax_exempt // 🚀 NUEVO: Guardar en BD
             }
 
             let currentId = productId
@@ -724,29 +727,53 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     </div>
                 </div>
 
-                {/* CARD 3: ESTRATEGIA DE PRECIO BASE */}
-                <div className="bg-white relative top-13 p-5 pb-14 rounded-(--radius-card) border border-transparentbg-white border-transparent space-y-0 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div>
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base) *</label>
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <NumberInput  min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
+                {/* CARD 3: ESTRATEGIA DE PRECIO E IMPUESTOS */}
+                <div className="bg-white relative top-13 p-5 pb-14 rounded-(--radius-card) border border-transparent space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div>
+                            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base) *</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
+                                <NumberInput min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Anterior (Tachado)</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500 transition-colors">$</span>
+                                <NumberInput min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen Conversión (Opcional)</label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
+                                <NumberInput min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Anterior (Tachado)</label>
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500 transition-colors">$</span>
-                            <NumberInput  min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
+
+                    {/* 🚀 EXENCIÓN FISCAL (SENIAT) */}
+                    {/* 🚀 GATEKEEPER FISCAL: Desaparece por completo si la tienda no es formalizada */}
+{storeSettings?.fiscalProfile !== 'informal' && (
+                    <div
+                        className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_tax_exempt ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+                        onClick={() => updateForm('is_tax_exempt', !formData.is_tax_exempt)}
+                    >
+                        <div className="pr-4 mb-3 sm:mb-0">
+                            <p className={`font-bold text-sm flex items-center gap-2 ${formData.is_tax_exempt ? 'text-emerald-800' : 'text-gray-900'}`}>
+                                <Receipt size={16} className={formData.is_tax_exempt ? 'text-emerald-600' : 'text-gray-500'} />
+                                Producto Exento de IVA (0%)
+                            </p>
+                            <p className={`text-xs mt-1 ${formData.is_tax_exempt ? 'text-emerald-700/80' : 'text-gray-500'}`}>
+                                Actívalo solo si este rubro está exonerado por la ley (Ej: Alimentos de la cesta básica, Medicinas).
+                            </p>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${formData.is_tax_exempt ? 'bg-emerald-500 border-transparent justify-end shadow-sm' : 'bg-white border-gray-300 justify-start shadow-sm'}`}>
+                            <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_tax_exempt ? 'bg-white' : 'bg-gray-300'}`} />
                         </div>
                     </div>
-                    <div>
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen Conversión (Opcional)</label>
-                        <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
-                            <NumberInput  min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-gray-900 outline-none transition-all" />
-                        </div>
-                    </div>
+)}
                 </div>
                 <div className="bg-[#0A0A0A] rounded-(--radius-card) p-6 text-center relative overflow-hidden mt-4 border border-[#222] shadow-xl">
                     <div className="relative z-10 flex flex-col items-center gap-3">
@@ -783,7 +810,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     {!hasVariants ? (
                         <div className="bg-gray-50 rounded-(--radius-card) p-6 border border-transparent animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-sm">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Stock Disponible</label>
-                            <NumberInput  min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none transition-all shadow-sm" />
+                            <NumberInput min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none transition-all shadow-sm" />
                             <p className="text-xs font-medium text-gray-500 mt-3 ml-1">No se pedirán medidas ni colores al cliente.</p>
                         </div>
                     ) : (
@@ -847,7 +874,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                         </div>
                                         <div className="flex-1 w-full min-w-0">
                                             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Stock x Variante</label>
-                                            <NumberInput  min="0" value={variantInput.defaultStock} onChangeValue={(val) => updateVariantInput('defaultStock', val)} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none text-center transition-all h-14 shadow-sm" />
+                                            <NumberInput min="0" value={variantInput.defaultStock} onChangeValue={(val) => updateVariantInput('defaultStock', val)} className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-black text-xl text-gray-900 outline-none text-center transition-all h-14 shadow-sm" />
                                         </div>
                                     </div>
 
@@ -857,21 +884,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Precio Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput min="0" placeholder="Hereda" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                         <div className="min-w-0">
                                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1.5 block">Tachado Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-red-200 focus:border-red-500 focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput min="0" placeholder="Hereda" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-red-200 focus:border-red-500 focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                         <div className="min-w-0">
                                             <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Margen Propio (Opcional)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                <NumberInput  min="0" placeholder="Hereda" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                <NumberInput min="0" placeholder="Hereda" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-gray-200 focus:border-black focus:shadow-subtle rounded-lg pl-7 pr-3 py-2.5 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                             </div>
                                         </div>
                                     </div>
@@ -945,40 +972,40 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                             {/* Fila 1: Imagen y Atributos Básicos */}
                                                             <div className="flex flex-col sm:flex-row gap-5">
                                                                 {/* 🚀 NUEVA UI DE FOTO BLINDADA Y EXPLÍCITA */}
-                                                            <div className="shrink-0 flex flex-col gap-2 group relative">
-                                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Foto</label>
-                                                                <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
-                                                                
-                                                                {v.variant_image ? (
-                                                                    // Contenedor de la imagen: Vista previa no clicable por defecto
-                                                                    <div className="relative w-16 h-16 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center shadow-sm">
-                                                                        <Image
-                                                                            src={getOptimizedUrl(v.variant_image)}
-                                                                            alt={`Vista previa variante ${v.color_name || i}`}
-                                                                            fill
-                                                                            sizes="64px"
-                                                                            className="object-cover"
-                                                                        />
-                                                                        {/* 🖱️ Overlay explícito de hover: ÚNICO lugar clicable para cambiar foto */}
-                                                                        <button 
+                                                                <div className="shrink-0 flex flex-col gap-2 group relative">
+                                                                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Foto</label>
+                                                                    <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
+
+                                                                    {v.variant_image ? (
+                                                                        // Contenedor de la imagen: Vista previa no clicable por defecto
+                                                                        <div className="relative w-16 h-16 rounded-(--radius-badge) border border-gray-100 overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center shadow-sm">
+                                                                            <Image
+                                                                                src={getOptimizedUrl(v.variant_image)}
+                                                                                alt={`Vista previa variante ${v.color_name || i}`}
+                                                                                fill
+                                                                                sizes="64px"
+                                                                                className="object-cover"
+                                                                            />
+                                                                            {/* 🖱️ Overlay explícito de hover: ÚNICO lugar clicable para cambiar foto */}
+                                                                            <button
+                                                                                onClick={() => document.getElementById(`file-${v.id}`)?.click()}
+                                                                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-(--radius-badge) cursor-pointer"
+                                                                                title="Cambiar Foto de Variante"
+                                                                            >
+                                                                                {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImageIcon size={20} />}
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        // Botón de "Añadir Foto" si no hay imagen (se mantiene clicable toda la zona)
+                                                                        <button
                                                                             onClick={() => document.getElementById(`file-${v.id}`)?.click()}
-                                                                            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-(--radius-badge) cursor-pointer"
-                                                                            title="Cambiar Foto de Variante"
+                                                                            className="w-16 h-16 rounded-(--radius-badge) border border-dashed border-gray-300 bg-white hover:border-black flex items-center justify-center overflow-hidden transition-all text-gray-400 hover:text-black shadow-sm"
+                                                                            title="Añadir Foto a Variante"
                                                                         >
-                                                                            {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImageIcon size={20} />}
+                                                                            {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImagePlus size={20} />}
                                                                         </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    // Botón de "Añadir Foto" si no hay imagen (se mantiene clicable toda la zona)
-                                                                    <button 
-                                                                        onClick={() => document.getElementById(`file-${v.id}`)?.click()} 
-                                                                        className="w-16 h-16 rounded-(--radius-badge) border border-dashed border-gray-300 bg-white hover:border-black flex items-center justify-center overflow-hidden transition-all text-gray-400 hover:text-black shadow-sm"
-                                                                        title="Añadir Foto a Variante"
-                                                                    >
-                                                                        {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImagePlus size={20} />}
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                                                    )}
+                                                                </div>
                                                                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                                     <div>
                                                                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Talla/Medida</label>
@@ -986,7 +1013,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     </div>
                                                                     <div>
                                                                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Stock</label>
-                                                                        <NumberInput  min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-gray-200 focus:border-black rounded-lg px-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all" />
+                                                                        <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-gray-200 focus:border-black rounded-lg px-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all" />
                                                                     </div>
                                                                     <div className="sm:col-span-2">
                                                                         <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 flex justify-between items-center">
@@ -1010,21 +1037,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     <label className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 block">Sobrescribir Precio $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput min="0" placeholder="Hereda" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1.5 block">Sobrescribir Tachado $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-red-100 focus:border-red-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput min="0" placeholder="Hereda" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-red-100 focus:border-red-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-red-600 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 block">Sobrescribir Margen $</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                                                        <NumberInput  min="0" placeholder="Hereda" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
+                                                                        <NumberInput min="0" placeholder="Hereda" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-emerald-100 focus:border-emerald-500 rounded-lg pl-7 pr-3 py-2 text-[16px] md:text-sm font-bold text-gray-900 outline-none transition-all placeholder:font-normal placeholder:text-gray-400" />
                                                                     </div>
                                                                 </div>
                                                             </div>

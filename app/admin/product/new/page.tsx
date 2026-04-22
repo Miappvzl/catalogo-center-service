@@ -15,7 +15,7 @@ export default async function NewProductPage() {
 
   const [configRes, storeRes] = await Promise.all([
     supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single(),
-    supabase.from('stores').select('id, currency_type').eq('user_id', user.id).single()
+    supabase.from('stores').select('id, currency_type, fiscal_profile').eq('user_id', user.id).single()
   ])
 
   return (
@@ -26,7 +26,8 @@ export default async function NewProductPage() {
         }}
         storeSettings={{
             id: storeRes.data?.id || '',
-            currency: storeRes.data?.currency_type || 'usd'
+            currency: storeRes.data?.currency_type || 'usd',
+            fiscalProfile: storeRes.data?.fiscal_profile || 'informal' // 🚀 PASAMOS EL PERFIL
         }}
     />
   )

@@ -9,8 +9,8 @@ import Image from 'next/image'
 
 // --- TIPOS ESTRICTOS (Sincronizados con Catálogo) ---
 type Variant = { id: string, size: string, color_name: string, stock: number, override_usd_price: number | null, override_usd_penalty: number | null }
-type Product = { id: number, name: string, image_url: string, usd_cash_price: number, usd_penalty: number, stock: number, product_variants: Variant[] }
-type CartItem = { cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, basePrice: number, penalty: number, qty: number, maxStock: number, image: string }
+type Product = { id: number, name: string, image_url: string, usd_cash_price: number, usd_penalty: number, stock: number, is_tax_exempt?: boolean, product_variants: Variant[] }
+type CartItem = { cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, basePrice: number, penalty: number, qty: number, maxStock: number, image: string, isTaxExempt: boolean }
 
 export default function POSPage() {
     const supabase = getSupabase()
@@ -53,7 +53,7 @@ export default function POSPage() {
 
     // PAGOS
     const [activePaymentMethods, setActivePaymentMethods] = useState<string[]>([])
-    const [quoteAllowedMethods, setQuoteAllowedMethods] = useState<string[]>([]) 
+    const [quoteAllowedMethods, setQuoteAllowedMethods] = useState<string[]>([])
     const [selectedPayment, setSelectedPayment] = useState<string>('Efectivo')
     const [customPayment, setCustomPayment] = useState('')
     const [paymentReference, setPaymentReference] = useState('')
@@ -64,8 +64,8 @@ export default function POSPage() {
             if (!user) return
 
             const [storeRes, productsRes, ratesRes] = await Promise.all([
-               supabase.from('stores').select('id, slug, name, payment_config, shipping_config, wholesale_config, currency_type, default_tax_active, default_tax_percentage, fiscal_profile, legal_name, legal_id, fiscal_address').eq('user_id', user.id).single(),
-                supabase.from('products').select('id, name, image_url, usd_cash_price, usd_penalty, stock, product_variants(id, size, color_name, stock, override_usd_price, override_usd_penalty)').eq('user_id', user.id).eq('status', 'active'),
+                supabase.from('stores').select('id, slug, name, payment_config, shipping_config, wholesale_config, currency_type, default_tax_active, default_tax_percentage, fiscal_profile, legal_name, legal_id, fiscal_address').eq('user_id', user.id).single(),
+                supabase.from('products').select('id, name, image_url, usd_cash_price, usd_penalty, stock, is_tax_exempt, product_variants(id, size, color_name, stock, override_usd_price, override_usd_penalty)').eq('user_id', user.id).eq('status', 'active'),
                 supabase.from('app_config').select('usd_rate, eur_rate').single()
             ])
 
@@ -82,7 +82,7 @@ export default function POSPage() {
                 setApplyTax(mustApplyTax);
                 setDocumentType(mustApplyTax ? 'invoice' : 'note');
                 setTaxPercentage(storeRes.data.default_tax_percentage ?? 16);
-               
+
                 const pConfig = storeRes.data.payment_config || {}
                 const pm = []
                 if (pConfig.cash?.active) pm.push('Efectivo')
@@ -94,7 +94,7 @@ export default function POSPage() {
                 if (pConfig.wally?.active) pm.push('WallyTech')
 
                 setActivePaymentMethods(pm)
-                setQuoteAllowedMethods(pm) 
+                setQuoteAllowedMethods(pm)
                 if (pm.length > 0) setSelectedPayment(pm[0])
             }
             if (productsRes.data) setProducts(productsRes.data as Product[])
@@ -115,8 +115,11 @@ export default function POSPage() {
 
     const totalItemsCount = useMemo(() => cart.reduce((acc, item) => acc + item.qty, 0), [cart])
 
-    const cartEngine = useMemo(() => {
+   const cartEngine = useMemo(() => {
         let totalListNominal = 0; let totalCashNominal = 0; let listPromoDiscounts = 0; let cashPromoDiscounts = 0;
+        let taxableSubtotalList = 0; let taxableSubtotalCash = 0; // 🚀 BASES IMPONIBLES (Solo lo que paga IVA)
+
+        let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
         const promoCounts: Record<string, number> = {};
 
         cart.forEach(item => {
@@ -149,13 +152,26 @@ export default function POSPage() {
                     listPromoDiscounts += itemListDiscount; cashPromoDiscounts += itemCashDiscount;
                 }
             }
-            return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.qty), finalCashPrice: cashPrice - (itemCashDiscount / item.qty) }
+
+           const finalListPrice = listPrice - (itemListDiscount / item.qty);
+            const finalCashPrice = cashPrice - (itemCashDiscount / item.qty);
+
+            // 🚀 ESCUDO ARQUITECTÓNICO: Si la tienda NO cobra impuestos (applyTax es false), ignoramos el flag del producto
+            const effectiveIsExempt = applyTax ? item.isTaxExempt : false;
+
+            // Separador fiscal usando la variable protegida
+            if (!effectiveIsExempt) {
+                taxableSubtotalList += (finalListPrice * item.qty);
+                taxableSubtotalCash += (finalCashPrice * item.qty);
+            }
+
+            return { ...item, listPrice, cashPrice, finalListPrice, finalCashPrice }
         });
 
         const finalBsModeUSD = totalListNominal - listPromoDiscounts;
         const finalCashModeUSD = totalCashNominal - cashPromoDiscounts;
         
-        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, cashPromoDiscounts, finalBsModeUSD, finalCashModeUSD };
+        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, cashPromoDiscounts, finalBsModeUSD, finalCashModeUSD, taxableSubtotalList, taxableSubtotalCash };
     }, [cart, promotions]);
 
     // LÓGICA MAYORISTA Y DIVISAS
@@ -168,19 +184,22 @@ export default function POSPage() {
     const subtotalListUSD = Math.max(0, cartEngine.finalBsModeUSD - wholesaleDiscountList);
     const subtotalCashUSD = Math.max(0, cartEngine.finalCashModeUSD - wholesaleDiscountCash);
     
-    const taxAmountUSD = applyTax ? (isHardCurrency ? subtotalCashUSD : subtotalListUSD) * (taxPercentage / 100) : 0;
+    // 🚀 CÁLCULO ESTRICTO DE IVA (Calculado SOLO sobre la base imponible y restando su porción de descuento mayorista si aplica)
+    const discountMultiplier = isWholesaleActive ? (1 - (wholesale.discount_percentage / 100)) : 1;
+    const taxAmountUSD = applyTax ? (isHardCurrency ? cartEngine.taxableSubtotalCash : cartEngine.taxableSubtotalList) * discountMultiplier * (taxPercentage / 100) : 0;
     
+    // TOTALES FINALES
     const totalUSD = (isHardCurrency ? subtotalCashUSD : subtotalListUSD) + taxAmountUSD;
-    const totalBS = (subtotalListUSD + (applyTax ? subtotalListUSD * (taxPercentage / 100) : 0)) * activeRate;
+    const totalBS = (subtotalListUSD + (applyTax ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPercentage / 100) : 0)) * activeRate;
     
     const actualFxSavings = Math.max(0, subtotalListUSD - subtotalCashUSD);
-
-    const handleAddCustomItem = () => {
+   const handleAddCustomItem = () => {
         if (!customItem.name || !customItem.price) return
         const cartId = `custom-${Date.now()}` 
         setCart(prev => [...prev, {
             cartId, productId: null, name: customItem.name.trim(), variantInfo: 'Personalizado',
-            basePrice: Number(customItem.price), penalty: 0, qty: 1, maxStock: 9999, image: ''
+            basePrice: Number(customItem.price), penalty: 0, qty: 1, maxStock: 9999, image: '',
+            isTaxExempt: false // 🚀 Los ítems a medida pagan IVA por defecto
         }])
         setCustomItem({ name: '', price: '' })
         setIsCustomItemModalOpen(false)
@@ -192,17 +211,18 @@ export default function POSPage() {
         const penalty = variant?.override_usd_penalty ?? product.usd_penalty ?? 0
         const variantInfo = variant ? `${variant.color_name || ''} ${variant.size || ''}`.trim() : undefined
         const maxStock = variant ? variant.stock : product.stock
+        const isTaxExempt = product.is_tax_exempt || false // 🚀 Leemos si la ley lo exonera
 
         setCart(prev => {
             const existing = prev.find(item => item.cartId === cartId)
             if (existing) {
                 if (existing.qty >= maxStock) {
-                    Swal.fire({ title: 'Stock Máximo', text: 'No hay más unidades', icon: 'warning', confirmButtonColor: '#111' })
+                    Swal.fire({ title: 'Stock Máximo', text: 'No hay más unidades', icon: 'warning' })
                     return prev
                 }
                 return prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + 1 } : item)
             }
-            return [...prev, { cartId, productId: product.id, variantId: String(variant?.id || ''), name: product.name, variantInfo, basePrice, penalty, qty: 1, maxStock, image: product.image_url }]
+            return [...prev, { cartId, productId: product.id, variantId: String(variant?.id || ''), name: product.name, variantInfo, basePrice, penalty, qty: 1, maxStock, image: product.image_url, isTaxExempt }]
         })
         setSelectedProductForVariant(null)
     }
@@ -216,7 +236,7 @@ export default function POSPage() {
             return item
         }))
     }
-    
+
     const removeLine = (cartId: string) => setCart(prev => prev.filter(item => item.cartId !== cartId))
 
     // --- TRANSACT ENGINE ---
@@ -265,7 +285,7 @@ export default function POSPage() {
                     liquid_amount_usd: Number(totalUSD.toFixed(2)),
                     promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
                     wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                    affiliate_discount_usd: 0, 
+                    affiliate_discount_usd: 0,
                     fx_savings_usd: isHardCurrency ? Number(actualFxSavings.toFixed(2)) : 0,
                     exchange_rate: type === 'paid' ? activeRate : null,
                     status: type,
@@ -277,22 +297,22 @@ export default function POSPage() {
                     currency_type: isEur ? 'eur' : 'usd'
                 })
                 .select('id, order_number').single()
-            
+
             if (orderError) throw orderError
 
             const orderItemsPayload = cartEngine.processedItems.map(item => ({
-                order_id: order.id, 
-                product_id: item.productId, 
+                order_id: order.id,
+                product_id: item.productId,
                 variant_id: item.variantId || null,
-                product_name: item.name, 
-                variant_info: item.variantInfo || null, 
-                quantity: item.qty, 
+                product_name: item.name,
+                variant_info: item.variantInfo || null,
+                quantity: item.qty,
                 price_at_purchase: isHardCurrency ? item.finalCashPrice : item.finalListPrice
             }))
 
             const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload)
             if (itemsError) throw new Error('Error al guardar los artículos.')
-            
+
             setCart([]); setCustomerName(''); setCustomerPhone(''); setPaymentReference(''); setCustomPayment(''); setCustomerDNI(''); setCustomerAddress('');
             setShippingAddress(''); setIsMobileCartOpen(false);
 
@@ -331,7 +351,7 @@ export default function POSPage() {
                     return updated
                 }))
             }
-       } catch (error: any) {
+        } catch (error: any) {
             console.error("ERROR FATAL AL INSERTAR:", error);
             Swal.fire({ icon: 'error', title: 'Error', text: error.message || JSON.stringify(error), confirmButtonColor: '#111', customClass: { popup: 'rounded-2xl' } })
         } finally {
@@ -377,12 +397,12 @@ export default function POSPage() {
                             const isOutOfStock = totalStock <= 0;
 
                             return (
-                               <button 
-                                    key={product.id} 
+                                <button
+                                    key={product.id}
                                     onClick={() => {
                                         if (product.product_variants && product.product_variants.length > 0) setSelectedProductForVariant(product)
                                         else handleAddToCart(product)
-                                    }} 
+                                    }}
                                     disabled={isOutOfStock}
                                     className={`relative flex flex-col text-left bg-white rounded-2xl p-2.5 transition-all duration-300 border border-gray-100 ease-out active:scale-95 ${isOutOfStock ? 'opacity-50 grayscale cursor-not-allowed' : 'shadow-[0_2px_15px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_25px_-6px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:border-gray-200'}`}
                                 >
@@ -440,7 +460,7 @@ export default function POSPage() {
 
                     <div className="flex justify-between items-center">
                         <h2 className="font-black text-xl text-gray-900 tracking-tight">Caja</h2>
-                        <button className="md:hidden p-1.5 bg-gray-50 rounded-xl text-gray-400 hover:text-gray-900 transition-colors" onClick={() => setIsMobileCartOpen(false)}><ChevronDown size={18} strokeWidth={2.5}/></button>
+                        <button className="md:hidden p-1.5 bg-gray-50 rounded-xl text-gray-400 hover:text-gray-900 transition-colors" onClick={() => setIsMobileCartOpen(false)}><ChevronDown size={18} strokeWidth={2.5} /></button>
                     </div>
 
                     {/* Interruptor de Intención */}
@@ -509,7 +529,7 @@ export default function POSPage() {
                                     {cart.map(item => (
                                         <motion.div key={item.cartId} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white p-2.5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.02)] flex gap-3 group relative">
                                             <div className="w-12 h-12 bg-gray-50/80 rounded-xl overflow-hidden shrink-0 border border-gray-50 relative">
-                                                {item.image ? <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" /> : <ShoppingBag className="absolute inset-0 m-auto text-gray-200" size={16}/>}
+                                                {item.image ? <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" /> : <ShoppingBag className="absolute inset-0 m-auto text-gray-200" size={16} />}
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                 <div className="flex justify-between items-start pr-4">
@@ -539,9 +559,9 @@ export default function POSPage() {
                             <div>
                                 <h3 className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Logística</h3>
                                 <div className="flex gap-1.5 bg-gray-50/80 p-1 border border-gray-100 rounded-2xl">
-                                    <button onClick={() => setShippingMethod('pickup')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'pickup' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Store size={12} strokeWidth={2.5}/> Local</button>
-                                    <button onClick={() => setShippingMethod('local_delivery')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'local_delivery' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Truck size={12} strokeWidth={2.5}/> Delivery</button>
-                                    <button onClick={() => setShippingMethod('courier')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'courier' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Package size={12} strokeWidth={2.5}/> Envío</button>
+                                    <button onClick={() => setShippingMethod('pickup')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'pickup' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Store size={12} strokeWidth={2.5} /> Local</button>
+                                    <button onClick={() => setShippingMethod('local_delivery')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'local_delivery' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Truck size={12} strokeWidth={2.5} /> Delivery</button>
+                                    <button onClick={() => setShippingMethod('courier')} className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-widest flex justify-center items-center gap-1.5 transition-all ${shippingMethod === 'courier' ? 'bg-white text-[#3600ff] shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}><Package size={12} strokeWidth={2.5} /> Envío</button>
                                 </div>
                                 {shippingMethod !== 'pickup' && (
                                     <div className="relative mt-2 animate-in fade-in slide-in-from-top-1">
@@ -553,7 +573,7 @@ export default function POSPage() {
 
                             <div>
                                 <h3 className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Parámetros</h3>
-                                
+
                                 <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 mb-4 flex items-start justify-between gap-3">
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-gray-700">Imposición (I.V.A.)</span>
@@ -614,7 +634,7 @@ export default function POSPage() {
 
                 {/* 🚀 FOOTER FIJO (Siempre visible, no overlap) */}
                 <div className="shrink-0 bg-white border-t border-gray-100 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30 h-[50dvh] md:h-[40dvh]">
-                    
+
                     <div className="bg-gray-50/50 rounded-2xl p-4 mb-4 border border-gray-100">
                         <div className="space-y-1.5 border-b border-gray-200/60 pb-3 mb-3">
                             <div className="flex justify-between text-[11px] font-bold text-gray-500">
@@ -671,12 +691,12 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    <button 
-                        onClick={() => handleCheckout(operationMode)} 
+                    <button
+                        onClick={() => handleCheckout(operationMode)}
                         disabled={isSubmitting || cart.length === 0}
                         className={`w-full py-4 px-2 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 ease-out disabled:opacity-50 disabled:pointer-events-none active:scale-95 ${operationMode === 'quote' ? 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 shadow-sm' : 'bg-gray-900 text-white shadow-[0_4px_15px_-4px_rgba(0,0,0,0.2)] hover:bg-black hover:-translate-y-0.5 active:translate-y-0'}`}
                     >
-                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : (operationMode === 'quote' ? <FileText size={16} /> : <Banknote size={16} />)} 
+                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : (operationMode === 'quote' ? <FileText size={16} /> : <Banknote size={16} />)}
                         {operationMode === 'quote' ? 'Crear Proforma' : 'Cobrar'}
                     </button>
                 </div>
