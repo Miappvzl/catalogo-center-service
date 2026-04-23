@@ -33,7 +33,7 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
-// 🚀 ESTADOS DEL MODO MERCHANDISING
+    // 🚀 ESTADOS DEL MODO MERCHANDISING
     const [isReordering, setIsReordering] = useState(false)
     const [reorderList, setReorderList] = useState<any[]>([])
     const [isSavingOrder, setIsSavingOrder] = useState(false)
@@ -43,24 +43,26 @@ export default function InventoryPage() {
     const openReorderModal = () => {
         // Obtenemos productos únicos (agrupando variantes por su productId)
         const allProducts = Array.from(new Map(
-            items.map(i => [i.productId, { 
-                id: i.productId, 
-                name: i.name, 
-                image: i.image, 
+            items.map(i => [i.productId, {
+                id: i.productId,
+                name: i.name,
+                image: i.image,
                 displayOrder: i.displayOrder,
                 isFeatured: i.isFeatured // Mantenemos la referencia visual
             }])
         ).values()).sort((a, b) => a.displayOrder - b.displayOrder)
-        
+
         setReorderList(allProducts)
         setIsReordering(true)
     }
+
+   
 
     // 🚀 MAGIA: EL SALTO CUÁNTICO (Editar número manualmente)
     const handleQuantumLeap = (productId: string, newPosStr: string) => {
         const newPos = parseInt(newPosStr)
         if (isNaN(newPos) || newPos < 1) return;
-        
+
         const currentIndex = reorderList.findIndex(p => p.id === productId)
         if (currentIndex === -1) return;
 
@@ -70,7 +72,7 @@ export default function InventoryPage() {
         const newList = [...reorderList]
         const [movedItem] = newList.splice(currentIndex, 1)
         newList.splice(targetIndex, 0, movedItem) // Inyecta el ítem en la nueva posición y desplaza el resto
-        
+
         setReorderList(newList)
     }
 
@@ -82,9 +84,9 @@ export default function InventoryPage() {
                 id: item.id,
                 display_order: index + 1 // Convertimos el índice del array en el número real (1, 2, 3...)
             }))
-            
+
             // Enviamos todo a Supabase en paralelo para máxima velocidad
-            await Promise.all(updates.map(u => 
+            await Promise.all(updates.map(u =>
                 supabase.from('products').update({ display_order: u.display_order }).eq('id', u.id)
             ))
 
@@ -95,7 +97,7 @@ export default function InventoryPage() {
             }))
 
             await revalidateStoreCache() // Destruimos la caché para que el cliente lo vea instantáneo
-            
+
             setIsReordering(false)
             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
             Toast.fire({ icon: 'success', title: 'Escaparate Reorganizado' })
@@ -123,7 +125,7 @@ export default function InventoryPage() {
                 if (!store) return
                 setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
 
-const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
                 if (error) throw error
 
                 const flatInventory: InventoryItem[] = []
@@ -133,7 +135,7 @@ const { data: products, error } = await supabase.from('products').select('id, na
                     const dOrder = prod.display_order || 0 // 🚀 NUEVO
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
-                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder})
+                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder })
                         })
                     } else {
                         flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder })
@@ -289,10 +291,13 @@ const { data: products, error } = await supabase.from('products').select('id, na
                             />
                         </div>
                         {/* 🚀 BOTÓN ORGANIZAR ESCAPARATE */}
-                        {items.filter(i => i.isFeatured).length > 1 && (
-                        <button onClick={openReorderModal} className="bg-black text-white px-5 py-3 rounded-full text-xs font-bold shadow-subtle hover:bg-gray-800 transition-all flex items-center gap-2 whitespace-nowrap shrink-0">
-                            <Zap size={14} className="fill-white" /> Organizar Tienda
-                        </button>
+                        {items.length > 1 && (
+                            <button
+                                onClick={openReorderModal}
+                                className="bg-black text-white px-5 py-3 rounded-full text-xs font-bold shadow-subtle hover:bg-gray-800 transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+                            >
+                                <Zap size={14} className="fill-white" /> Organizar Tienda
+                            </button>
                         )}
                     </div>
 
@@ -459,7 +464,7 @@ const { data: products, error } = await supabase.from('products').select('id, na
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsReordering(false)} />
                         <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-[#F6F6F6] w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border border-gray-100">
-                            
+
                             <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-start shrink-0">
                                 <div>
                                     <h3 className="font-black text-xl text-gray-900 leading-tight">Visual Merchandising</h3>
@@ -473,22 +478,22 @@ const { data: products, error } = await supabase.from('products').select('id, na
                                 <Reorder.Group axis="y" values={reorderList} onReorder={setReorderList} className="space-y-3">
                                     {reorderList.map((item, index) => (
                                         <Reorder.Item key={item.id} value={item} className="bg-white p-3 rounded-2xl border border-gray-100  flex items-center gap-4 cursor-grab active:cursor-grabbing relative group hover:border-gray-300 transition-colors">
-                                            
+
                                             {/* 🚀 El Salto Cuántico (Input Directo) */}
                                             <div className="shrink-0 flex items-center justify-center w-12">
                                                 {editingIndex === item.id ? (
-                                                    <input 
+                                                    <input
                                                         autoFocus
                                                         type="number"
                                                         min="1"
                                                         max={reorderList.length}
                                                         className="w-10 h-8 text-center font-black text-sm bg-gray-100 border-none rounded-lg outline-none focus:ring-2 focus:ring-black"
                                                         onBlur={(e) => { setEditingIndex(null); handleQuantumLeap(item.id, e.target.value) }}
-                                                        onKeyDown={(e) => { if(e.key === 'Enter') { setEditingIndex(null); handleQuantumLeap(item.id, e.currentTarget.value) } }}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') { setEditingIndex(null); handleQuantumLeap(item.id, e.currentTarget.value) } }}
                                                     />
                                                 ) : (
-                                                    <button 
-                                                        onClick={() => setEditingIndex(item.id)} 
+                                                    <button
+                                                        onClick={() => setEditingIndex(item.id)}
                                                         className="w-10 h-8 flex items-center justify-center font-black text-gray-400 hover:text-black hover:bg-gray-50 rounded-lg transition-colors"
                                                         title="Clic para cambiar posición exacto"
                                                     >
@@ -499,10 +504,10 @@ const { data: products, error } = await supabase.from('products').select('id, na
 
                                             {/* Info del Producto */}
                                             <div className="w-12 h-12 rounded-xl bg-gray-50 overflow-hidden shrink-0 relative border border-gray-100">
-                                                {item.image ? <Image src={getOptimizedUrl(item.image)} alt={item.name} fill sizes="48px" className="object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={16} className="text-gray-300"/></div>}
+                                                {item.image ? <Image src={getOptimizedUrl(item.image)} alt={item.name} fill sizes="48px" className="object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={16} className="text-gray-300" /></div>}
                                             </div>
-                                            
-                                           <div className="flex-1 min-w-0 pr-4">
+
+                                            <div className="flex-1 min-w-0 pr-4">
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
                                                     {item.isFeatured && (
@@ -523,8 +528,8 @@ const { data: products, error } = await supabase.from('products').select('id, na
                             </div>
 
                             <div className="p-4 md:p-6 bg-white border-t border-gray-100 shrink-0">
-                                <button 
-                                    onClick={saveReorder} 
+                                <button
+                                    onClick={saveReorder}
                                     disabled={isSavingOrder}
                                     className="w-full bg-black text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-subtle hover:bg-gray-800 active:scale-98 transition-all disabled:opacity-50"
                                 >
