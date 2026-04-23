@@ -193,18 +193,29 @@ export default function POSPage() {
     const totalBS = (subtotalListUSD + (applyTax ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPercentage / 100) : 0)) * activeRate;
     
     const actualFxSavings = Math.max(0, subtotalListUSD - subtotalCashUSD);
-   const handleAddCustomItem = () => {
+   
+    const handleAddCustomItem = (e: React.FormEvent) => {
+        e.preventDefault() // 🚀 Escudo contra la recarga de página
+
         if (!customItem.name || !customItem.price) return
+        
         const cartId = `custom-${Date.now()}` 
         setCart(prev => [...prev, {
-            cartId, productId: null, name: customItem.name.trim(), variantInfo: 'Personalizado',
-            basePrice: Number(customItem.price), penalty: 0, qty: 1, maxStock: 9999, image: '',
-            isTaxExempt: false // 🚀 Los ítems a medida pagan IVA por defecto
+            cartId, 
+            productId: null, 
+            name: customItem.name.trim(), 
+            variantInfo: 'Personalizado',
+            basePrice: Number(customItem.price), 
+            penalty: 0, 
+            qty: 1, 
+            maxStock: 9999, 
+            image: '',
+            isTaxExempt: false // 🚀 FIX: Cumplimos con el contrato de TypeScript (Los items manuales pagan IVA por defecto)
         }])
+        
         setCustomItem({ name: '', price: '' })
         setIsCustomItemModalOpen(false)
     }
-
     const handleAddToCart = (product: Product, variant?: Variant) => {
         const cartId = variant ? `${product.id}-${variant.id}` : `${product.id}` 
         const basePrice = variant?.override_usd_price ?? product.usd_cash_price
@@ -222,7 +233,7 @@ export default function POSPage() {
                 }
                 return prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + 1 } : item)
             }
-            return [...prev, { cartId, productId: product.id, variantId: String(variant?.id || ''), name: product.name, variantInfo, basePrice, penalty, qty: 1, maxStock, image: product.image_url, isTaxExempt }]
+            return [...prev, { cartId, productId: product.id, variantId: String(variant?.id || ''), name: product.name, variantInfo, basePrice, penalty, qty: 1, maxStock, image: product.image_url, isTaxExempt: product.is_tax_exempt || false }]
         })
         setSelectedProductForVariant(null)
     }
