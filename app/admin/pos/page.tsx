@@ -644,7 +644,8 @@ export default function POSPage() {
                 </div>
 
                 {/* 🚀 FOOTER FIJO (Siempre visible, no overlap) */}
-                <div className="shrink-0 bg-white border-t border-gray-100 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30 h-[50dvh] md:h-[40dvh]">
+               {/* 🚀 FOOTER FIJO (Siempre visible, no overlap) */}
+<div className="shrink-0 bg-white border-t border-gray-100 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30">
 
                     <div className="bg-gray-50/50 rounded-2xl p-4 mb-4 border border-gray-100">
                         <div className="space-y-1.5 border-b border-gray-200/60 pb-3 mb-3">

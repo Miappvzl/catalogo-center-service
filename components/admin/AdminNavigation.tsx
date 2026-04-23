@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText } from 'lucide-react'
@@ -15,17 +15,17 @@ const NAV_LINKS = [
   // 📌 General
   { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General' },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General' },
-  
+
   // 📌 Punto de Venta
   { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
   { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
-  
+
   // 📌 Catálogo
   { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo' },
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo' },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo' },
-  
+
   // 📌 Negocio
   { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio' },
   { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio' },
@@ -118,7 +118,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
 
       {/* 🚀 CORRECCIÓN: overflow-y-auto y no-scrollbar para evitar que empuje el footer */}
       <nav className="flex-1 overflow-y-auto no-scrollbar space-y-6 relative pb-6 -mx-2 px-2">
-        
+
         {/* 🚀 LÓGICA DE AGRUPACIÓN (Pattern de Vercel/Stripe) */}
         {['General', 'Ventas', 'Catálogo', 'Negocio'].map((category) => {
           const linksInCategory = NAV_LINKS.filter(link => link.category === category);
@@ -130,7 +130,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
               <h3 className="px-4 text-[10px] font-medium font-black uppercase tracking-widest text-gray-400 mb-1">
                 {category}
               </h3>
-              
+
               {linksInCategory.map((link) => {
                 if (link.isAction) return null;
                 const isActive = pathname === link.href;
@@ -139,9 +139,8 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                   <GuardedLink
                     key={link.href}
                     href={link.href}
-                    className={`relative flex items-center gap-3 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-medium transition-all duration-200 group ${
-                      isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
-                    }`}
+                    className={`relative flex items-center gap-3 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-medium transition-all duration-200 group ${isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
+                      }`}
                   >
                     {isActive && (
                       <motion.div
@@ -380,24 +379,63 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
     </AnimatePresence>
   )
 }
-
-// --- MOBILE BOTTOM BAR (Centrado Perfecto Garantizado) ---
+// --- MOBILE BOTTOM BAR (Detección de Scroll Interno en DOM) ---
 const MobileBottomBar = ({ pathname }: { pathname: string }) => {
-  // 🚀 CIRUGÍA: Extraemos los enlaces normales y el botón de acción por separado
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // 🚀 INTELIGENCIA DE DETECCIÓN PROFUNDA (Capture Phase)
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      // 1. Identificar exactamente QUÉ contenedor interno se está moviendo
+      const target = e.target as HTMLElement | Document;
+      let currentScrollY = 0;
+
+      if (target === document) {
+        currentScrollY = document.documentElement.scrollTop || window.scrollY;
+      } else {
+        const element = target as HTMLElement;
+        // Evitamos que los scrolls horizontales (ej. un carrusel de categorías) activen la barra
+        if (element.scrollHeight <= element.clientHeight) return; 
+        currentScrollY = element.scrollTop;
+      }
+
+      // 2. Filtro anti-parpadeo
+      if (Math.abs(currentScrollY - lastScrollY.current) < 10) return;
+
+      // 3. Motor de Ocultamiento
+      if (currentScrollY <= 10) {
+        setIsVisible(true); // Tope superior
+      } else if (currentScrollY > lastScrollY.current) {
+        setIsVisible(false); // Bajando en el catálogo
+      } else {
+        setIsVisible(true);  // Subiendo en el catálogo
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    // 🚀 LA CLAVE ABSOLUTA: 'capture: true' fuerza al window a interceptar scrolls de divs internos
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, []);
+
   const normalLinks = NAV_LINKS.filter(link => !link.hideOnBottomBar && !link.isAction)
   const actionLink = NAV_LINKS.find(link => link.isAction)
   
-  // Reconstruimos el array forzando la simetría: 2 a la izquierda, 1 en el medio, 2 a la derecha
   const bottomBarLinks = [
     normalLinks[0], // Inicio
     normalLinks[1], // Pedidos
-    actionLink,     // 🎯 Botón Central (Nuevo Producto)
+    actionLink,     // Central
     normalLinks[2], // Inventario
     normalLinks[3]  // Ajustes
-  ].filter(Boolean) // Protegemos el código por si falta algún enlace
+  ].filter(Boolean)
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-[80] pb-[env(safe-area-inset-bottom)] transform-gpu">
+    <div 
+      className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 pb-[env(safe-area-inset-bottom)] transform-gpu transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform z-30
+      ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120%] opacity-0'}`} 
+    >
       <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
         {bottomBarLinks.map((link: any) => {
           const isActive = pathname === link.href
@@ -406,7 +444,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
             return (
               <div key={link.href} className="flex-shrink-0 relative -top-2 px-2">
                 <GuardedLink href={link.href} className="block group shadow-subtle rounded-full">
-                  <div className="w-11 h-11 bg-[#070707f3] text-white rounded-full flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+                  <div className="w-11 h-11 bg-[#070707] text-white rounded-full flex items-center justify-center group-active:scale-95 transition-transform duration-200">
                     <Plus size={26} strokeWidth={1.4} />
                   </div>
                 </GuardedLink>
@@ -418,7 +456,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
             <GuardedLink
               key={link.href}
               href={link.href}
-              className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${isActive ? 'text-black' : 'text-gray-400 hover:text-gray-900'}`}
+              className={`flex flex-1 flex-col items-center justify-center gap-0 py-1 transition-colors duration-200 active:scale-95 ${isActive ? 'text-black' : 'text-gray-400'}`}
             >
               <div className="relative w-12 h-8 flex items-center justify-center z-10">
                 {isActive && (
@@ -429,7 +467,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
                   />
                 )}
                 <div className={`transition-transform duration-300 ${isActive ? '-translate-y-0.5' : ''}`}>
-                  <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "opacity-100" : "opacity-80"} />
+                  <link.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
               </div>
               <span className="text-[10px] font-bold tracking-wide">
@@ -442,7 +480,6 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     </div>
   )
 }
-
 interface NavProps { store: any }
 export default function AdminNavigation({ store }: NavProps) {
   const pathname = usePathname()
