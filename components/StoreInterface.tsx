@@ -679,7 +679,6 @@ const searchParams = useSearchParams()
                   <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
                       <div>
                           <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] mt-1">Selección Premium</p>
                       </div>
                   </div>
                   
