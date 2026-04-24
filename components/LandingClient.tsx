@@ -827,7 +827,7 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
           <span className="text-zinc-600">Sin Calculadora.</span>
         </h2>
         <p className="mt-8 max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed">
-          ¿Tu cliente quiere pagar una parte en un billete roto de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
+          ¿Tu cliente quiere pagar una parte en un billete de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
         </p>
       </div>
 
