@@ -255,7 +255,7 @@ const NodeZeroHero = () => {
           >
             PREZISO <br />
             {/* Solo cambias la palabra aquí adentro */}
-            <span className="text-outline-white opacity-20">COMMERCE</span>
+            <span className="text-white/40">COMMERCE</span>
           </motion.h1>
           
           <motion.div
