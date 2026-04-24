@@ -136,7 +136,7 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
             
             <Link 
                 href="/login" 
-                className="group flex items-center gap-3 border border-white/80  px-8 md:px-10 py-4 rounded-full text-white/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
+                className="group flex items-center gap-2 border border-white/80  px-6 md:px-10 py-3 rounded-full text-white/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
               >
            
               <span>Crear Tienda</span>
@@ -146,10 +146,10 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
 
             {/* Menú Hamburguesa (Mobile) */}
             <button 
-              className="md:hidden p-2 bg-zinc-900/80 rounded-full border border-white/10 text-white active:scale-95 transition-transform"
+              className="md:hidden p-2 text-white active:scale-95 transition-transform"
               onClick={() => setIsMobileMenuOpen(true)}
             >
-              <Menu size={18} />
+              <Menu size={20} />
             </button>
           </div>
         </div>
@@ -247,14 +247,15 @@ const NodeZeroHero = () => {
       >
         
         <div className="max-w-7xl w-full text-center">
-          <motion.h1 
+         <motion.h1 
             initial={{ opacity: 0, letterSpacing: "1em", filter: "blur(10px)" }}
             animate={{ opacity: 1, letterSpacing: "-0.05em", filter: "blur(0px)" }}
             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
             className="text-[12vw] md:text-[10rem] font-black leading-[0.8] text-white uppercase"
           >
             PREZISO <br />
-            <span className="text-outline-white opacity-20">SYSTEM</span>
+            {/* Solo cambias la palabra aquí adentro */}
+            <span className="text-outline-white opacity-20">COMMERCE</span>
           </motion.h1>
           
           <motion.div
@@ -470,7 +471,7 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
               <span className="text-[#3600ff] font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
                 Lo que ve tu cliente (Bs) <div className="w-2 h-2 rounded-full bg-[#3600ff] animate-ping" />
               </span>
-              <div className="text-6xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
+              <div className="text-5xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
                 <span className="text-[#3600ff]">Bs</span>
                 {/* Re-renderización instantánea para simular velocidad de DB */}
                 <motion.span 
