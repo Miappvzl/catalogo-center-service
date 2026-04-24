@@ -38,14 +38,14 @@ export default function SettingsPage() {
     // 🚀 NUEVO: Estado del Programa de Afiliados
     const [affiliate, setAffiliate] = useState({ active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
     // 🚀 NUEVO: Estado Fiscal
-  // 🚀 CORRECCIÓN TYPESCRIPT: Declaramos 'fiscal_profile' en el estado inicial
-const [fiscal, setFiscal] = useState({ 
-    legal_name: '', 
-    legal_id: '', 
-    fiscal_address: '', 
-    default_tax_percentage: 16,
-    fiscal_profile: 'informal' 
-})
+    // 🚀 CORRECCIÓN TYPESCRIPT: Declaramos 'fiscal_profile' en el estado inicial
+    const [fiscal, setFiscal] = useState({
+        legal_name: '',
+        legal_id: '',
+        fiscal_address: '',
+        default_tax_percentage: 16,
+        fiscal_profile: 'informal'
+    })
     const [isDirty, setIsDirty] = useState(false)
     const [saving, setSaving] = useState(false)
     const [uploadingHero, setUploadingHero] = useState(false)
@@ -135,7 +135,7 @@ const [fiscal, setFiscal] = useState({
                 wholesale_config: wholesale,
                 receipt_config: receipt,
                 affiliate_config: affiliate,
-               // 🚀 NUEVO: Guardar datos fiscales
+                // 🚀 NUEVO: Guardar datos fiscales
                 legal_name: fiscal.legal_name,
                 legal_id: fiscal.legal_id,
                 fiscal_address: fiscal.fiscal_address,
@@ -270,7 +270,7 @@ const [fiscal, setFiscal] = useState({
                                 ].map(p => {
                                     const isSelected = fiscal.fiscal_profile === p.id;
                                     return (
-                                        <div 
+                                        <div
                                             key={p.id}
                                             onClick={() => { setFiscal({ ...fiscal, fiscal_profile: p.id }); setIsDirty(true) }}
                                             className={`cursor-pointer p-4 rounded-xl border transition-all active:scale-95 flex flex-col gap-1 ${isSelected ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-zinc-50 border-black/5 hover:bg-zinc-100 text-zinc-900'}`}
@@ -293,19 +293,19 @@ const [fiscal, setFiscal] = useState({
                                         <p className="text-[10px] text-zinc-500 mt-0.5">Tasa general obligatoria según el BCV.</p>
                                     </div>
                                     <div className="relative w-24">
-                                      <NumberInput
-    value={fiscal.default_tax_percentage} 
-    onChangeValue={val => { 
-        let num = Number(val);
-        // 🚀 BLINDAJE LEGAL SENIAT: No permitimos menos de 16% ni más de 16.5%
-        if (num < 16) num = 16; 
-        if (num > 16.5) num = 16.5;
-        
-        setFiscal({ ...fiscal, default_tax_percentage: num }); 
-        setIsDirty(true);
-    }} 
-    className="w-full bg-white border border-black/5 rounded-lg py-2 pl-3 pr-6 text-xs font-black text-zinc-900 text-center focus:border-zinc-300 outline-none transition-colors" 
-/>
+                                        <NumberInput
+                                            value={fiscal.default_tax_percentage}
+                                            onChangeValue={val => {
+                                                let num = Number(val);
+                                                // 🚀 BLINDAJE LEGAL SENIAT: No permitimos menos de 16% ni más de 16.5%
+                                                if (num < 16) num = 16;
+                                                if (num > 16.5) num = 16.5;
+
+                                                setFiscal({ ...fiscal, default_tax_percentage: num });
+                                                setIsDirty(true);
+                                            }}
+                                            className="w-full bg-white border border-black/5 rounded-lg py-2 pl-3 pr-6 text-xs font-black text-zinc-900 text-center focus:border-zinc-300 outline-none transition-colors"
+                                        />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 font-black pointer-events-none">%</span>
                                     </div>
                                 </div>

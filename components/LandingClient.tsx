@@ -1,568 +1,1449 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence, Variants } from 'framer-motion'
-import Link from 'next/link'
-import {
-  ArrowUpRight, Menu, X, Plus,
-  Smartphone, Layers, RefreshCw,
-  Check, Instagram, Twitter, Facebook, Mail, Phone,
-  Calculator, Palette, CheckCircle2 
+import React, { useEffect, useRef, useState } from 'react'
+import { motion, useScroll, useTransform, useSpring, AnimatePresence,  useMotionValue } from 'framer-motion'
+import { 
+  ArrowDown, 
+  AlertCircle, 
+  MessageSquare, 
+  Calculator, 
+  XCircle, 
+  Zap,
+  ArrowRightLeft,
+  Globe,
+  Server, ShoppingBag, ArrowRight, Wallet, MessageCircle, CheckCircle2, SlidersHorizontal, Terminal, Activity, ChevronRight, Check, ArrowUpRight,
+  Minus,
+  Plus,
+  Flame,
+  X,
+  ImageIcon,
+  Search,
+  ShoppingCart,
+  Instagram,
+  Twitter,
+  InstagramIcon,
+  TwitterIcon,
+  Menu
 } from 'lucide-react'
-import Image from 'next/image';
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+import Link from 'next/link'
+import { Cursor } from 'recharts/types/component/Cursor'
 
-// =========================================
-// 1. ESTILOS GLOBALES (MINIMALIST DEPARTMENT STORE)
-// =========================================
-const globalStyles = `
-  html { scroll-behavior: smooth; }
-
-  body {
-    background-color: #FFFFFF;
-    color: #0A0A0A;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  ::selection { background-color: #3600ff; color: #ffffff; }
-  
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  
-  /* 🚀 Transiciones sedosas y lujo táctil */
-  .editorial-hover {
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  
-  .btn-luxury {
-    position: relative;
-    overflow: hidden;
-  }
-  .btn-luxury::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; w-full; height: 100%;
-    background-color: #3600ff;
-    transform: translateY(100%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: -1;
-  }
-  .btn-luxury:hover::after {
-    transform: translateY(0);
-  }
-  .btn-luxury:hover {
-    color: #ffffff;
-    border-color: #3600ff;
-  }
-
-  .text-outline { color: transparent; -webkit-text-stroke: 1px #E5E5E5; }
-  @media (min-width: 768px) { .text-outline { -webkit-text-stroke: 1.5px #E5E5E5; } }
-
-  @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 1rem)); } }
-  .animate-marquee { animation: marquee 40s linear infinite; will-change: transform; }
-  .animate-marquee:hover { animation-play-state: paused; }
-  
-  .fade-edges { mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
-`
-
-const elegantUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20, mass: 1 } }
+/**
+ * UTILIDADES DE ESTILO ATÓMICO
+ */
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-}
+// =========================================
+// COMPONENTE: SMART NAVBAR (PRECISION BAR)
+// =========================================
 
-const FaqItem = ({ question, answer, index }: { question: string, answer: string, index: string }) => {
-  const [isOpen, setIsOpen] = useState(false)
+const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
+  const [isVisible, setIsVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+ 
+
+  // Control de ocultamiento al hacer scroll (se desactiva si el menú móvil está abierto)
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (isMobileMenuOpen) return;
+      if (window.scrollY > lastScrollY && window.scrollY > 100) {
+        setIsVisible(false)
+      } else {
+        setIsVisible(true)
+      }
+      setLastScrollY(window.scrollY)
+    }
+    window.addEventListener('scroll', controlNavbar)
+    return () => window.removeEventListener('scroll', controlNavbar)
+  }, [lastScrollY, isMobileMenuOpen])
+
+  // Bloquear scroll cuando el menú móvil está abierto
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMobileMenuOpen])
+
+  const navLinks = [
+    { name: 'Funciones', href: '#funciones' },
+    { name: 'POS', href: '#pos' },
+    { name: 'ADN Visual', href: '#adn' },
+    { name: 'Precios', href: '#precios' }
+  ]
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault()
+    setIsMobileMenuOpen(false)
+    const element = document.querySelector(href)
+    if (element) {
+      // Pequeño delay para permitir que el menú móvil se cierre antes de hacer scroll
+      setTimeout(() => {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 300)
+    }
+  }
+
   return (
-    <div className="border-b border-gray-200 bg-white group">
-      <button onClick={() => setIsOpen(!isOpen)} className="w-full py-8 md:py-10 flex items-start md:items-center justify-between text-left transition-transform">
-        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 pr-6">
-          <span className="text-[10px] font-mono text-gray-400 group-hover:text-[#3600ff] transition-colors">{index}</span>
-          <span className="text-xl md:text-3xl font-medium tracking-tight text-gray-900 group-hover:text-[#3600ff] transition-colors">{question}</span>
+    <>
+      <motion.nav
+        initial={{ y: -100 }}
+        animate={{ y: isVisible ? 0 : -100 }}
+        transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+        className="fixed top-0 left-0 right-0 z-[100] px-4 md:px-4 py-3 flex justify-center"
+      >
+        <div className="w-full max-w-7xl bg-black/70 backdrop-blur-xl rounded-full px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          
+          {/* Logo Inyectado */}
+          <div className="flex items-center">
+            <a className="flex items-center group active:scale-95 transition-transform" href="/">
+              <img 
+                alt="Preziso Logo" 
+                width="auto" 
+                height="20px" 
+                className="h-10 md:h-12 w-auto object-contain brightness-0 invert" 
+                src="/pezisologo.png" 
+              />
+            </a>
+          </div>
+
+          {/* Links Centrales (Desktop) */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((item) => (
+              <a 
+                key={item.name} 
+                href={item.href} 
+                onClick={(e) => handleNavClick(e, item.href)}
+                className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest hover:text-white transition-colors"
+              >
+                {item.name}
+              </a>
+            ))}
+          </div>
+
+          {/* Widgets & CTAs */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1  rounded-full">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
+              <span className="text-[12px] font-mono text-zinc-200 uppercase tracking-tighter">BCV: {bcvRate}</span>
+            </div>
+            
+            <Link 
+                href="/login" 
+                className="group flex items-center gap-3 border border-white/80  px-8 md:px-10 py-4 rounded-full text-white/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
+              >
+           
+              <span>Crear Tienda</span>
+              <ArrowUpRight size={16} className="text-white/80 group-hover:text-white transition-colors" />
+            
+            </Link>
+
+            {/* Menú Hamburguesa (Mobile) */}
+            <button 
+              className="md:hidden p-2 bg-zinc-900/80 rounded-full border border-white/10 text-white active:scale-95 transition-transform"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
+          </div>
         </div>
-        <div className={`mt-1 md:mt-0 w-8 h-8 flex items-center justify-center shrink-0 transition-transform duration-500 ${isOpen ? 'rotate-45 text-[#3600ff]' : 'text-gray-400 group-hover:text-gray-900'}`}>
-          <Plus className="w-5 h-5 md:w-6 md:h-6" strokeWidth={1.5} />
-        </div>
-      </button>
+      </motion.nav>
+
+      {/* Menú Desplegable Móvil (Pantalla Completa) */}
       <AnimatePresence>
-        {isOpen && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
-            <p className="pb-10 md:pl-[3.25rem] font-normal text-gray-500 text-sm md:text-lg leading-relaxed max-w-3xl">{answer}</p>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: "-100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "-100%" }}
+            transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-3xl flex flex-col px-6 py-8"
+          >
+            {/* Header del Menú Móvil */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
+              <img alt="Preziso Logo" className="h-15 w-auto object-contain brightness-0 invert" src="/pezisologo.png" />
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-3 bg-white/10 rounded-full text-white active:scale-95"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Links Móviles con Animación en Cascada */}
+            <div className="flex flex-col gap-6 mt-8">
+              {navLinks.map((item, i) => (
+                <motion.a
+                  key={item.name}
+                  href={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 * i, duration: 0.5, ease: "easeOut" }}
+                  className="text-4xl font-medium tracking-tighter text-zinc-500 hover:text-white uppercase transition-colors flex items-center justify-between border-b border-white/5 pb-4"
+                >
+                  {item.name}
+                  <ArrowUpRight size={24} className="opacity-0 hover:opacity-100 transition-opacity" />
+                </motion.a>
+              ))}
+            </div>
+
+            {/* Footer Móvil */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-auto pb-8"
+            >
+              <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-2xl justify-center mb-6">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Tasa BCV Activa: {bcvRate} Bs</span>
+              </div>
+              <button className="w-full bg-[#3600ff] text-white py-4 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 flex justify-center items-center gap-2">
+                Crear Tienda ahora <ArrowUpRight size={16} />
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }
 
-const ScrollFeatureWords = () => {
-  const words = [
-    { text: "TIENDA ONLINE", outline: false, align: "text-left md:ml-10" },
-    { text: "MULTIMONEDA", outline: true, align: "text-left md:ml-20" },
-    { text: "TASA BCV", outline: false, align: "text-right md:mr-20", isHighlight: true }, 
-    { text: "AUTOMÁTICA", outline: true, align: "text-right md:mr-10" },
-    { text: "CERO", outline: false, align: "text-center md:-ml-32" },
-    { text: "COMISIONES", outline: true, align: "text-center md:ml-32" },
-  ]
+// =========================================
+// NODO 0: LA INICIALIZACIÓN (PRE-LOADER & HERO)
+// =========================================
+
+const NodeZeroHero = () => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  })
+
+  // Transformaciones para el efecto de "Emerge del Vacío"
+  const y = useTransform(scrollYProgress, [0, 1], [0, -100])
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
+  
+  // Línea de escaneo retiniano
+  const scanLineY = useTransform(scrollYProgress, [0, 0.1], ["-100%", "200%"])
+
   return (
-    <section className="py-24 md:py-40 overflow-hidden bg-white border-b border-gray-200">
-      <div className="flex flex-col gap-2 md:gap-4 w-full">
-        {words.map((item, i) => (
-          <motion.div key={i} initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "0px" }} transition={{ type: "spring", stiffness: 100, damping: 30, delay: i * 0.1 }} className={`w-full px-4 md:px-6 ${item.align}`}>
-            {item.isHighlight ? (
-              <span className="inline-block text-[#3600ff] text-[12vw] md:text-[8rem] lg:text-[9.5rem] font-medium leading-[0.85] tracking-tighter uppercase whitespace-nowrap">
-                {item.text}
+    <section 
+      ref={containerRef}
+      className="relative h-[150vh] w-full bg-black flex flex-col items-center justify-start overflow-hidden"
+    >
+     
+      <motion.div 
+        style={{ y, opacity, scale }}
+        className="sticky top-0 h-screen w-full flex flex-col items-center justify-center px-6"
+      >
+        
+        <div className="max-w-7xl w-full text-center">
+          <motion.h1 
+            initial={{ opacity: 0, letterSpacing: "1em", filter: "blur(10px)" }}
+            animate={{ opacity: 1, letterSpacing: "-0.05em", filter: "blur(0px)" }}
+            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
+            className="text-[12vw] md:text-[10rem] font-black leading-[0.8] text-white uppercase"
+          >
+            PREZISO <br />
+            <span className="text-outline-white opacity-20">SYSTEM</span>
+          </motion.h1>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="mt-12 flex flex-col items-center gap-8"
+          >
+            <p className="text-zinc-500 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] max-w-lg leading-relaxed">
+             Tu tienda. Multimoneda. Sincronizada al BCV. Domina el caos de vender en Venezuela con un ecosistema de punto de venta y e-commerce. <br />
+            </p>
+            
+           {/* NUEVO BOTÓN CTA PRINCIPAL (Diseño Flat / Sin Sombras) */}
+            <div className="mt-4 flex flex-col items-center gap-4">
+              <Link 
+                href="/admin" 
+                className="group flex items-center gap-3 bg-white px-8 md:px-10 py-4 rounded-full text-black font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
+              >
+                <span>Crear tienda gratis</span>
+                <ArrowUpRight 
+                  size={18} 
+                  strokeWidth={2.5} 
+                  className="text-black group-hover:text-white transition-all duration-300 group-hover:translate-x-1" 
+                />
+              </Link>
+              
+              {/* Micro-texto de confianza para acompañar el botón */}
+              <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
+                No requiere tarjeta de crédito
               </span>
-            ) : (
-              <span className={`text-[12vw] md:text-[8rem] lg:text-[9.5rem] font-medium leading-[0.85] tracking-tighter uppercase whitespace-nowrap ${item.outline ? 'text-outline' : 'text-gray-900'}`}>
-                {item.text}
-              </span>
-            )}
+            </div>
           </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Grid de Fondo Dinámico (Ruido de Fondo) */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(#3600ff_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
+      </div>
+    </section>
+  )
+}
+// =========================================
+// NODO 1: LA FRICCIÓN (EL TERROR DEL CIERRE DE CAJA)
+// =========================================
+
+const NodeOneFriction = () => {
+  const targetRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "end start"]
+  })
+
+  const chaosScale = useTransform(scrollYProgress, [0, 0.4, 0.6], [0.8, 1.2, 0.9])
+  const chaosRotate = useTransform(scrollYProgress, [0, 1], [-10, 10])
+  const blurValue = useTransform(scrollYProgress, [0, 0.2, 0.5], ["0px", "4px", "0px"])
+
+ const StressFragment = ({ icon: Icon, label, pos, rotStart, rotEnd }: { icon: any, label: string, pos: string, rotStart: number, rotEnd: number }) => (
+    <motion.div 
+      style={{ rotate: useTransform(scrollYProgress, [0, 1], [rotStart, rotEnd]) }}
+      className={cn("absolute p-4 bg-zinc-900/50 border border-red-500/30 backdrop-blur-sm rounded-lg flex items-center gap-3 z-20 shadow-xl", pos)}
+    >
+      <Icon size={18} className="text-red-500 animate-pulse" />
+      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-tighter">{label}</span>
+    </motion.div>
+  )
+
+  return (
+    <section id="pos" ref={targetRef} className="relative min-h-[200vh] w-full bg-black py-40 flex flex-col items-center border-t border-white/5">
+      <div className="sticky top-1/2 -translate-y-1/2 z-10 text-center max-w-4xl px-6">
+        <motion.span 
+          style={{ opacity: useTransform(scrollYProgress, [0, 0.2], [0, 1]) }}
+          className="text-[#3600ff] font-mono text-[10px] tracking-[0.5em] uppercase mb-6 block"
+        >
+          El Mostrador y el WhatsApp están desconectados
+        </motion.span>
+        
+        <motion.h2 
+          style={{ scale: chaosScale, filter: `blur(${blurValue})` }}
+          className="text-5xl md:text-8xl font-medium tracking-tighter text-white leading-[0.9] uppercase"
+        >
+          EL TERROR DEL <br />
+          <span className="text-zinc-700 italic">CIERRE DE CAJA.</span>
+        </motion.h2>
+
+        <motion.div 
+          style={{ opacity: useTransform(scrollYProgress, [0.3, 0.5], [0, 1]) }}
+          className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left border-t border-white/10 pt-12"
+        >
+          <div className="space-y-4">
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+              <Calculator size={14} className="text-[#3600ff]" /> Descuadre Multimoneda
+            </h4>
+            <p className="text-zinc-500 text-sm leading-relaxed font-light">
+              Cobras en efectivo, das vuelto en bolívares, anotas en un cuaderno y al final del día la caja no cuadra. Cada minuto sumando billetes es tiempo que pierdes de hacer crecer tu negocio.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+              <ShoppingBag size={14} className="text-[#3600ff]" /> Inventario Fantasma
+            </h4>
+            <p className="text-zinc-500 text-sm leading-relaxed font-light">
+              Vendes la última franela en tu mostrador físico, pero alguien te la compra por Instagram 5 minutos después. Preziso sincroniza tu Punto de Venta (POS) y tu E-commerce en el mismo segundo.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+   <StressFragment icon={AlertCircle} label="Descuadre de $15 en caja" pos="top-[10%] left-[5%] md:left-[15%]" rotStart={15} rotEnd={-10} />
+  <StressFragment icon={XCircle} label="Vendiste algo que ya no tienes" pos="top-[30%] right-[5%] md:right-[20%]" rotStart={-12} rotEnd={18} />
+  <StressFragment icon={MessageSquare} label="Cliente se fue por esperar la tasa" pos="bottom-[40%] left-[10%] md:left-[25%]" rotStart={8} rotEnd={-15} />
+  <StressFragment icon={Calculator} label="Tasa BCV cambió a las 2PM" pos="bottom-[15%] right-[10%] md:right-[15%]" rotStart={-20} rotEnd={5} />
+
+      <motion.div 
+        style={{ opacity: useTransform(scrollYProgress, [0, 0.5, 1], [0, 0.4, 0]), rotate: chaosRotate }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-[#3600ff]/10 rounded-full blur-[120px] pointer-events-none"
+      />
+    </section>
+  )
+}
+
+
+// =========================================
+// NODO 2: LA SINGULARIDAD (TASA BCV INTERACTIVA)
+// =========================================
+
+const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
+  const [usdValue, setUsdValue] = useState(150)
+  const bsValue = (usdValue * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "center center"]
+  })
+
+  const scaleUp = useTransform(scrollYProgress, [0, 1], [0.8, 1])
+  const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
+
+  return (
+    <section  id="funciones" ref={containerRef} className="relative min-h-screen w-full bg-[#030303] flex items-center justify-center py-32 border-t border-white/5 overflow-hidden">
+      
+      {/* Luz de Fondo del Núcleo */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#3600ff]/10 rounded-full blur-[150px] pointer-events-none" />
+
+      <motion.div 
+        style={{ scale: scaleUp, opacity: opacityIn }}
+        className="w-full max-w-6xl px-6 relative z-10 flex flex-col items-center"
+      >
+        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-4">Prueba Empírica Interactiva</span>
+        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase text-center mb-16">
+          El fin del cálculo manual.
+        </h2>
+
+        {/* El Motor de Conversión */}
+        <div className="w-full bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-16 shadow-[0_0_50px_rgba(54,0,255,0.05)] relative overflow-hidden group">
+          
+          {/* Grid de Fondo de la UI */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] bg-[size:20px_20px]" />
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
+            
+            {/* Lado USD (Input) */}
+            <div className="w-full md:w-5/12 flex flex-col items-center md:items-start">
+              <span className="text-zinc-500 font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Valor de tu producto (USD)
+              </span>
+              <div className="text-6xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
+                <span className="text-zinc-600">$</span>
+                <motion.span>{usdValue}</motion.span>
+              </div>
+              
+              {/* Slider Táctico */}
+              <div className="w-full mt-10 relative">
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="1000" 
+                  value={usdValue}
+                  onChange={(e) => setUsdValue(Number(e.target.value))}
+                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-crosshair outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-[#3600ff] [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white transition-all"
+                />
+                <div className="flex justify-between mt-4 text-[10px] font-mono text-zinc-600">
+                  <span>Arrastra para simular</span>
+                  <span>Tasa actual: {bcvRate} Bs</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Conector Central */}
+            <div className="hidden md:flex flex-col items-center justify-center relative">
+              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-[#3600ff] to-transparent relative overflow-hidden">
+                <motion.div 
+                  animate={{ y: ["-100%", "100%"] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  className="absolute top-0 left-0 w-full h-1/2 bg-white"
+                />
+              </div>
+              <div className="w-10 h-10 border border-white/20 bg-black flex items-center justify-center my-4 rotate-45 group-hover:rotate-0 transition-transform duration-700">
+                <ArrowRightLeft size={16} className="text-[#3600ff] -rotate-45 group-hover:rotate-0 transition-transform duration-700" />
+              </div>
+              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-[#3600ff] to-transparent relative overflow-hidden">
+                <motion.div 
+                  animate={{ y: ["-100%", "100%"] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear", delay: 0.5 }}
+                  className="absolute top-0 left-0 w-full h-1/2 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Lado Bs (Output Automatizado) */}
+            <div className="w-full md:w-5/12 flex flex-col items-center md:items-end">
+              <span className="text-[#3600ff] font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+                Lo que ve tu cliente (Bs) <div className="w-2 h-2 rounded-full bg-[#3600ff] animate-ping" />
+              </span>
+              <div className="text-6xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
+                <span className="text-[#3600ff]">Bs</span>
+                {/* Re-renderización instantánea para simular velocidad de DB */}
+                <motion.span 
+                  key={bsValue}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {bsValue}
+                </motion.span>
+              </div>
+              <p className="mt-10 text-xs text-zinc-500 font-mono text-right max-w-[250px]">
+                Preziso intercepta la variación del BCV y reescribe tu base de datos global en &lt; 400ms. Cero intervención humana requerida.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+// =========================================
+// NODO 3: EL ORGANISMO MULTI-TENANT (INFRAESTRUCTURA)
+// =========================================
+
+const NodeThreeInfrastructure = () => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "center center"]
+  })
+
+  // Físicas de Parallax
+  const y = useTransform(scrollYProgress, [0, 1], [100, 0])
+
+  // Nodos secundarios (Las tiendas de tus clientes)
+  const childNodes = [
+    { name: "Tienda A", pos: "top-[10%] left-[10%]", delay: 0 },
+    { name: "Tienda B", pos: "top-[20%] right-[15%]", delay: 0.2 },
+    { name: "Tienda C", pos: "bottom-[20%] left-[20%]", delay: 0.4 },
+    { name: "Tienda D", pos: "bottom-[10%] right-[10%]", delay: 0.6 },
+  ]
+
+  return (
+    <section ref={containerRef} className="relative min-h-[120vh] w-full bg-black py-32 overflow-hidden flex flex-col items-center">
+      
+      <div className="absolute inset-0 z-0 opacity-[0.15]">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
+
+      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-24">
+         <motion.div style={{ y }} className="flex flex-col items-center">
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-6">Arquitectura Centralizada</span>
+            <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+              Un Núcleo. <br />
+              <span className="text-[#3600ff]">Infinidad de Nodos.</span>
+            </h2>
+            <p className="mt-8 max-w-2xl text-zinc-400 text-sm md:text-base leading-relaxed">
+              No estás alquilando una plantilla genérica. Estás conectando tu negocio a un ecosistema Multi-Tenant. Actualizamos el núcleo una vez, y tu tienda evoluciona instantáneamente.
+            </p>
+         </motion.div>
+      </div>
+
+      {/* Visualización de Red Multi-Tenant */}
+      <div className="relative w-full max-w-5xl h-[600px] mt-10">
+        
+        {/* Nodo Central (PREZISO CORE) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+          <motion.div 
+            animate={{ boxShadow: ["0 0 20px #3600ff", "0 0 60px #3600ff", "0 0 20px #3600ff"] }}
+            transition={{ repeat: Infinity, duration: 3 }}
+            className="w-32 h-32 bg-black border border-[#3600ff] rounded-none rotate-45 flex items-center justify-center relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[#3600ff]/10" />
+            <Server size={32} className="text-white -rotate-45 relative z-10" />
+          </motion.div>
+          <span className="mt-8 font-mono text-xs uppercase tracking-widest text-[#3600ff] bg-black px-2">Preziso Core DB</span>
+        </div>
+
+        {/* Nodos Secundarios (Tiendas) & Líneas de Conexión */}
+        {childNodes.map((node, i) => (
+          <div key={i} className={cn("absolute z-10 flex flex-col items-center", node.pos)}>
+            {/* Animación del pulso de datos desde el centro */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ delay: node.delay, duration: 0.5 }}
+              className="w-16 h-16 bg-[#050505] border border-white/20 rounded-full flex items-center justify-center relative"
+            >
+              <Globe size={20} className="text-zinc-400" />
+              {/* Indicador de Status OK */}
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-black" />
+            </motion.div>
+            <span className="mt-4 font-mono text-[10px] uppercase text-zinc-500">{node.name}</span>
+          </div>
         ))}
+
+        {/* SVG para las líneas de conexión (Físicas de enrutamiento) */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+          <motion.path 
+            initial={{ pathLength: 0, opacity: 0 }}
+            whileInView={{ pathLength: 1, opacity: 0.2 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
+            d="M 50 50 L 10 10 M 50 50 L 85 20 M 50 50 L 20 80 M 50 50 L 90 90" 
+            stroke="#3600ff" strokeWidth="0.5" fill="none" 
+          />
+        </svg>
+
+      </div>
+    </section>
+  )
+}
+
+// IMPORTACIONES ADICIONALES NECESARIAS (Asegúrate de tenerlas arriba)
+// import { useMotionValue, useSpring } from 'framer-motion'
+// import { ShoppingBag, ArrowRight, Wallet, MessageCircle, CheckCircle2 } from 'lucide-react'
+
+// =========================================
+// NODO 4: INTERFAZ NEURAL (MOCKUP 3D INTERACTIVO)
+// =========================================
+
+const NodeFourNeural =  ({ bcvRate }: { bcvRate: number }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Físicas de interacción magnética
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+
+  const springConfig = { damping: 20, stiffness: 100, mass: 0.5 }
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], ["15deg", "-15deg"]), springConfig)
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], ["-15deg", "15deg"]), springConfig)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const width = rect.width
+    const height = rect.height
+    const clientX = e.clientX - rect.left
+    const clientY = e.clientY - rect.top
+    const xPct = clientX / width - 0.5
+    const yPct = clientY / height - 0.5
+    mouseX.set(xPct)
+    mouseY.set(yPct)
+  }
+
+  const handleMouseLeave = () => {
+    mouseX.set(0)
+    mouseY.set(0)
+  }
+
+  return (
+    <section className="relative min-h-[120vh] w-full bg-black py-40 overflow-hidden flex flex-col items-center border-t border-white/5">
+      
+      {/* Texto Estructural */}
+      <div className="max-w-7xl px-6 relative z-20 w-full text-center mb-20 pointer-events-none">
+        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Fricción Cero en Front-End</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+          Experiencia <br />
+          <span className="text-zinc-600">Magnética.</span>
+        </h2>
+      </div>
+
+      {/* Contenedor del Dispositivo 3D */}
+      <div 
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="relative w-full max-w-[400px] h-[750px] flex items-center justify-center perspective-[2000px] cursor-crosshair z-10"
+      >
+        <motion.div 
+          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+          className="relative w-[340px] h-[700px] bg-[#050505] rounded-[3rem] border-[8px] border-zinc-900 shadow-[0_0_50px_rgba(54,0,255,0.1)] p-2 will-change-transform"
+        >
+          {/* Muesca del teléfono */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-zinc-900 rounded-b-2xl z-50 flex items-center justify-center">
+             <div className="w-16 h-1.5 bg-black rounded-full" />
+          </div>
+
+          {/* 🚀 CLON EXACTO DE TU PRODUCT MODAL INYECTANDO TUS VARIABLES CSS */}
+          <div 
+            className="w-full h-full rounded-[2.5rem] overflow-hidden relative flex flex-col bg-[var(--store-bg)] font-sans"
+            // 🚀 COLORES POR DEFECTO EXTRAÍDOS DE page.tsx
+style={{
+  '--store-bg': '#ffffff',
+  '--store-surface': '#ffffff',
+  '--store-border': '#d5d6d7b3',
+  '--store-text-main': '#111111',
+  '--store-surface-text': '#6b7280',
+  '--store-primary': '#000000',
+  '--store-primary-text': '#ffffff',
+  '--store-incentive': '#059669',
+} as React.CSSProperties}
+          >
+            {/* Fake Store Header */}
+            <div className="absolute top-6 left-0 right-0 z-40 flex justify-between items-center px-6 pointer-events-none">
+              
+               <div className="bg-[var(--store-surface)]/80 p-2 rounded-full backdrop-blur-md border border-[var(--store-border)]">
+                 <X size={16} className="text-[var(--store-text-main)]" />
+               </div>
+            </div>
+
+            {/* 1. Área de Imagen (Top) */}
+            <div className="w-full h-[45%] bg-[var(--store-bg)] relative flex items-center justify-center border-b border-[var(--store-border)] shrink-0 group overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-[var(--store-primary)]/10 to-transparent" />
+                <span className="text-6xl font-black text-[var(--store-border)] transition-transform duration-700 ease-out group-hover:scale-110">P.</span>
+                
+                {/* Dots del carrusel */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    <div className="h-1.5 rounded-full transition-all duration-300 bg-[var(--store-primary)] w-4" />
+                    <div className="h-1.5 rounded-full transition-all duration-300 bg-[var(--store-border)] w-1.5" />
+                    <div className="h-1.5 rounded-full transition-all duration-300 bg-[var(--store-border)] w-1.5" />
+                </div>
+            </div>
+
+            {/* 2. Área de Contenido (Scrollable) */}
+            <div className="w-full h-[55%] flex flex-col relative bg-[var(--store-surface)]">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar pb-[140px]">
+                  
+                  {/* Títulos y Precios */}
+                  <div>
+                      <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">Streetwear</span>
+                      <h2 className="text-2xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">Hoodie Titanio</h2>
+                      
+                      {/* Nudge simulado */}
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                          <span className="text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2.5 py-1.5 rounded-md text-[11px] font-bold tracking-wide flex items-center gap-1.5">
+                              <Flame size={14} className="text-[var(--store-incentive)]" />
+                              Ahorra $5.00 pagando en USD
+                          </span>
+                      </div>
+
+                      <div className="flex items-end gap-3 mt-6">
+                          <span className="text-4xl font-black tracking-tighter leading-none text-[var(--store-text-main)] transition-colors">
+                              ${bcvRate > 0 ? (10).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '---'}
+                          </span>
+                          <span className="text-sm font-bold text-[var(--store-surface-text)] mb-1">
+                              {bcvRate > 0 ? ` ${(10 * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs` : 'Calculando tasa...'}
+                          </span>
+                      </div>
+                  </div>
+
+                  {/* Variantes - Simulación de Selección */}
+                  <div className="space-y-6 pb-4">
+                      {/* Componente de Color */}
+                      <div className="space-y-3 p-3 -mx-3 rounded-2xl border border-transparent">
+                          <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">1. Color</span>
+                              <span className="text-xs font-bold text-[var(--store-text-main)]">Onyx Black</span>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                              <button className="relative flex items-center justify-center overflow-hidden w-10 h-10 rounded-full border border-1 ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110 bg-[#1A1A1A]">
+                                  <Check size={16} className="text-white mix-blend-difference" strokeWidth={3} />
+                              </button>
+                              <button className="relative flex items-center justify-center overflow-hidden w-10 h-10 rounded-full border border-3 hover:scale-105 border-[var(--store-border)] bg-[#E5E5E5]"></button>
+                          </div>
+                      </div>
+
+                      {/* Componente de Talla */}
+                      <div className="space-y-3 p-3 -mx-3 rounded-2xl border border-transparent">
+                          <div className="flex justify-between items-end">
+                              <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">2. Talla</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                              <button className="relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]">S</button>
+                              <button className="relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]">M</button>
+                              <button className="relative min-w-[3rem] px-3 py-2.5 rounded-lg text-xs font-bold border transition-all overflow-hidden bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]">L</button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* 3. Footer Absoluto con Glassmorphism */}
+              <div className="absolute bottom-0 left-0 right-0 w-full p-4 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                  <div className="flex gap-3">
+                      {/* Controles QTY */}
+                      <div className="flex items-center rounded-full p-1 border-1 border-[var(--store-border)] shrink-0 bg-[var(--store-bg)]/50">
+                          <button className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)]">
+                              <Minus size={16} strokeWidth={2.5} />
+                          </button>
+                          <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">1</span>
+                          <button className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)]">
+                              <Plus size={16} strokeWidth={2.5} />
+                          </button>
+                      </div>
+
+                      {/* CTA Principal */}
+                      <button className="flex-1 rounded-full font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
+                          <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
+                          <span>Agregar</span>
+                      </button>
+                  </div>
+
+                  {/* Contacto WhatsApp */}
+                  <button className="w-full py-2 text-[8px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                      <MessageCircle size={12} /> Tengo una duda sobre este artículo
+                  </button>
+              </div>
+
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Halo Magnético Reactivo */}
+        <motion.div 
+          style={{ 
+            x: useTransform(mouseX, [-0.5, 0.5], [-50, 50]),
+            y: useTransform(mouseY, [-0.5, 0.5], [-50, 50]),
+          }}
+          className="absolute inset-0 bg-[#3600ff]/20 blur-[100px] -z-10 rounded-full"
+        />
+      </div>
+    </section>
+  )
+}
+// =========================================
+// NODO 5: PAGOS MIXTOS (EL SUPERPODER MULTIMONEDA)
+// =========================================
+
+const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
+  const remainingUsd = 10;
+  // Si bcvRate llega como undefined, esto genera el NaN
+  const remainingBs = (remainingUsd * bcvRate).toLocaleString('es-VE', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+  const targetRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "center center"]
+  })
+
+ 
+
+  const pathLength = useTransform(scrollYProgress, [0, 1], [0, 1])
+
+  return (
+    <section ref={targetRef} className="relative min-h-screen w-full bg-[#020202] py-40 border-t border-white/5 overflow-hidden flex flex-col items-center">
+      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-32">
+        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Fricción Cero en el Mostrador</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+          Pagos Mixtos <br />
+          <span className="text-zinc-600">Sin Calculadora.</span>
+        </h2>
+        <p className="mt-8 max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed">
+          ¿Tu cliente quiere pagar una parte en un billete roto de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
+        </p>
+      </div>
+
+      <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-12 px-6">
+        
+        {/* Simulación del Split Payment de Preziso */}
+        <div className="w-full md:w-1/2 bg-[#050505] border border-white/10 rounded-[2rem] p-8 shadow-[0_0_50px_rgba(54,0,255,0.05)] relative z-20">
+          <div className="flex justify-between items-end mb-8 border-b border-white/5 pb-4">
+            <span className="text-sm font-bold uppercase text-white">Total a Pagar</span>
+            <span className="text-4xl font-light text-white">$45.00</span>
+          </div>
+
+          <div className="space-y-4">
+            {/* Input Efectivo */}
+            <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl border border-white/5 group">
+               <div className="flex items-center gap-3">
+                 <Wallet size={18} className="text-emerald-500" />
+                 <span className="text-xs font-bold text-zinc-300 uppercase">Efectivo USD</span>
+               </div>
+               <span className="text-lg text-white font-mono">$20.00</span>
+            </div>
+
+            {/* Input Zelle */}
+            <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl border border-white/5 group">
+               <div className="flex items-center gap-3">
+                 <ArrowRightLeft size={18} className="text-purple-500" />
+                 <span className="text-xs font-bold text-zinc-300 uppercase">Zelle</span>
+               </div>
+               <span className="text-lg text-white font-mono">$15.00</span>
+            </div>
+
+            {/* Restante Automático Pago Móvil */}
+            <div className="flex items-center justify-between bg-[#3600ff]/10 p-4 rounded-xl border border-[#3600ff]/30 relative overflow-hidden">
+               <motion.div 
+                 animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }}
+                 className="absolute inset-0 bg-[#3600ff]/10 blur-xl"
+               />
+               <div className="flex items-center gap-3 relative z-10">
+                 <Activity size={18} className="text-[#3600ff]" />
+                 <span className="text-xs font-bold text-[#3600ff] uppercase">Restante Pago Móvil</span>
+               </div>
+              <div className="text-right relative z-10">
+                 <span className="block text-lg text-white font-mono">$10.00</span>
+                 <span className="block text-[10px] text-[#3600ff] font-mono mt-1">Ref: Bs {remainingBs}</span>
+               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Factura Final */}
+        <motion.div 
+          initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}
+          className="w-full md:w-1/3 bg-zinc-950 border border-green-500/30 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(34,197,94,0.05)] z-20 mt-10 md:mt-0"
+        >
+          <div className="absolute -top-4 -left-4 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+            <CheckCircle2 size={20} className="text-black" />
+          </div>
+          
+          <span className="text-[10px] font-mono text-green-500 uppercase tracking-widest mb-4 block">Cierre Perfecto</span>
+          
+          <div className="space-y-3 font-mono text-xs text-zinc-400">
+            <p className="text-white font-bold">TICKET #9024</p>
+            <p>--------------------</p>
+            <p className="flex justify-between"><span>Efectivo:</span> <span>$20.00</span></p>
+            <p className="flex justify-between"><span>Zelle:</span> <span>$15.00</span></p>
+           <p className="flex justify-between text-green-400"><span>Pago Móvil:</span> <span>Bs {remainingBs}</span></p>
+            <p>--------------------</p>
+            <p className="text-white">Inventario descontado (-1)</p>
+            <p className="text-white">Caja cuadrada automáticamente.</p>
+          </div>
+        </motion.div>
+
       </div>
     </section>
   )
 }
 
 // =========================================
-// 3. MAIN LAYOUT
+// NODO 6: MUTACIÓN ESTÉTICA EN VIVO (CLON REAL DE TIENDA)
 // =========================================
-export default function LandingClient() {
-  const [menuOpen, setMenuOpen] = useState(false)
+
+const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "center center"]
+  })
+
+ 
+ // 🚀 INICIALIZACIÓN CON EL ADN ORIGINAL DE PREZISO
+const [storeColors, setStoreColors] = useState({
+  primary: '#000000',
+  primary_text: '#ffffff',
+  background: '#ffffff',
+  text_main: '#111111',
+  surface: '#ffffff',
+  surface_text: '#6b7280',
+  border: '#d5d6d7b3',
+  incentive: '#059669'
+})
+
+  const handleColorChange = (key: keyof typeof storeColors, value: string) => {
+    setStoreColors(prev => ({ ...prev, [key]: value }))
+  }
+
+  // 2. MOCK DATA ESTÁTICA (Zero-Fetch Policy para rendimiento extremo)
+ 
+  const mockProducts = [
+    {
+      id: 1, name: 'Hoodie Titanio Heavyweight', category: 'Streetwear',
+      usd_cash_price: 45, usd_penalty: 5, compare_at_usd: 60, isPromo: true
+    },
+    {
+      id: 2, name: 'Cargo Techwear Minimal', category: 'Pants',
+      usd_cash_price: 35, usd_penalty: 0, compare_at_usd: 0, isPromo: false
+    }
+  ];
+
+// Componente de Input para la Landing
+  const LandingColorInput = ({ label, valueKey, value }: { label: string, valueKey: keyof typeof storeColors, value: string }) => {
+    // 🚀 SALVAVIDAS: El input de color de HTML5 explota si le pasas hexágonos con alfa (ej: #ffffff1a).
+    // Aquí forzamos a que siempre reciba solo 7 caracteres (ej: #ffffff).
+    const safeHexValue = value.length > 7 ? value.substring(0, 7) : value;
+
+    return (
+      <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-[#050505] hover:bg-black transition-colors">
+        <span className="font-mono text-[10px] md:text-xs text-zinc-400 uppercase tracking-widest">{label}</span>
+        <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shadow-sm shrink-0 cursor-pointer group">
+          <input 
+            type="color" 
+            value={safeHexValue} 
+            onChange={(e) => handleColorChange(valueKey, e.target.value)} 
+            className="absolute -inset-2 w-12 h-12 cursor-pointer scale-150" 
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden selection:bg-[#3600ff] selection:text-white">
-      <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+    <section id="adn" ref={containerRef} className="relative min-h-screen w-full bg-[#020202] py-32 overflow-hidden flex flex-col items-center border-t border-white/5">
+      
+      {/* Resplandor atado al Color Primario */}
+      <motion.div 
+        animate={{ backgroundColor: `${storeColors.primary}15` }}
+        transition={{ duration: 0.5 }}
+        className="absolute inset-0 blur-[150px] pointer-events-none" 
+      />
 
-      {/* HEADER EDITORIAL */}
-      <header className="hidden md:flex fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-200 z-50 h-[80px] items-center justify-between px-8 lg:px-12 transition-all">
-        <Link href="/" className="flex items-center group active:scale-95 transition-transform">
-          <Image src="/pezisologo.png" alt="Preziso Logo" width={200} height={90} className="h-8 md:h-10 w-auto object-contain" priority />
-        </Link>
-        <nav className="flex items-center gap-10">
-          <a href="#solucion" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-[#3600ff] transition-colors">Solución</a>
-          <a href="#demo" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-[#3600ff] transition-colors">Plataforma</a>
-          <a href="#pricing" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-[#3600ff] transition-colors">Precios</a>
-          <a href="#faq" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-[#3600ff] transition-colors">FAQ</a>
-        </nav>
-        <div className="flex items-center gap-8">
-          <Link href="/login" className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-[#3600ff] transition-colors">Ingresar</Link>
-          <Link href="/login" className="btn-luxury bg-black text-white px-8 py-3.5 text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 transition-all z-10">
-            Crear Tienda <ArrowUpRight size={14} strokeWidth={2} />
-          </Link>
-        </div>
-      </header>
-
-      {/* NAVEGACIÓN MOBILE */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-50 p-4 flex items-center justify-between">
-        <button className="text-gray-900 p-2 hover:text-[#3600ff] transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
-        </button>
-        <Link href="/login" className="bg-black text-white px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-          Crear Tienda <ArrowUpRight size={14} strokeWidth={2} />
-        </Link>
+      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-16">
+        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Control de ADN Visual</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+          Muta en <br />
+          <span className="text-zinc-600">Milisegundos.</span>
+        </h2>
+        <p className="mt-8 max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed">
+          Tu marca no se adapta a Preziso; Preziso muta para convertirse en tu marca. Altera la topología visual de tu nodo de ventas sin tocar una sola línea de código, usando nuestro motor de variables dinámicas CSS.
+        </p>
       </div>
 
-      {/* FULLSCREEN MOBILE MENU */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="fixed inset-0 z-40 bg-white flex flex-col justify-center px-6">
-            <div className="flex flex-col gap-6">
-              <a href="#solucion" onClick={() => setMenuOpen(false)} className="text-4xl font-medium tracking-tighter text-gray-900 border-b border-gray-200 pb-6 hover:text-[#3600ff] transition-colors">Solución.</a>
-              <a href="#demo" onClick={() => setMenuOpen(false)} className="text-4xl font-medium tracking-tighter text-gray-900 border-b border-gray-200 pb-6 hover:text-[#3600ff] transition-colors">Plataforma.</a>
-              <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-4xl font-medium tracking-tighter text-gray-900 border-b border-gray-200 pb-6 hover:text-[#3600ff] transition-colors">Precios.</a>
-              <a href="#faq" onClick={() => setMenuOpen(false)} className="text-4xl font-medium tracking-tighter text-gray-900 border-b border-gray-200 pb-6 hover:text-[#3600ff] transition-colors">Preguntas.</a>
-              <Link href="/login" className="text-xs font-bold uppercase tracking-[0.2em] text-[#3600ff] mt-8 flex items-center gap-2">Ingresar a mi cuenta <ArrowUpRight size={16} strokeWidth={2} /></Link>
+      <div className="w-full max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+        
+        {/* PANEL IZQUIERDO: CONTROLES DE ADMIN */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <div className="flex items-center gap-3 text-white border-b border-white/10 pb-4">
+            <SlidersHorizontal size={20} className="text-[#3600ff]" />
+            <h3 className="text-sm font-bold uppercase tracking-widest">Panel de Apariencia Real</h3>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="space-y-2">
+               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">Bloque 1: Identidad</span>
+               <LandingColorInput label="Color Principal" valueKey="primary" value={storeColors.primary} />
+               <LandingColorInput label="Texto sobre Principal" valueKey="primary_text" value={storeColors.primary_text} />
             </div>
-            <div className="absolute top-8 left-6">
-              <Image src="/pezisologo.png" alt="Preziso Logo" width={200} height={90} className="h-8 w-auto object-contain" priority />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="md:pt-[80px]">
-        {/* HERO SECTION EDITORIAL */}
-        <section className="relative w-full min-h-[85vh] flex flex-col justify-center border-b border-gray-200 overflow-hidden pt-20 md:pt-0 pb-20 bg-white">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12 w-full relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-12">
             
-            <motion.div initial="hidden" animate="visible" variants={elegantUp} className="w-full lg:w-auto">
-              <h1 className="text-[14vw] md:text-[8rem] lg:text-[11rem] font-medium leading-[0.85] tracking-tighter uppercase text-gray-900">
-                TU NEGOCIO <br /> 
-                <span className="font-black">VENDE</span> <br />
-                PREZISO <br className="hidden md:block" /> 
-                <span className="text-gray-300">CALCULA.</span>
-              </h1>
-            </motion.div>
+            <div className="space-y-2">
+               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">Bloque 2: Estructura</span>
+               <LandingColorInput label="Fondo Global" valueKey="background" value={storeColors.background} />
+               <LandingColorInput label="Color de Cajas (Surface)" valueKey="surface" value={storeColors.surface} />
+               <LandingColorInput label="Bordes y Líneas" valueKey="border" value={storeColors.border} />
+            </div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="w-full lg:w-[400px] shrink-0 flex flex-col gap-10 lg:pb-4">
-              <p className="text-sm md:text-base font-normal text-gray-500 leading-relaxed">
-                Olvídate de actualizar tasas a mano y de los errores al cobrar. Automatiza el cambio de divisas de tu tienda y deja que las ventas fluyan sin pausas.
-              </p>
-              <Link href="/login" className="btn-luxury w-full md:w-auto self-start bg-black text-white px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] border border-black flex items-center justify-center gap-3 z-10">
-                Crear Tienda Gratis <ArrowUpRight size={16} strokeWidth={2} />
-              </Link>
-            </motion.div>
-          </div>
-        </section>
-
-        <ScrollFeatureWords />
-
-        {/* =========================================
-            4. EDITORIAL GRID (LA SOLUCIÓN)
-        ========================================= */}
-        <section id="solucion" className="py-24 md:py-40 w-full border-b border-gray-200 bg-white">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={elegantUp} className="mb-16 md:mb-32 max-w-3xl">
-              <h2 className="text-[10vw] md:text-[5rem] lg:text-[6rem] font-medium leading-[0.9] tracking-tighter uppercase text-gray-900 mb-8">
-                Diseñado para la <span className="text-gray-400">realidad.</span>
-              </h2>
-              <p className="text-sm md:text-lg font-normal text-gray-500 leading-relaxed">
-                Las plataformas extranjeras no entienden cómo se vende en Venezuela. Nosotros sí. Esto es lo que resuelve Preziso.
-              </p>
-            </motion.div>
-
-            {/* Cuadrícula Arquitectónica (Hairlines) */}
-            <motion.div 
-              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={staggerContainer} 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-gray-200"
-            >
-              {/* Tarjeta 1 */}
-              <motion.article variants={elegantUp} className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col justify-between group hover:bg-[#FAFAFA] editorial-hover min-h-[400px] md:col-span-2">
-                <div className="flex justify-between items-start mb-16">
-                  <span className="text-[10px] font-mono text-[#3600ff]">01</span>
-                  <RefreshCw className="w-6 h-6 text-gray-300 group-hover:text-gray-900 transition-colors" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-3xl md:text-5xl font-medium tracking-tighter leading-[1] mb-6 text-gray-900">Tasa BCV <br/>En Vivo.</h3>
-                  <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-md">
-                    Guarda tu inventario en dólares. El cliente ve el precio exacto en bolívares actualizado en tiempo real. Protege tu margen de ganancia sin mover un dedo.
-                  </p>
-                </div>
-              </motion.article>
-
-              {/* Tarjeta 2 */}
-              <motion.article variants={elegantUp} className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col justify-between group hover:bg-[#FAFAFA] editorial-hover min-h-[400px]">
-                <div className="flex justify-between items-start mb-16">
-                  <span className="text-[10px] font-mono text-gray-400 group-hover:text-[#3600ff] transition-colors">02</span>
-                  <Smartphone className="w-6 h-6 text-gray-300 group-hover:text-gray-900 transition-colors" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-3xl md:text-4xl font-medium tracking-tighter leading-[1] mb-6 text-gray-900">Pedidos Directos.</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    Se acabaron los chats interminables. El cliente arma su carrito y te envía un ticket limpio directo a tu WhatsApp.
-                  </p>
-                </div>
-              </motion.article>
-
-              {/* Tarjeta 3 */}
-              <motion.article variants={elegantUp} className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col justify-between group hover:bg-[#FAFAFA] editorial-hover min-h-[400px]">
-                <div className="flex justify-between items-start mb-16">
-                  <span className="text-[10px] font-mono text-gray-400 group-hover:text-[#3600ff] transition-colors">03</span>
-                  <Calculator className="w-6 h-6 text-gray-300 group-hover:text-gray-900 transition-colors" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-3xl md:text-4xl font-medium tracking-tighter leading-[1] mb-6 text-gray-900">Cuadre de Caja.</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    El sistema separa automáticamente cuánto cobraste en dólares y cuánto en bolívares. Olvídate de la calculadora al final del día.
-                  </p>
-                </div>
-              </motion.article>
-
-              {/* Tarjeta 4 */}
-              <motion.article variants={elegantUp} className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col justify-between group hover:bg-[#FAFAFA] editorial-hover min-h-[400px]">
-                <div className="flex justify-between items-start mb-16">
-                  <span className="text-[10px] font-mono text-gray-400 group-hover:text-[#3600ff] transition-colors">04</span>
-                  <Palette className="w-6 h-6 text-gray-300 group-hover:text-gray-900 transition-colors" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-3xl md:text-4xl font-medium tracking-tighter leading-[1] mb-6 text-gray-900">ADN de Marca.</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    Tu tienda, tus reglas. Muta los colores, botones y tipografías en 1 clic para que la plataforma respire la identidad de tu negocio.
-                  </p>
-                </div>
-              </motion.article>
-
-              {/* Tarjeta 5 */}
-              <motion.article variants={elegantUp} className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col justify-between group bg-gray-900 min-h-[400px] lg:col-span-1">
-                <div className="flex justify-between items-start mb-16">
-                  <span className="text-[10px] font-mono text-gray-500">05</span>
-                  <Layers className="w-6 h-6 text-[#3600ff]" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-3xl md:text-4xl font-medium tracking-tighter leading-[1] mb-6 text-white">Gestión de Variantes.</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    Tallas, colores y existencias precisas. Si se agota un modelo, desaparece de tu catálogo al instante sin tocar código.
-                  </p>
-                </div>
-              </motion.article>
-
-            </motion.div>
-          </div>
-        </section>
-
-        {/* =========================================
-            5. DEMO VISUAL (WIREFRAME EDITORIAL)
-        ========================================= */}
-        <section id="demo" className="py-24 md:py-40 bg-[#FAFAFA] border-b border-gray-200">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={elegantUp} className="mb-20 md:mb-32 flex flex-col md:flex-row md:items-end justify-between gap-8">
-              <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-medium leading-[0.85] tracking-tighter uppercase text-gray-900">
-                La <span className="text-gray-400">Experiencia.</span>
-              </h2>
-              <p className="text-sm md:text-base font-normal text-gray-500 max-w-sm pb-2">
-                Diseñado para que tu cliente compre rápido, y tú administres en paz.
-              </p>
-            </motion.div>
-
-            <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
-              {/* Celular Mockup */}
-              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} className="bg-white border border-gray-200 p-12 flex flex-col items-center group editorial-hover hover:border-gray-300">
-                <div className="w-full mb-12 flex justify-between items-center">
-                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Client-Facing</span>
-                  <span className="w-2 h-2 rounded-full bg-[#3600ff] animate-pulse"></span>
-                </div>
-                <div className="w-full max-w-[280px] aspect-[9/18] border border-gray-200 bg-gray-50 relative overflow-hidden">
-                  <Image src="/imgtienda.webp" alt="Vista de la app móvil" fill className="object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700" sizes="(max-width: 768px) 100vw, 280px" />
-                </div>
-              </motion.div>
-
-              {/* Dashboard Mockup */}
-              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} className="bg-white border border-gray-200 p-12 flex flex-col items-center group editorial-hover hover:border-gray-300">
-                <div className="w-full mb-12 flex justify-between items-center">
-                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Back-Office</span>
-                  <span className="w-2 h-2 rounded-full bg-gray-900"></span>
-                </div>
-                <div className="w-full aspect-[4/3] md:aspect-[16/11] border border-gray-200 bg-gray-50 relative overflow-hidden">
-                  <Image src="/dashboardpreview.webp" alt="Panel web" fill className="object-cover object-left-top grayscale group-hover:grayscale-0 transition-all duration-700" sizes="(max-width: 768px) 100vw, 60vw" />
-                </div>
-              </motion.div>
+            <div className="space-y-2">
+               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest block mb-1">Bloque 3: Tipografía y Conversión</span>
+               <LandingColorInput label="Texto Principal" valueKey="text_main" value={storeColors.text_main} />
+               <LandingColorInput label="Texto Secundario" valueKey="surface_text" value={storeColors.surface_text} />
+               <LandingColorInput label="Incentivos y Ahorro" valueKey="incentive" value={storeColors.incentive} />
             </div>
           </div>
-        </section>
+        </div>
 
-         {/* =========================================
-            5.5. ECOSISTEMA DE PAGOS (CERO INTERMEDIARIOS)
-        ========================================= */}
-        <section className="py-24 md:py-32 bg-white border-b border-gray-200">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={elegantUp} className="mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8">
-              <h2 className="text-[10vw] md:text-[4.5rem] lg:text-[6rem] font-medium leading-[0.85] tracking-tighter uppercase text-gray-900">
-                Cero <br /> <span className="text-gray-400">Intermediarios.</span>
-              </h2>
-              <div className="max-w-md pb-2">
-                <p className="text-sm md:text-base font-normal text-gray-500 leading-relaxed mb-6">
-                  El dinero va directo a tus cuentas. Ofrece los métodos que tus clientes ya usan, recibe los comprobantes integrados en cada pedido y aprueba la venta con un solo clic.
-                </p>
-                <div className="inline-flex items-center gap-3 bg-[#FAFAFA] border border-gray-200 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-gray-500">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#3600ff] animate-pulse"></span> Verificación manual segura
+        {/* PANEL DERECHO: STOREFRONT PREVIEW (El clon exacto) */}
+        <div className="lg:col-span-7 flex justify-center">
+          
+          <motion.div 
+            className="w-full max-w-md h-[700px] overflow-y-auto no-scrollbar rounded-[2rem] border shadow-2xl flex flex-col font-sans transition-colors duration-500 will-change-transform"
+            style={{
+              borderColor: storeColors.border,
+              backgroundColor: storeColors.background,
+              '--store-primary': storeColors.primary,
+              '--store-primary-text': storeColors.primary_text,
+              '--store-bg': storeColors.background,
+              '--store-text-main': storeColors.text_main,
+              '--store-surface': storeColors.surface,
+              '--store-surface-text': storeColors.surface_text,
+              '--store-border': storeColors.border,
+              '--store-incentive': storeColors.incentive,
+            } as React.CSSProperties}
+          >
+            {/* 1. Header (StoreInterface.tsx) */}
+            <div className="bg-[var(--store-bg)] px-4 md:px-6 py-4 flex items-center justify-between border-b border-[var(--store-border)] shrink-0 sticky top-0 z-20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[var(--store-surface)] rounded-full flex items-center justify-center text-[var(--store-surface-text)] border border-[var(--store-border)] shadow-sm transition-colors duration-500">
+                  <ShoppingBag size={18} strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none transition-colors duration-500">QUANZOS.</h1>
+                  <span className="text-[9px] uppercase font-bold tracking-[0.15em] mt-1 text-[var(--store-surface-text)] transition-colors duration-500">Tienda Oficial</span>
                 </div>
               </div>
-            </motion.div>
+              <div className="flex items-center gap-2 px-3 py-1.5 shrink-0 transition-colors duration-500">
+                 <div className="flex items-center gap-1.5">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                   <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] transition-colors duration-500">Tasa BCV</span>
+                 </div>
+                 <div className="h-3 w-[1px] bg-[var(--store-border)] transition-colors duration-500"></div>
+                 <span className="font-mono text-xs font-bold tracking-tight text-[var(--store-text-main)] transition-colors duration-500">{bcvRate}</span>
+              </div>
+            </div>
 
-            {/* Grid de Logos Arquitectónico (3 Columnas con animación de caída) */}
-            <motion.div 
-              initial="hidden" whileInView="visible" viewport={{ once: true, margin: "0px" }} variants={staggerContainer} 
-              className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-gray-200 bg-white"
-            >
-              {[
-                { name: "Pago Móvil", desc: "Directo a tu banco", icon: "Bs." },
-                { name: "Binance Pay", desc: "USDT a tu wallet", icon: "USDT" },
-                { name: "Zelle", desc: "A tu cuenta externa", icon: "$" }
-              ].map((method, i) => (
-                <motion.div 
-                  key={i} 
-                  variants={{
-                    hidden: { opacity: 0, y: -50 }, // 🚀 Inicia arriba para el efecto de caída
-                    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20, mass: 1 } }
-                  }} 
-                  className="border-b border-r border-gray-200 p-8 md:p-12 flex flex-col items-center justify-center text-center group editorial-hover hover:bg-[#FAFAFA] min-h-[220px]"
-                >
-                  <span className="text-3xl md:text-4xl font-light tracking-tighter mb-6 text-gray-300 group-hover:text-[#3600ff] transition-colors">{method.icon}</span>
-                  <h4 className="text-lg md:text-xl font-medium tracking-tight mb-2 text-gray-900">{method.name}</h4>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 group-hover:text-gray-500 transition-colors">{method.desc}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
+            {/* 2. Navbar & Categories (StoreInterface.tsx) */}
+            <div className="bg-[var(--store-bg)] border-b border-[var(--store-border)] pt-4 pb-4 px-4 md:px-6 shrink-0 transition-colors duration-500">
+              <div className="flex gap-4 items-center mb-4">
+                <div className="relative flex-1 w-full group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] transition-colors duration-500" size={16} strokeWidth={2} />
+                  <input disabled placeholder="Buscar producto..." className="w-full bg-[var(--store-surface)] border border-[var(--store-border)] rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] transition-colors duration-500" />
+                </div>
+                <div className="shrink-0 w-11 h-11">
+                  <button className="relative p-3 rounded-full border transition-colors duration-500 bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]">
+                    <ShoppingCart size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                <button className="px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-colors duration-500 border bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]">Todos</button>
+                <button className="px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-colors duration-500 border bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]">Streetwear</button>
+              </div>
+            </div>
 
+            {/* 3. Product Grid (StoreInterface.tsx + ProductCard.tsx) */}
+            <div className="p-4 md:p-6 grid grid-cols-2 gap-4 bg-[var(--store-bg)] transition-colors duration-500">
+              {mockProducts.map((product) => {
+                const listPrice = product.usd_cash_price + product.usd_penalty;
+                const priceInBs = listPrice * bcvRate;
+                const activeCompareAt = product.compare_at_usd > listPrice ? product.compare_at_usd : listPrice;
+                const promoPercent = product.isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
 
-        {/* =========================================
-            6. SOCIAL PROOF (CLEAN TYPOGRAPHY)
-        ========================================= */}
-        <section className="py-24 md:py-40 bg-white border-b border-gray-200 overflow-hidden">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12 mb-20 relative z-10">
-            <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-medium leading-[0.85] tracking-tighter uppercase text-gray-900">
-              Ellos ya <span className="text-gray-400">lo probaron.</span>
-            </h2>
-          </div>
+                return (
+                  <div key={product.id} className="w-full group flex flex-col relative transition-transform duration-300 ease-out hover:-translate-y-1.5">
+                    
+                    {/* Image Container (ProductCard.tsx) */}
+                    <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center transition-colors duration-500">
+                      <ImageIcon size={32} strokeWidth={1.5} className="text-[var(--store-surface-text)] transition-colors duration-500" />
+                      {product.isPromo && (
+                        <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-lg tracking-widest shadow-sm">
+                          -{promoPercent}%
+                        </div>
+                      )}
+                    </div>
 
-          <div className="w-full fade-edges pb-12 relative z-10">
-            <div className="flex w-max gap-12 md:gap-20 animate-marquee px-6 items-center">
-              {[
-                { q: "Lo de la tasa BCV automática es un salvavidas. Antes perdía clientes por tardar en sacar la cuenta o daba el precio mal. Ahora compran solos.", name: "María P.", store: "Tienda de Ropa" },
-                { q: "Los clientes me mandan el capture y el pedido llega al WhatsApp como un recibo de supermercado. Cero enredos de '¿qué talla querías?'.", name: "Jose D.", store: "Repuestos de Moto" },
-                { q: "Creé la tienda el viernes en la noche, el sábado ya estaba vendiendo con las zonas de delivery configuradas. Súper intuitivo.", name: "Luis C.", store: "Electrónica" },
-                { q: "Manejar las tallas era un caos en Instagram. Con el catálogo, si no hay talla 40, no la pueden pedir y punto. Te ahorra dolores de cabeza.", name: "Ana F.", store: "Calzado Deportivo" },
-                { q: "Pagar $18.99 al mes se recupera con la primera venta que cierras rápido porque el cliente no tuvo que esperar a que le dieras el precio en bolívares.", name: "Carlos M.", store: "Minimarket" },
-                // Duplicados
-                { q: "Lo de la tasa BCV automática es un salvavidas. Antes perdía clientes por tardar en sacar la cuenta o daba el precio mal. Ahora compran solos.", name: "María P.", store: "Tienda de Ropa" },
-                { q: "Los clientes me mandan el capture y el pedido llega al WhatsApp como un recibo de supermercado. Cero enredos de '¿qué talla querías?'.", name: "Jose D.", store: "Repuestos de Moto" },
-                { q: "Creé la tienda el viernes en la noche, el sábado ya estaba vendiendo con las zonas de delivery configuradas. Súper intuitivo.", name: "Luis C.", store: "Electrónica" },
-              ].map((testimonial, i) => (
-                <div key={i} className={`w-[320px] md:w-[480px] shrink-0 flex flex-col justify-between group min-h-[250px]`}>
-                  <p className="text-lg md:text-2xl font-normal text-gray-900 leading-snug mb-10 tracking-tight">
-                    "{testimonial.q}"
-                  </p>
-                  <div className="flex items-center gap-4 pt-6 border-t border-gray-200">
-                    <div>
-                      <p className="font-bold text-xs uppercase tracking-[0.2em] text-gray-900">{testimonial.name}</p>
-                      <p className="text-[10px] font-mono text-gray-400 mt-1">{testimonial.store}</p>
+                    {/* Content Container (ProductCard.tsx) */}
+                    <div className="flex flex-col flex-1 pt-3 pb-1">
+                      <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-tight leading-snug line-clamp-2 mb-2 min-h-[2.4em] transition-colors duration-500">
+                        {product.name}
+                      </h3>
+                      
+                      <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
+                        <div className="flex items-end justify-between gap-2 border-t border-[var(--store-border)] pt-3 transition-colors duration-500">
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {product.isPromo && (
+                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] transition-colors duration-500">
+                                  ${activeCompareAt.toFixed(2)}
+                                </span>
+                              )}
+                              <span className={`text-sm font-black leading-none tracking-tight transition-colors duration-500 ${product.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
+                                ${listPrice.toFixed(2)}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums transition-colors duration-500">
+                              Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
+                            </span>
+                          </div>
+                          <button className="w-8 h-8 rounded-full border text-[var(--store-surface-text)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors duration-500">
+                            <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {product.usd_penalty > 0 && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold text-[var(--store-incentive)] py-1 rounded-full self-start transition-colors duration-500">
+                          <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0 transition-colors duration-500" />
+                          <span>Paga ${product.usd_cash_price.toFixed(2)} en Divisas</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
+
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+// =========================================
+// NODO 7: EL ENJAMBRE (MOTOR DE AFILIADOS Y CRECIMIENTO)
+// =========================================
+
+const NodeSevenSwarm = () => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "center center"]
+  })
+
+  // Actividad de Afiliados en Vivo
+  const logs = [
+    { name: "Carlos_Fit", action: "compartió link", item: "Proteína Whey", comm: "--" },
+    { name: "Maria_Style", action: "generó venta", item: "Hoodie Titanio", comm: "+$2.50" },
+    { name: "Andres99", action: "generó venta", item: "Cargo Pants", comm: "+$1.80" },
+    { name: "Sofia_Vzla", action: "nuevo afiliado registrado", item: "--", comm: "--" },
+    { name: "Carlos_Fit", action: "generó venta", item: "Pre-entreno", comm: "+$3.00" },
+  ]
+
+  const [visibleLogs, setVisibleLogs] = useState<typeof logs>([])
+
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setVisibleLogs(prev => {
+        const next = [...prev, logs[i]]
+        if (next.length > 4) next.shift() // Mantener los últimos 4
+        return next
+      })
+      i = (i + 1) % logs.length
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [])
+
+  const opacityIn = useTransform(scrollYProgress, [0, 0.5], [0, 1])
+  const yUp = useTransform(scrollYProgress, [0, 0.5], [100, 0])
+
+  return (
+    <section ref={containerRef} className="relative min-h-screen w-full bg-[#020202] py-40 overflow-hidden flex flex-col items-center border-t border-white/5">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#3600ff_0%,transparent_50%)] opacity-[0.03] pointer-events-none" />
+
+      <motion.div style={{ opacity: opacityIn, y: yUp }} className="w-full max-w-5xl px-6 relative z-10 flex flex-col md:flex-row items-center gap-16">
+        
+        <div className="w-full md:w-1/2">
+          <div className="flex items-center gap-4 mb-8">
+            <Zap size={32} className="text-[#3600ff]" />
+            <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-widest">Motor de Crecimiento</span>
           </div>
-        </section>
+          <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase leading-[0.9] mb-6">
+            Tus clientes son <br />
+            <span className="text-zinc-600">tus vendedores.</span>
+          </h2>
+          <p className="text-zinc-400 text-sm md:text-base leading-relaxed">
+            No pagues publicidad vacía. Preziso integra un sistema nativo de Afiliados. Genera códigos únicos para tus clientes fieles, dales un % de comisión y observa cómo promocionan tu inventario por todo WhatsApp e Instagram.
+          </p>
+        </div>
 
-        {/* =========================================
-            7. PRICING (THE INVOICE)
-        ========================================= */}
-        <section id="pricing" className="py-24 md:py-40 w-full bg-white border-b border-gray-200">
-            <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex flex-col items-center">
-              
-              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} className="text-center mb-20 w-full">
-                <h2 className="text-[10vw] md:text-[5rem] lg:text-[7rem] font-medium leading-[0.85] tracking-tighter uppercase text-gray-900 border-b border-gray-200 pb-10">
-                  UN PRECIO. <br className="md:hidden" />
-                  <span className="text-gray-300">CERO COMISIONES.</span>
-                </h2>
-              </motion.div>
-
-              {/* THE RECEIPT */}
-              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={elegantUp} 
-                className="w-full max-w-4xl border border-gray-200 bg-[#FAFAFA] flex flex-col md:flex-row"
-              >
-                {/* Lado Izquierdo: Precio */}
-                <div className="flex flex-col items-center justify-center text-center w-full md:w-1/2 p-12 md:p-20 border-b md:border-b-0 md:border-r border-gray-200">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#3600ff] mb-6">Plan Ilimitado</span>
-                  <h3 className="text-6xl md:text-8xl font-light tracking-tighter text-gray-900 leading-none mb-4">
-                    $18<span className="text-3xl md:text-5xl text-gray-400">.99</span>
-                  </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                    Al Mes / Sin Contratos
-                  </span>
-                  
-                  <Link href="/login" className="mt-12 btn-luxury w-full bg-black text-white px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] border border-black flex items-center justify-center gap-3 z-10">
-                    Crear mi tienda <ArrowUpRight size={14} strokeWidth={2} />
-                  </Link>
-                </div>
-
-                {/* Lado Derecho: Checklist */}
-                <div className="w-full md:w-1/2 p-12 md:p-16 bg-white flex flex-col justify-center">
-                  <p className="text-xs text-gray-500 leading-relaxed mb-8 border-b border-gray-200 pb-8">
-                    Vende 10 o 10.000 productos. Jamás tocaremos un centavo de tus ganancias. Paga en Bs o USDT.
-                  </p>
-                  <ul className="flex flex-col gap-4">
-                    {[
-                      "Productos y Pedidos Ilimitados",
-                      "Tasa BCV sincronizada en vivo",
-                      "Cierre de caja en USD y BS",
-                      "Diseño 100% personalizable",
-                      "Pedidos directos a WhatsApp",
-                      "Dominio personalizado (.preziso.shop)"
-                    ].map((benefit, idx) => (
-                      <li key={idx} className="flex items-center gap-4 text-xs md:text-sm font-medium text-gray-900">
-                        <Check size={14} className="text-[#3600ff] shrink-0" strokeWidth={2} />
-                        {benefit}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-
-            </div>
-        </section>
-
-        {/* =========================================
-            8. FAQ SECCIÓN (INDEX FORMAT)
-        ========================================= */}
-        <section id="faq" className="py-24 md:py-40 bg-white">
-          <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-            <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
-              <div className="lg:col-span-5 lg:sticky lg:top-32">
-                <h2 className="text-[10vw] md:text-[4rem] lg:text-[5rem] font-medium leading-[0.9] tracking-tighter uppercase text-gray-900 mb-6">
-                  Dudas. <br /> <span className="text-gray-400">Resueltas.</span>
-                </h2>
-                <p className="text-sm md:text-base font-normal text-gray-500 max-w-sm">
-                  Sin letras pequeñas ni condiciones engañosas. Las reglas claras conservan las ventas.
-                </p>
-              </div>
-
-              <div className="lg:col-span-7 flex flex-col border-t border-gray-200 mt-10 md:mt-0">
-                <FaqItem index="01" question="¿Necesito tarjeta internacional?" answer="No. Sabemos cómo funciona el mercado venezolano. Puedes pagar tu suscripción mensual de $18.99 en Bolívares (Pago Móvil) o usando USDT (Binance)." />
-                <FaqItem index="02" question="¿Cobran comisión por venta?" answer="Cero comisiones. Jamás tocaremos tu dinero. Pagas una tarifa plana al mes y puedes vender 10 o 10.000 productos. El 100% de la ganancia va directo a tus cuentas bancarias." />
-                <FaqItem index="03" question="¿El dinero pasa por Preziso?" answer="Nunca. El cliente arma el carrito en nuestra plataforma, y el pedido se envía a tu WhatsApp. El cliente te paga directamente a ti (a tu Pago Móvil o tu Zelle)." />
-                <FaqItem index="04" question="¿Hay límite de productos?" answer="No. Carga todo tu inventario, con todas sus variantes, tallas y colores. No te cobraremos extra por crecer." />
-              </div>
-            </div>
+        {/* Dashboard de Afiliados */}
+        <div className="w-full md:w-1/2 bg-[#050505] border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(54,0,255,0.05)]">
+          <div className="bg-white/5 border-b border-white/10 px-6 py-4 flex items-center justify-between">
+             <span className="text-xs font-bold text-white uppercase tracking-widest">Live: Comisiones Globales</span>
+             <div className="flex items-center gap-2 text-[10px] font-mono text-green-500">
+               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Activo
+             </div>
           </div>
-        </section>
 
-      </main>
+          <div className="p-6 h-[300px] overflow-hidden flex flex-col justify-end">
+             <AnimatePresence>
+               {visibleLogs.map((log, idx) => (
+                 <motion.div 
+                   key={`${log.name}-${idx}`}
+                   initial={{ opacity: 0, x: 20 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
+                   transition={{ duration: 0.4 }}
+                   className="flex items-center justify-between py-4 border-b border-white/5 last:border-0"
+                 >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-xs text-zinc-500 border border-white/5">
+                        {log.name.charAt(0)}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-white">@{log.name}</span>
+                        <span className="text-[10px] text-zinc-500">{log.action} <span className="text-zinc-300">{log.item}</span></span>
+                      </div>
+                    </div>
+                    <span className={cn("text-xs font-mono font-bold", log.comm.includes('+') ? 'text-green-400' : 'text-zinc-600')}>
+                      {log.comm}
+                    </span>
+                 </motion.div>
+               ))}
+             </AnimatePresence>
+          </div>
+        </div>
 
-      {/* =========================================
-          9. FOOTER POSTER (ARCHITECTURAL)
-      ========================================= */}
-      <footer className="bg-black text-white pt-24 md:pt-40 pb-10 px-6 md:px-12 relative overflow-hidden">
-        <div className="max-w-[1400px] mx-auto relative z-10 flex flex-col w-full">
+      </motion.div>
+    </section>
+  )
+}
+
+const NodeEightExtraction = () => {
+  const targetRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "center center"]
+  })
+
+  const scaleUp = useTransform(scrollYProgress, [0, 1], [0.9, 1])
+  const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
+
+  return (
+    <section id="precios" ref={targetRef} className="relative min-h-screen w-full bg-black py-40 border-t border-white/5 flex flex-col items-center justify-center overflow-hidden">
+      
+      {/* Resplandor Estructural */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#3600ff]/5 rounded-full blur-[150px] pointer-events-none" />
+
+      <motion.div 
+        style={{ scale: scaleUp, opacity: opacityIn }} 
+        className="w-full max-w-5xl px-6 relative z-10 flex flex-col items-center"
+      >
+        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.5em] mb-4">Protocolo de Acceso</span>
+        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase text-center mb-16">
+          Un Precio. <br />
+          <span className="text-zinc-600">Cero Comisiones.</span>
+        </h2>
+
+        {/* El Recibo (Monolito) */}
+        <div className="w-full bg-[#050505] border border-white/10 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-[0_0_80px_rgba(54,0,255,0.05)]">
           
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-800 pb-16 md:pb-24 w-full gap-12">
-            <div className="max-w-2xl">
-              <h2 className="text-4xl md:text-6xl font-medium tracking-tighter uppercase mb-8 text-white">¿Listo para el siguiente nivel?</h2>
-              <Link href="/login" className="inline-flex items-center justify-center gap-3 bg-white text-black px-10 py-5 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#3600ff] hover:text-white transition-colors duration-500">
-                Obtener prueba gratis <ArrowUpRight size={16} strokeWidth={2} />
-              </Link>
+          {/* Lado A: Captura */}
+          <div className="w-full md:w-1/2 p-12 md:p-20 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-white/5 relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#3600ff]/0 via-[#3600ff]/0 to-[#3600ff]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            
+            <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-widest mb-6 relative z-10">Acceso Ilimitado</span>
+            
+            <div className="flex items-start gap-1 mb-4 relative z-10">
+              <span className="text-2xl text-zinc-500 mt-2">$</span>
+              <span className="text-7xl md:text-9xl font-light tracking-tighter text-white leading-none">18</span>
+              <span className="text-3xl text-zinc-500 mt-2">.99</span>
             </div>
+            
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest relative z-10">Renovación Mensual</span>
 
-            <ul className="flex flex-col gap-4 text-gray-500">
-              <li className="flex items-center gap-3 text-[10px] md:text-xs font-mono uppercase tracking-widest"><span className="w-1.5 h-1.5 bg-[#3600ff]"></span> Sin Contratos</li>
-              <li className="flex items-center gap-3 text-[10px] md:text-xs font-mono uppercase tracking-widest"><span className="w-1.5 h-1.5 bg-[#3600ff]"></span> Productos Ilimitados</li>
-              <li className="flex items-center gap-3 text-[10px] md:text-xs font-mono uppercase tracking-widest"><span className="w-1.5 h-1.5 bg-[#3600ff]"></span> Cancela cuando quieras</li>
+            <Link href="/login" className="mt-12 w-full relative group/btn overflow-hidden rounded-xl bg-white text-black py-5 flex justify-center items-center gap-3 z-10">
+               <span className="font-bold text-xs uppercase tracking-[0.2em] relative z-10 group-hover/btn:text-white transition-colors duration-500">
+                 Inicializar Nodo
+               </span>
+               <ArrowUpRight size={16} strokeWidth={2} className="relative z-10 group-hover/btn:text-white transition-colors duration-500" />
+               <div className="absolute inset-0 bg-[#3600ff] translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-0" />
+            </Link>
+          </div>
+
+          {/* Lado B: Parámetros */}
+          <div className="w-full md:w-1/2 p-12 md:p-16 flex flex-col justify-center relative bg-black/50">
+            <p className="text-xs font-mono text-zinc-400 leading-relaxed mb-10 pb-8 border-b border-white/10">
+              Despliegue inmediato. Vende 10 o 10.000 productos. Liquidación directa a tus cuentas (USDT / Pago Móvil). Sin intermediarios.
+            </p>
+            
+            <ul className="flex flex-col gap-6">
+              {[
+                "Productos y variantes ilimitados",
+                "Motor de Tasa BCV < 400ms",
+                "Cuadre algorítmico (Bs y USD)",
+                "Mutación de ADN de Marca",
+                "Enrutamiento a WhatsApp",
+                "Subdominio .preziso.shop"
+              ].map((item, idx) => (
+                <li key={idx} className="flex items-center gap-4 group/li">
+                  <div className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover/li:border-[#3600ff] group-hover/li:bg-[#3600ff]/20 transition-colors">
+                     <Check size={10} className="text-zinc-500 group-hover/li:text-[#3600ff] transition-colors" strokeWidth={3} />
+                  </div>
+                  <span className="text-sm font-medium text-zinc-300 group-hover/li:text-white transition-colors">{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-start gap-16 py-16 w-full">
-            <div className="flex flex-col gap-6">
-              <a href="mailto:quanzosinc@gmail.com" className="text-[10px] md:text-xs font-mono uppercase tracking-widest text-gray-500 hover:text-[#3600ff] transition-colors">quanzosinc@gmail.com</a>
-              <a href="tel:+584145811936" className="text-[10px] md:text-xs font-mono uppercase tracking-widest text-gray-500 hover:text-[#3600ff] transition-colors">+58 (414) 581-1936</a>
-            </div>
-
-            <div className="flex items-center gap-8">
-              <a href="#" className="text-gray-500 hover:text-white transition-colors"><Instagram size={20} strokeWidth={1.5} /></a>
-              <a href="#" className="text-gray-500 hover:text-white transition-colors"><Twitter size={20} strokeWidth={1.5} /></a>
-              <a href="#" className="text-gray-500 hover:text-white transition-colors"><Facebook size={20} strokeWidth={1.5} /></a>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-10 flex flex-col md:flex-row justify-between items-center gap-6 w-full">
-            <p className="text-[9px] font-mono uppercase tracking-widest text-gray-600">
-              &copy; {new Date().getFullYear()} PREZISO INC. TODOS LOS DERECHOS RESERVADOS.
-            </p>
-            <div className="flex gap-8 text-gray-600">
-              <a href="#" className="text-[9px] font-mono uppercase tracking-widest hover:text-white transition-colors">Términos</a>
-              <a href="#" className="text-[9px] font-mono uppercase tracking-widest hover:text-white transition-colors">Privacidad</a>
-            </div>
-          </div>
-          
         </div>
-      </footer>
+      </motion.div>
+    </section>
+  )
+}
+
+
+// =========================================
+// COMPONENTE: KINETIC FOOTER (EVENT HORIZON)
+// =========================================
+
+const KineticFooter = () => {
+  return (
+    <footer className="relative w-full bg-black pt-40 pb-12 overflow-hidden border-t border-white/5">
+      {/* Marquee cinético de fondo */}
+      <div className="absolute top-0 left-0 w-full overflow-hidden opacity-[0.03] select-none pointer-events-none">
+        <motion.div 
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ repeat: Infinity, ease: "linear", duration: 20 }}
+          className="flex whitespace-nowrap text-[20vw] font-black uppercase text-white"
+        >
+          <span>SIN FRICCIÓN • SIN CAOS • SIN ERRORES • </span>
+          <span>SIN FRICCIÓN • SIN CAOS • SIN ERRORES • </span>
+        </motion.div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-24">
+          <div className="md:col-span-2">
+            <h2 className="text-5xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9] mb-8">
+              El futuro de tu <br />
+              <span className="text-[#3600ff]">negocio es hoy.</span>
+            </h2>
+            <p className="text-zinc-500 max-w-sm mb-10 text-sm">
+              Preziso es el sistema operativo para la nueva generación de comercios en Venezuela. Control total, desde el inventario hasta la última comisión.
+            </p>
+            <div className="flex gap-4">
+              <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"><InstagramIcon size={18}/></a>
+              <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"><TwitterIcon size={18}/></a>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-8">Producto</h4>
+            <ul className="space-y-4">
+              {['Tienda Online', 'Punto de Venta', 'Afiliados', 'Seguridad'].map(item => (
+                <li key={item}><a href="#" className="text-zinc-500 text-sm hover:text-white transition-colors">{item}</a></li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-8">Soporte</h4>
+            <ul className="space-y-4">
+              {['Documentación', 'API', 'Centro de Ayuda', 'Status'].map(item => (
+                <li key={item}><a href="#" className="text-zinc-500 text-sm hover:text-white transition-colors">{item}</a></li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+          <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
+            © 2026 PREZISO SYSTEM. TECNOLOGÍA PARA EL CAPITAL.
+          </span>
+          <div className="flex gap-8">
+            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-white">Privacidad</a>
+            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-white">Términos</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+// =========================================
+// ENSAMBLAJE MAESTRO
+// =========================================
+
+// =========================================
+// ENSAMBLAJE MAESTRO
+// =========================================
+
+// 🚀 1. DEFINIMOS LA INTERFAZ DE TIPOS ESTRICTOS
+interface LandingProps {
+  liveRate: number;
+}
+
+// 🚀 2. INYECTAMOS EL TIPO EN EL COMPONENTE
+export default function DeepCaptureLanding({ liveRate }: LandingProps) {
+  return (
+    <div className="bg-black selection:bg-[#3600ff] selection:text-white">
+      {/* Inyección de Estilos de Capa Inferior */}
+      <style jsx global>{`
+        .text-outline-white {
+          -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+          color: transparent;
+        }
+        @media (min-width: 768px) {
+          .text-outline-white { -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3); }
+        }
+        body { cursor: crosshair; }
+      `}</style>
+
+      {/* 🚀 3. PASAMOS EL DATO A LOS NODOS QUE LO NECESITAN */}
+      <FloatingNavbar bcvRate={liveRate} />
+
+      <NodeZeroHero />
+      <NodeOneFriction />
+
+      <NodeTwoSingularity bcvRate={liveRate} />
+      <NodeThreeInfrastructure />
+
+      <NodeFourNeural bcvRate={liveRate} />
+      <NodeFiveExtraction bcvRate={liveRate} />
+
+      <NodeSixMutation bcvRate={liveRate} />
+      <NodeSevenSwarm />
+
+      <NodeEightExtraction />
+      <KineticFooter />
+      
     </div>
   )
 }
