@@ -3,15 +3,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion, useScroll, useTransform, useSpring, AnimatePresence,  useMotionValue } from 'framer-motion'
 import { 
-  ArrowDown, 
   AlertCircle, 
   MessageSquare, 
   Calculator, 
   XCircle, 
   Zap,
   ArrowRightLeft,
-  Globe,
-  Server, ShoppingBag, ArrowRight, Wallet, MessageCircle, CheckCircle2, SlidersHorizontal, Terminal, Activity, ChevronRight, Check, ArrowUpRight,
+  ShoppingBag, Wallet, MessageCircle, CheckCircle2, SlidersHorizontal, Activity, Check, ArrowUpRight,
   Minus,
   Plus,
   Flame,
@@ -23,12 +21,15 @@ import {
   Twitter,
   InstagramIcon,
   TwitterIcon,
-  Menu
+  Menu,
+  PackageSearch,
+  ClipboardCheck,
+  Settings2,
+  LayoutDashboard
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import Link from 'next/link'
-import { Cursor } from 'recharts/types/component/Cursor'
 
 /**
  * UTILIDADES DE ESTILO ATÓMICO
@@ -232,8 +233,6 @@ const NodeZeroHero = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
   
-  // Línea de escaneo retiniano
-  const scanLineY = useTransform(scrollYProgress, [0, 0.1], ["-100%", "200%"])
 
   return (
     <section 
@@ -494,103 +493,160 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
     </section>
   )
 }
-
 // =========================================
-// NODO 3: EL ORGANISMO MULTI-TENANT (INFRAESTRUCTURA)
+// NODO 3: EL CENTRO DE COMANDO (DUAL-ARCH)
 // =========================================
 
-const NodeThreeInfrastructure = () => {
+const NodeThreeCommandCenter = () => {
   const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Capturamos el progreso global de la sección
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start end", "center center"]
+    offset: ["start start", "end end"]
   })
 
-  // Físicas de Parallax
-  const y = useTransform(scrollYProgress, [0, 1], [100, 0])
-
-  // Nodos secundarios (Las tiendas de tus clientes)
-  const childNodes = [
-    { name: "Tienda A", pos: "top-[10%] left-[10%]", delay: 0 },
-    { name: "Tienda B", pos: "top-[20%] right-[15%]", delay: 0.2 },
-    { name: "Tienda C", pos: "bottom-[20%] left-[20%]", delay: 0.4 },
-    { name: "Tienda D", pos: "bottom-[10%] right-[10%]", delay: 0.6 },
+  const features = [
+    {
+      title: "Visión de Rayos X",
+      desc: "Controla tu flujo de caja en USD y Bs, monitorea pedidos por despachar y visualiza ingresos netos en tiempo real. Cero cuadernos, cero errores.",
+      icon: LayoutDashboard,
+      color: "#ffffff",
+      image: "/image_948a1a.webp" // Dashboard Administrativo
+    },
+    {
+      title: "Precios Inteligentes",
+      desc: "Fija precios base y márgenes. Preziso reescribe tus etiquetas en Bs al vuelo siguiendo el BCV. Sincronización total en menos de 400ms.",
+      icon: Settings2,
+      color: "#ffffff",
+      image: "/image_9486b6.webp" // Gestión de Precios
+    },
+    {
+      title: "Stock Milimétrico",
+      desc: "Gestión avanzada de variantes. Recibe alertas de stock crítico y controla cada talla y color con una interfaz diseñada para la velocidad.",
+      icon: PackageSearch,
+      color: "#ffffff",
+      image: "/image_9482ba.webp" // Control de Inventario
+    },
+    {
+      title: "Ecosistema B2B",
+      desc: "Gestiona tu red de promotores y presupuestos. Liquida comisiones y convierte cotizaciones en ventas con un solo clic.",
+      icon: ClipboardCheck,
+      color: "#ffffff",
+      image: "/image_942cbe.webp" // Gestión de Presupuestos
+    }
   ]
 
+  // Mapeo de opacidades para sincronizar imágenes y textos
+  const opacities = features.map((_, i) => {
+    const start = i / features.length
+    const end = (i + 1) / features.length
+    return useTransform(scrollYProgress, [start, start + 0.1, end - 0.1, end], [0, 1, 1, 0])
+  })
+
   return (
-    <section ref={containerRef} className="relative min-h-[120vh] w-full bg-black py-32 overflow-hidden flex flex-col items-center">
+    <section id="adn" ref={containerRef} className="relative min-h-[400vh] bg-black border-t border-white/5">
       
-      <div className="absolute inset-0 z-0 opacity-[0.15]">
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
-
-      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-24">
-         <motion.div style={{ y }} className="flex flex-col items-center">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-6">Arquitectura Centralizada</span>
-            <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
-              Un Núcleo. <br />
-              <span className="text-[#3600ff]">Infinidad de Nodos.</span>
-            </h2>
-            <p className="mt-8 max-w-2xl text-zinc-400 text-sm md:text-base leading-relaxed">
-              No estás alquilando una plantilla genérica. Estás conectando tu negocio a un ecosistema Multi-Tenant. Actualizamos el núcleo una vez, y tu tienda evoluciona instantáneamente.
-            </p>
-         </motion.div>
-      </div>
-
-      {/* Visualización de Red Multi-Tenant */}
-      <div className="relative w-full max-w-5xl h-[600px] mt-10">
+      {/* EL CONTENEDOR STICKY: Mantiene la UI visible mientras se recorren los 400vh */}
+      <div className="sticky top-0 h-screen w-full flex items-center overflow-hidden">
         
-        {/* Nodo Central (PREZISO CORE) */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-          <motion.div 
-            animate={{ boxShadow: ["0 0 20px #3600ff", "0 0 60px #3600ff", "0 0 20px #3600ff"] }}
-            transition={{ repeat: Infinity, duration: 3 }}
-            className="w-32 h-32 bg-black border border-[#3600ff] rounded-none rotate-45 flex items-center justify-center relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-[#3600ff]/10" />
-            <Server size={32} className="text-white -rotate-45 relative z-10" />
-          </motion.div>
-          <span className="mt-8 font-mono text-xs uppercase tracking-widest text-[#3600ff] bg-black px-2">Preziso Core DB</span>
-        </div>
+        <div className="max-w-7xl mx-auto w-full px-6 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-32">
+          
+          {/* COLUMNA IZQUIERDA: TEXTOS (Desktop: Separado / Mobile: Overlay) */}
+          <div className="relative z-20 w-full lg:w-5/12 h-[250px] lg:h-[450px]">
+            
+            {/* Capa de textos superpuestos (Mantiene la experiencia Mobile que te gustó) */}
+            <div className="relative w-full h-full">
+              {features.map((f, i) => (
+                <motion.div
+                  key={i}
+                  style={{ opacity: opacities[i] }}
+                  className="absolute inset-0 flex flex-col justify-center"
+                >
+                  <div className="flex flex-col gap-6 lg:gap-8">
+                    <div 
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
+                      style={{ backgroundColor: `${f.color}20`, border: `1px solid ${f.color}40` }}
+                    >
+                      <f.icon style={{ color: f.color }} size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-4xl lg:text-6xl font-black tracking-tighter text-white uppercase leading-[0.85] mb-6">
+                        {f.title}
+                      </h3>
+                      <p className="text-zinc-500 text-sm lg:text-xl leading-relaxed max-w-md font-light">
+                        {f.desc}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
-        {/* Nodos Secundarios (Tiendas) & Líneas de Conexión */}
-        {childNodes.map((node, i) => (
-          <div key={i} className={cn("absolute z-10 flex flex-col items-center", node.pos)}>
-            {/* Animación del pulso de datos desde el centro */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ delay: node.delay, duration: 0.5 }}
-              className="w-16 h-16 bg-[#050505] border border-white/20 rounded-full flex items-center justify-center relative"
-            >
-              <Globe size={20} className="text-zinc-400" />
-              {/* Indicador de Status OK */}
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-black" />
-            </motion.div>
-            <span className="mt-4 font-mono text-[10px] uppercase text-zinc-500">{node.name}</span>
+            {/* BARRA DE PROGRESO LATERAL (Solo Desktop - Ajustada con -left-16 para dar aire) */}
+            <div className="hidden lg:flex absolute -left-16 top-0 bottom-0 flex-col justify-center gap-6">
+              {features.map((_, i) => {
+                const height = useTransform(
+                  scrollYProgress,
+                  [i / features.length, (i + 1) / features.length],
+                  ["20px", "60px"]
+                )
+                const color = useTransform(
+                  scrollYProgress,
+                  [i / features.length, (i + 1) / features.length],
+                  ["#18181b", "#3600ff"]
+                )
+                return (
+                  <motion.div 
+                    key={i} 
+                    style={{ height, backgroundColor: color }} 
+                    className="w-1.5 rounded-full transition-all duration-300" 
+                  />
+                )
+              })}
+            </div>
           </div>
-        ))}
 
-        {/* SVG para las líneas de conexión (Físicas de enrutamiento) */}
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full z-0 pointer-events-none">
-          <motion.path 
-            initial={{ pathLength: 0, opacity: 0 }}
-            whileInView={{ pathLength: 1, opacity: 0.2 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
-            d="M 50 50 L 10 10 M 50 50 L 85 20 M 50 50 L 20 80 M 50 50 L 90 90" 
-            stroke="#3600ff" strokeWidth="0.5" fill="none" 
-          />
-        </svg>
+          {/* COLUMNA DERECHA: MOCKUP DE PANEL ADMINISTRATIVO */}
+          <div className="relative z-10 w-full lg:w-7/12 flex justify-center lg:justify-end">
+            <div className="relative aspect-[16/10] w-full max-w-[700px] rounded-2xl lg:rounded-[2.5rem] overflow-hidden border border-white/10 bg-[#050505] shadow-[0_0_100px_rgba(0,0,0,0.8)]">
+              
+              {/* Reflejo de cristal superior */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/5 z-10 pointer-events-none" />
+              
+              {/* Renderizado de Capturas (Stack) */}
+              {features.map((f, i) => (
+                <motion.img
+                  key={i}
+                  src={f.image}
+                  style={{ opacity: opacities[i] }}
+                  className="absolute inset-0 w-full h-full object-cover will-change-opacity"
+                  alt={f.title}
+                />
+              ))}
 
+              {/* Glow Dinámico que reacciona al módulo activo */}
+              {features.map((f, i) => (
+                <motion.div 
+                  key={`glow-${i}`}
+                  style={{ opacity: useTransform(opacities[i], [0, 1], [0, 0.15]) }}
+                  className="absolute -inset-20 blur-[150px] -z-10 pointer-events-none transition-colors duration-700"
+                  animate={{ backgroundColor: f.color }}
+                />
+              ))}
+            </div>
+            
+            {/* Indicador de Navegación Mobile */}
+            <div className="lg:hidden absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-4">
+              {features.map((_, i) => {
+                const scale = useTransform(opacities[i], [0, 1], [0.8, 1.3])
+                const bg = useTransform(opacities[i], [0, 1], ["#27272a", "#3600ff"])
+                return <motion.div key={i} style={{ scale, backgroundColor: bg }} className="w-2.5 h-2.5 rounded-full" />
+              })}
+            </div>
+          </div>
+
+        </div>
       </div>
     </section>
   )
@@ -1434,7 +1490,7 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
       <NodeOneFriction />
 
       <NodeTwoSingularity bcvRate={liveRate} />
-      <NodeThreeInfrastructure />
+      <NodeThreeCommandCenter />
 
       <NodeFourNeural bcvRate={liveRate} />
       <NodeFiveExtraction bcvRate={liveRate} />
