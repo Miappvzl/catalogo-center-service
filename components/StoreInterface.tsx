@@ -20,7 +20,7 @@ const CategoryPill = ({ label, active, onClick }: { label: string, active: boole
     onClick={onClick}
     className={`px-5 py-2 md:px-6 md:py-2 rounded-full text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
       ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
-      : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:bg-[var(--store-surface)] hover:text-[var(--store-text-main)]'
+      : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:bg-[var(--store-surface)] hover:text-[var(--store-text-main)]'
       }`}
   >
     {label}
@@ -182,8 +182,8 @@ const searchParams = useSearchParams()
       </div>
 
       {/* SKELETON: NAVBAR (Buscador y Categorías) */}
-      <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)] pt-4 md:pt-6">
-        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+      <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)] pb-4 pt-4 md:pt-6">
+        <div className="max-w-[1500px] mx-auto px-4  md:px-8 ">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
             {/* Buscador Skeleton */}
             <div className="w-full md:max-w-md h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
@@ -473,7 +473,7 @@ const searchParams = useSearchParams()
 
 
       {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
-      <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]">
+      <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]/30">
 
         {/* Logo & Store Info */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -544,8 +544,8 @@ const searchParams = useSearchParams()
 
 
 
-      <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)] pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-        <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+      <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl  pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
 
             {/* 1. BUSCADOR (Izquierda) */}
@@ -557,7 +557,7 @@ const searchParams = useSearchParams()
                 placeholder="Buscar producto..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)] rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
+                className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
               />
               {search && (
                 <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
@@ -683,7 +683,7 @@ const searchParams = useSearchParams()
                   </div>
                   
                   {/* Carrusel Horizontal */}
-                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 snap-x snap-mandatory">
+                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory">
                      {featuredProducts.map((product: any, idx: number) => {
                           const pricing = getProductPricing(product)
                           const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
