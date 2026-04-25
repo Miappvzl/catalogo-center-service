@@ -207,7 +207,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         animate={{ y: 0 }}
                         exit={{ y: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/50 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/30 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
                     >
                         {/* 1. IZQUIERDA: Icono interactivo + Precios */}
                         <div className="flex items-center gap-3.5 cursor-pointer group" onClick={handleOpenModal}>
@@ -249,7 +249,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (
-                                <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]">
+                                <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]/30">
                                     <AnimatePresence mode="wait">
                                         {step === 1 ? (
                                             <motion.div key="header-1" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
@@ -365,7 +365,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                                                 {/* CROSS-SELLING */}
                                                 {recommendedProducts.length > 0 && (
-                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)] pt-8 pb-4 bg-[var(--store-surface)]">
+                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
                                                         <div className="flex items-center justify-between mb-4">
                                                             <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
                                                             <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
@@ -413,7 +413,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             </div>
 
                                             {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
-                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)]/30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
                                                     <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
                                                     <div className="flex flex-col items-end">

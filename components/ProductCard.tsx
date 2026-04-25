@@ -82,7 +82,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         {/* ELIMINADO: mt-auto. INYECTADO: flex-1 flex flex-col justify-end */}
         <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
           
-          <div className="flex items-end justify-between gap-2 border-t border-[var(--store-border)] pt-3">
+          <div className="flex items-end justify-between gap-2  pt-3">
             <div className="flex flex-col min-w-0">
               {/* PRECIO PÚBLICO REAL */}
               <div className="flex items-center gap-1.5 flex-wrap">

@@ -1162,7 +1162,7 @@ const [storeColors, setStoreColors] = useState({
                       </h3>
                       
                       <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
-                        <div className="flex items-end justify-between gap-2 border-t border-[var(--store-border)] pt-3 transition-colors duration-500">
+                        <div className="flex items-end justify-between gap-2 pt-3 transition-colors duration-500">
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {product.isPromo && (
@@ -1178,7 +1178,7 @@ const [storeColors, setStoreColors] = useState({
                               Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(priceInBs)}
                             </span>
                           </div>
-                          <button className="w-8 h-8 rounded-full border text-[var(--store-surface-text)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors duration-500">
+                          <button className="w-8 h-8 rounded-full border text-[var(--store-surface-text)] border-[var(--store-border)]/30 flex items-center justify-center shrink-0 transition-colors duration-500">
                             <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
                           </button>
                         </div>

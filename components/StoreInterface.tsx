@@ -767,7 +767,7 @@ const searchParams = useSearchParams()
 
 
       {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
-      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)] w-full flex justify-center">
+      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)]/30 w-full flex justify-center">
         <a
           href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
           target="_blank"

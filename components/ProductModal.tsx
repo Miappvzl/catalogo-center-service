@@ -344,7 +344,7 @@ const isCompletelyOutOfStock = variants.length > 0
                             <X size={20} strokeWidth={2} />
                         </button>
 
-                        <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)] shrink-0 group overflow-hidden">
+                        <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (
                                 <Image
                                     src={getOptimizedUrl(currentGallery[galleryIndex])}

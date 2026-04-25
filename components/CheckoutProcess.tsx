@@ -1005,7 +1005,7 @@ export default function CheckoutProcess({
 
             {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
             {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
-            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
 
                     {/* Total a la izquierda */}
