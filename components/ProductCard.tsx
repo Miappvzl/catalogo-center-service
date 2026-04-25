@@ -74,7 +74,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
       {/* 🚀 CONTENT CONTAINER: AUTO-ALIGNMENT INYECTADO */}
       <div className="flex flex-col flex-1 pt-3 pb-1">
         
-        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-tight leading-snug group-hover:text-[var(--store-surface-text)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
+        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-[0.05em] leading-snug group-hover:text-[var(--store-surface-text)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
           {product.name}
         </h3>
 

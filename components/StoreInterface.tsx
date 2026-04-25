@@ -490,9 +490,7 @@ const searchParams = useSearchParams()
             <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
               {store.name}
             </h1>
-            <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-[0.15em] mt-1 text-[var(--store-surface-text)]">
-              Tienda Oficial
-            </span>
+           
           </div>
         </div>
 
