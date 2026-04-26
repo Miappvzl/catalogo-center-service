@@ -3,6 +3,7 @@
 import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
 import Image from 'next/image'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion' // 🚀 1. RESTAURAMOS EL MOTOR
 
 interface ProductCardProps {
@@ -24,6 +25,23 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
   const activeCompareAt = compareAt > listPrice ? compareAt : listPrice;
   const isPromo = activeCompareAt > listPrice; 
   const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
+
+  // 🚀 CEREBRO DE COLORES: Extracción y Deduplicación Absoluta
+  const uniqueColors = useMemo(() => {
+    if (!product.product_variants || !Array.isArray(product.product_variants)) return [];
+    
+    const colorMap = new Map();
+    product.product_variants.forEach((v: any) => {
+      // Filtramos colores nulos o transparentes (ghost variants)
+      if (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent') {
+        if (!colorMap.has(v.color_hex)) {
+          colorMap.set(v.color_hex, v.color_hex);
+        }
+      }
+    });
+    
+    return Array.from(colorMap.values());
+  }, [product.product_variants]);
 
   return (
     <motion.div 
@@ -67,6 +85,25 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         {isPromo && !isOutOfStock && (
             <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-red-600 text-white text-[10px] md:text-xs font-black px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
                 -{promoPercent}%
+            </div>
+        )}
+
+        {/* 🚀 PASTILLA DE COLORES (Visual Stack) */}
+        {uniqueColors.length > 1 && (
+            <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">
+                {uniqueColors.slice(0, 3).map((colorHex, idx) => (
+                    <div 
+                        key={idx} 
+                        className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm"
+                        style={{ backgroundColor: colorHex }}
+                    />
+                ))}
+                {/* Indicador Numérico (Solo si hay más de 3 colores) */}
+                {uniqueColors.length > 3 && (
+                    <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
+                        +{uniqueColors.length - 3}
+                    </span>
+                )}
             </div>
         )}
       </div>
