@@ -513,30 +513,25 @@ const searchParams = useSearchParams()
 
       </div>
 
-      {/* --- 2. HERO BANNER (BLUR-PAD TECHNIQUE) --- */}
+      {/* --- 2. HERO BANNER (ELITE NATURAL FLOW MASK) --- */}
       {store.hero_url && (
-        <div className="w-full h-[22vh] md:h-[28vh] relative bg-[var(--store-border)] overflow-hidden flex items-center justify-center border-b border-[var(--store-border)]">
+        <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)]/30 flex justify-center overflow-hidden">
+          
+          {/* La máscara envuelve a la imagen como una segunda piel */}
+          <div className="relative w-full max-w-[1100px] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)] [mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)]">
+            
+            {/* Al quitar "fill" y usar "w-full h-auto", el navegador calcula la altura perfecta sin espacios vacíos y sin recortar NADA */}
+            <Image
+              src={getOptimizedUrl(store.hero_url)}
+              alt={`Banner de ${store.name}`}
+              width={1920}
+              height={600}
+              className="w-full h-auto block" 
+              crossOrigin="anonymous"
+              priority
+            />
 
-          {/* Fondo difuminado optimizado */}
-          <Image
-            src={getOptimizedUrl(store.hero_url)}
-            className="absolute inset-0 object-cover blur-[20px] opacity-40 scale-110 pointer-events-none"
-            crossOrigin="anonymous"
-            alt=""
-            fill
-            sizes="100vw"
-            quality={30} // Bajamos la calidad de la compresión porque solo es un fondo difuminado
-          />
-
-          {/* Imagen real optimizada */}
-          <Image
-            src={getOptimizedUrl(store.hero_url)}
-            alt={`Banner de ${store.name}`}
-            className="relative z-10 object-contain pointer-events-none drop-shadow-sm"
-            crossOrigin="anonymous"
-            fill
-            sizes="100vw"
-          />
+          </div>
         </div>
       )}
 
