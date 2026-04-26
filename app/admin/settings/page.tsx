@@ -96,15 +96,44 @@ export default function SettingsPage() {
         setIsDirty(true)
     }
 
-    const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
 
         const file = e.target.files[0]
         if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'error')
 
+        // 🚀 ELITE GATEKEEPER: Validación estricta de dimensiones físicas en memoria
+        try {
+            const dimensions = await new Promise<{width: number, height: number}>((resolve, reject) => {
+                const img = new window.Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(img.src); // Limpiamos la memoria del navegador inmediatamente
+                    resolve({ width: img.width, height: img.height });
+                };
+                img.onerror = () => reject('Error al leer la imagen');
+                img.src = URL.createObjectURL(file);
+            });
+
+            // Validación innegociable de la regla de diseño
+            if (dimensions.width !== 1920 || dimensions.height !== 600) {
+                if (heroInputRef.current) heroInputRef.current.value = ''; // Reseteamos el input para evitar bloqueos
+                return Swal.fire({
+                    title: 'Arquitectura Comprometida',
+                    html: `El diseño de la tienda exige que el banner mida exactamente <b>1920x600 píxeles</b>.<br><br>Tu imagen mide <b style="color: #ef4444;">${dimensions.width}x${dimensions.height}</b>.`,
+                    icon: 'warning',
+                    confirmButtonColor: '#000',
+                    confirmButtonText: 'Corregir diseño'
+                });
+            }
+        } catch (error) {
+            return Swal.fire('Error', 'El archivo de imagen está corrupto o no se puede leer.', 'error');
+        }
+
+        // Si pasa el Gatekeeper, iniciamos la carga
         setUploadingHero(true)
         try {
-            const compressedFile = await compressImage(file, 1920, 0.8)
+            // Se mantiene el compresor para optimizar el peso (KBs), aunque las dimensiones ya son correctas
+            const compressedFile = await compressImage(file, 1920, 0.8) 
             const fileName = `hero-${store.id}-${Date.now()}.jpg`
 
             const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressedFile)
@@ -116,7 +145,7 @@ export default function SettingsPage() {
             await supabase.from('stores').update({ hero_url: publicUrl }).eq('id', store.id)
             await revalidateStoreCache()
         } catch (error) {
-            Swal.fire('Error', 'No se pudo subir la imagen', 'error')
+            Swal.fire('Error', 'Falló la comunicación con el servidor al subir la imagen', 'error')
         } finally {
             setUploadingHero(false)
             if (heroInputRef.current) heroInputRef.current.value = ''

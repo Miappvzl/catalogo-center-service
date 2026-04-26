@@ -384,9 +384,9 @@ const isCompletelyOutOfStock = variants.length > 0
                                                 initial={{ opacity: 0, y: -10 }} 
                                                 animate={{ opacity: 1, y: 0, transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } }} 
                                                 exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }} 
-                                                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-lg text-xs font-black tracking-wide transition-all  origin-bottom"
+                                                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)]/10 text-[var(--store-text-main)]/85  rounded-lg text-xs font-black tracking-wide transition-all  origin-bottom"
                                             >
-                                                <Tag size={14} className=" text-[var(--store-primary-text)] shrink-0" /> {pricing.promoBadgeText}
+                                                <Tag size={14} className=" text-[var(--store-main-text)]/85 shrink-0" /> {pricing.promoBadgeText}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>

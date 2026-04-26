@@ -576,7 +576,7 @@ const searchParams = useSearchParams()
             <div className="hidden md:flex shrink-0 w-12 h-11">
               <button
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
-                className={`relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                className={`cursor-pointer relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
                 {/* El div envoltorio hace que el SVG rote perfectamente */}
@@ -585,7 +585,7 @@ const searchParams = useSearchParams()
                 </div>
 
                 {hasItems && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)]">
+                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-main-text)] text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] cursor-pointer">
                     {totalItems}
                   </span>
                 )}
