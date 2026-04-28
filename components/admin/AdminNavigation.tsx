@@ -88,7 +88,7 @@ const NewBadge = () => (
   </span>
 );
 
-// --- DESKTOP SIDEBAR ---
+// --- DESKTOP SIDEBAR (Arquitectura de Nivel Élite - Zero Reflow) ---
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
   const [copied, setCopied] = useState(false)
   const copyLink = () => {
@@ -101,119 +101,162 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white z-50 p-3 pl-[8px] border-r border-gray-100">
-      <div className="mb-10 flex items-center gap-3 px-2">
-
-        <Link href="/" className="flex items-center group active:scale-95 transition-transform">
+    <aside 
+      // 🚀 MOTOR GRÁFICO: w-[80px] cerrado, w-[260px] abierto. 
+      // will-change-width delega la animación a la GPU.
+      className="hidden lg:flex flex-col h-screen fixed left-0 top-0 bg-white/95 backdrop-blur-xl z-50 border-r border-gray-100 
+                 transition-[width,box-shadow] duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width]
+                 w-[80px] hover:w-[260px] group/sidebar overflow-hidden hover:shadow-[4px_0_40px_rgba(0,0,0,0.03)]"
+    >
+      {/* HEADER LOGO */}
+      <div className="h-20 flex items-center px-3 pl-4 flex-shrink-0">
+        <Link href="/" className="flex items-center min-w-[200px] pl-[-2px] active:scale-95 transition-transform">
           <Image
-            src={getOptimizedUrl("/pezisologo.png")}
+            src={getOptimizedUrl("/favicon-light.png")}
             alt="Preziso Logo"
-            width={200}
-            height={90}
-            className="h-10 md:h-15 w-auto object-contain"
+            width={175}
+            height={50}
+            className="h-12 w-auto object-contain object-left"
             priority
           />
         </Link>
       </div>
 
-      {/* 🚀 CORRECCIÓN: overflow-y-auto y no-scrollbar para evitar que empuje el footer */}
-      <nav className="flex-1 overflow-y-auto no-scrollbar space-y-6 relative pb-6 -mx-2 px-2">
-
-        {/* 🚀 LÓGICA DE AGRUPACIÓN (Pattern de Vercel/Stripe) */}
-        {['General', 'Ventas', 'Catálogo', 'Negocio'].map((category) => {
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-6 px-3">
+        {['General', 'Ventas', 'Catálogo', 'Negocio'].map((category, idx) => {
           const linksInCategory = NAV_LINKS.filter(link => link.category === category);
           if (linksInCategory.length === 0) return null;
 
           return (
-            <div key={category} className="space-y-0.2">
-              {/* Título de la Categoría (Sutil y Elegante) */}
-              <h3 className="px-4 text-[10px] font-medium font-black uppercase tracking-widest text-gray-400 mb-1">
+            <div key={category} className={`relative pb-2 ${idx !== 0 ? 'pt-4' : ''}`}>
+              
+              {/* 🚀 PATRÓN UX: Indicador visual de separación cuando está colapsado */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-6 w-4 h-[2px] rounded-full bg-gray-200 transition-opacity duration-[400ms] group-hover/sidebar:opacity-0" />
+
+              {/* Título de la Categoría (Se revela con el hover) */}
+              <h3 className="pl-4 pr-4 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[400ms] -translate-x-4 group-hover/sidebar:translate-x-0 whitespace-nowrap">
                 {category}
               </h3>
 
-              {linksInCategory.map((link) => {
-                if (link.isAction) return null;
-                const isActive = pathname === link.href;
+              <div className="space-y-1">
+                {linksInCategory.map((link) => {
+                  if (link.isAction) return null;
+                  const isActive = pathname === link.href;
 
-                return (
-                  <GuardedLink
-                    key={link.href}
-                    href={link.href}
-                    className={`relative flex items-center gap-3 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-medium transition-all duration-200 group ${isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
+                  return (
+                    <GuardedLink
+                      key={link.href}
+                      href={link.href}
+                      className={`relative flex items-center p-1.5 rounded-xl text-sm font-medium transition-colors duration-200 ${
+                        isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                       }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="desktop-nav-indicator"
-                        className="absolute inset-0 bg-gray-50 rounded-[var(--radius-btn)] -z-10"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
-                    <span className="relative z-10">{link.name}</span>
-                    {link.isNew && <NewBadge />}
-                  </GuardedLink>
-                );
-              })}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="desktop-nav-indicator"
+                          className="absolute inset-0 bg-gray-100 rounded-xl -z-10"
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      
+                      {/* El contenedor del ícono es rígidamente de 40x40px, garantizando 0 movimiento horizontal */}
+                      <div className="flex items-center justify-center w-10 h-10 flex-shrink-0 z-10">
+                        <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                      </div>
+                      
+                      {/* Texto que aparece fluidamente */}
+                      <span className="ml-3 font-semibold tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
+                        {link.name}
+                      </span>
 
-              {/* Botón especial para Nuevo Producto dentro de la categoría Catálogo */}
-              {category === 'Catálogo' && (
-                <div className="pt-2">
-                  <GuardedLink
-                    href="/admin/product/new"
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-btn)] text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all border border-transparent border-dashed hover:border-black"
-                  >
-                    <Plus size={18} /> Nuevo Producto
-                  </GuardedLink>
-                </div>
-              )}
+                      {link.isNew && (
+                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-[400ms] group-hover/sidebar:opacity-100 flex-shrink-0">
+                          <NewBadge />
+                        </div>
+                      )}
+                    </GuardedLink>
+                  );
+                })}
+
+                {/* Botón Nuevo Producto */}
+                {category === 'Catálogo' && (
+                  <div className="pt-2">
+                    <GuardedLink
+                      href="/admin/product/new"
+                      className="relative flex items-center p-1.5 rounded-xl text-sm font-bold text-gray-500 hover:text-black transition-colors border border-transparent group-hover/sidebar:border-gray-200 border-dashed hover:!border-black bg-white group-hover/sidebar:bg-transparent"
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 flex-shrink-0 bg-gray-50 group-hover/sidebar:bg-transparent rounded-lg">
+                        <Plus size={20} />
+                      </div>
+                      <span className="ml-3 whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0">
+                        Nuevo Producto
+                      </span>
+                    </GuardedLink>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </nav>
-      <div className="mt-auto pt-6 border-t border-gray-100 space-y-3">
 
-
-
+      {/* BOTTOM SECTION */}
+      <div className="mt-auto pt-4 border-t border-gray-100 space-y-1 px-3 pb-6 flex-shrink-0">
         {store && (
-          <div className="flex items-center justify-between p-1 rounded-[var(--radius-btn)] bg-gray-50">
+          <div className="flex items-center rounded-xl bg-white group-hover/sidebar:bg-gray-50 transition-colors overflow-hidden border border-transparent group-hover/sidebar:border-gray-100">
             <Link
               href={`/${store.slug}`}
               target="_blank"
-              className="flex-1 flex items-center gap-2 px-3 py-2 rounded-[var(--radius-badge)] text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-colors"
+              className="flex items-center flex-1 p-1.5 hover:text-black transition-colors"
             >
-              <Store size={15} /> Ver mi Tienda
+              <div className="flex items-center justify-center w-10 h-10 flex-shrink-0 text-gray-600 bg-gray-50 group-hover/sidebar:bg-transparent rounded-lg">
+                <Store size={18} />
+              </div>
+              <span className="ml-3 text-xs font-bold text-gray-600 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
+                Ver Tienda
+              </span>
             </Link>
-            <div className="w-px h-5 bg-gray-200 mx-1"></div>
-            <button
-              onClick={copyLink}
-              className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-badge)] bg-transparent hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95 shadow-none hover:shadow-subtle"
-            >
-              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-            </button>
+            
+            <div className="flex items-center pr-2 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
+              <div className="w-px h-5 bg-gray-200 mx-1"></div>
+              <button
+                onClick={copyLink}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-gray-600 hover:text-black transition-all active:scale-95"
+              >
+                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ENLACE DE SOPORTE TÉCNICO */}
         <a
-          href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+          href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all w-full text-left"
+          className="flex items-center p-1.5 rounded-xl hover:bg-gray-50 transition-colors text-gray-600 hover:text-black"
         >
-          <Headset size={16} /> Soporte Técnico
+          <div className="flex items-center justify-center w-10 h-10 flex-shrink-0">
+            <Headset size={18} />
+          </div>
+          <span className="ml-3 text-xs font-bold whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
+            Soporte Técnico
+          </span>
         </a>
-
 
         <button
           onClick={onLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left"
+          className="flex items-center p-1.5 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors w-full text-left"
         >
-          <LogOut size={16} /> Cerrar Sesión
+          <div className="flex items-center justify-center w-10 h-10 flex-shrink-0">
+            <LogOut size={18} />
+          </div>
+          <span className="ml-3 text-xs font-bold whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
+            Cerrar Sesión
+          </span>
         </button>
       </div>
     </aside>
-  )
+  );
 }
 
 // --- MOBILE SIDEBAR (Arquitectura de Nivel Élite) ---
@@ -424,7 +467,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
   const actionLink = NAV_LINKS.find(link => link.isAction)
   
   const bottomBarLinks = [
-    normalLinks[0], // Inicio
+    normalLinks[0], // Inicio 
     normalLinks[1], // Pedidos
     actionLink,     // Central
     normalLinks[2], // Inventario

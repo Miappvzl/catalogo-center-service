@@ -7,9 +7,16 @@ export async function proxy(request: NextRequest) {
     request: { headers: request.headers },
   })
 
-  // 1. SUPABASE AUTH (Mantenemos tu lógica de seguridad intacta)
+  console.log("=== LEYENDO VARIABLES ===");
+  console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Existe" : "No Existe");
+
+  // 🔥 EL BYPASS DE EMERGENCIA
+  // Reemplaza el string con la URL real de tu Worker de Cloudflare
+  const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wandering-surf-2d0c.quanzosinc-179.workers.dev";
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    proxyUrl, // Usamos nuestra nueva constante puente
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

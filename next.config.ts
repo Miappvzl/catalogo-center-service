@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'wandering-surf-2d0c.quanzosinc-179.workers.dev', // Añade tu Worker aquí
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'lrmhgzohfclrepwvrhdy.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
