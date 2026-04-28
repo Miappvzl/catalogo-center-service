@@ -138,7 +138,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                 {category}
               </h3>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {linksInCategory.map((link) => {
                   if (link.isAction) return null;
                   const isActive = pathname === link.href;
@@ -160,12 +160,12 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                       )}
                       
                       {/* El contenedor del ícono es rígidamente de 40x40px, garantizando 0 movimiento horizontal */}
-                      <div className="flex items-center justify-center w-10 h-10 flex-shrink-0 z-10">
+                      <div className="flex items-center justify-center w-10 h-8 flex-shrink-0 z-10">
                         <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                       </div>
                       
                       {/* Texto que aparece fluidamente */}
-                      <span className="ml-3 font-semibold tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
+                      <span className="ml-3 font-medium tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
                         {link.name}
                       </span>
 
