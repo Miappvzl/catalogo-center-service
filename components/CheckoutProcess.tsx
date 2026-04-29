@@ -8,6 +8,10 @@ import { compressImage } from '@/utils/imageOptimizer'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 import { Icon } from '@iconify/react'
+// 🚀 IMPORTS DE LOGÍSTICA
+import { MrwIcon } from '@/components/ui/icons/MrwIcon'
+import { ZoomIcon } from '@/components/ui/icons/ZoomIcon'
+import { TealcaIcon } from '@/components/ui/icons/TealcaIcon'
 
 
 // --- TIPOS ESTRICTOS ---
@@ -44,6 +48,13 @@ const BrandLogos = {
     Efectivo: ({ className, size }: any) => <Icon icon="bi:cash" className={className} width={size} height={size} />,
     Zinli: ({ className, size }: any) => <Icon icon="mdi:wallet-bifold" className={className} width={size} height={size} />,
     WallyTech: ({ className, size }: any) => <Icon icon="solar:wallet-bold" className={className} width={size} height={size} />
+}
+
+// 🚀 DICCIONARIO DE AGENCIAS DE ENVÍO
+const CourierLogos: { [key: string]: any } = {
+    'MRW': ({ className }: any) => <MrwIcon className={className} />,
+    'Zoom': ({ className }: any) => <ZoomIcon className={className} />,
+    'Tealca': ({ className }: any) => <TealcaIcon className={className} />
 }
 
 export default function CheckoutProcess({
@@ -676,10 +687,33 @@ export default function CheckoutProcess({
                             <div>
                                 <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">Agencia de Envío *</label>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {activeCouriers.map(c => (
-                                        <button key={c} onClick={() => setClientData({ ...clientData, courier: c })} className={`py-4 rounded-md text-xs font-bold transition-all border ${clientData.courier === c ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]'}`}>{c}</button>
-                                    ))}
-                                </div>
+    {activeCouriers.map(c => {
+        const LogoComponent = CourierLogos[c];
+        const isSelected = clientData.courier === c;
+        
+        return (
+            <button 
+                key={c} 
+                onClick={() => setClientData({ ...clientData, courier: c })} 
+                className={`flex flex-col items-center justify-center gap-3 py-4 rounded-md transition-all border group ${
+                    isSelected 
+                        ? 'border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]' 
+                        : 'border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)] hover:text-[var(--store-text-main)]'
+                }`}
+            >
+                {/* 🚀 EL SVG ESCALA Y HEREDA EL COLOR AUTOMÁTICAMENTE */}
+                {LogoComponent && (
+                    <div className="h-6 w-full flex items-center justify-center px-4">
+                        <LogoComponent className="h-full w-auto max-w-full" />
+                    </div>
+                )}
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                    {c}
+                </span>
+            </button>
+        )
+    })}
+</div>
                             </div>
                             {clientData.courier && (
                                 <div className="space-y-6 animate-in fade-in pt-2">
