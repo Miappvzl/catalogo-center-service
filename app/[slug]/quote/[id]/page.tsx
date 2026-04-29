@@ -343,11 +343,12 @@ export default function QuotePublicPage() {
                         </div>
                     )}
 
-                   {/* 🚀 TABLA DE ARTÍCULOS ULTRA-COMPACTA */}
+                  {/* 🚀 TABLA DE ARTÍCULOS ULTRA-COMPACTA (Con Precio Unitario B2B) */}
                     <div className="mb-6 w-full">
                         <div className="grid grid-cols-12 gap-2 border-b border-zinc-300 pb-1.5 mb-1.5 text-[8px] font-bold uppercase tracking-widest text-zinc-500">
-                            <div className="col-span-8">Descripción</div>
+                            <div className="col-span-6">Descripción</div>
                             <div className="col-span-1 text-center">Cant</div>
+                            <div className="col-span-2 text-right">Precio U.</div>
                             <div className="col-span-3 text-right">Total USD / Bs</div>
                         </div>
                         
@@ -357,12 +358,15 @@ export default function QuotePublicPage() {
                             ) : (
                                 items.map(item => (
                                     <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-1.5 border-b border-zinc-100 items-center">
-                                        <div className="col-span-8 pr-2">
+                                        <div className="col-span-6 pr-2">
                                             <p className="text-[11px] font-bold text-zinc-900 leading-none truncate">{item.product_name}</p>
                                             {item.variant_info && <p className="text-[9px] text-zinc-400 mt-0.5 truncate">{item.variant_info}</p>}
                                         </div>
                                         <div className="col-span-1 text-center">
                                             <span className="text-[11px] font-mono font-medium text-zinc-700">{item.quantity}</span>
+                                        </div>
+                                        <div className="col-span-2 text-right">
+                                            <span className="text-[10px] font-mono font-medium text-zinc-500">${Number(item.price_at_purchase).toFixed(2)}</span>
                                         </div>
                                         <div className="col-span-3 text-right flex flex-col justify-center">
                                             <p className="text-[11px] font-black text-zinc-900 tabular-nums leading-none">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
