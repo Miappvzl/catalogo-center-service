@@ -381,7 +381,7 @@ export default function QuotePublicPage() {
                             {!isPaymentVerified && (
                                 <div className="p-3 rounded-lg bg-zinc-50 border border-black/5">
                                     <p className="text-[9px] text-zinc-400 leading-relaxed italic">
-                                        Esta proforma garantiza el precio en divisas. Los montos en moneda nacional son referenciales y se ajustarán a la tasa BCV oficial al momento de la conciliación del pago.
+                                        Esta proforma muestra los precios en divisas. Los montos en moneda nacional son referenciales y se ajustarán a la tasa BCV oficial al momento de la conciliación del pago.
                                     </p>
                                 </div>
                             )}
