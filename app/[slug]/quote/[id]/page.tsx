@@ -279,8 +279,9 @@ export default function QuotePublicPage() {
                 <div id="invoice-container" className="bg-white rounded-xl md:rounded-2xl p-6 md:p-10 shadow-sm border border-zinc-200">
                     
                     {/* ENCABEZADO ESTRUCTURAL COMPACTO */}
-                    <div className="flex flex-col md:flex-row justify-between items-start border-b border-zinc-200 pb-4 mb-4 gap-4">
-                        <div className="flex flex-col items-start max-w-[50%]">
+                    {/* 🚀 FIX: Forzamos flex-row e items-end en modo impresión */}
+                    <div className="flex flex-col md:flex-row print:flex-row justify-between items-start border-b border-zinc-200 pb-4 mb-4 gap-4">
+                        <div className="flex flex-col items-start max-w-[50%] print:max-w-[50%]">
                             {store.logo_url ? (
                                 <div className="h-10 mb-2">
                                     <img src={logoBase64 || getOptimizedUrl(store.logo_url)} alt={store.name} className="h-full w-auto object-contain" />
@@ -290,7 +291,7 @@ export default function QuotePublicPage() {
                                     <Store size={20} />
                                 </div>
                             )}
-                            <h1 className="text-lg font-black tracking-tight leading-none text-zinc-900 mb-0.5">{store.name}</h1>
+                          <h1 className="text-lg font-black tracking-tight leading-none text-zinc-900 mb-0.5">{store.name}</h1>
                             {store?.fiscal_profile !== 'informal' && (
                                 <div className="text-[9px] text-zinc-500 leading-tight">
                                     {store.legal_name && <span className="font-bold text-zinc-700 mr-1">{store.legal_name}</span>}
@@ -300,7 +301,8 @@ export default function QuotePublicPage() {
                             )}
                         </div>
 
-                        <div className="flex flex-col md:items-end text-left md:text-right w-full md:w-auto">
+                        {/* 🚀 FIX: Forzamos alineación a la derecha en impresión */}
+                        <div className="flex flex-col md:items-end print:items-end text-left md:text-right print:text-right w-full md:w-auto print:w-auto">
                             <p className="text-xl font-black tracking-tighter text-zinc-900 uppercase leading-none">
                                 {!isPaymentVerified ? 'Proforma' : 'Orden de Pedido'}
                             </p>
@@ -314,8 +316,9 @@ export default function QuotePublicPage() {
 
 
                     {/* SECCIÓN CLIENTE */}
-                    <div className="flex flex-col md:flex-row justify-between gap-8 mb-10">
-                        <div className="flex-1">
+                    {/* 🚀 FIX: Mantenemos el diseño de 2 columnas en el PDF */}
+                    <div className="flex flex-col md:flex-row print:flex-row justify-between gap-8 mb-10">
+                        <div className="flex-1 print:w-1/2">
                             <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Facturado a:</p>
                             <p className="text-sm font-bold text-zinc-900 mb-1">{order.customer_name}</p>
                             <div className="text-xs text-zinc-500 font-mono space-y-0.5">
@@ -323,9 +326,9 @@ export default function QuotePublicPage() {
                                 {order.customer_phone && <p>Telf: {order.customer_phone}</p>}
                                 {order.customer_address && <p className="font-sans max-w-[250px] leading-tight mt-1">{order.customer_address}</p>}
                             </div>
-                        </div>
+                       </div>
                         {order.shipping_method !== 'pickup' && (
-                            <div className="flex-1 md:text-right">
+                            <div className="flex-1 md:text-right print:text-right print:w-1/2">
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Enviar a:</p>
                                 <p className="text-xs font-medium text-zinc-700 leading-snug md:ml-auto max-w-[250px]">{order.delivery_info}</p>
                             </div>
@@ -379,9 +382,9 @@ export default function QuotePublicPage() {
                     </div>
 
                    {/* 🚀 RESUMEN FINANCIERO INTEGRAL (FASE 4 - Polish) */}
-                    <div className="avoid-break flex flex-col md:flex-row justify-between items-end md:items-start pt-2 gap-6">
+                    <div className="avoid-break flex flex-col md:flex-row print:flex-row justify-between items-end md:items-start print:items-start pt-2 gap-6">
                         {/* Notas Legales (Lado izquierdo, muy discreto) */}
-                        <div className="w-full md:w-[45%]">
+                        <div className="w-full md:w-[45%] print:w-[45%]">
                             {!isPaymentVerified && (
                                 <div className="p-3 rounded-lg bg-zinc-50 border border-black/5">
                                     <p className="text-[9px] text-zinc-400 leading-relaxed italic">
@@ -389,10 +392,10 @@ export default function QuotePublicPage() {
                                     </p>
                                 </div>
                             )}
-                        </div>
+                       </div>
 
                         {/* Columna de Cálculos (Lado derecho) */}
-                       <div className="w-full md:w-[280px]">
+                       <div className="w-full md:w-[280px] print:w-[280px]">
                             <div className="space-y-1 border-b border-zinc-200 pb-2 mb-2">
                                 <div className="flex justify-between text-[10px] text-zinc-500 font-medium">
                                     <span>Subtotal Base</span>
