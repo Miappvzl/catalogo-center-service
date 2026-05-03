@@ -258,7 +258,7 @@ export default function InventoryPage() {
             </div>
 
             <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
-                <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
                     {/* CONTROLES */}
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
                         {/* Filtros Estilo "Clean Look" */}

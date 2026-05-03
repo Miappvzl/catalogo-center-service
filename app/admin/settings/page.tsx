@@ -199,7 +199,7 @@ export default function SettingsPage() {
         <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen">
             <AdminHeader store={store} title="Configuración" />
 
-            <div className="max-w-4xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8 mt-6 md:mt-8">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8 mt-6 md:mt-8">
 
                 <div className="space-y-6">
                     <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
