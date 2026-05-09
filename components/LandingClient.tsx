@@ -99,7 +99,7 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
         transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
         className="fixed top-0 left-0 right-0 z-[100] px-4 md:px-4 py-3 flex justify-center"
       >
-        <div className="w-full max-w-7xl bg-black/70 backdrop-blur-xl rounded-full px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="w-full max-w-7xl bg-white/40 backdrop-blur-xl rounded-full px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_10px_13px_rgba(0,0,0,0.1)]">
           
           {/* Logo Inyectado */}
           <div className="flex items-center">
@@ -108,7 +108,7 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
                 alt="Preziso Logo" 
                 width="auto" 
                 height="20px" 
-                className="h-10 md:h-12 w-auto object-contain brightness-0 invert" 
+                className="h-10 md:h-12 w-auto object-contain brightness-0" 
                 src="/pezisologo.png" 
               />
             </a>
@@ -121,7 +121,7 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
                 key={item.name} 
                 href={item.href} 
                 onClick={(e) => handleNavClick(e, item.href)}
-                className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest hover:text-white transition-colors"
+                className="text-[10px] font-mono text-slate-500 uppercase tracking-widest hover:text-zinc-900 transition-colors"
               >
                 {item.name}
               </a>
@@ -132,22 +132,22 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
           <div className="flex items-center gap-3 md:gap-4">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1  rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
-              <span className="text-[12px] font-mono text-zinc-200 uppercase tracking-tighter">BCV: {bcvRate}</span>
+              <span className="text-[12px] font-mono text-zinc-700 uppercase tracking-tighter">BCV: {bcvRate}</span>
             </div>
             
             <Link 
                 href="/login" 
-                className="group flex items-center gap-2 border border-white/80  px-6 md:px-10 py-3 rounded-full text-white/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
+                className="group flex items-center gap-2   px-6 md:px-10 py-3 rounded-full text-zinc-900/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-black hover:text-white active:scale-95"
               >
            
               <span>Crear Tienda</span>
-              <ArrowUpRight size={16} className="text-white/80 group-hover:text-white transition-colors" />
+              <ArrowUpRight size={16} className="text-zinc-900/80 group-hover:text-white transition-colors" />
             
             </Link>
 
             {/* Menú Hamburguesa (Mobile) */}
             <button 
-              className="md:hidden p-2 text-white active:scale-95 transition-transform"
+              className="md:hidden p-2 text-zinc-900 active:scale-95 transition-transform"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu size={20} />
@@ -164,14 +164,14 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: "-100%" }}
             transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-3xl flex flex-col px-6 py-8"
+            className="fixed inset-0 z-[110] bg-white/95 backdrop-blur-3xl flex flex-col px-6 py-8"
           >
             {/* Header del Menú Móvil */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
-              <img alt="Preziso Logo" className="h-15 w-auto object-contain brightness-0 invert" src="/pezisologo.png" />
+            <div className="flex items-center justify-between border-b border-slate-200 pb-6 mb-8">
+              <img alt="Preziso Logo" className="h-15 w-auto object-contain brightness-0" src="/pezisologo.png" />
               <button 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 bg-white/10 rounded-full text-white active:scale-95"
+                className="p-3 bg-white/10 rounded-full text-zinc-900 active:scale-95"
               >
                 <X size={20} />
               </button>
@@ -187,7 +187,7 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
                   initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 * i, duration: 0.5, ease: "easeOut" }}
-                  className="text-4xl font-medium tracking-tighter text-zinc-500 hover:text-white uppercase transition-colors flex items-center justify-between border-b border-white/5 pb-4"
+                  className="text-4xl font-medium tracking-tighter text-slate-500 hover:text-zinc-900 uppercase transition-colors flex items-center justify-between border-b border-slate-200 pb-4"
                 >
                   {item.name}
                   <ArrowUpRight size={24} className="opacity-0 hover:opacity-100 transition-opacity" />
@@ -202,11 +202,11 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
               transition={{ delay: 0.5 }}
               className="mt-auto pb-8"
             >
-              <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-2xl justify-center mb-6">
+              <div className="flex items-center gap-2 px-4 py-3 bg-slate-100/50 border border-slate-200 rounded-2xl justify-center mb-6">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Tasa BCV Activa: {bcvRate} Bs</span>
+                <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Tasa BCV Activa: {bcvRate} Bs</span>
               </div>
-              <button className="w-full bg-[#3600ff] text-white py-4 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 flex justify-center items-center gap-2">
+              <button className="w-full bg-black text-zinc-900 py-4 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 flex justify-center items-center gap-2">
                 Crear Tienda ahora <ArrowUpRight size={16} />
               </button>
             </motion.div>
@@ -237,7 +237,7 @@ const NodeZeroHero = () => {
   return (
     <section 
       ref={containerRef}
-      className="relative h-[150vh] w-full bg-black flex flex-col items-center justify-start overflow-hidden"
+      className="relative h-[150vh] w-full bg-white flex flex-col items-center justify-start overflow-hidden"
     >
      
       <motion.div 
@@ -250,11 +250,11 @@ const NodeZeroHero = () => {
             initial={{ opacity: 0, letterSpacing: "1em", filter: "blur(10px)" }}
             animate={{ opacity: 1, letterSpacing: "-0.05em", filter: "blur(0px)" }}
             transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
-            className="text-[12vw] md:text-[10rem] font-black leading-[0.8] text-white uppercase"
+            className="text-[12vw] md:text-[10rem] font-black leading-[0.8] text-zinc-900 uppercase"
           >
             PREZISO <br />
             {/* Solo cambias la palabra aquí adentro */}
-            <span className="text-white/40">COMMERCE</span>
+            <span className="text-zinc-900/40">COMMERCE</span>
           </motion.h1>
           
           <motion.div
@@ -263,7 +263,7 @@ const NodeZeroHero = () => {
             transition={{ delay: 1, duration: 1 }}
             className="mt-12 flex flex-col items-center gap-8"
           >
-            <p className="text-zinc-500 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] max-w-lg leading-relaxed">
+            <p className="text-slate-500 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] max-w-lg leading-relaxed">
              Tu tienda. Multimoneda. Sincronizada al BCV. Domina el caos de vender en Venezuela con un ecosistema de punto de venta y e-commerce. <br />
             </p>
             
@@ -271,13 +271,13 @@ const NodeZeroHero = () => {
             <div className="mt-4 flex flex-col items-center gap-4">
               <Link 
                 href="/admin" 
-                className="group flex items-center gap-3 bg-white px-8 md:px-10 py-4 rounded-full text-black font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-[#3600ff] hover:text-white active:scale-95"
+                className="group flex items-center gap-3 bg-white border border-black px-8 md:px-10 py-4 rounded-full text-black font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-black hover:text-white active:scale-95"
               >
                 <span>Crear tienda gratis</span>
                 <ArrowUpRight 
                   size={18} 
                   strokeWidth={2.5} 
-                  className="text-black group-hover:text-white transition-all duration-300 group-hover:translate-x-1" 
+                  className="text-black  group-hover:text-white transition-all duration-300 group-hover:translate-x-1" 
                 />
               </Link>
               
@@ -292,7 +292,7 @@ const NodeZeroHero = () => {
 
       {/* Grid de Fondo Dinámico (Ruido de Fondo) */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(#3600ff_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
       </div>
     </section>
   )
@@ -315,26 +315,26 @@ const NodeOneFriction = () => {
  const StressFragment = ({ icon: Icon, label, pos, rotStart, rotEnd }: { icon: any, label: string, pos: string, rotStart: number, rotEnd: number }) => (
     <motion.div 
       style={{ rotate: useTransform(scrollYProgress, [0, 1], [rotStart, rotEnd]) }}
-      className={cn("absolute p-4 bg-zinc-900/50 border border-red-500/30 backdrop-blur-sm rounded-lg flex items-center gap-3 z-20 shadow-xl", pos)}
+      className={cn("absolute p-4 bg-slate-100/50 border border-red-500/30 backdrop-blur-sm rounded-lg flex items-center gap-3 z-20 shadow-xl", pos)}
     >
       <Icon size={18} className="text-red-500 animate-pulse" />
-      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-tighter">{label}</span>
+      <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">{label}</span>
     </motion.div>
   )
 
   return (
-    <section id="pos" ref={targetRef} className="relative min-h-[200vh] w-full bg-black py-40 flex flex-col items-center border-t border-white/5">
+    <section id="pos" ref={targetRef} className="relative min-h-[200vh] w-full bg-white py-40 flex flex-col items-center border-t border-slate-200">
       <div className="sticky top-1/2 -translate-y-1/2 z-10 text-center max-w-4xl px-6">
         <motion.span 
           style={{ opacity: useTransform(scrollYProgress, [0, 0.2], [0, 1]) }}
-          className="text-[#3600ff] font-mono text-[10px] tracking-[0.5em] uppercase mb-6 block"
+          className="text-black font-mono text-[10px] tracking-[0.5em] uppercase mb-6 block"
         >
           El Mostrador y el WhatsApp están desconectados
         </motion.span>
         
         <motion.h2 
           style={{ scale: chaosScale, filter: `blur(${blurValue})` }}
-          className="text-5xl md:text-8xl font-medium tracking-tighter text-white leading-[0.9] uppercase"
+          className="text-5xl md:text-8xl font-medium tracking-tighter text-zinc-900 leading-[0.9] uppercase"
         >
           EL TERROR DEL <br />
           <span className="text-zinc-700 italic">CIERRE DE CAJA.</span>
@@ -342,21 +342,21 @@ const NodeOneFriction = () => {
 
         <motion.div 
           style={{ opacity: useTransform(scrollYProgress, [0.3, 0.5], [0, 1]) }}
-          className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left border-t border-white/10 pt-12"
+          className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left border-t border-slate-200 pt-12"
         >
           <div className="space-y-4">
-            <h4 className="text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <Calculator size={14} className="text-[#3600ff]" /> Descuadre Multimoneda
+            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+              <Calculator size={14} className="text-black" /> Descuadre Multimoneda
             </h4>
-            <p className="text-zinc-500 text-sm leading-relaxed font-light">
+            <p className="text-slate-500 text-sm leading-relaxed font-light">
               Cobras en efectivo, das vuelto en bolívares, anotas en un cuaderno y al final del día la caja no cuadra. Cada minuto sumando billetes es tiempo que pierdes de hacer crecer tu negocio.
             </p>
           </div>
           <div className="space-y-4">
-            <h4 className="text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <ShoppingBag size={14} className="text-[#3600ff]" /> Inventario Fantasma
+            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+              <ShoppingBag size={14} className="text-black" /> Inventario Fantasma
             </h4>
-            <p className="text-zinc-500 text-sm leading-relaxed font-light">
+            <p className="text-slate-500 text-sm leading-relaxed font-light">
               Vendes la última franela en tu mostrador físico, pero alguien te la compra por Instagram 5 minutos después. Preziso sincroniza tu Punto de Venta (POS) y tu E-commerce en el mismo segundo.
             </p>
           </div>
@@ -370,7 +370,7 @@ const NodeOneFriction = () => {
 
       <motion.div 
         style={{ opacity: useTransform(scrollYProgress, [0, 0.5, 1], [0, 0.4, 0]), rotate: chaosRotate }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-[#3600ff]/10 rounded-full blur-[120px] pointer-events-none"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-black/10 rounded-full blur-[120px] pointer-events-none"
       />
     </section>
   )
@@ -395,22 +395,22 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
   const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
 
   return (
-    <section  id="funciones" ref={containerRef} className="relative min-h-screen w-full bg-[#030303] flex items-center justify-center py-32 border-t border-white/5 overflow-hidden">
+    <section  id="funciones" ref={containerRef} className="relative min-h-screen w-full bg-slate-50/50 flex items-center justify-center py-32 border-t border-slate-200 overflow-hidden">
       
       {/* Luz de Fondo del Núcleo */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#3600ff]/10 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-black/10 rounded-full blur-[150px] pointer-events-none" />
 
       <motion.div 
         style={{ scale: scaleUp, opacity: opacityIn }}
         className="w-full max-w-6xl px-6 relative z-10 flex flex-col items-center"
       >
-        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-4">Prueba Empírica Interactiva</span>
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase text-center mb-16">
+        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-4">Prueba Empírica Interactiva</span>
+        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-16">
           El fin del cálculo manual.
         </h2>
 
         {/* El Motor de Conversión */}
-        <div className="w-full bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-16 shadow-[0_0_50px_rgba(54,0,255,0.05)] relative overflow-hidden group">
+        <div className="w-full bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl p-8 md:p-16 shadow-[0_0_50px_rgba(0,0,0,0.03)] relative overflow-hidden group">
           
           {/* Grid de Fondo de la UI */}
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] bg-[size:20px_20px]" />
@@ -419,10 +419,10 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
             
             {/* Lado USD (Input) */}
             <div className="w-full md:w-5/12 flex flex-col items-center md:items-start">
-              <span className="text-zinc-500 font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+              <span className="text-slate-500 font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Valor de tu producto (USD)
               </span>
-              <div className="text-6xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
+              <div className="text-6xl md:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2">
                 <span className="text-zinc-600">$</span>
                 <motion.span>{usdValue}</motion.span>
               </div>
@@ -435,7 +435,7 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
                   max="1000" 
                   value={usdValue}
                   onChange={(e) => setUsdValue(Number(e.target.value))}
-                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-crosshair outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-[#3600ff] [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white transition-all"
+                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-crosshair outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white transition-all"
                 />
                 <div className="flex justify-between mt-4 text-[10px] font-mono text-zinc-600">
                   <span>Arrastra para simular</span>
@@ -446,17 +446,17 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
 
             {/* Conector Central */}
             <div className="hidden md:flex flex-col items-center justify-center relative">
-              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-[#3600ff] to-transparent relative overflow-hidden">
+              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-slate-300 to-transparent relative overflow-hidden">
                 <motion.div 
                   animate={{ y: ["-100%", "100%"] }}
                   transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                   className="absolute top-0 left-0 w-full h-1/2 bg-white"
                 />
               </div>
-              <div className="w-10 h-10 border border-white/20 bg-black flex items-center justify-center my-4 rotate-45 group-hover:rotate-0 transition-transform duration-700">
-                <ArrowRightLeft size={16} className="text-[#3600ff] -rotate-45 group-hover:rotate-0 transition-transform duration-700" />
+              <div className="w-10 h-10 border border-slate-300 bg-white flex items-center justify-center my-4 rotate-45 group-hover:rotate-0 transition-transform duration-700">
+                <ArrowRightLeft size={16} className="text-black -rotate-45 group-hover:rotate-0 transition-transform duration-700" />
               </div>
-              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-[#3600ff] to-transparent relative overflow-hidden">
+              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-slate-300 to-transparent relative overflow-hidden">
                 <motion.div 
                   animate={{ y: ["-100%", "100%"] }}
                   transition={{ repeat: Infinity, duration: 1, ease: "linear", delay: 0.5 }}
@@ -467,11 +467,11 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
 
             {/* Lado Bs (Output Automatizado) */}
             <div className="w-full md:w-5/12 flex flex-col items-center md:items-end">
-              <span className="text-[#3600ff] font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                Lo que ve tu cliente (Bs) <div className="w-2 h-2 rounded-full bg-[#3600ff] animate-ping" />
+              <span className="text-black font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+                Lo que ve tu cliente (Bs) <div className="w-2 h-2 rounded-full bg-black animate-ping" />
               </span>
-              <div className="text-5xl md:text-8xl font-light text-white tracking-tighter flex items-center gap-2">
-                <span className="text-[#3600ff]">Bs</span>
+              <div className="text-5xl md:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2">
+                <span className="text-black">Bs</span>
                 {/* Re-renderización instantánea para simular velocidad de DB */}
                 <motion.span 
                   key={bsValue}
@@ -482,7 +482,7 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
                   {bsValue}
                 </motion.span>
               </div>
-              <p className="mt-10 text-xs text-zinc-500 font-mono text-right max-w-[250px]">
+              <p className="mt-10 text-xs text-slate-500 font-mono text-right max-w-[250px]">
                 Preziso intercepta la variación del BCV y reescribe tu base de datos global en &lt; 400ms. Cero intervención humana requerida.
               </p>
             </div>
@@ -511,28 +511,28 @@ const NodeThreeCommandCenter = () => {
       title: "Visión de Rayos X",
       desc: "Controla tu flujo de caja en USD y Bs, monitorea pedidos por despachar y visualiza ingresos netos en tiempo real. Cero cuadernos, cero errores.",
       icon: LayoutDashboard,
-      color: "#ffffff",
+      color: "#000000",
       image: "/image_948a1a.webp" // Dashboard Administrativo
     },
     {
       title: "Precios Inteligentes",
       desc: "Fija precios base y márgenes. Preziso reescribe tus etiquetas en Bs al vuelo siguiendo el BCV. Sincronización total en menos de 400ms.",
       icon: Settings2,
-      color: "#ffffff",
+      color: "#000000",
       image: "/image_9486b6.webp" // Gestión de Precios
     },
     {
       title: "Stock Milimétrico",
       desc: "Gestión avanzada de variantes. Recibe alertas de stock crítico y controla cada talla y color con una interfaz diseñada para la velocidad.",
       icon: PackageSearch,
-      color: "#ffffff",
+      color: "#000000",
       image: "/image_9482ba.webp" // Control de Inventario
     },
     {
       title: "Ecosistema B2B",
       desc: "Gestiona tu red de promotores y presupuestos. Liquida comisiones y convierte cotizaciones en ventas con un solo clic.",
       icon: ClipboardCheck,
-      color: "#ffffff",
+      color: "#000000",
       image: "/image_942cbe.webp" // Gestión de Presupuestos
     }
   ]
@@ -545,7 +545,7 @@ const NodeThreeCommandCenter = () => {
   })
 
   return (
-    <section id="adn" ref={containerRef} className="relative min-h-[400vh] bg-black border-t border-white/5">
+    <section id="adn" ref={containerRef} className="relative min-h-[400vh] bg-white border-t border-slate-200">
       
       {/* EL CONTENEDOR STICKY: Mantiene la UI visible mientras se recorren los 400vh */}
       <div className="sticky top-0 h-screen w-full flex items-center overflow-hidden">
@@ -571,10 +571,10 @@ const NodeThreeCommandCenter = () => {
                       <f.icon style={{ color: f.color }} size={24} />
                     </div>
                     <div>
-                      <h3 className="text-4xl lg:text-6xl font-black tracking-tighter text-white uppercase leading-[0.85] mb-6">
+                      <h3 className="text-4xl lg:text-6xl font-black tracking-tighter text-zinc-900 uppercase leading-[0.85] mb-6">
                         {f.title}
                       </h3>
-                      <p className="text-zinc-500 text-sm lg:text-xl leading-relaxed max-w-md font-light">
+                      <p className="text-slate-500 text-sm lg:text-xl leading-relaxed max-w-md font-light">
                         {f.desc}
                       </p>
                     </div>
@@ -591,10 +591,7 @@ const NodeThreeCommandCenter = () => {
                   [i / features.length, (i + 1) / features.length],
                   ["20px", "60px"]
                 )
-                const color = useTransform(
-                  scrollYProgress,
-                  [i / features.length, (i + 1) / features.length],
-                  ["#18181b", "#3600ff"]
+               const color = useTransform(scrollYProgress, [i / features.length, (i + 1) / features.length], ["#e2e8f0", "#000000"]
                 )
                 return (
                   <motion.div 
@@ -609,7 +606,7 @@ const NodeThreeCommandCenter = () => {
 
           {/* COLUMNA DERECHA: MOCKUP DE PANEL ADMINISTRATIVO */}
           <div className="relative z-10 w-full lg:w-7/12 flex justify-center lg:justify-end">
-            <div className="relative aspect-[16/10] w-full max-w-[700px] rounded-2xl lg:rounded-[2.5rem] overflow-hidden border border-white/10 bg-[#050505] shadow-[0_0_100px_rgba(0,0,0,0.8)]">
+            <div className="relative aspect-[16/10] w-full max-w-[700px] rounded-2xl lg:rounded-[2.5rem] overflow-hidden border border-slate-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
               
               {/* Reflejo de cristal superior */}
               <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/5 z-10 pointer-events-none" />
@@ -640,7 +637,7 @@ const NodeThreeCommandCenter = () => {
             <div className="lg:hidden absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-4">
               {features.map((_, i) => {
                 const scale = useTransform(opacities[i], [0, 1], [0.8, 1.3])
-                const bg = useTransform(opacities[i], [0, 1], ["#27272a", "#3600ff"])
+                const bg = useTransform(opacities[i], [0, 1], ["#cbd5e1", "#000000"])
                 return <motion.div key={i} style={{ scale, backgroundColor: bg }} className="w-2.5 h-2.5 rounded-full" />
               })}
             </div>
@@ -690,12 +687,12 @@ const NodeFourNeural =  ({ bcvRate }: { bcvRate: number }) => {
   }
 
   return (
-    <section className="relative min-h-[120vh] w-full bg-black py-40 overflow-hidden flex flex-col items-center border-t border-white/5">
+    <section className="relative min-h-[120vh] w-full bg-white py-40 overflow-hidden flex flex-col items-center border-t border-slate-200">
       
       {/* Texto Estructural */}
       <div className="max-w-7xl px-6 relative z-20 w-full text-center mb-20 pointer-events-none">
-        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Fricción Cero en Front-End</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Fricción Cero en Front-End</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
           Experiencia <br />
           <span className="text-zinc-600">Magnética.</span>
         </h2>
@@ -710,11 +707,11 @@ const NodeFourNeural =  ({ bcvRate }: { bcvRate: number }) => {
       >
         <motion.div 
           style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-          className="relative w-[340px] h-[700px] bg-[#050505] rounded-[3rem] border-[8px] border-zinc-900 shadow-[0_0_50px_rgba(54,0,255,0.1)] p-2 will-change-transform"
+          className="relative w-[340px] h-[700px] bg-white rounded-[3rem] border-[8px] border-slate-200 shadow-[0_0_50px_rgba(0,0,0,0.06)] p-2 will-change-transform"
         >
           {/* Muesca del teléfono */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-zinc-900 rounded-b-2xl z-50 flex items-center justify-center">
-             <div className="w-16 h-1.5 bg-black rounded-full" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-200 rounded-b-2xl z-50 flex items-center justify-center">
+             <div className="w-16 h-1.5 bg-white rounded-full" />
           </div>
 
           {/* 🚀 CLON EXACTO DE TU PRODUCT MODAL INYECTANDO TUS VARIABLES CSS */}
@@ -790,7 +787,7 @@ style={{
                           </div>
                           <div className="flex flex-wrap gap-3">
                               <button className="relative flex items-center justify-center overflow-hidden w-10 h-10 rounded-full border border-1 ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110 bg-[#1A1A1A]">
-                                  <Check size={16} className="text-white mix-blend-difference" strokeWidth={3} />
+                                  <Check size={16} className="text-zinc-900 mix-blend-difference" strokeWidth={3} />
                               </button>
                               <button className="relative flex items-center justify-center overflow-hidden w-10 h-10 rounded-full border border-3 hover:scale-105 border-[var(--store-border)] bg-[#E5E5E5]"></button>
                           </div>
@@ -847,7 +844,7 @@ style={{
             x: useTransform(mouseX, [-0.5, 0.5], [-50, 50]),
             y: useTransform(mouseY, [-0.5, 0.5], [-50, 50]),
           }}
-          className="absolute inset-0 bg-[#3600ff]/20 blur-[100px] -z-10 rounded-full"
+          className="absolute inset-0 bg-slate-200/50 blur-[100px] -z-10 rounded-full"
         />
       </div>
     </section>
@@ -875,14 +872,14 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
   const pathLength = useTransform(scrollYProgress, [0, 1], [0, 1])
 
   return (
-    <section ref={targetRef} className="relative min-h-screen w-full bg-[#020202] py-40 border-t border-white/5 overflow-hidden flex flex-col items-center">
+    <section ref={targetRef} className="relative min-h-screen w-full bg-slate-50 py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
       <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-32">
-        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Fricción Cero en el Mostrador</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Fricción Cero en el Mostrador</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
           Pagos Mixtos <br />
           <span className="text-zinc-600">Sin Calculadora.</span>
         </h2>
-        <p className="mt-8 max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed">
+        <p className="mt-8 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
           ¿Tu cliente quiere pagar una parte en un billete de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
         </p>
       </div>
@@ -890,44 +887,44 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
       <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-12 px-6">
         
         {/* Simulación del Split Payment de Preziso */}
-        <div className="w-full md:w-1/2 bg-[#050505] border border-white/10 rounded-[2rem] p-8 shadow-[0_0_50px_rgba(54,0,255,0.05)] relative z-20">
-          <div className="flex justify-between items-end mb-8 border-b border-white/5 pb-4">
-            <span className="text-sm font-bold uppercase text-white">Total a Pagar</span>
-            <span className="text-4xl font-light text-white">$45.00</span>
+        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-[2rem] p-8 shadow-[0_0_50px_rgba(0,0,0,0.03)] relative z-20">
+          <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
+            <span className="text-sm font-bold uppercase text-zinc-900">Total a Pagar</span>
+            <span className="text-4xl font-light text-zinc-900">$45.00</span>
           </div>
 
           <div className="space-y-4">
             {/* Input Efectivo */}
-            <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl border border-white/5 group">
+            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200 group">
                <div className="flex items-center gap-3">
                  <Wallet size={18} className="text-emerald-500" />
-                 <span className="text-xs font-bold text-zinc-300 uppercase">Efectivo USD</span>
+                 <span className="text-xs font-bold text-slate-600 uppercase">Efectivo USD</span>
                </div>
-               <span className="text-lg text-white font-mono">$20.00</span>
+               <span className="text-lg text-zinc-900 font-mono">$20.00</span>
             </div>
 
             {/* Input Zelle */}
-            <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-xl border border-white/5 group">
+            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200 group">
                <div className="flex items-center gap-3">
                  <ArrowRightLeft size={18} className="text-purple-500" />
-                 <span className="text-xs font-bold text-zinc-300 uppercase">Zelle</span>
+                 <span className="text-xs font-bold text-slate-600 uppercase">Zelle</span>
                </div>
-               <span className="text-lg text-white font-mono">$15.00</span>
+               <span className="text-lg text-zinc-900 font-mono">$15.00</span>
             </div>
 
             {/* Restante Automático Pago Móvil */}
-            <div className="flex items-center justify-between bg-[#3600ff]/10 p-4 rounded-xl border border-[#3600ff]/30 relative overflow-hidden">
+            <div className="flex items-center justify-between bg-black/10 p-4 rounded-xl border border-slate-300 relative overflow-hidden">
                <motion.div 
                  animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }}
-                 className="absolute inset-0 bg-[#3600ff]/10 blur-xl"
+                 className="absolute inset-0 bg-black/10 blur-xl"
                />
                <div className="flex items-center gap-3 relative z-10">
-                 <Activity size={18} className="text-[#3600ff]" />
-                 <span className="text-xs font-bold text-[#3600ff] uppercase">Restante Pago Móvil</span>
+                 <Activity size={18} className="text-black" />
+                 <span className="text-xs font-bold text-black uppercase">Restante Pago Móvil</span>
                </div>
               <div className="text-right relative z-10">
-                 <span className="block text-lg text-white font-mono">$10.00</span>
-                 <span className="block text-[10px] text-[#3600ff] font-mono mt-1">Ref: Bs {remainingBs}</span>
+                 <span className="block text-lg text-zinc-900 font-mono">$10.00</span>
+                 <span className="block text-[10px] text-black font-mono mt-1">Ref: Bs {remainingBs}</span>
                </div>
             </div>
           </div>
@@ -936,7 +933,7 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
         {/* Factura Final */}
         <motion.div 
           initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}
-          className="w-full md:w-1/3 bg-zinc-950 border border-green-500/30 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(34,197,94,0.05)] z-20 mt-10 md:mt-0"
+          className="w-full md:w-1/3 bg-white border border-emerald-200 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(34,197,94,0.05)] z-20 mt-10 md:mt-0"
         >
           <div className="absolute -top-4 -left-4 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.4)]">
             <CheckCircle2 size={20} className="text-black" />
@@ -944,15 +941,15 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
           
           <span className="text-[10px] font-mono text-green-500 uppercase tracking-widest mb-4 block">Cierre Perfecto</span>
           
-          <div className="space-y-3 font-mono text-xs text-zinc-400">
-            <p className="text-white font-bold">TICKET #9024</p>
+          <div className="space-y-3 font-mono text-xs text-slate-500">
+            <p className="text-zinc-900 font-bold">TICKET #9024</p>
             <p>--------------------</p>
             <p className="flex justify-between"><span>Efectivo:</span> <span>$20.00</span></p>
             <p className="flex justify-between"><span>Zelle:</span> <span>$15.00</span></p>
            <p className="flex justify-between text-green-400"><span>Pago Móvil:</span> <span>Bs {remainingBs}</span></p>
             <p>--------------------</p>
-            <p className="text-white">Inventario descontado (-1)</p>
-            <p className="text-white">Caja cuadrada automáticamente.</p>
+            <p className="text-zinc-900">Inventario descontado (-1)</p>
+            <p className="text-zinc-900">Caja cuadrada automáticamente.</p>
           </div>
         </motion.div>
 
@@ -973,16 +970,15 @@ const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
   })
 
  
- // 🚀 INICIALIZACIÓN CON EL ADN ORIGINAL DE PREZISO
-const [storeColors, setStoreColors] = useState({
-  primary: '#000000',
-  primary_text: '#ffffff',
-  background: '#ffffff',
-  text_main: '#111111',
-  surface: '#ffffff',
-  surface_text: '#6b7280',
-  border: '#d5d6d7b3',
-  incentive: '#059669'
+ const [storeColors, setStoreColors] = useState({
+  primary: '#000000',      // Mantiene
+  primary_text: '#ffffff', // Mantiene
+  background: '#f8fafc',   // Pasa de blanco puro a slate-50 para diferenciarlo de la landing
+  text_main: '#0a0a0a',    // Negro carbón
+  surface: '#ffffff',      // Tarjetas blancas
+  surface_text: '#64748b', // Slate-500
+  border: '#e2e8f0',       // Slate-200
+  incentive: '#0f172a'     // Slate-900 en lugar de esmeralda/verde
 })
 
   const handleColorChange = (key: keyof typeof storeColors, value: string) => {
@@ -1009,9 +1005,9 @@ const [storeColors, setStoreColors] = useState({
     const safeHexValue = value.length > 7 ? value.substring(0, 7) : value;
 
     return (
-      <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-[#050505] hover:bg-black transition-colors">
-        <span className="font-mono text-[10px] md:text-xs text-zinc-400 uppercase tracking-widest">{label}</span>
-        <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shadow-sm shrink-0 cursor-pointer group">
+      <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:bg-white transition-colors">
+        <span className="font-mono text-[10px] md:text-xs text-slate-500 uppercase tracking-widest">{label}</span>
+        <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-300 shadow-sm shrink-0 cursor-pointer group">
           <input 
             type="color" 
             value={safeHexValue} 
@@ -1024,7 +1020,7 @@ const [storeColors, setStoreColors] = useState({
   }
 
   return (
-    <section id="adn" ref={containerRef} className="relative min-h-screen w-full bg-[#020202] py-32 overflow-hidden flex flex-col items-center border-t border-white/5">
+    <section id="adn" ref={containerRef} className="relative min-h-screen w-full bg-slate-50 py-32 overflow-hidden flex flex-col items-center border-t border-slate-200">
       
       {/* Resplandor atado al Color Primario */}
       <motion.div 
@@ -1034,12 +1030,12 @@ const [storeColors, setStoreColors] = useState({
       />
 
       <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-16">
-        <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-[0.5em] mb-6 block">Control de ADN Visual</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9]">
+        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Control de ADN Visual</span>
+        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
           Muta en <br />
           <span className="text-zinc-600">Milisegundos.</span>
         </h2>
-        <p className="mt-8 max-w-2xl mx-auto text-zinc-400 text-sm md:text-base leading-relaxed">
+        <p className="mt-8 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
           Tu marca no se adapta a Preziso; Preziso muta para convertirse en tu marca. Altera la topología visual de tu nodo de ventas sin tocar una sola línea de código, usando nuestro motor de variables dinámicas CSS.
         </p>
       </div>
@@ -1048,8 +1044,8 @@ const [storeColors, setStoreColors] = useState({
         
         {/* PANEL IZQUIERDO: CONTROLES DE ADMIN */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="flex items-center gap-3 text-white border-b border-white/10 pb-4">
-            <SlidersHorizontal size={20} className="text-[#3600ff]" />
+          <div className="flex items-center gap-3 text-zinc-900 border-b border-slate-200 pb-4">
+            <SlidersHorizontal size={20} className="text-black" />
             <h3 className="text-sm font-bold uppercase tracking-widest">Panel de Apariencia Real</h3>
           </div>
           
@@ -1149,7 +1145,7 @@ const [storeColors, setStoreColors] = useState({
                     <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center transition-colors duration-500">
                       <ImageIcon size={32} strokeWidth={1.5} className="text-[var(--store-surface-text)] transition-colors duration-500" />
                       {product.isPromo && (
-                        <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-lg tracking-widest shadow-sm">
+                        <div className="absolute top-2 right-2 z-10 bg-red-600 text-zinc-900 text-[10px] font-black px-2 py-1 rounded-lg tracking-widest shadow-sm">
                           -{promoPercent}%
                         </div>
                       )}
@@ -1241,29 +1237,29 @@ const NodeSevenSwarm = () => {
   const yUp = useTransform(scrollYProgress, [0, 0.5], [100, 0])
 
   return (
-    <section ref={containerRef} className="relative min-h-screen w-full bg-[#020202] py-40 overflow-hidden flex flex-col items-center border-t border-white/5">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#3600ff_0%,transparent_50%)] opacity-[0.03] pointer-events-none" />
+    <section ref={containerRef} className="relative min-h-screen w-full bg-slate-50 py-40 overflow-hidden flex flex-col items-center border-t border-slate-200">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#f1f5f9_0%,transparent_50%)] opacity-[0.03] pointer-events-none" />
 
       <motion.div style={{ opacity: opacityIn, y: yUp }} className="w-full max-w-5xl px-6 relative z-10 flex flex-col md:flex-row items-center gap-16">
         
         <div className="w-full md:w-1/2">
           <div className="flex items-center gap-4 mb-8">
-            <Zap size={32} className="text-[#3600ff]" />
-            <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-widest">Motor de Crecimiento</span>
+            <Zap size={32} className="text-black" />
+            <span className="text-[10px] font-mono text-black uppercase tracking-widest">Motor de Crecimiento</span>
           </div>
-          <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase leading-[0.9] mb-6">
+          <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9] mb-6">
             Tus clientes son <br />
             <span className="text-zinc-600">tus vendedores.</span>
           </h2>
-          <p className="text-zinc-400 text-sm md:text-base leading-relaxed">
+          <p className="text-slate-500 text-sm md:text-base leading-relaxed">
             No pagues publicidad vacía. Preziso integra un sistema nativo de Afiliados. Genera códigos únicos para tus clientes fieles, dales un % de comisión y observa cómo promocionan tu inventario por todo WhatsApp e Instagram.
           </p>
         </div>
 
         {/* Dashboard de Afiliados */}
-        <div className="w-full md:w-1/2 bg-[#050505] border border-white/10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(54,0,255,0.05)]">
-          <div className="bg-white/5 border-b border-white/10 px-6 py-4 flex items-center justify-between">
-             <span className="text-xs font-bold text-white uppercase tracking-widest">Live: Comisiones Globales</span>
+        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.03)]">
+          <div className="bg-white/5 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+             <span className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Live: Comisiones Globales</span>
              <div className="flex items-center gap-2 text-[10px] font-mono text-green-500">
                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Activo
              </div>
@@ -1278,15 +1274,15 @@ const NodeSevenSwarm = () => {
                    animate={{ opacity: 1, x: 0 }}
                    exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
                    transition={{ duration: 0.4 }}
-                   className="flex items-center justify-between py-4 border-b border-white/5 last:border-0"
+                   className="flex items-center justify-between py-4 border-b border-slate-200 last:border-0"
                  >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-xs text-zinc-500 border border-white/5">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500 border border-slate-200">
                         {log.name.charAt(0)}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white">@{log.name}</span>
-                        <span className="text-[10px] text-zinc-500">{log.action} <span className="text-zinc-300">{log.item}</span></span>
+                        <span className="text-xs font-bold text-zinc-900">@{log.name}</span>
+                        <span className="text-[10px] text-slate-500">{log.action} <span className="text-slate-600">{log.item}</span></span>
                       </div>
                     </div>
                     <span className={cn("text-xs font-mono font-bold", log.comm.includes('+') ? 'text-green-400' : 'text-zinc-600')}>
@@ -1314,50 +1310,50 @@ const NodeEightExtraction = () => {
   const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
 
   return (
-    <section id="precios" ref={targetRef} className="relative min-h-screen w-full bg-black py-40 border-t border-white/5 flex flex-col items-center justify-center overflow-hidden">
+    <section id="precios" ref={targetRef} className="relative min-h-screen w-full bg-white py-40 border-t border-slate-200 flex flex-col items-center justify-center overflow-hidden">
       
       {/* Resplandor Estructural */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#3600ff]/5 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-black/5 rounded-full blur-[150px] pointer-events-none" />
 
       <motion.div 
         style={{ scale: scaleUp, opacity: opacityIn }} 
         className="w-full max-w-5xl px-6 relative z-10 flex flex-col items-center"
       >
-        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.5em] mb-4">Protocolo de Acceso</span>
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-white uppercase text-center mb-16">
+        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-4">Protocolo de Acceso</span>
+        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-16">
           Un Precio. <br />
           <span className="text-zinc-600">Cero Comisiones.</span>
         </h2>
 
         {/* El Recibo (Monolito) */}
-        <div className="w-full bg-[#050505] border border-white/10 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-[0_0_80px_rgba(54,0,255,0.05)]">
+        <div className="w-full bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-2xl shadow-slate-200/50">
           
           {/* Lado A: Captura */}
-          <div className="w-full md:w-1/2 p-12 md:p-20 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-white/5 relative group">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#3600ff]/0 via-[#3600ff]/0 to-[#3600ff]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="w-full md:w-1/2 p-12 md:p-20 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-slate-200 relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-100/0 via-slate-100/0 to-slate-200/80 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             
-            <span className="text-[10px] font-mono text-[#3600ff] uppercase tracking-widest mb-6 relative z-10">Acceso Ilimitado</span>
+            <span className="text-[10px] font-mono text-black uppercase tracking-widest mb-6 relative z-10">Acceso Ilimitado</span>
             
             <div className="flex items-start gap-1 mb-4 relative z-10">
-              <span className="text-2xl text-zinc-500 mt-2">$</span>
-              <span className="text-7xl md:text-9xl font-light tracking-tighter text-white leading-none">18</span>
-              <span className="text-3xl text-zinc-500 mt-2">.99</span>
+              <span className="text-2xl text-slate-500 mt-2">$</span>
+              <span className="text-7xl md:text-9xl font-light tracking-tighter text-zinc-900 leading-none">18</span>
+              <span className="text-3xl text-slate-500 mt-2">.99</span>
             </div>
             
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest relative z-10">Renovación Mensual</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest relative z-10">Renovación Mensual</span>
 
-            <Link href="/login" className="mt-12 w-full relative group/btn overflow-hidden rounded-xl bg-white text-black py-5 flex justify-center items-center gap-3 z-10">
-               <span className="font-bold text-xs uppercase tracking-[0.2em] relative z-10 group-hover/btn:text-white transition-colors duration-500">
+            <Link href="/login" className="mt-12 w-full relative group/btn overflow-hidden rounded-xl bg-black text-white py-5 flex justify-center items-center gap-3 z-10">
+               <span className="font-bold text-xs uppercase tracking-[0.2em] relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500">
                  Inicializar Nodo
                </span>
-               <ArrowUpRight size={16} strokeWidth={2} className="relative z-10 group-hover/btn:text-white transition-colors duration-500" />
-               <div className="absolute inset-0 bg-[#3600ff] translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-0" />
+               <ArrowUpRight size={16} strokeWidth={2} className="relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500" />
+               <div className="absolute inset-0 bg-zinc-200 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-0" />
             </Link>
           </div>
 
           {/* Lado B: Parámetros */}
-          <div className="w-full md:w-1/2 p-12 md:p-16 flex flex-col justify-center relative bg-black/50">
-            <p className="text-xs font-mono text-zinc-400 leading-relaxed mb-10 pb-8 border-b border-white/10">
+          <div className="w-full md:w-1/2 p-12 md:p-16 flex flex-col justify-center relative bg-white/50">
+            <p className="text-xs font-mono text-slate-500 leading-relaxed mb-10 pb-8 border-b border-slate-200">
               Despliegue inmediato. Vende 10 o 10.000 productos. Liquidación directa a tus cuentas (USDT / Pago Móvil). Sin intermediarios.
             </p>
             
@@ -1371,10 +1367,10 @@ const NodeEightExtraction = () => {
                 "Subdominio .preziso.shop"
               ].map((item, idx) => (
                 <li key={idx} className="flex items-center gap-4 group/li">
-                  <div className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover/li:border-[#3600ff] group-hover/li:bg-[#3600ff]/20 transition-colors">
-                     <Check size={10} className="text-zinc-500 group-hover/li:text-[#3600ff] transition-colors" strokeWidth={3} />
+                  <div className="w-5 h-5 rounded-full bg-white/5 border border-slate-200 flex items-center justify-center shrink-0 group-hover/li:border-black group-hover/li:bg-black/20 transition-colors">
+                     <Check size={10} className="text-slate-500 group-hover/li:text-black transition-colors" strokeWidth={3} />
                   </div>
-                  <span className="text-sm font-medium text-zinc-300 group-hover/li:text-white transition-colors">{item}</span>
+                  <span className="text-sm font-medium text-slate-600 group-hover/li:text-zinc-900 transition-colors">{item}</span>
                 </li>
               ))}
             </ul>
@@ -1393,13 +1389,13 @@ const NodeEightExtraction = () => {
 
 const KineticFooter = () => {
   return (
-    <footer className="relative w-full bg-black pt-40 pb-12 overflow-hidden border-t border-white/5">
+    <footer className="relative w-full bg-white pt-40 pb-12 overflow-hidden border-t border-slate-200">
       {/* Marquee cinético de fondo */}
       <div className="absolute top-0 left-0 w-full overflow-hidden opacity-[0.03] select-none pointer-events-none">
         <motion.div 
           animate={{ x: ["0%", "-50%"] }}
           transition={{ repeat: Infinity, ease: "linear", duration: 20 }}
-          className="flex whitespace-nowrap text-[20vw] font-black uppercase text-white"
+          className="flex whitespace-nowrap text-[20vw] font-black uppercase text-zinc-900"
         >
           <span>SIN FRICCIÓN • SIN CAOS • SIN ERRORES • </span>
           <span>SIN FRICCIÓN • SIN CAOS • SIN ERRORES • </span>
@@ -1409,45 +1405,45 @@ const KineticFooter = () => {
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-24">
           <div className="md:col-span-2">
-            <h2 className="text-5xl md:text-7xl font-medium tracking-tighter text-white uppercase leading-[0.9] mb-8">
+            <h2 className="text-5xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9] mb-8">
               El futuro de tu <br />
-              <span className="text-[#3600ff]">negocio es hoy.</span>
+              <span className="text-black">negocio es hoy.</span>
             </h2>
-            <p className="text-zinc-500 max-w-sm mb-10 text-sm">
+            <p className="text-slate-500 max-w-sm mb-10 text-sm">
               Preziso es el sistema operativo para la nueva generación de comercios en Venezuela. Control total, desde el inventario hasta la última comisión.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"><InstagramIcon size={18}/></a>
-              <a href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"><TwitterIcon size={18}/></a>
+              <a href="#" className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-zinc-900 hover:bg-white hover:text-black transition-all"><InstagramIcon size={18}/></a>
+              <a href="#" className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-zinc-900 hover:bg-white hover:text-black transition-all"><TwitterIcon size={18}/></a>
             </div>
           </div>
 
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-8">Producto</h4>
+            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-[0.2em] mb-8">Producto</h4>
             <ul className="space-y-4">
               {['Tienda Online', 'Punto de Venta', 'Afiliados', 'Seguridad'].map(item => (
-                <li key={item}><a href="#" className="text-zinc-500 text-sm hover:text-white transition-colors">{item}</a></li>
+                <li key={item}><a href="#" className="text-slate-500 text-sm hover:text-zinc-900 transition-colors">{item}</a></li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-[0.2em] mb-8">Soporte</h4>
+            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-[0.2em] mb-8">Soporte</h4>
             <ul className="space-y-4">
               {['Documentación', 'API', 'Centro de Ayuda', 'Status'].map(item => (
-                <li key={item}><a href="#" className="text-zinc-500 text-sm hover:text-white transition-colors">{item}</a></li>
+                <li key={item}><a href="#" className="text-slate-500 text-sm hover:text-zinc-900 transition-colors">{item}</a></li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
             © 2026 PREZISO SYSTEM. TECNOLOGÍA PARA EL CAPITAL.
           </span>
           <div className="flex gap-8">
-            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-white">Privacidad</a>
-            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-white">Términos</a>
+            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-zinc-900">Privacidad</a>
+            <a href="#" className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest hover:text-zinc-900">Términos</a>
           </div>
         </div>
       </div>
@@ -1470,15 +1466,15 @@ interface LandingProps {
 // 🚀 2. INYECTAMOS EL TIPO EN EL COMPONENTE
 export default function DeepCaptureLanding({ liveRate }: LandingProps) {
   return (
-    <div className="bg-black selection:bg-[#3600ff] selection:text-white">
+    <div className="bg-white selection:bg-slate-200 selection:text-black">
       {/* Inyección de Estilos de Capa Inferior */}
       <style jsx global>{`
-        .text-outline-white {
-          -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+        .text-outline-black {
+         -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
           color: transparent;
         }
         @media (min-width: 768px) {
-          .text-outline-white { -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3); }
+          .text-outline-black { -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3); }
         }
         body { cursor: crosshair; }
       `}</style>
