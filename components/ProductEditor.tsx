@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from './NumberInput'
+import ProductWholesaleConfig from '@/components/admin/ProductWholesaleConfig';
 
 interface ProductEditorProps {
     productId?: string
@@ -51,7 +52,10 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         shipping_badge_desc: '',   // NUEVO
         is_tax_exempt: false, // 🚀 NUEVO: Estado fiscal del producto
         is_featured: false, // 🚀 NUEVO: Merchandising
-        display_order: 0 as number | '' // 🚀 NUEVO: Orden de prioridad
+        display_order: 0 as number | '',// 🚀 NUEVO: Orden de prioridad
+        wholesale_active: false,
+  wholesale_min_qty: 6,
+  wholesale_discount_pct: 0,
     })
 
     const [productGallery, setProductGallery] = useState<string[]>([])
@@ -201,8 +205,12 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     shipping_badge_title: product.shipping_badge_title || '', // NUEVO
                     shipping_badge_desc: product.shipping_badge_desc || '',    // NUEVO
                     is_tax_exempt: product.is_tax_exempt || false, // 🚀 NUEVO: Leer BD
-                    is_featured: product.is_featured || false, // 🚀 NUEVO
-                    display_order: product.display_order || 0  // 🚀 NUEVO
+is_featured: product.is_featured || false, 
+                    display_order: product.display_order || 0,  
+                    // 🚀 CORRECCIÓN: Leemos la memoria real de Supabase
+                    wholesale_active: product.wholesale_active || false,
+                    wholesale_min_qty: product.wholesale_min_qty || 6,
+                    wholesale_discount_pct: product.wholesale_discount_pct || 0,
                 })
 
                 setProductGallery(product.gallery || [])
@@ -470,6 +478,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 shipping_badge_desc: formData.shipping_badge_desc || null,
                 is_tax_exempt: formData.is_tax_exempt, // 🚀 NUEVO: Guardar en BD
                 is_featured: formData.is_featured, // 🚀 NUEVO
+                wholesale_active: formData.wholesale_active,
+  wholesale_min_qty: formData.wholesale_min_qty,
+  wholesale_discount_pct: formData.wholesale_discount_pct
             }
 
             let currentId = productId
@@ -825,6 +836,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     </div>
                 </div>
 
+         <ProductWholesaleConfig 
+                  initialActive={formData.wholesale_active}
+                  initialMinQty={formData.wholesale_min_qty}
+                  initialDiscountPct={formData.wholesale_discount_pct}
+                  onChange={(wholesaleData) => {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      wholesale_active: wholesaleData.wholesale_active,
+                      wholesale_min_qty: wholesaleData.wholesale_min_qty,
+                      wholesale_discount_pct: wholesaleData.wholesale_discount_pct
+                    }));
+                    // 🚀 GATILLO: Le avisa a React que hay cambios sin guardar
+                    setIsDirty(true); 
+                  }}
+                />
                 {/* CARD 4: INVENTARIO Y LOGÍSTICA */}
                 <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 border-b border-gray-100 pb-3">

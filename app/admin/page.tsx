@@ -28,6 +28,7 @@ export default async function AdminDashboard() {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  
   const today = new Date().toISOString().split('T')[0]
   
   const { data: store } = await supabase.from('stores').select('*').eq('user_id', user?.id).single()
@@ -49,7 +50,16 @@ export default async function AdminDashboard() {
 
   const usdRate = configRes.data?.usd_rate ?? 0
   const eurRate = configRes.data?.eur_rate ?? 0
-  const lastUpdated = configRes.data?.updated_at ?? null
+  // --- PARCHE ARCHITECTURE: Server-Side Time Formatting ---
+  let formattedLastUpdated = null;
+  if (configRes.data?.updated_at) {
+    formattedLastUpdated = new Intl.DateTimeFormat('es-VE', {
+      timeZone: 'America/Caracas',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    }).format(new Date(configRes.data.updated_at));
+  }
   const storeCurrency = store?.currency_type === 'eur' ? 'eur' : 'usd'
   const currencySymbol = store?.currency_symbol || '$'
   const recentOrders = recentOrdersRes.data || []
@@ -69,7 +79,7 @@ export default async function AdminDashboard() {
                     storeCurrency={storeCurrency} 
                     usdRate={usdRate} 
                     eurRate={eurRate} 
-                    lastUpdated={lastUpdated} 
+                    lastUpdated={formattedLastUpdated} 
                 />
             </div>
 

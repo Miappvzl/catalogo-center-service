@@ -15,7 +15,11 @@ export interface CartItem {
   variantInfo: string | null
   category?: string 
   maxStock?: number // <--- 🚀 NUEVO: Guardamos el límite de stock de la BD
-  compareAtPrice?: number | null // 
+  compareAtPrice?: number | null //
+  // 🚀 NUEVO: Herencia Mayorista
+  productWholesaleActive?: boolean
+  productWholesaleMinQty?: number
+  productWholesaleDiscountPct?: number 
 }
 
 interface CartState {
@@ -68,11 +72,15 @@ export const useCart = create<CartState>()(
               quantity: Math.min(quantity, currentMaxStock), // Validar desde el inicio
               variantInfo: variant ? `${variant.color_name} / ${variant.size}` : null,
               category: product.category,
-              maxStock: currentMaxStock, // <--- 🚀 Se guarda en LocalStorage
-              // 🚀 NUEVO: Lógica de herencia para el precio tachado
+             maxStock: currentMaxStock, 
               compareAtPrice: variant?.override_compare_at_usd !== undefined && variant?.override_compare_at_usd !== null 
                               ? Number(variant.override_compare_at_usd) 
-                              : (product.compare_at_usd ? Number(product.compare_at_usd) : null)
+                              : (product.compare_at_usd ? Number(product.compare_at_usd) : null),
+                              
+              // 🚀 NUEVO: Captura de reglas granulares desde la BD
+              productWholesaleActive: product.wholesale_active || false,
+              productWholesaleMinQty: Number(product.wholesale_min_qty || 6),
+              productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0)
             }
 
             return { items: [...state.items, newItem] }

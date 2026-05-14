@@ -8,6 +8,7 @@ import ProductCard from './ProductCard'
 import CheckoutProcess from './CheckoutProcess'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { calculateCartEngine } from '@/utils/cartLogic'
 import { useSearchParams } from 'next/navigation'
 
 interface CheckoutProps {
@@ -67,99 +68,27 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     // --- 🚀 MOTOR MATEMÁTICO PRINCIPAL ---
     const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
 
+    const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
+    const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+
+    // Tu código refactorizado actual:
     const cartEngine = useMemo(() => {
-        let totalListNominal = 0;
-        let totalCashNominal = 0;
-        let listPromoDiscounts = 0;
-        let cashPromoDiscounts = 0;
-        // 🚀 BASE IMPONIBLE: Solo lo que no sea exento
-        let taxableSubtotalList = 0; 
+        // Añadimos 'wholesale' al final
+        return calculateCartEngine(items, promotions, isStrictTax, wholesale);
+    }, [items, promotions, isStrictTax, wholesale]); // No olvides poner wholesale en las dependencias
 
-        let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
-        const promoCounts: Record<string, number> = {};
+    const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
 
-        items.forEach(item => {
-            promotions?.forEach(p => {
-                if (p.promo_type === 'bogo' && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) {
-                    promoCounts[p.id] = (promoCounts[p.id] || 0) + item.quantity;
-                }
-            })
-        });
+    // 👇 AÑADE ESTA LÍNEA AQUÍ 👇
+    // Restauramos el booleano estrictamente para que la UI sepa cuándo pintar la barra verde
+    // 1. Calculamos el volumen REAL elegible para la barra global (Aislamiento Estricto)
+const globalEligibleCount = items.reduce((acc, item) => {
+    return !item.productWholesaleActive ? acc + item.quantity : acc;
+}, 0);
 
-        const processedItems = items.map(item => {
-            const itemBasePrice = Number(item.basePrice || 0);
-            const itemPenalty = Number(item.penalty || 0);
-            const listPrice = itemBasePrice + itemPenalty;
-            const cashPrice = itemBasePrice;
-
-            totalListNominal += listPrice * item.quantity;
-            totalCashNominal += cashPrice * item.quantity;
-
-            let itemListDiscount = 0;
-            let itemCashDiscount = 0;
-            let badge = null;
-
-            const applicablePromos = promotions?.filter((p: any) => p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) || [];
-            let bestPromo = null;
-
-            if (applicablePromos.length > 0) {
-                let maxEffective = 0;
-                applicablePromos.forEach(p => {
-                    let eff = p.promo_type === 'percentage'
-                        ? Number(p.discount_percentage)
-                        : (p.promo_type === 'bogo' && (promoCounts[p.id] || 0) >= p.bogo_buy ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
-                    if (eff > maxEffective) { maxEffective = eff; bestPromo = p; }
-                });
-
-                if (bestPromo && (bestPromo as any).promo_type === 'percentage') {
-                    const pct = (bestPromo as any).discount_percentage / 100;
-                    itemListDiscount = (listPrice * item.quantity) * pct;
-                    itemCashDiscount = (cashPrice * item.quantity) * pct;
-                    listPromoDiscounts += itemListDiscount;
-                    cashPromoDiscounts += itemCashDiscount;
-
-                    badge = (
-                        <span className="flex items-center gap-1">
-                            <TicketPercent size={12} strokeWidth={2} className="text-white" />
-                            {(bestPromo as any).title} (-{(bestPromo as any).discount_percentage}%)
-                        </span>
-                    );
-                }
-            }
-
-            // 🚀 CÁLCULO DE BASE IMPONIBLE POR ITEM
-            const itemFinalListTotal = (listPrice * item.quantity) - itemListDiscount;
-            
-            // 1. Cruzamos con la base de datos fresca (Mata el bug del LocalStorage viejo)
-            const originalProduct = products.find(p => String(p.id) === String(item.productId));
-            const dbIsExempt = originalProduct?.is_tax_exempt || false;
-
-            // 2. Escudo Gatekeeper: ¿La tienda realmente declara impuestos?
-            const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
-            const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
-            
-            // 3. Veredicto Final: Si la tienda es informal, forzamos a falso. Si es formal, manda la BD.
-            const effectiveIsExempt = isStrictTax ? dbIsExempt : false;
-
-            // 4. Sumamos a la caja de impuestos SOLO si no está exento
-            if (!effectiveIsExempt) {
-                taxableSubtotalList += itemFinalListTotal;
-            }
-
-            return { ...item, listPrice, cashPrice, finalListPrice: listPrice - (itemListDiscount / item.quantity), finalCashPrice: cashPrice - (itemCashDiscount / item.quantity), badge }
-        });
-
-        const finalBsModeUSD = totalListNominal - listPromoDiscounts;
-        const finalCashModeUSD = totalCashNominal - cashPromoDiscounts;
-
-        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, finalBsModeUSD, finalCashModeUSD, taxableSubtotalList };
-    // 🚀 CRÍTICO: Actualizamos las dependencias de React para que detecte los cambios de BD y Config
-    }, [items, promotions, products, storeConfig]);
-
-  // --- VARIABLES BASE: MAYORISTAS Y AFILIADOS ---
-    const isWholesaleActive = wholesale.active && totalItemsCount >= wholesale.min_items;
-    const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
-    const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
+// 2. El booleano ahora lee el conteo aislado, no el conteo sucio total
+const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.min_items;
+  
 
     // 🚀 FIX: Definición de Affiliate devuelta a la vida
     const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
@@ -168,20 +97,20 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const affiliateDiscountCash = isAffiliateActive ? (cartEngine.finalCashModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
 
     // --- 🚀 LÓGICA DE IMPUESTOS PÚBLICOS (SENIAT) ---
-    const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
-    const mustApplyTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
+
     const taxPct = storeConfig?.default_tax_percentage || 16;
 
     // CÁLCULO DE IVA PROPORCIONAL
     // Determinamos cuánto descuento total se aplicó para bajar la base imponible
     const totalDiscountsList = wholesaleDiscountList + affiliateDiscountList;
-    const discountMultiplier = cartEngine.totalListNominal > 0 
-        ? (1 - (totalDiscountsList / cartEngine.totalListNominal)) 
+    const discountMultiplier = cartEngine.totalListNominal > 0
+        ? (1 - (totalDiscountsList / cartEngine.totalListNominal))
         : 1;
 
     // El IVA se calcula solo sobre los productos gravables, ajustados por los descuentos
-    const step1TaxAmountUSD = mustApplyTax 
-        ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPct / 100) 
+    // Cambia 'mustApplyTax' por 'isStrictTax'
+    const step1TaxAmountUSD = isStrictTax
+        ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPct / 100)
         : 0;
 
     // --- TOTALES FINALES DEL PASO 1 ---
@@ -196,6 +125,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         visible: { opacity: 1, y: 0, x: 0, transition: { type: "spring", damping: 25, stiffness: 200 } },
         exit: { opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0, transition: { damping: 25, stiffness: 200 } }
     }
+
 
     return (
         <>
@@ -271,29 +201,24 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             )}
 
                             {/* PROGRESS BAR MAYORISTA (Solo Paso 1) */}
-                            {step === 1 && wholesale.active && (
-                                <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Activado' : 'Ahorra al Mayor'}</span>
-                                        <span className="text-xs font-black text-[var(--store-text-main)]">{totalItemsCount} / {wholesale.min_items}</span>
-                                    </div>
-                                    <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${Math.min(100, (totalItemsCount / wholesale.min_items) * 100)}%` }}
-                                            className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
-
-
-
-
-                                               
-                                        />
-                                    </div>
-                                    <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
-                                        {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento.` : `Agrega ${wholesale.min_items - totalItemsCount} piezas más para un ${wholesale.discount_percentage}% de descuento.`}
-                                    </p>
-                                </div>
-                            )}
+{step === 1 && wholesale.active && (
+    <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
+        <div className="flex justify-between items-end mb-2">
+            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Global Activado' : 'Ahorra al Mayor (Global)'}</span>
+            <span className="text-xs font-black text-[var(--store-text-main)]">{globalEligibleCount} / {wholesale.min_items}</span>
+        </div>
+        <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
+            <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (globalEligibleCount / wholesale.min_items) * 100)}%` }}
+                className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
+            />
+        </div>
+        <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
+            {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento en el resto de la tienda.` : `Agrega ${wholesale.min_items - globalEligibleCount} piezas en total para ganar ${wholesale.discount_percentage}% de descuento global.`}
+        </p>
+    </div>
+)}
 
                             {/* CONTENEDOR MULTI-PASO */}
                             <div className="flex-1 relative overflow-hidden bg-[var(--store-surface)]">
@@ -319,7 +244,18 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             </div>
                                                             <div className="flex-1 flex flex-col justify-between py-0.5">
                                                                 <div>
-                                                                    {item.badge && <span className="inline-block text-[9px] font-black text-white bg-[#1b1b1b] px-2 py-0.5 rounded tracking-widest uppercase mb-1">{item.badge}</span>}
+
+                                                                    {/* 🚀 SMART BADGE DINÁMICO */}
+{/* 🚀 SMART BADGE DINÁMICO BLINDADO */}
+{item.badge && (
+    <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${
+        item.badge.type === 'pending' 
+            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm' 
+            : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
+    }`}>
+        {item.badge.text}
+    </span>
+)}
                                                                     <div className="flex justify-between items-start">
                                                                         <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
                                                                         <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors  p-1.5 rounded-md hover:bg-[var(--store-primary)]/20"><Trash2 size={14} /></button>
@@ -453,16 +389,16 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                         />
                                     )}
 
-                                   {/* --- PASO 3: ÉXITO --- */}
+                                    {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
                                         <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
-                                            
+
                                             <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
                                                 <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
                                             </div>
-                                            
+
                                             <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">¡Pedido #{generatedOrderNumber}!</h2>
-                                            
+
                                             {/* 🚀 NUDGE EDUCATIVO: Explicamos la protección del Documento Vivo */}
                                             <div className="max-w-sm mx-auto mb-8  p-4">
                                                 <p className="text-[var(--store-text-main)] text-sm font-bold mb-1">
@@ -478,15 +414,15 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     <MessageCircle size={18} /> Enviar a WhatsApp
                                                 </a>
                                                 {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL */}
-                                               {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL (Con Ruteo Inteligente) */}
+                                                {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL (Con Ruteo Inteligente) */}
                                                 {generatedOrderId && (
-                                                    <a 
-                                                        href={typeof window !== 'undefined' && storeConfig?.slug && window.location.pathname.startsWith(`/${storeConfig.slug}`) 
-                                                            ? `/${storeConfig.slug}/quote/${generatedOrderId}` 
+                                                    <a
+                                                        href={typeof window !== 'undefined' && storeConfig?.slug && window.location.pathname.startsWith(`/${storeConfig.slug}`)
+                                                            ? `/${storeConfig.slug}/quote/${generatedOrderId}`
                                                             : `/quote/${generatedOrderId}`
-                                                        } 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
+                                                        }
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
                                                         className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]"
                                                     >
                                                         <FileText size={18} /> Ver orden de pedido
@@ -496,7 +432,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     Volver a la Tienda
                                                 </button>
                                             </div>
-                                            
+
                                             {/* 🚀 VIRAL LOOP DE AFILIADOS (DISEÑO HORIZONTAL ULTRA-COMPACTO) */}
                                             {storeConfig?.affiliate_config?.active && (
                                                 <div className="mt-6 mb-2 p-3 sm:p-4  rounded-xl w-full border border-[var(--store-primary)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 ">

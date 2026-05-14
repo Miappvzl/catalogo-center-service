@@ -423,6 +423,31 @@ const isCompletelyOutOfStock = variants.length > 0
                                         </span>
                                     </div>
 
+                                    {/* 🚀 B2B PRICING MATRIX (Clean Look) */}
+                                    {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
+                                        <div className="mt-6 border border-[var(--store-border)] rounded-xl overflow-hidden bg-[var(--store-bg)]">
+                                            {/* Fila: Detalle */}
+                                            <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--store-border)]/50 bg-[var(--store-surface)]/50">
+                                                <span className="text-[11px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                    Al Detalle (1 a {product.wholesale_min_qty - 1} und)
+                                                </span>
+                                                <span className="text-sm font-black text-[var(--store-surface-text)]">
+                                                    ${(pricing.isPromo ? pricing.compareAt : pricing.listPrice).toFixed(2)} c/u
+                                                </span>
+                                            </div>
+                                            {/* Fila: Mayorista */}
+                                            <div className="flex justify-between items-center px-4 py-3 bg-[#1b1b1b] text-white">
+                                                <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-white/90">
+                                                    <Zap size={13} className="fill-white" /> 
+                                                    Al Mayor ({product.wholesale_min_qty}+ und)
+                                                </span>
+                                                <span className="text-base font-black text-white">
+                                                    ${((pricing.isPromo ? pricing.compareAt : pricing.listPrice) * (1 - product.wholesale_discount_pct / 100)).toFixed(2)} c/u
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {product?.description && (
                                         <p className="text-sm text-[var(--store-surface-text)] mt-6 leading-relaxed whitespace-pre-line border-t border-[var(--store-border)] pt-6">
                                             {product.description}

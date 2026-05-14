@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 
 // 🚀 CAMBIO CLAVE: Cambiamos "number | ''" por "number | string"
 interface Props extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
-  value?: number | string; 
+  value?: number | string;
   onChangeValue?: (value: number) => void;
 }
 
@@ -19,7 +19,7 @@ export const NumberInput = ({ value, onChangeValue, className, ...props }: Props
   useEffect(() => {
     // Si viene un string vacío de tu estado, lo tratamos como 0 matemáticamente
     const numericValue = value === '' ? 0 : Number(value);
-    
+
     if (value !== undefined && numericValue !== Number(displayValue)) {
       setDisplayValue(numericValue === 0 ? '' : numericValue);
     }
@@ -28,7 +28,7 @@ export const NumberInput = ({ value, onChangeValue, className, ...props }: Props
   // 3. INTERCEPTOR DE EVENTOS
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    
+
     setDisplayValue(rawValue);
 
     if (onChangeValue) {

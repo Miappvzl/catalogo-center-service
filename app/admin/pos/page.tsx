@@ -6,11 +6,20 @@ import { getSupabase } from '@/lib/supabase-client'
 import { Search, Plus, Minus, Trash2, Calculator, FileText, User, Phone, ShoppingBag, X, Loader2, DollarSign, Truck, Store, MapPin, Hash, Package, Banknote, ChevronDown, PenSquare, Receipt } from 'lucide-react'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
+import { calculateCartEngine } from '@/utils/cartLogic'
 
 // --- TIPOS ESTRICTOS (Sincronizados con Catálogo) ---
 type Variant = { id: string, size: string, color_name: string, stock: number, override_usd_price: number | null, override_usd_penalty: number | null }
-type Product = { id: number, name: string, image_url: string, usd_cash_price: number, usd_penalty: number, stock: number, is_tax_exempt?: boolean, product_variants: Variant[] }
-type CartItem = { cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, basePrice: number, penalty: number, qty: number, maxStock: number, image: string, isTaxExempt: boolean }
+type Product = { 
+  id: number, name: string, image_url: string, usd_cash_price: number, usd_penalty: number, stock: number, is_tax_exempt?: boolean, 
+  wholesale_active?: boolean, wholesale_min_qty?: number, wholesale_discount_pct?: number, // 🚀 NUEVO
+  product_variants: Variant[] 
+}
+
+type CartItem = { 
+  cartId: string, productId: number | null, variantId?: string, name: string, variantInfo?: string, basePrice: number, penalty: number, qty: number, maxStock: number, image: string, isTaxExempt: boolean,
+  productWholesaleActive?: boolean, productWholesaleMinQty?: number, productWholesaleDiscountPct?: number // 🚀 NUEVO
+}
 
 export default function POSPage() {
     const supabase = getSupabase()
@@ -65,7 +74,8 @@ export default function POSPage() {
 
             const [storeRes, productsRes, ratesRes] = await Promise.all([
                 supabase.from('stores').select('id, slug, name, payment_config, shipping_config, wholesale_config, currency_type, default_tax_active, default_tax_percentage, fiscal_profile, legal_name, legal_id, fiscal_address').eq('user_id', user.id).single(),
-                supabase.from('products').select('id, name, image_url, usd_cash_price, usd_penalty, stock, is_tax_exempt, product_variants(id, size, color_name, stock, override_usd_price, override_usd_penalty)').eq('user_id', user.id).eq('status', 'active'),
+               // Línea ~66: Añade los campos wholesale_...
+supabase.from('products').select('id, name, image_url, usd_cash_price, usd_penalty, stock, is_tax_exempt, wholesale_active, wholesale_min_qty, wholesale_discount_pct, product_variants(id, size, color_name, stock, override_usd_price, override_usd_penalty)').eq('user_id', user.id).eq('status', 'active'),
                 supabase.from('app_config').select('usd_rate, eur_rate').single()
             ])
 
@@ -115,69 +125,22 @@ export default function POSPage() {
 
     const totalItemsCount = useMemo(() => cart.reduce((acc, item) => acc + item.qty, 0), [cart])
 
-   const cartEngine = useMemo(() => {
-        let totalListNominal = 0; let totalCashNominal = 0; let listPromoDiscounts = 0; let cashPromoDiscounts = 0;
-        let taxableSubtotalList = 0; let taxableSubtotalCash = 0; // 🚀 BASES IMPONIBLES (Solo lo que paga IVA)
+ const cartEngine = useMemo(() => {
+    // 🚀 PUENTE ARQUITECTÓNICO: Normalizamos el contrato de datos para el motor
+    const normalizedCart = cart.map(item => ({
+        ...item,
+        quantity: item.qty // Convertimos 'qty' a 'quantity'
+    }));
+    
+    return calculateCartEngine(normalizedCart, promotions, applyTax, wholesale);
+}, [cart, promotions, applyTax, wholesale]);
 
-        let bogoPool: Record<string, { listPrices: number[], cashPrices: number[], buy: number, pay: number }> = {};
-        const promoCounts: Record<string, number> = {};
 
-        cart.forEach(item => {
-            promotions?.forEach(p => {
-                if (p.promo_type === 'bogo' && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) {
-                    promoCounts[p.id] = (promoCounts[p.id] || 0) + item.qty;
-                }
-            })
-        });
 
-        const processedItems = cart.map(item => {
-            const listPrice = item.basePrice + item.penalty;
-            const cashPrice = item.basePrice;
-            totalListNominal += listPrice * item.qty; totalCashNominal += cashPrice * item.qty;
-            let itemListDiscount = 0; let itemCashDiscount = 0;
-
-            const applicablePromos = promotions?.filter((p: any) => p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) || [];
-            let bestPromo = null;
-
-            if (applicablePromos.length > 0) {
-                let maxEffective = 0;
-                applicablePromos.forEach(p => {
-                    let eff = p.promo_type === 'percentage' ? Number(p.discount_percentage) : (p.promo_type === 'bogo' && (promoCounts[p.id] || 0) >= p.bogo_buy ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
-                    if (eff > maxEffective) { maxEffective = eff; bestPromo = p; }
-                });
-
-                if (bestPromo && (bestPromo as any).promo_type === 'percentage') {
-                    const pct = (bestPromo as any).discount_percentage / 100;
-                    itemListDiscount = (listPrice * item.qty) * pct; itemCashDiscount = (cashPrice * item.qty) * pct;
-                    listPromoDiscounts += itemListDiscount; cashPromoDiscounts += itemCashDiscount;
-                }
-            }
-
-           const finalListPrice = listPrice - (itemListDiscount / item.qty);
-            const finalCashPrice = cashPrice - (itemCashDiscount / item.qty);
-
-            // 🚀 ESCUDO ARQUITECTÓNICO: Si la tienda NO cobra impuestos (applyTax es false), ignoramos el flag del producto
-            const effectiveIsExempt = applyTax ? item.isTaxExempt : false;
-
-            // Separador fiscal usando la variable protegida
-            if (!effectiveIsExempt) {
-                taxableSubtotalList += (finalListPrice * item.qty);
-                taxableSubtotalCash += (finalCashPrice * item.qty);
-            }
-
-            return { ...item, listPrice, cashPrice, finalListPrice, finalCashPrice }
-        });
-
-        const finalBsModeUSD = totalListNominal - listPromoDiscounts;
-        const finalCashModeUSD = totalCashNominal - cashPromoDiscounts;
-        
-        return { processedItems, totalListNominal, totalCashNominal, listPromoDiscounts, cashPromoDiscounts, finalBsModeUSD, finalCashModeUSD, taxableSubtotalList, taxableSubtotalCash };
-    }, [cart, promotions]);
-
+const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
     // LÓGICA MAYORISTA Y DIVISAS
     const isWholesaleActive = wholesale.active && totalItemsCount >= wholesale.min_items;
-    const wholesaleDiscountList = isWholesaleActive ? (cartEngine.totalListNominal * (wholesale.discount_percentage / 100)) : 0;
-    const wholesaleDiscountCash = isWholesaleActive ? (cartEngine.totalCashNominal * (wholesale.discount_percentage / 100)) : 0;
+  
 
     const isHardCurrency = ['Zelle', 'Binance', 'Zinli', 'WallyTech', 'Efectivo'].includes(selectedPayment);
     
@@ -210,7 +173,8 @@ export default function POSPage() {
             qty: 1, 
             maxStock: 9999, 
             image: '',
-            isTaxExempt: false // 🚀 FIX: Cumplimos con el contrato de TypeScript (Los items manuales pagan IVA por defecto)
+            isTaxExempt: false, // 🚀 FIX: Cumplimos con el contrato de TypeScript (Los items manuales pagan IVA por defecto)
+            productWholesaleActive: false, productWholesaleMinQty: 0, productWholesaleDiscountPct: 0
         }])
         
         setCustomItem({ name: '', price: '' })
@@ -233,7 +197,23 @@ export default function POSPage() {
                 }
                 return prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + 1 } : item)
             }
-            return [...prev, { cartId, productId: product.id, variantId: String(variant?.id || ''), name: product.name, variantInfo, basePrice, penalty, qty: 1, maxStock, image: product.image_url, isTaxExempt: product.is_tax_exempt || false }]
+           return [...prev, { 
+            cartId, 
+            productId: product.id, 
+            variantId: String(variant?.id || ''), 
+            name: product.name, 
+            variantInfo, 
+            basePrice, 
+            penalty, 
+            qty: 1, 
+            maxStock, 
+            image: product.image_url, 
+            isTaxExempt: product.is_tax_exempt || false,
+            // 🚀 NUEVO: Pasamos las reglas al ticket del POS
+            productWholesaleActive: product.wholesale_active || false,
+            productWholesaleMinQty: Number(product.wholesale_min_qty || 6),
+            productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0)
+        }]
         })
         setSelectedProductForVariant(null)
     }

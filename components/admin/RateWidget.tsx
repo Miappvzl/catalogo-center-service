@@ -29,6 +29,7 @@ export default function RateWidget({
   const safeEur = Number(eurRate) || 0
   const activeRate = optimisticCurrency === 'usd' ? safeUsd : safeEur
 
+
   const handleCurrencyChange = (currency: 'usd' | 'eur') => {
     startTransition(() => {
       setOptimisticCurrency(currency)
@@ -63,14 +64,11 @@ export default function RateWidget({
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
                     <RefreshCw className={`w-3 h-3 ${isPending ? "animate-spin text-black" : ""}`} />
-                    <span>
-                        {isPending 
-                            ? 'Actualizando...' 
-                            : lastUpdated 
-                                ? `Actualizado: ${new Date(lastUpdated).toLocaleTimeString('es-VE', {hour: '2-digit', minute:'2-digit'})}` 
-                                : 'Esperando sincronización...'
-                        }
-                    </span>
+                   
+
+<span>
+  {isPending ? 'Actualizando...' : (lastUpdated ? `Última actualización: ${lastUpdated}` : 'Última actualización: N/A')}
+</span>
                 </div>
             </div>
         </div>
