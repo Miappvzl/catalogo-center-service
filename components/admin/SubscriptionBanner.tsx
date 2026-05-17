@@ -153,12 +153,15 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
           )}
           <p>{message}</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md font-bold transition-all active:scale-95 ${buttonClass}`}
-        >
-          <Zap size={14} /> {buttonText} <ArrowRight size={14} />
-        </button>
+       // DESPUÉS (Inmune al fieldset)
+<div 
+  role="button"
+  tabIndex={0}
+  onClick={() => setShowModal(true)}
+  className={`flex items-center cursor-pointer gap-1.5 px-4 py-1.5 rounded-md font-bold transition-all active:scale-95 ${buttonClass}`}
+>
+  <Zap size={14} /> {buttonText} <ArrowRight size={14} />
+</div>
       </div>
 
       {/* MODAL PRINCIPAL DE FACTURACIÓN (Ultra-Compacto / Zero Scroll) */}
@@ -179,12 +182,12 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               className="relative w-full max-w-[400px] bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl"
             >
-              <button 
+              <div 
                 onClick={() => setShowModal(false)} 
                 className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10"
               >
                 <X size={16} />
-              </button>
+              </div>
 
               {/* Header Minimalista (Más compacto) */}
               <div className="p-5 pb-4 text-center border-b border-gray-50 bg-gray-50/30">
@@ -212,13 +215,15 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                       <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100/50 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-all">
                         <span>≈ Bs {amountBs} (BCV)</span>
                         <div className="w-px h-3 bg-emerald-200 mx-0.5"></div>
-                        <button 
+                        <div 
+                          role="button"
+                          tabIndex={0}
                           onClick={() => copyToClipboard(amountBs, 'monto')}
                           className="text-emerald-600 hover:text-emerald-900 transition-colors flex items-center gap-1 active:scale-90"
                           title="Copiar monto exacto"
                         >
                           {copiedId === 'monto' ? <Check size={12} strokeWidth={3} /> : <Copy size={12} strokeWidth={2.5} />}
-                        </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-400">
@@ -263,31 +268,37 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                       Global Wallets
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button 
+                      <div 
+                        role="button"
+                        tabIndex={0}    
                         onClick={() => copyToClipboard(PREZISO_BILLING.wallets.binanceId, 'binance')}
                         className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95"
                       >
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Binance ID</p>
                         <p className="text-[11px] font-black text-gray-900 mt-0.5">{copiedId === 'binance' ? '¡Copiado!' : PREZISO_BILLING.wallets.binanceId}</p>
-                      </button>
-                      <button 
+                      </div>
+                      <div 
+                        role="button"
+                        tabIndex={0}
                         onClick={() => copyToClipboard(PREZISO_BILLING.wallets.zinliEmail, 'zinli')}
                         className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95"
                       >
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Zinli / Email</p>
                         <p className="text-[11px] font-black text-gray-900 mt-0.5 truncate px-1">{copiedId === 'zinli' ? '¡Copiado!' : PREZISO_BILLING.wallets.zinliEmail}</p>
-                      </button>
+                      </div >
                     </div>
                   </div>
                 </div>
 
                 {/* Botón Principal */}
-                <button 
+                <div 
+                  role="button"
+                  tabIndex={0}
                   onClick={handleReportPayment}
                   className="w-full bg-black text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98]"
                 >
                   <MessageCircle size={16} /> Reportar Pago
-                </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -325,9 +336,15 @@ function DataRow({ label, value, onCopy, isCopied }: { label: string, value: str
       <div className="flex items-center gap-2">
         <span className="font-bold text-gray-900 tracking-tight">{value}</span>
         {onCopy && (
-          <button onClick={onCopy} className="text-gray-300 hover:text-black transition-colors" aria-label={`Copiar ${label}`}>
+          <div 
+            role="button"
+            tabIndex={0}
+            onClick={onCopy}
+            className="text-gray-300 hover:text-black transition-colors"
+            aria-label={`Copiar ${label}`}
+          >
             {isCopied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-          </button>
+          </div>
         )}
       </div>
     </div>
