@@ -153,7 +153,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
           )}
           <p>{message}</p>
         </div>
-       // DESPUÉS (Inmune al fieldset)
+      
 <div 
   role="button"
   tabIndex={0}
