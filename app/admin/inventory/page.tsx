@@ -26,6 +26,7 @@ interface InventoryItem {
     isTaxExempt: boolean; // 🚀 NUEVO
     isFeatured: boolean; // 🚀 AÑADIR ESTO
     displayOrder: number; // 🚀 NUEVO
+    requiresShipping: boolean; // 🚀 NUEVO
 }
 
 export default function InventoryPage() {
@@ -56,7 +57,7 @@ export default function InventoryPage() {
         setIsReordering(true)
     }
 
-   
+
 
     // 🚀 MAGIA: EL SALTO CUÁNTICO (Editar número manualmente)
     const handleQuantumLeap = (productId: string, newPosStr: string) => {
@@ -124,23 +125,57 @@ export default function InventoryPage() {
                 const { data: store } = await supabase.from('stores').select('id, fiscal_profile').eq('user_id', user.id).single()
                 if (!store) return
                 setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
-
-                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
-                if (error) throw error
+                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
+
                 products?.forEach((prod: any) => {
                     const isExempt = prod.is_tax_exempt || false
                     const isFeat = prod.is_featured || false
-                    const dOrder = prod.display_order || 0 // 🚀 NUEVO
+                    const dOrder = prod.display_order || 0
+
+                    // 🚀 CORRECCIÓN: Declaramos la variable correctamente
+                    const reqShipping = prod.requires_shipping ?? true
+
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
-                            flatInventory.push({ rowId: variant.id, productId: prod.id, name: prod.name, image: variant.variant_image || prod.image_url, category: prod.category, variantId: variant.id, color: variant.color_name, hex: variant.color_hex, size: variant.size, stock: variant.stock, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder })
+                            flatInventory.push({
+                                rowId: variant.id,
+                                productId: prod.id,
+                                name: prod.name,
+                                image: variant.variant_image || prod.image_url,
+                                category: prod.category,
+                                variantId: variant.id,
+                                color: variant.color_name,
+                                hex: variant.color_hex,
+                                size: variant.size,
+                                stock: variant.stock,
+                                isTaxExempt: isExempt,
+                                isFeatured: isFeat,
+                                displayOrder: dOrder,
+                                requiresShipping: reqShipping // 🚀 INYECCIÓN AQUÍ
+                            })
                         })
                     } else {
-                        flatInventory.push({ rowId: prod.id, productId: prod.id, name: prod.name, image: prod.image_url, category: prod.category, variantId: null, color: 'Único', hex: '#000000', size: 'U', stock: prod.stock || 0, isTaxExempt: isExempt, isFeatured: isFeat, displayOrder: dOrder })
+                        flatInventory.push({
+                            rowId: prod.id,
+                            productId: prod.id,
+                            name: prod.name,
+                            image: prod.image_url,
+                            category: prod.category,
+                            variantId: null,
+                            color: 'Único',
+                            hex: '#000000',
+                            size: 'U',
+                            stock: prod.stock || 0,
+                            isTaxExempt: isExempt,
+                            isFeatured: isFeat,
+                            displayOrder: dOrder,
+                            requiresShipping: reqShipping // 🚀 INYECCIÓN AQUÍ
+                        })
                     }
                 })
+
                 setItems(flatInventory)
             } catch (error) { console.error(error) } finally { setLoading(false) }
         }
@@ -210,6 +245,24 @@ export default function InventoryPage() {
         } catch (error) {
             setItems(prev => prev.map(item => item.productId === productId ? { ...item, isFeatured: currentStatus } : item))
             Swal.fire('Error', 'No se pudo actualizar el estatus', 'error')
+        }
+    }
+
+    // 🚀 NUEVA FUNCIÓN: Alternar Naturaleza Física/Servicio
+    const toggleRequiresShipping = async (productId: string, currentStatus: boolean) => {
+        const newStatus = !currentStatus;
+        setItems(prev => prev.map(item => item.productId === productId ? { ...item, requiresShipping: newStatus } : item));
+
+        try {
+            const { error } = await supabase.from('products').update({ requires_shipping: newStatus }).eq('id', productId);
+            if (error) throw error;
+
+            await revalidateStoreCache(); // Importante para vaciar la caché de Next.js
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } });
+            Toast.fire({ icon: 'success', title: newStatus ? 'Marcado como Producto Físico' : 'Marcado como Servicio (Sin Envío)' });
+        } catch (error) {
+            setItems(prev => prev.map(item => item.productId === productId ? { ...item, requiresShipping: currentStatus } : item));
+            Swal.fire('Error', 'No se pudo actualizar el tipo de producto', 'error');
         }
     }
 
@@ -378,7 +431,7 @@ export default function InventoryPage() {
                                                     </td>
                                                     <td className="p-4 md:p-6 hidden md:table-cell align-middle">
                                                         <div className="flex items-center gap-2">
-                                                            <div className="px-3 py-1.5 rounded-[var(--radius-badge)] bg-gray-50 flex items-center gap-2 max-w-[120px]">
+                                                            <div className="px-3 py-1 rounded-[var(--radius-badge)] bg-gray-50 flex items-center gap-2 max-w-[120px]">
                                                                 <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ background: item.hex }}></span>
                                                                 <span className="text-xs font-bold text-gray-700 capitalize truncate">{item.color}</span>
                                                             </div>
@@ -426,6 +479,18 @@ export default function InventoryPage() {
                                                                     {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
                                                                 </button>
                                                             )}
+                                                            {/* 🚀 BOTÓN LOGÍSTICO (Físico vs Servicio) */}
+                                                            <button
+                                                                onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
+                                                                className={`flex items-center justify-center gap-1.5 px-2.5 py-1 w-20 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all mt-1.5 ${item.requiresShipping ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-100 text-purple-500 hover:bg-gray-200'}`}
+                                                                title="Toca para cambiar entre Producto Físico o Servicio (Experiencia)"
+                                                            >
+                                                                {item.requiresShipping ? (
+                                                                    <><Package size={10} /> Físico</>
+                                                                ) : (
+                                                                    <><Zap size={10} /> Servicio</>
+                                                                )}
+                                                            </button>
                                                         </div>
                                                     </td>
                                                     {/* 🚀 NUEVA CELDA: EXHIBICIÓN */}

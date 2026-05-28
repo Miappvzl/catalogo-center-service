@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent, FileText } from 'lucide-react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent, FileText, Zap, Sparkle } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -82,13 +82,13 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     // 👇 AÑADE ESTA LÍNEA AQUÍ 👇
     // Restauramos el booleano estrictamente para que la UI sepa cuándo pintar la barra verde
     // 1. Calculamos el volumen REAL elegible para la barra global (Aislamiento Estricto)
-const globalEligibleCount = items.reduce((acc, item) => {
-    return !item.productWholesaleActive ? acc + item.quantity : acc;
-}, 0);
+    const globalEligibleCount = items.reduce((acc, item) => {
+        return !item.productWholesaleActive ? acc + item.quantity : acc;
+    }, 0);
 
-// 2. El booleano ahora lee el conteo aislado, no el conteo sucio total
-const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.min_items;
-  
+    // 2. El booleano ahora lee el conteo aislado, no el conteo sucio total
+    const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.min_items;
+
 
     // 🚀 FIX: Definición de Affiliate devuelta a la vida
     const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
@@ -201,24 +201,24 @@ const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.m
                             )}
 
                             {/* PROGRESS BAR MAYORISTA (Solo Paso 1) */}
-{step === 1 && wholesale.active && (
-    <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
-        <div className="flex justify-between items-end mb-2">
-            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Global Activado' : 'Ahorra al Mayor (Global)'}</span>
-            <span className="text-xs font-black text-[var(--store-text-main)]">{globalEligibleCount} / {wholesale.min_items}</span>
-        </div>
-        <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
-            <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (globalEligibleCount / wholesale.min_items) * 100)}%` }}
-                className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
-            />
-        </div>
-        <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
-            {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento en el resto de la tienda.` : `Agrega ${wholesale.min_items - globalEligibleCount} piezas en total para ganar ${wholesale.discount_percentage}% de descuento global.`}
-        </p>
-    </div>
-)}
+                            {step === 1 && wholesale.active && (
+                                <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Global Activado' : 'Ahorra al Mayor (Global)'}</span>
+                                        <span className="text-xs font-black text-[var(--store-text-main)]">{globalEligibleCount} / {wholesale.min_items}</span>
+                                    </div>
+                                    <div className="w-full bg-[var(--store-border)] rounded-full h-2 overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${Math.min(100, (globalEligibleCount / wholesale.min_items) * 100)}%` }}
+                                            className={`h-full rounded-full transition-colors duration-500 ${isWholesaleActive ? 'bg-emerald-500' : 'bg-[var(--store-primary)]'}`}
+                                        />
+                                    </div>
+                                    <p className={`text-[10px] font-bold mt-2 transition-colors ${isWholesaleActive ? 'text-[var(--store-incentive)]' : 'text-[var(--store-surface-text)]'}`}>
+                                        {isWholesaleActive ? `¡Felicidades! Tienes ${wholesale.discount_percentage}% de descuento en el resto de la tienda.` : `Agrega ${wholesale.min_items - globalEligibleCount} piezas en total para ganar ${wholesale.discount_percentage}% de descuento global.`}
+                                    </p>
+                                </div>
+                            )}
 
                             {/* CONTENEDOR MULTI-PASO */}
                             <div className="flex-1 relative overflow-hidden bg-[var(--store-surface)]">
@@ -246,21 +246,30 @@ const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.m
                                                                 <div>
 
                                                                     {/* 🚀 SMART BADGE DINÁMICO */}
-{/* 🚀 SMART BADGE DINÁMICO BLINDADO */}
-{item.badge && (
-    <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${
-        item.badge.type === 'pending' 
-            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm' 
-            : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
-    }`}>
-        {item.badge.text}
-    </span>
-)}
+                                                                    {/* 🚀 SMART BADGE DINÁMICO BLINDADO */}
+                                                                    {item.badge && (
+                                                                        <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${item.badge.type === 'pending'
+                                                                            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm'
+                                                                            : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
+                                                                            }`}>
+                                                                            {item.badge.text}
+                                                                        </span>
+                                                                    )}
                                                                     <div className="flex justify-between items-start">
                                                                         <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
                                                                         <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors  p-1.5 rounded-md hover:bg-[var(--store-primary)]/20"><Trash2 size={14} /></button>
                                                                     </div>
                                                                     <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
+
+                                                                    {/* 🚀 NUEVO: BADGE DE SERVICIO PARA CARRITO MIXTO */}
+                                                                    {item.requiresShipping === false && (
+                                                                        <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded-md uppercase tracking-wider w-fit max-w-full">
+                                                                            <Sparkle size={10} className="shrink-0" />
+                                                                            <span className="truncate">
+                                                                                {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
+                                                                            </span>
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 <div className="flex items-end justify-between mt-2">

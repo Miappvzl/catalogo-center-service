@@ -17,6 +17,8 @@ import {
     Loader2,
     MessageCircle,
     Copy,
+    Coffee,
+    Sparkle
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
@@ -230,6 +232,11 @@ export default function CheckoutProcess({
 
     // 🚀 NUEVO ESTADO: Para preguntar si el cliente quiere RIF en su factura (Solo visible en modo estricto)
     const [wantsFiscalData, setWantsFiscalData] = useState<boolean>(false);
+
+    // 🚀 NUEVO: Evaluador de Carrito Mixto (O(N) optimizado)
+    const needsShipping = useMemo(() => {
+        return items.some(item => item.requiresShipping !== false);
+    }, [items]);
 
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>("");
 
@@ -505,6 +512,7 @@ export default function CheckoutProcess({
                     icon: "warning",
                     confirmButtonColor: "#000",
                 });
+
             if (!clientData.fiscalAddress)
                 return Swal.fire({
                     title: "Faltan Datos",
@@ -514,43 +522,18 @@ export default function CheckoutProcess({
                 });
         }
 
-        if (clientData.deliveryType === "pickup" && !clientData.addressDetail)
-            return Swal.fire({
-                title: "Punto de Retiro",
-                text: "Selecciona dónde buscarás tu pedido.",
-                icon: "warning",
-                confirmButtonColor: "#000",
-            });
-        if (clientData.deliveryType === "courier") {
-            if (!clientData.courier)
-                return Swal.fire({
-                    title: "Envío",
-                    text: "Selecciona una empresa de envío",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                });
-            if (!clientData.state || !clientData.city || !clientData.addressDetail)
-                return Swal.fire({
-                    title: "Dirección Incompleta",
-                    text: "Llena los campos",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                });
-            if (!clientData.identityCard)
-                return Swal.fire({
-                    title: "Identificación",
-                    text: "La cédula es requerida para envíos",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                });
+        // 🚀 NUEVO: Bypass logístico inteligente
+        if (needsShipping) {
+            if (clientData.deliveryType === "pickup" && !clientData.addressDetail)
+                return Swal.fire({ title: "Punto de Retiro", text: "Selecciona dónde buscarás tu pedido.", icon: "warning", confirmButtonColor: "#000" });
+            if (clientData.deliveryType === "courier") {
+                if (!clientData.courier) return Swal.fire({ title: "Envío", text: "Selecciona una empresa de envío", icon: "warning", confirmButtonColor: "#000" });
+                if (!clientData.state || !clientData.city || !clientData.addressDetail) return Swal.fire({ title: "Dirección Incompleta", text: "Llena los campos", icon: "warning", confirmButtonColor: "#000" });
+                if (!clientData.identityCard) return Swal.fire({ title: "Identificación", text: "La cédula es requerida para envíos", icon: "warning", confirmButtonColor: "#000" });
+            }
+            if (clientData.deliveryType === "local_delivery" && !selectedDeliveryZone)
+                return Swal.fire({ title: "Zona de Delivery", text: "Selecciona la zona a la que enviaremos tu pedido", icon: "warning", confirmButtonColor: "#000" });
         }
-        if (clientData.deliveryType === "local_delivery" && !selectedDeliveryZone)
-            return Swal.fire({
-                title: "Zona de Delivery",
-                text: "Selecciona la zona a la que enviaremos tu pedido",
-                icon: "warning",
-                confirmButtonColor: "#000",
-            });
 
         if (!isPaidInFull)
             return Swal.fire({
@@ -621,13 +604,19 @@ export default function CheckoutProcess({
                 }),
             );
 
-            let deliveryInfoFull = "Retiro Personal";
-            if (clientData.deliveryType === "courier")
-                deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
-            else if (clientData.deliveryType === "local_delivery")
-                deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
-            else if (clientData.deliveryType === "pickup")
-                deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+            // 🚀 RESOLUCIÓN DE LOGÍSTICA
+            let deliveryInfoFull = "Servicio en Local / Experiencia";
+            let finalShippingMethod = "service";
+
+            if (needsShipping) {
+                finalShippingMethod = clientData.deliveryType;
+                if (clientData.deliveryType === "courier")
+                    deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+                else if (clientData.deliveryType === "local_delivery")
+                    deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
+                else if (clientData.deliveryType === "pickup")
+                    deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+            }
 
             // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
             const finalPaymentMethod =
@@ -647,7 +636,8 @@ export default function CheckoutProcess({
                     status: "pending",
                     payment_method: finalPaymentMethod, // 🚀 INYECCIÓN: Etiqueta dinámica real
                     split_payments: uploadedPayments,
-                    shipping_method: clientData.deliveryType,
+
+                    shipping_method: finalShippingMethod,
                     delivery_info: deliveryInfoFull,
                     shipping_cost: Number(deliveryCost.toFixed(2)),
                     discount_amount: Number(
@@ -970,316 +960,335 @@ export default function CheckoutProcess({
                         <div className="hidden"></div>
                     )}
                 </div>
-                {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural) */}
-                <div className="space-y-6">
-                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
-                        Entrega
-                    </h2>
-                    <div className="grid grid-cols-1 gap-3">
-                        {shipping.methods?.pickup && (
-                            <div
-                                onClick={() => {
-                                    setClientData({
-                                        ...clientData,
-                                        deliveryType: "pickup",
-                                        addressDetail: "",
-                                    });
-                                    setSelectedDeliveryZone("");
-                                }}
-                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "pickup" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                            >
-                                <Store
-                                    size={20}
-                                    className={
-                                        clientData.deliveryType === "pickup"
-                                            ? "text-[var(--store-text-main)]"
-                                            : "text-[var(--store-surface-text)]"
-                                    }
-                                />
-                                <div>
-                                    <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                        Retiro Personal
-                                    </p>
-                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                        Busca tu pedido gratis en tienda.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        {shipping.methods?.delivery && deliveryZones.length > 0 && (
-                            <div
-                                onClick={() =>
-                                    setClientData({
-                                        ...clientData,
-                                        deliveryType: "local_delivery",
-                                        addressDetail: "",
-                                    })
-                                }
-                                className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "local_delivery" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                            >
-                                <Truck
-                                    size={20}
-                                    className={
-                                        clientData.deliveryType === "local_delivery"
-                                            ? "text-[var(--store-text-main)]"
-                                            : "text-[var(--store-surface-text)]"
-                                    }
-                                />
-                                <div>
-                                    <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                        Delivery Local
-                                    </p>
-                                    <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                        Entregas a domicilio.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                        {(shipping.methods?.mrw ||
-                            shipping.methods?.zoom ||
-                            shipping.methods?.tealca) && (
+
+                {/* 🚀 LOGÍSTICA DE ENVÍO (Estructural & Condicional) */}
+                {needsShipping ? (
+                    <div className="space-y-6">
+                        <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
+                            Entrega
+                        </h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            {shipping.methods?.pickup && (
                                 <div
                                     onClick={() => {
                                         setClientData({
                                             ...clientData,
-                                            deliveryType: "courier",
+                                            deliveryType: "pickup",
                                             addressDetail: "",
                                         });
                                         setSelectedDeliveryZone("");
                                     }}
-                                    className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "courier" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "pickup" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
                                 >
-                                    <Package
+                                    <Store
                                         size={20}
                                         className={
-                                            clientData.deliveryType === "courier"
+                                            clientData.deliveryType === "pickup"
                                                 ? "text-[var(--store-text-main)]"
                                                 : "text-[var(--store-surface-text)]"
                                         }
                                     />
                                     <div>
                                         <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                            Envío Nacional
+                                            Retiro Personal
                                         </p>
                                         <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                            Envíos por agencia.
+                                            Busca tu pedido gratis en tienda.
                                         </p>
                                     </div>
                                 </div>
                             )}
-                    </div>
-
-                    {/* Sub-opciones de Logística (Naked Inputs) */}
-                    {clientData.deliveryType === "pickup" && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
-                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">
-                                ¿Dónde lo buscas? *
-                            </label>
-                            <div className="grid gap-3">
-                                {shipping.main_address && (
-                                    <label
-                                        className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                            {shipping.methods?.delivery && deliveryZones.length > 0 && (
+                                <div
+                                    onClick={() =>
+                                        setClientData({
+                                            ...clientData,
+                                            deliveryType: "local_delivery",
+                                            addressDetail: "",
+                                        })
+                                    }
+                                    className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "local_delivery" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                >
+                                    <Truck
+                                        size={20}
+                                        className={
+                                            clientData.deliveryType === "local_delivery"
+                                                ? "text-[var(--store-text-main)]"
+                                                : "text-[var(--store-surface-text)]"
+                                        }
+                                    />
+                                    <div>
+                                        <p className="font-bold text-sm text-[var(--store-text-main)]">
+                                            Delivery Local
+                                        </p>
+                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
+                                            Entregas a domicilio.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {(shipping.methods?.mrw ||
+                                shipping.methods?.zoom ||
+                                shipping.methods?.tealca) && (
+                                    <div
+                                        onClick={() => {
+                                            setClientData({
+                                                ...clientData,
+                                                deliveryType: "courier",
+                                                addressDetail: "",
+                                            });
+                                            setSelectedDeliveryZone("");
+                                        }}
+                                        className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "courier" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
                                     >
-                                        <input
-                                            type="radio"
-                                            name="pickupLocation"
-                                            className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                            checked={
-                                                clientData.addressDetail === shipping.main_address
-                                            }
-                                            onChange={() =>
-                                                setClientData({
-                                                    ...clientData,
-                                                    addressDetail: shipping.main_address,
-                                                })
+                                        <Package
+                                            size={20}
+                                            className={
+                                                clientData.deliveryType === "courier"
+                                                    ? "text-[var(--store-text-main)]"
+                                                    : "text-[var(--store-surface-text)]"
                                             }
                                         />
                                         <div>
-                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
-                                                Tienda Física
+                                            <p className="font-bold text-sm text-[var(--store-text-main)]">
+                                                Envío Nacional
                                             </p>
-                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
-                                                {shipping.main_address}
+                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
+                                                Envíos por agencia.
                                             </p>
                                         </div>
-                                    </label>
+                                    </div>
                                 )}
-                                {shipping.pickup_locations?.map((loc: string, idx: number) => (
-                                    <label
-                                        key={idx}
-                                        className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="pickupLocation"
-                                            className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                            checked={clientData.addressDetail === loc}
-                                            onChange={() =>
-                                                setClientData({ ...clientData, addressDetail: loc })
-                                            }
-                                        />
-                                        <div>
-                                            <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
-                                                Punto de Entrega
-                                            </p>
-                                            <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
-                                                {loc}
-                                            </p>
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
                         </div>
-                    )}
 
-                    {clientData.deliveryType === "local_delivery" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                            <div>
+                        {/* Sub-opciones de Logística (Naked Inputs) */}
+                        {clientData.deliveryType === "pickup" && (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
                                 <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">
-                                    Selecciona tu zona *
+                                    ¿Dónde lo buscas? *
                                 </label>
-                                <div className="grid grid-cols-1 gap-3">
-                                    {deliveryZones.map((z: any) => (
-                                        <button
-                                            key={z.id}
-                                            onClick={() => setSelectedDeliveryZone(z.id)}
-                                            className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]" : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]"}`}
+                                <div className="grid gap-3">
+                                    {shipping.main_address && (
+                                        <label
+                                            className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
                                         >
-                                            <span className="font-bold text-sm">{z.name}</span>
-                                            <span className="font-black text-sm">
-                                                +{currencySymbol}
-                                                {Number(z.cost).toFixed(2)}
-                                            </span>
-                                        </button>
+                                            <input
+                                                type="radio"
+                                                name="pickupLocation"
+                                                className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                checked={
+                                                    clientData.addressDetail === shipping.main_address
+                                                }
+                                                onChange={() =>
+                                                    setClientData({
+                                                        ...clientData,
+                                                        addressDetail: shipping.main_address,
+                                                    })
+                                                }
+                                            />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
+                                                    Tienda Física
+                                                </p>
+                                                <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
+                                                    {shipping.main_address}
+                                                </p>
+                                            </div>
+                                        </label>
+                                    )}
+                                    {shipping.pickup_locations?.map((loc: string, idx: number) => (
+                                        <label
+                                            key={idx}
+                                            className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="pickupLocation"
+                                                className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                checked={clientData.addressDetail === loc}
+                                                onChange={() =>
+                                                    setClientData({ ...clientData, addressDetail: loc })
+                                                }
+                                            />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
+                                                    Punto de Entrega
+                                                </p>
+                                                <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
+                                                    {loc}
+                                                </p>
+                                            </div>
+                                        </label>
                                     ))}
                                 </div>
                             </div>
-                            {selectedDeliveryZone && (
-                                <div className="grid grid-cols-1 gap-6 animate-in fade-in pt-2">
-                                    <input
-                                        value={clientData.addressDetail}
-                                        onChange={(e) =>
-                                            setClientData({
-                                                ...clientData,
-                                                addressDetail: e.target.value,
-                                            })
-                                        }
-                                        className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                        placeholder="Dirección exacta *"
-                                    />
-                                    <input
-                                        value={clientData.reference}
-                                        onChange={(e) =>
-                                            setClientData({
-                                                ...clientData,
-                                                reference: e.target.value,
-                                            })
-                                        }
-                                        className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                        placeholder="Punto de referencia (Opcional)"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
 
-                    {clientData.deliveryType === "courier" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                            <div>
-                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">
-                                    Agencia de Envío *
-                                </label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {activeCouriers.map((c) => {
-                                        const LogoComponent = CourierLogos[c];
-                                        const isSelected = clientData.courier === c;
-
-                                        return (
+                        {clientData.deliveryType === "local_delivery" && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">
+                                        Selecciona tu zona *
+                                    </label>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {deliveryZones.map((z: any) => (
                                             <button
-                                                key={c}
-                                                onClick={() =>
-                                                    setClientData({ ...clientData, courier: c })
-                                                }
-                                                className={`flex flex-col items-center justify-center gap-3 py-4 rounded-md transition-all border group ${isSelected
-                                                        ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]"
-                                                        : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)] hover:text-[var(--store-text-main)]"
-                                                    }`}
+                                                key={z.id}
+                                                onClick={() => setSelectedDeliveryZone(z.id)}
+                                                className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]" : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]"}`}
                                             >
-                                                {/* 🚀 EL SVG ESCALA Y HEREDA EL COLOR AUTOMÁTICAMENTE */}
-                                                {LogoComponent && (
-                                                    <div className="h-6 w-full flex items-center justify-center px-4">
-                                                        <LogoComponent className="h-full w-auto max-w-full" />
-                                                    </div>
-                                                )}
-                                                <span className="text-[10px] font-black uppercase tracking-widest">
-                                                    {c}
+                                                <span className="font-bold text-sm">{z.name}</span>
+                                                <span className="font-black text-sm">
+                                                    +{currencySymbol}
+                                                    {Number(z.cost).toFixed(2)}
                                                 </span>
                                             </button>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                            {clientData.courier && (
-                                <div className="space-y-6 animate-in fade-in pt-2">
-                                    <input
-                                        maxLength={15}
-                                        value={clientData.identityCard}
-                                        // Permite solo letras y números (ej: V12345678)
-                                        onChange={(e) =>
-                                            setClientData({
-                                                ...clientData,
-                                                identityCard: e.target.value.replace(
-                                                    /[^a-zA-Z0-9-]/g,
-                                                    "",
-                                                ),
-                                            })
-                                        }
-                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                        placeholder="Cédula de Identidad *"
-                                    />
-                                    <div className="grid grid-cols-2 gap-6">
+                                {selectedDeliveryZone && (
+                                    <div className="grid grid-cols-1 gap-6 animate-in fade-in pt-2">
                                         <input
-                                            maxLength={40}
-                                            value={clientData.state}
+                                            value={clientData.addressDetail}
                                             onChange={(e) =>
                                                 setClientData({
                                                     ...clientData,
-                                                    state: e.target.value.replace(/[<>]/g, ""),
+                                                    addressDetail: e.target.value,
+                                                })
+                                            }
+                                            className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                            placeholder="Dirección exacta *"
+                                        />
+                                        <input
+                                            value={clientData.reference}
+                                            onChange={(e) =>
+                                                setClientData({
+                                                    ...clientData,
+                                                    reference: e.target.value,
+                                                })
+                                            }
+                                            className="w-full bg-transparent   border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                            placeholder="Punto de referencia (Opcional)"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {clientData.deliveryType === "courier" && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-4">
+                                        Agencia de Envío *
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {activeCouriers.map((c) => {
+                                            const LogoComponent = CourierLogos[c];
+                                            const isSelected = clientData.courier === c;
+
+                                            return (
+                                                <button
+                                                    key={c}
+                                                    onClick={() =>
+                                                        setClientData({ ...clientData, courier: c })
+                                                    }
+                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-md transition-all border group ${isSelected
+                                                        ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]"
+                                                        : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)] hover:text-[var(--store-text-main)]"
+                                                        }`}
+                                                >
+                                                    {/* 🚀 EL SVG ESCALA Y HEREDA EL COLOR AUTOMÁTICAMENTE */}
+                                                    {LogoComponent && (
+                                                        <div className="h-6 w-full flex items-center justify-center px-4">
+                                                            <LogoComponent className="h-full w-auto max-w-full" />
+                                                        </div>
+                                                    )}
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                        {c}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                {clientData.courier && (
+                                    <div className="space-y-6 animate-in fade-in pt-2">
+                                        <input
+                                            maxLength={15}
+                                            value={clientData.identityCard}
+                                            // Permite solo letras y números (ej: V12345678)
+                                            onChange={(e) =>
+                                                setClientData({
+                                                    ...clientData,
+                                                    identityCard: e.target.value.replace(
+                                                        /[^a-zA-Z0-9-]/g,
+                                                        "",
+                                                    ),
                                                 })
                                             }
                                             className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                            placeholder="Estado *"
+                                            placeholder="Cédula de Identidad *"
                                         />
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <input
+                                                maxLength={40}
+                                                value={clientData.state}
+                                                onChange={(e) =>
+                                                    setClientData({
+                                                        ...clientData,
+                                                        state: e.target.value.replace(/[<>]/g, ""),
+                                                    })
+                                                }
+                                                className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                placeholder="Estado *"
+                                            />
+                                            <input
+                                                maxLength={40}
+                                                value={clientData.city}
+                                                onChange={(e) =>
+                                                    setClientData({
+                                                        ...clientData,
+                                                        city: e.target.value.replace(/[<>]/g, ""),
+                                                    })
+                                                }
+                                                className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)]     transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                placeholder="Ciudad *"
+                                            />
+                                        </div>
                                         <input
-                                            maxLength={40}
-                                            value={clientData.city}
+                                            maxLength={150}
+                                            value={clientData.addressDetail}
                                             onChange={(e) =>
                                                 setClientData({
                                                     ...clientData,
-                                                    city: e.target.value.replace(/[<>]/g, ""),
+                                                    addressDetail: e.target.value.replace(/[<>]/g, ""),
                                                 })
                                             }
-                                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)]     transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                            placeholder="Ciudad *"
+                                            className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                            placeholder="Dirección exacta *"
                                         />
                                     </div>
-                                    <input
-                                        maxLength={150}
-                                        value={clientData.addressDetail}
-                                        onChange={(e) =>
-                                            setClientData({
-                                                ...clientData,
-                                                addressDetail: e.target.value.replace(/[<>]/g, ""),
-                                            })
-                                        }
-                                        className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                        placeholder="Dirección exacta *"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+               ) : (
+    <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
+        <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
+            {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
+            <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
+        </div>
+        <div className="flex flex-col">
+            {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
+            <h3 className="font-black text-sm text-[var(--store-text-main)]">
+                {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
+            </h3>
+            <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
+                {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
+            </p>
+        </div>
+    </div>
+)}
 
                 {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
                 <div className="space-y-6">
@@ -1830,8 +1839,8 @@ export default function CheckoutProcess({
                         onClick={handleCheckout}
                         disabled={loading || !isPaidInFull || missingReceipts}
                         className={`flex-1 h-[52px] rounded-full font-black text-xs md:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${missingReceipts && isPaidInFull
-                                ? "bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed"
-                                : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10"
+                            ? "bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed"
+                            : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10"
                             }`}
                     >
                         {loading ? (

@@ -20,6 +20,7 @@ export interface CartItem {
   productWholesaleActive?: boolean
   productWholesaleMinQty?: number
   productWholesaleDiscountPct?: number 
+   requiresShipping?: boolean // 🚀 NUEVO: Herencia Logística
 }
 
 interface CartState {
@@ -80,7 +81,8 @@ export const useCart = create<CartState>()(
               // 🚀 NUEVO: Captura de reglas granulares desde la BD
               productWholesaleActive: product.wholesale_active || false,
               productWholesaleMinQty: Number(product.wholesale_min_qty || 6),
-              productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0)
+              productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0),
+              requiresShipping: product.requires_shipping ?? true // 🚀 NUEVO: Capturamos la naturaleza del producto
             }
 
             return { items: [...state.items, newItem] }

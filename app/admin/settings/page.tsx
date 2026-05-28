@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2 } from 'lucide-react'
+import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -51,6 +51,16 @@ export default function SettingsPage() {
     const [uploadingHero, setUploadingHero] = useState(false)
     const heroInputRef = useRef<HTMLInputElement>(null)
 
+    // 🚀 NUEVO: Mantenemos el backup de shipping_config para no sobreescribir métodos de envío
+    const [shippingRaw, setShippingRaw] = useState<any>({})
+    
+    // 🚀 NUEVO: Estado aislado para la UI de Servicios
+    const [serviceConfig, setServiceConfig] = useState({
+        service_badge: '',
+        service_title: '',
+        service_desc: ''
+    })
+
     useEffect(() => {
         const fetchSettings = async () => {
             const { data: { user } } = await supabase.auth.getUser()
@@ -64,6 +74,12 @@ export default function SettingsPage() {
                 setReceipt(data.receipt_config || { strict_mode: false })
                 // 🚀 NUEVO: Inicializamos el estado desde la BD
                 setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
+                setShippingRaw(data.shipping_config || {})
+                setServiceConfig({
+                    service_badge: data.shipping_config?.service_badge || 'Se consume en tienda',
+                    service_title: data.shipping_config?.service_title || 'Servicio / Experiencia',
+                    service_desc: data.shipping_config?.service_desc || 'Los artículos de tu carrito corresponden a servicios. No requieren logística de envío.'
+                })
 
                 // 🚀 NUEVO: Cargar datos fiscales (Actualizado)
                 setFiscal({
@@ -156,6 +172,14 @@ export default function SettingsPage() {
         if (!isDirty) return
         setSaving(true)
 
+        // 🚀 EMPAQUETADO SEGURO: Fusionamos lo visual con lo logístico sin destruir datos
+        const updatedShippingConfig = {
+            ...shippingRaw,
+            service_badge: serviceConfig.service_badge,
+            service_title: serviceConfig.service_title,
+            service_desc: serviceConfig.service_desc
+        }
+
         const { error } = await supabase
             .from('stores')
             .update({
@@ -164,12 +188,12 @@ export default function SettingsPage() {
                 wholesale_config: wholesale,
                 receipt_config: receipt,
                 affiliate_config: affiliate,
-                // 🚀 NUEVO: Guardar datos fiscales
                 legal_name: fiscal.legal_name,
                 legal_id: fiscal.legal_id,
                 fiscal_address: fiscal.fiscal_address,
                 fiscal_profile: fiscal.fiscal_profile,
-                default_tax_percentage: fiscal.default_tax_percentage
+                default_tax_percentage: fiscal.default_tax_percentage,
+                shipping_config: updatedShippingConfig // 🚀 GUARDAMOS LA FUSIÓN
             })
             .eq('id', store.id)
 
@@ -339,6 +363,67 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </section>
+
+                    {/* 🚀 NUEVA SECCIÓN: PERSONALIZACIÓN DE SERVICIOS */}
+                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
+                        <div className="mb-6">
+                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                <Zap size={20} className="text-black" /> Textos de Servicios / Experiencias
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Personaliza cómo se le muestra al cliente los productos que no requieren logística de envío.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
+                                    <span>Etiqueta en Carrito Mixto</span>
+                                    <span className={serviceConfig.service_badge.length >= 20 ? 'text-red-500' : ''}>
+                                        {serviceConfig.service_badge.length}/20
+                                    </span>
+                                </label>
+                                <input
+                                    maxLength={20}
+                                    value={serviceConfig.service_badge}
+                                    onChange={e => { setServiceConfig({ ...serviceConfig, service_badge: e.target.value }); setIsDirty(true) }}
+                                    placeholder="Ej: Se consume en tienda"
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
+                                    <span>Título de Aviso en Checkout</span>
+                                    <span className={serviceConfig.service_title.length >= 30 ? 'text-red-500' : ''}>
+                                        {serviceConfig.service_title.length}/30
+                                    </span>
+                                </label>
+                                <input
+                                    maxLength={30}
+                                    value={serviceConfig.service_title}
+                                    onChange={e => { setServiceConfig({ ...serviceConfig, service_title: e.target.value }); setIsDirty(true) }}
+                                    placeholder="Ej: Taller en Vivo"
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
+                                    <span>Descripción en Checkout</span>
+                                    <span className={serviceConfig.service_desc.length >= 120 ? 'text-red-500' : ''}>
+                                        {serviceConfig.service_desc.length}/120
+                                    </span>
+                                </label>
+                                <textarea
+                                    maxLength={120}
+                                    rows={2}
+                                    value={serviceConfig.service_desc}
+                                    onChange={e => { setServiceConfig({ ...serviceConfig, service_desc: e.target.value }); setIsDirty(true) }}
+                                    placeholder="Ej: Has reservado una experiencia. Te esperamos en nuestras instalaciones."
+                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-medium text-gray-900 focus:bg-white focus:border-black outline-none transition-all resize-none"
+                                />
+                            </div>
                         </div>
                     </section>
 
