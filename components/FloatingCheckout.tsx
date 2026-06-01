@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, HandCoins, TrendingDown, TicketPercent, FileText, Zap, Sparkle } from 'lucide-react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -9,7 +9,6 @@ import CheckoutProcess from './CheckoutProcess'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { calculateCartEngine } from '@/utils/cartLogic'
-import { useSearchParams } from 'next/navigation'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -24,7 +23,7 @@ interface CheckoutProps {
 }
 
 export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null }: CheckoutProps) {
-    const { items, removeItem, updateQuantity } = useCart()
+   const { items, removeItem, updateQuantity, addOrderToHistory } = useCart()
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState(1)
@@ -32,19 +31,41 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const [whatsappUrl, setWhatsappUrl] = useState('')
     const [generatedOrderNumber, setGeneratedOrderNumber] = useState<number | null>(null)
     const [generatedOrderId, setGeneratedOrderId] = useState<string | null>(null) // 🚀 NUEVO ESTADO
+    const [isWhatsAppInterception, setIsWhatsAppInterception] = useState(false) // 🚀 NUEVO: Peaje Psicológico
+    const [hasClickedWhatsApp, setHasClickedWhatsApp] = useState(false) // 🚀 NUEVO: Memoria de acción
 
+    // 🚀 EFECTO 1: Escucha del Botón del Header
     useEffect(() => {
         setIsMounted(true)
-        const handleToggleCart = () => { setStep(1); setIsOpen(true); };
+        const handleToggleCart = () => { setIsOpen(true); };
         document.addEventListener('toggleCartDrawer', handleToggleCart);
         return () => document.removeEventListener('toggleCartDrawer', handleToggleCart);
     }, [])
 
-    const handleOpenModal = () => { setStep(1); setIsOpen(true); }
+    // 🚀 EFECTO 2: Enrutador Automático (Si abre el carrito vacío pero hay orden, va al Paso 3)
+    useEffect(() => {
+        if (isOpen && items.length === 0 && generatedOrderNumber) {
+            setStep(3);
+        } else if (isOpen && items.length > 0 && step !== 2) {
+            setStep(1);
+        }
+    }, [isOpen, items.length, generatedOrderNumber]);
+
+    // 🚀 EFECTO 3: Limpiador Inteligente (Solo borra la orden si el cliente empieza a comprar de nuevo)
+    useEffect(() => {
+        if (items.length > 0 && generatedOrderNumber) {
+            setGeneratedOrderNumber(null);
+            setGeneratedOrderId(null);
+            setHasClickedWhatsApp(false);
+        }
+    }, [items.length]);
+
+    // 🚀 CIERRE SEGURO: Ya no destruimos la data, solo ocultamos el drawer
     const handleCloseModal = () => {
         setIsOpen(false);
-        setTimeout(() => { setStep(1); setGeneratedOrderNumber(null); setGeneratedOrderId(null); }, 300); // 🚀 Limpiamos
+        setTimeout(() => setIsWhatsAppInterception(false), 300);
     }
+    const handleOpenModal = () => { setStep(1); setIsOpen(true); }
 
     const isEurMode = currency === 'eur'
     const activeRate = isEurMode ? rates.eur : rates.usd
@@ -129,9 +150,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     return (
         <>
-            {/* 🚀 GATILLO MOBILE (El Dock Nativo de cristal) */}
+        {/* 🚀 GATILLO MOBILE DINÁMICO (Se destruye al enviar WhatsApp) */}
             <AnimatePresence>
-                {!isOpen && items.length > 0 && (
+                {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
                     <motion.div
                         initial={{ y: "100%" }}
                         animate={{ y: 0 }}
@@ -139,41 +160,81 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
                         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/30 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
                     >
-                        {/* 1. IZQUIERDA: Icono interactivo + Precios */}
-                        <div className="flex items-center gap-3.5 cursor-pointer group" onClick={handleOpenModal}>
-                            <div className="relative">
-                                <div className="bg-[var(--store-primary)]/80  p-2.5 rounded-full transition-colors group-hover:bg-[var(--store-border)]">
-                                    <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                        {items.length > 0 ? (
+                            // ESTADO A: CARRITO NORMAL
+                            <>
+                                <div className="flex items-center gap-3.5 cursor-pointer group" onClick={() => setIsOpen(true)}>
+                                    <div className="relative">
+                                        <div className="bg-[var(--store-primary)]/80 p-2.5 rounded-full transition-colors group-hover:bg-[var(--store-border)]">
+                                            <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                                        </div>
+                                        <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
+                                            {totalItemsCount}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                        <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                    </div>
                                 </div>
-                                {/* El círculo de notificación que solicitaste */}
-                                <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
-                                    {totalItemsCount}
-                                </span>
+                                <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20">
+                                    Pagar
+                                </button>
+                            </>
+                        ) : (
+                            // ESTADO B: 🚀 GATILLO DE RESCATE (Desaparece al cumplir)
+                            <div className="flex items-center gap-3 w-full cursor-pointer group" onClick={() => setIsOpen(true)}>
+                                <div className="p-2.5 rounded-full transition-colors bg-[var(--store-primary)] animate-pulse shadow-[0_0_15px_var(--store-primary)]">
+                                    <MessageCircle size={22} className="text-[var(--store-primary-text)]" />
+                                </div>
+                                <div className="flex flex-col flex-1 min-w-0">
+                                    <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">Pedido #{generatedOrderNumber}</span>
+                                    <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)]">
+                                        Pendiente por WhatsApp
+                                    </span>
+                                </div>
+                                <button className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm">
+                                    Abrir
+                                </button>
                             </div>
-
-                            <div className="flex flex-col items-start">
-                                {/* Total en $ y Bs como solicitaste */}
-                                <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                            </div>
-                        </div>
-
-                        {/* 2. DERECHA: Botón de Pagar Estructural */}
-                        <button
-                            onClick={handleOpenModal}
-                            className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20"
-                        >
-                            Pagar
-                        </button>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
 
+            {/* 🚀 NUEVO: DESKTOP FLOATING NUDGE (Notificación Minimalista) */}
+            <AnimatePresence>
+                {!isOpen && items.length === 0 && generatedOrderNumber && !hasClickedWhatsApp && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                        className="hidden md:flex fixed bottom-8 right-8 z-50 bg-[var(--store-surface)] p-4 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-[var(--store-border)] items-center gap-4 max-w-sm cursor-pointer group hover:border-[var(--store-primary)]/30 transition-colors"
+                        onClick={() => setIsOpen(true)}
+                    >
+                        <div className="p-3 bg-[var(--store-primary)] rounded-full animate-pulse shadow-[0_0_15px_var(--store-primary)]">
+                            <MessageCircle size={24} className="text-[var(--store-primary-text)]" />
+                        </div>
+                       <div className="flex flex-col min-w-0"> 
+  <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight">
+    Pedido #{generatedOrderNumber}
+  </span> 
+  <span className="text-[11px] font-bold text-[var(--store-primary)] mt-0.5 flex items-center gap-1">
+    <TriangleAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> 
+    Falta enviar WhatsApp
+  </span> 
+</div>
+                        <div className="ml-2 bg-[var(--store-bg)] p-2 rounded-xl border border-[var(--store-border)] text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-hover:border-[var(--store-primary)]/30 transition-colors">
+                            <ArrowUpRight size={16} className="text-[var(--store-surface-text)]  group-hover:text-[var(--store-text-main)]" />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* CAJÓN PRINCIPAL */}
             <AnimatePresence>
                 {isOpen && (
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCloseModal} />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isWhatsAppInterception ? undefined : handleCloseModal} />
 
                         <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
 
@@ -388,10 +449,16 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             affiliateCode={affiliateCode}
                                             affiliateDiscountList={affiliateDiscountList}
                                             affiliateDiscountCash={affiliateDiscountCash}
-                                            onSuccess={(orderNumber, waUrl, orderId) => { // 🚀 RECIBIMOS orderId
+                                           
+                                               onSuccess={(orderNumber: number, waUrl: string, orderId: string) => { 
                                                 setGeneratedOrderNumber(orderNumber);
                                                 setWhatsappUrl(waUrl);
-                                                setGeneratedOrderId(orderId); // 🚀 LO GUARDAMOS
+                                                setGeneratedOrderId(orderId); 
+                                                
+                                                // 🚀 GUARDAMOS EN EL HISTORIAL PERSISTENTE
+                                                addOrderToHistory({ id: orderId, number: orderNumber });
+                                                
+                                                setIsWhatsAppInterception(true); 
                                                 setStep(3);
                                             }}
                                             onBack={() => setStep(1)}
@@ -401,6 +468,57 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                     {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
                                         <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
+
+                                            {/* 🚀 MODAL DE INTERCEPCIÓN (PEAJE PSICOLÓGICO) */}
+                                            <AnimatePresence>
+                                                {isWhatsAppInterception && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        className="absolute inset-0 z-[100] flex items-center justify-center p-5 bg-[var(--store-bg)]/60 backdrop-blur-xl"
+                                                    >
+                                                        <motion.div
+                                                            initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                                                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                                                            exit={{ scale: 0.95, opacity: 0, y: -15 }}
+                                                            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                                                            className="bg-[var(--store-surface)] w-full max-w-sm p-8 md:p-10 rounded-[32px] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.07)] border border-[var(--store-border)]/40 flex flex-col items-center text-center"
+                                                        >
+                                                            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                                                                <AlertCircle size={36} className="text-amber-500" strokeWidth={2.5} />
+                                                            </div>
+                                                            <h3 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none mb-4">
+                                                                ¡Falta un paso!
+                                                            </h3>
+                                                            <p className="text-sm font-medium text-[var(--store-surface-text)] leading-relaxed mb-8">
+                                                                Tu pedido <strong className="text-[var(--store-text-main)] font-black">#{generatedOrderNumber}</strong> está reservado, pero necesitamos que nos envíes el resumen para procesarlo inmediatamente.
+                                                            </p>
+
+                                                            <a
+                                                                href={whatsappUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                // 🚀 Magia: Al hacer clic, abre WhatsApp y a la vez oculta el modal
+                                                                onClick={() => {
+                                                                    setIsWhatsAppInterception(false);
+                                                                    setHasClickedWhatsApp(true); // 🚀 Registramos que el usuario ya accionó
+                                                                }} // 🚀 Registramos que el usuario ya accionó
+                                                                className="w-full bg-[#25D366] text-white px-6 py-4 rounded-2xl font-black text-sm hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-[0_10px_40px_-10px_rgba(37,211,102,0.3)]"
+                                                            >
+                                                                <MessageCircle size={20} /> Enviar WhatsApp Ahora
+                                                            </a>
+
+                                                            <button
+                                                                onClick={() => setIsWhatsAppInterception(false)}
+                                                                className="mt-6 text-[11px] font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors underline decoration-[var(--store-border)] underline-offset-4"
+                                                            >
+                                                                Ya lo envié / Omitir
+                                                            </button>
+                                                        </motion.div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
 
                                             <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
                                                 <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
@@ -419,24 +537,20 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             </div>
 
                                             <div className="w-full flex flex-col gap-3 max-w-sm mx-auto">
-                                                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm border border-[var(--store-border)]">
-                                                    <MessageCircle size={18} /> Enviar a WhatsApp
+                                                <a
+                                                    href={whatsappUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={() => setHasClickedWhatsApp(true)} // Por si hacen clic directo desde aquí
+                                                    className={`w-full px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 shadow-[0_4px_10px_rgba(0,0,0,0.03)] border border-[var(--store-border)] ${hasClickedWhatsApp
+                                                            ? "bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)] opacity-80" // 🚀 ESTADO SECUNDARIO: Discreto y pacífico
+                                                            : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90" // 🚀 ESTADO PRIMARIO: Llamativo (si evadió el modal)
+                                                        }`}
+                                                >
+                                                    {hasClickedWhatsApp ? <Check size={18} className="text-emerald-500" strokeWidth={3} /> : <MessageCircle size={18} />}
+                                                    {hasClickedWhatsApp ? "Mensaje Enviado (Reenviar)" : "Enviar a WhatsApp"}
                                                 </a>
-                                                {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL */}
-                                                {/* 🚀 NUEVO BOTÓN: ACCESO DIRECTO AL PDF FISCAL (Con Ruteo Inteligente) */}
-                                                {generatedOrderId && (
-                                                    <a
-                                                        href={typeof window !== 'undefined' && storeConfig?.slug && window.location.pathname.startsWith(`/${storeConfig.slug}`)
-                                                            ? `/${storeConfig.slug}/quote/${generatedOrderId}`
-                                                            : `/quote/${generatedOrderId}`
-                                                        }
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 border border-[var(--store-border)] shadow-[0_4px_10px_rgba(0,0,0,0.03)] hover:border-[var(--store-text-main)]"
-                                                    >
-                                                        <FileText size={18} /> Ver orden de pedido
-                                                    </a>
-                                                )}
+                                               
                                                 <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
                                                     Volver a la Tienda
                                                 </button>

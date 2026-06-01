@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
@@ -223,7 +223,8 @@ const searchParams = useSearchParams()
     </div>
   )
 
-  const { items } = useCart() // <--- TRAEMOS LOS ITEMS PARA EL GATILLO DESKTOP
+ const { items, orderHistory } = useCart() // 🚀 Extraemos el historial
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false) // 🚀 Estado del modal
   const hasItems = items.length > 0;
   const totalItems = items.reduce((acc, i) => acc + i.quantity, 0);
 
@@ -541,21 +542,38 @@ const searchParams = useSearchParams()
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
 
-            {/* 1. BUSCADOR (Izquierda) */}
-            {/* 🚀 INYECCIÓN: min-w-0 para evitar desbordamiento del flex-1 */}
-            <div className="relative flex-1 w-full md:max-w-md group min-w-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
-              <input
-                type="text"
-                placeholder="Buscar producto..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
-              />
-              {search && (
-                <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
-                  <X size={16} />
-                </button>
+           {/* 1. BUSCADOR Y ACCIONES MOBILE (Izquierda) */}
+            <div className="flex items-center w-full md:max-w-md gap-3">
+              <div className="relative flex-1 group min-w-0">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
+                <input
+                  type="text"
+                  placeholder="Buscar producto..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* 🚀 GATILLO HISTORIAL (MOBILE ONLY) - Permite acceso al PDF limpiamente */}
+              {orderHistory && orderHistory.length > 0 && (
+                <div className="md:hidden shrink-0 w-11 h-11">
+                  <button
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="w-full h-full flex items-center justify-center relative rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] active:scale-95 transition-all duration-300"
+                    title="Mis Pedidos"
+                  >
+                    <Receipt size={18} strokeWidth={2.5} />
+                    <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-sm">
+                      {orderHistory.length}
+                    </span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -572,6 +590,22 @@ const searchParams = useSearchParams()
               <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-[var(--store-bg)] via-[var(--store-bg)]/80 to-transparent pointer-events-none z-10"></div>
             </div>
 
+{/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
+            {orderHistory && orderHistory.length > 0 && (
+              <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
+                <button
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="cursor-pointer relative p-3 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
+                  title="Mis Pedidos"
+                >
+                  <Receipt size={18} strokeWidth={2.5} />
+                  <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {orderHistory.length}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
             <div className="hidden md:flex shrink-0 w-12 h-11">
               <button
@@ -585,7 +619,7 @@ const searchParams = useSearchParams()
                 </div>
 
                 {hasItems && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-main-text)] text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] cursor-pointer">
+                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] cursor-pointer">
                     {totalItems}
                   </span>
                 )}
@@ -798,6 +832,56 @@ const searchParams = useSearchParams()
         activePromoContext={activePromo}
         storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
       />
+
+{/* 🚀 MODAL DE HISTORIAL DE PEDIDOS (CLEAN LOOK) */}
+      <AnimatePresence>
+        {isHistoryModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsHistoryModalOpen(false)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              className="relative bg-[var(--store-surface)] w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[80vh] border border-[var(--store-border)]"
+            >
+              <div className="p-6 pb-4 flex justify-between items-start shrink-0 border-b border-[var(--store-border)]/50">
+                <div>
+                  <h3 className="font-black text-xl text-[var(--store-text-main)] tracking-tight leading-tight">Mis Pedidos</h3>
+                  <p className="text-[11px] font-medium text-[var(--store-surface-text)] mt-1">Historial guardado en este dispositivo</p>
+                </div>
+                <button onClick={() => setIsHistoryModalOpen(false)} className="p-2 bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              
+              <div className="overflow-y-auto p-4 flex flex-col gap-3 no-scrollbar bg-[var(--store-bg)]">
+               {orderHistory.map((order) => (
+                  <a 
+                    key={order.id} 
+                    href={`/quote/${order.id}`} // 🚀 Ruta relativa limpia (Evita el 404 por slug duplicado)
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-[var(--store-surface)] border border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]/30 hover:shadow-md transition-all active:scale-95 group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-[var(--store-bg)] p-2.5 rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] transition-colors">
+                        <FileText size={18} strokeWidth={2} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-black text-sm text-[var(--store-text-main)]">Pedido #{order.number}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] mt-0.5">
+                          {new Date(order.date).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowUpRight size={16} className="text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
