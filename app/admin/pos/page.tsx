@@ -7,6 +7,7 @@ import { Search, Plus, Minus, Trash2, Calculator, FileText, User, Phone, Shoppin
 import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { calculateCartEngine } from '@/utils/cartLogic'
+import { NumberInput } from '@/components/NumberInput'
 
 // --- TIPOS ESTRICTOS (Sincronizados con Catálogo) ---
 type Variant = { id: string, size: string, color_name: string, stock: number, override_usd_price: number | null, override_usd_penalty: number | null }
@@ -123,18 +124,17 @@ supabase.from('products').select('id, name, image_url, usd_cash_price, usd_penal
     const isEur = store?.currency_type === 'eur'
     const activeRate = isEur ? rates.eur_rate : rates.usd_rate
 
-    const totalItemsCount = useMemo(() => cart.reduce((acc, item) => acc + item.qty, 0), [cart])
+const totalItemsCount = useMemo(() => cart.reduce((acc, item) => acc + (Number(item.qty) || 0), 0), [cart])
 
- const cartEngine = useMemo(() => {
-    // 🚀 PUENTE ARQUITECTÓNICO: Normalizamos el contrato de datos para el motor
-    const normalizedCart = cart.map(item => ({
-        ...item,
-        quantity: item.qty // Convertimos 'qty' a 'quantity'
-    }));
-    
-    return calculateCartEngine(normalizedCart, promotions, applyTax, wholesale);
-}, [cart, promotions, applyTax, wholesale]);
-
+    const cartEngine = useMemo(() => {
+        // 🚀 PUENTE ARQUITECTÓNICO: Normalizamos y casteamos para seguridad estricta
+        const normalizedCart = cart.map(item => ({
+            ...item,
+            quantity: Number(item.qty) || 0 // Evitamos NaN si el campo está vacío
+        }));
+        
+        return calculateCartEngine(normalizedCart, promotions, applyTax, wholesale);
+    }, [cart, promotions, applyTax, wholesale]);
 
 
 const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
@@ -229,6 +229,35 @@ const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
     }
 
     const removeLine = (cartId: string) => setCart(prev => prev.filter(item => item.cartId !== cartId))
+
+   // --- LÓGICA DE INPUT MANUAL ---
+    const handleManualQty = (cartId: string, value: number) => {
+        setCart(prev => prev.map(item => {
+            if (item.cartId === cartId) {
+                // Tu NumberInput envía 0 cuando está vacío. Lo pasamos temporalmente como ''
+                // para la UI, pero el cartEngine lo leerá como 0.
+                if (value === 0) return { ...item, qty: '' as any };
+                
+                if (value > item.maxStock) {
+                    Swal.fire({ title: 'Límite de Stock', text: `Solo hay ${item.maxStock} unidades disponibles.`, icon: 'info', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                    return { ...item, qty: item.maxStock };
+                }
+                
+                return { ...item, qty: value };
+            }
+            return item;
+        }));
+    };
+
+    const handleBlurQty = (cartId: string) => {
+        setCart(prev => prev.map(item => {
+            if (item.cartId === cartId) {
+                // Al perder el foco, si quedó vacío, en 0 o negativo, restaura a 1
+                if (!item.qty || (item.qty as any) < 1) return { ...item, qty: 1 };
+            }
+            return item;
+        }));
+    };
 
     // --- TRANSACT ENGINE ---
     const handleCheckout = async (type: 'paid' | 'quote') => {
@@ -529,11 +558,16 @@ const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
                                                 {item.variantInfo && <p className="text-[9px] text-gray-400 font-medium">{item.variantInfo}</p>}
                                                 <div className="flex items-center justify-between mt-1.5">
                                                     <p className="text-gray-900 font-black text-sm tabular-nums leading-none">${(item.basePrice + item.penalty).toFixed(2)}</p>
-                                                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-0.5">
-                                                        <button onClick={() => updateQty(item.cartId, -1)} className="w-6 h-6 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-black hover:shadow-sm transition-all"><Minus size={12} strokeWidth={2.5} /></button>
-                                                        <span className="text-[11px] font-black w-4 text-center tabular-nums">{item.qty}</span>
-                                                        <button onClick={() => updateQty(item.cartId, 1)} disabled={item.qty >= item.maxStock} className="w-6 h-6 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-black hover:shadow-sm transition-all disabled:opacity-30"><Plus size={12} strokeWidth={2.5} /></button>
-                                                    </div>
+                                                 <div className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-lg p-0.5 focus-within:ring-2 focus-within:ring-[#3600ff]/20 focus-within:border-[#3600ff]/30 transition-all">
+    <button onClick={() => updateQty(item.cartId, -1)} className="w-6 h-6 shrink-0 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-black hover:shadow-sm transition-all"><Minus size={12} strokeWidth={2.5} /></button>
+    <NumberInput
+        value={item.qty}
+        onChangeValue={(val) => handleManualQty(item.cartId, val)}
+        onBlur={() => handleBlurQty(item.cartId)}
+        className="w-10 text-center text-[11px] font-black tabular-nums bg-transparent border-none outline-none focus:ring-0 p-0 m-0"
+    />
+    <button onClick={() => updateQty(item.cartId, 1)} disabled={item.qty >= item.maxStock} className="w-6 h-6 shrink-0 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-black hover:shadow-sm transition-all disabled:opacity-30"><Plus size={12} strokeWidth={2.5} /></button>
+</div>
                                                 </div>
                                             </div>
                                             <button onClick={() => removeLine(item.cartId)} className="absolute top-2 right-2 p-1 text-gray-300 hover:text-red-500 transition-colors bg-white rounded-md"><X size={14} strokeWidth={2.5} /></button>
