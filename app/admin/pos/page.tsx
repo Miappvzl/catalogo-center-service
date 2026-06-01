@@ -157,7 +157,7 @@ const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
     
     const actualFxSavings = Math.max(0, subtotalListUSD - subtotalCashUSD);
    
-    const handleAddCustomItem = (e: React.FormEvent) => {
+   const handleAddCustomItem = (e: React.FormEvent) => {
         e.preventDefault() // 🚀 Escudo contra la recarga de página
 
         if (!customItem.name || !customItem.price) return
@@ -171,9 +171,9 @@ const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
             basePrice: Number(customItem.price), 
             penalty: 0, 
             qty: 1, 
-            maxStock: 9999, 
+            maxStock: 9999999, // 🚀 Límite expandido para soportar presupuestos de volumen industrial
             image: '',
-            isTaxExempt: false, // 🚀 FIX: Cumplimos con el contrato de TypeScript (Los items manuales pagan IVA por defecto)
+            isTaxExempt: false, 
             productWholesaleActive: false, productWholesaleMinQty: 0, productWholesaleDiscountPct: 0
         }])
         
