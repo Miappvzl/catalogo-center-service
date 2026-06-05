@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, ShoppingBag, Edit2, Menu } from 'lucide-react'
+import { Loader2, ShoppingBag, Edit2, Menu, Link, Zap, LogOut, User } from 'lucide-react'
 import SubscriptionBanner from './SubscriptionBanner'
 import { getSupabase } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
@@ -50,7 +50,22 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
   // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
   // 1. Estados del Smart Header
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const lastScrollY = useRef(0);
+  const [userEmail, setUserEmail] = useState<string>(''); // 🚀 NUEVO ESTADO
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email || '');
+    };
+    fetchUser();
+  }, [supabase]);
+
+  // Lógica de identidad global
+  const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR';
+  const isTrial = store?.subscription_status === 'trial';
+
 
   // 2. Motor de Scroll
   useEffect(() => {
@@ -88,6 +103,93 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
           {/* 🚀 EL CENTRO DE NOTIFICACIONES */}
           {store?.id && <NotificationBell storeId={store.id} />}
+
+          {/* 🚀 AVATAR & DROPDOWN (Mini Tarjeta de Identidad) */}
+          <div className="relative">
+            <button
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="active:scale-95 transition-transform outline-none"
+            >
+              <div className={`w-11 h-11 rounded-full p-[2px] transition-all ${!isTrial ? 'bg-gradient-to-r from-[#4f37d3] to-[#e5e5e5]' : 'bg-black hover:bg-gray-800'}`}>
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                  <span className="text-[13px] font-black text-gray-900 tracking-tighter">{initials}</span>
+                </div>
+              </div>
+            </button>
+
+           
+           <AnimatePresence>
+              {isProfileOpen && (
+                <>
+                  {/* 🚀 FONDO PROTECTOR (BLINDADO): w-screen y h-screen rompen la caja del header */}
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/20 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" 
+                    onClick={() => setIsProfileOpen(false)} 
+                  />
+                  
+                  {/* 🚀 EL MODAL (BLINDADO): top-[20vh] lo posiciona de forma segura hacia abajo en móvil */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    className="fixed top-[20vh] left-0 right-0 mx-auto h-fit w-[85%] max-w-[320px] md:absolute md:inset-auto md:right-0 md:top-14 md:mx-0 md:w-64 bg-white rounded-[1.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] md:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.08)] border border-gray-100 py-2 z-50 flex flex-col overflow-hidden"
+                  >
+                    {/* 🚀 HEADER DEL MODAL: Mini Perfil con CTA Central */}
+                    <div className="px-5 pt-5 pb-4 border-b border-gray-50 flex flex-col items-center text-center bg-gray-50/30">
+                      <div className={`w-14 h-14 rounded-full p-[2.5px] mb-3 ${!isTrial ? 'bg-gradient-to-r from-[#4f37d3] to-[#e5e5e5] shadow-[0_0_15px_rgba(138,43,226,0.15)]' : 'bg-black'}`}>
+                        <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                          <span className="text-lg font-black text-gray-900 tracking-tighter">{initials}</span>
+                        </div>
+                      </div>
+                      <p className="text-sm font-black text-gray-900 tracking-tight leading-none mb-1.5">{store?.name || 'Administrador'}</p>
+                      <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-4">{userEmail || 'Cargando correo...'}</p>
+                      
+                      {/* BOTÓN BLINDADO (Usa router.push en lugar de <Link>) */}
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          router.push('/admin/profile');
+                        }} 
+                        className="w-full py-2.5 bg-white border border-gray-200 hover:border-gray-900 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm flex items-center justify-center"
+                      >
+                        Ver Perfil
+                      </button>
+                    </div>
+                    
+                    {/* ENLACES SECUNDARIOS */}
+                    <div className="p-2 flex flex-col gap-1">
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          router.push('/admin/profile#billing');
+                        }} 
+                        className="flex items-center justify-center gap-3 px-3 py-2.5 text-xs font-bold text-gray-600 hover:text-black hover:bg-gray-50 rounded-xl transition-colors w-full text-left"
+                      >
+                        <Zap size={16} className="text-gray-400" /> Suscripción y Plan
+                      </button>
+                    </div>
+                    
+                    {/* ZONA DE PELIGRO */}
+                    <div className="p-2 border-t border-gray-50">
+                      <button 
+                        onClick={async () => { 
+                          await supabase.auth.signOut(); 
+                          router.push('/login'); 
+                        }} 
+                        className="flex items-center justify-center gap-2 px-3 py-2.5 text-[11px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors w-full"
+                      >
+                        <LogOut size={14} strokeWidth={2.5} /> Cerrar Sesión
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
 
 

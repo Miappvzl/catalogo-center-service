@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText, User } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
@@ -32,6 +32,20 @@ const NAV_LINKS = [
   { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio' },
 ]
 
+
+// 🚀 MICRO-COMPONENTE: Avatar Consistente
+const NavAvatarIcon = ({ store }: { store: any }) => {
+  const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR';
+  const isTrial = store?.subscription_status === 'trial';
+  
+  return (
+    <div className={`w-[26px] h-[26px] rounded-full p-[2px] ${!isTrial ? 'bg-gradient-to-r from-[#4f37d3] to-[#e5e5e5]' : 'bg-black'}`}>
+       <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+           <span className="text-[9px] font-black text-gray-900 tracking-tighter leading-none">{initials}</span>
+       </div>
+    </div>
+  )
+};
 // 🚀 ENVOLTORIO PROTEGIDO ULTRA-RÁPIDO (Prefetching + Caché en RAM)
 const GuardedLink = ({ href, children, className }: any) => {
   const router = useRouter()
@@ -82,11 +96,7 @@ const GuardedLink = ({ href, children, className }: any) => {
   )
 }
 
-const NewBadge = () => (
-  <span className="ml-auto flex h-4 items-center border border-[#5500ffb2] justify-center rounded-full bg-[#ffffff] px-1.5 text-[8px] font-black uppercase tracking-wider text-[#4c00ffab]">
-    Nuevo
-  </span>
-);
+
 
 // --- DESKTOP SIDEBAR (Arquitectura de Nivel Élite - Zero Reflow) ---
 const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
@@ -134,7 +144,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
               <div className="absolute left-1/2 -translate-x-1/2 top-6 w-4 h-[2px] rounded-full bg-gray-200 transition-opacity duration-[400ms] group-hover/sidebar:opacity-0" />
 
               {/* Título de la Categoría (Se revela con el hover) */}
-              <h3 className="pl-4 pr-4 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[400ms] -translate-x-4 group-hover/sidebar:translate-x-0 whitespace-nowrap">
+              <h3 className="pl-4 pr-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 opacity-0 group-hover/sidebar:opacity-100 transition-all duration-[400ms] -translate-x-4 group-hover/sidebar:translate-x-0 whitespace-nowrap">
                 {category}
               </h3>
 
@@ -151,12 +161,26 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                         isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >
-                      {isActive && (
+                     {isActive && (
                         <motion.div
                           layoutId="desktop-nav-indicator"
-                          className="absolute inset-0 bg-gray-100 rounded-xl -z-10"
+                          className="absolute inset-0 bg-gray-100 rounded-xl -z-10 overflow-hidden"
                           transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        />
+                        >
+                           {/* 1. SANGRADO PERFECTO (Cero Cortes) */}
+                           {/* Usamos paradas porcentuales exactas para forzar un desvanecimiento sin "escalones" de color */}
+                           <div 
+                              className="absolute inset-0 pointer-events-none" 
+                              style={{ background: 'linear-gradient(to left, #edeaff 0%, rgb(242 240 255) 30%, #ffffff75 65%)' }}
+                           />
+                           
+                           {/* 2. HALO DE DIFUMINACIÓN (El resplandor que ablanda la línea) */}
+                           <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-[6px] bg-[#ffffff] blur-[4px] opacity-40 pointer-events-none" />
+
+                           {/* 3. FILAMENTO ORGÁNICO (El núcleo físico) */}
+                           {/* blur-[0.5px] es el secreto para matar la dureza del borde del div */}
+                           <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-[3px] bg-[#ffffff] opacity-90 rounded-l-full blur-[0.5px] pointer-events-none" />
+                        </motion.div>
                       )}
                       
                       {/* El contenedor del ícono es rígidamente de 40x40px, garantizando 0 movimiento horizontal */}
@@ -171,7 +195,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
 
                       {link.isNew && (
                         <div className="ml-auto pr-2 opacity-0 transition-opacity duration-[400ms] group-hover/sidebar:opacity-100 flex-shrink-0">
-                          <NewBadge />
+                         
                         </div>
                       )}
                     </GuardedLink>
@@ -243,17 +267,18 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
           </span>
         </a>
 
-        <button
-          onClick={onLogout}
-          className="flex items-center p-1.5 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors w-full text-left"
+      <GuardedLink
+          href="/admin/profile"
+          className="flex items-center p-1.5 rounded-xl hover:bg-gray-50 transition-colors text-gray-600 hover:text-black w-full text-left"
         >
           <div className="flex items-center justify-center w-10 h-10 flex-shrink-0">
-            <LogOut size={18} />
+            {/* 🚀 AVATAR INTELIGENTE */}
+            <NavAvatarIcon store={store} />
           </div>
           <span className="ml-3 text-xs font-bold whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
-            Cerrar Sesión
+            Mi Perfil
           </span>
-        </button>
+        </GuardedLink>
       </div>
     </aside>
   );
@@ -355,15 +380,30 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                 const isActive = pathname === link.href
 
                 return (
-                  <GuardedLink
+                 <GuardedLink
                     key={link.href}
                     href={link.href}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${isActive ? 'bg-[#F8F9FA] text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
+                    // 🚀 Añadimos relative y overflow-hidden al contenedor principal
+                    className={`relative overflow-hidden flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 ${
+                      isActive ? 'bg-[#F8F9FA] text-black' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
                   >
-                    <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-black" : "text-gray-400"} />
-                    {link.name}
-                    {link.isNew && <NewBadge />}
+                    {/* 🚀 EL EFECTO DE LUZ (Solo si está activo) */}
+                    {isActive && (
+                      <div className="absolute inset-0 z-0 pointer-events-none">
+                        <div 
+                           className="absolute inset-0" 
+                           style={{ background: 'linear-gradient(to left, #edeaff 0%, rgb(242 240 255) 30%, #ffffff75 65%)' }} 
+                        />
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-[6px] bg-[#ffffff] blur-[4px] opacity-40 pointer-events-none" />
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-[3px] bg-[#ffffff] opacity-90 rounded-l-full blur-[0.5px] pointer-events-none" />
+                      </div>
+                    )} 
+                    {/* Contenido protegido con z-10 para que quede por encima de la luz */}
+                    <div className="relative z-10 flex items-center gap-3 w-full">
+                      <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-black" : "text-gray-400"} />
+                      <span>{link.name}</span>
+                    </div>
                   </GuardedLink>
 
                 )
@@ -409,12 +449,13 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
                 <Headset size={16} /> Hablar con Soporte
               </a>
 
-              <button
-                onClick={onLogout}
-                className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-red-500  hover:bg-red-100 transition-all w-full text-left"
+              <GuardedLink
+                href="/admin/profile"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 hover:text-black transition-all w-full text-left"
               >
-                <LogOut size={16} /> Cerrar Sesión
-              </button>
+                {/* 🚀 AVATAR INTELIGENTE */}
+                <NavAvatarIcon store={store} /> Mi Perfil
+              </GuardedLink>
             </div>
           </motion.div>
         </div>
