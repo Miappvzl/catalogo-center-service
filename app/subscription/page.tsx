@@ -71,7 +71,7 @@ useEffect(() => {
                             <Lock size={24} strokeWidth={2.5} />
                         </div>
                         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Membresía Preziso</h1>
-                        <p className="text-gray-400 text-sm mt-1 font-medium">Tu periodo de prueba ha finalizado.</p>
+                     
                     </div>
 
                     <div className="p-8 space-y-8">
@@ -85,12 +85,12 @@ useEffect(() => {
                             {/* Gatillo Dinámico BCV */}
                             <div className="mt-3 flex justify-center">
                                 {rate > 0 ? (
-                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100/50 rounded-full text-[11px] font-black uppercase tracking-widest text-emerald-700 transition-all">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#4f37d3]/10 border border-[#4f37d3]/50 rounded-full text-[11px] font-black uppercase tracking-widest text-[#4f37d3] transition-all">
                                         <span>≈ Bs {amountBs} (BCV)</span>
-                                        <div className="w-px h-3 bg-emerald-200 mx-0.5"></div>
+                                        <div className="w-px h-3 bg-[#4f37d3] mx-0.5"></div>
                                         <button 
                                             onClick={() => copyToClipboard(amountBs, 'monto')}
-                                            className="text-emerald-600 hover:text-emerald-900 transition-colors flex items-center gap-1 active:scale-90"
+                                            className="text-[#4f37d3] hover:text-[#4f37d3]/80 transition-colors flex items-center gap-1 active:scale-90"
                                             title="Copiar monto exacto en Bolívares"
                                         >
                                             {copiedId === 'monto' ? <Check size={12} strokeWidth={3} /> : <Copy size={12} strokeWidth={2.5} />}

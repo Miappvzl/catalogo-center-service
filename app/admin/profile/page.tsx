@@ -172,9 +172,10 @@ export default function ProfilePage() {
     </div>
 
     <div className="mt-auto pt-10 relative z-10">
-        <button className="w-full py-4 bg-black text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-900 transition-all active:scale-95 flex items-center justify-center gap-2">
-            <Zap size={14} className="text-[#4f37d3]" /> Renovar
-        </button>
+        <a href="/subscription" target="_blank" className="w-full py-4 bg-black text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-900 transition-all active:scale-95 flex items-center justify-center gap-2">
+           <Zap size={14} className="text-[#4f37d3]" /> Renovar
+        </a>
+       
     </div>
 </div>
                     </div>
