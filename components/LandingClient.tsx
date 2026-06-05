@@ -920,7 +920,7 @@ const NodeFourNeural = ({ bcvRate }: { bcvRate: number }) => {
               {/* TU IMAGEN PNG CENTRADA */}
               <img
                 src="hoodietitanio.webp"
-                alt="Producto"
+                alt="Product"
                 className="h-4/5 w-auto object-contain z-10 transition-transform duration-500 group-hover:scale-105"
               />
 
