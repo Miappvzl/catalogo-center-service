@@ -150,7 +150,7 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
       <div className="flex-1 min-h-70 md:min-h-80 w-full relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 animate-in fade-in transition-all">
-            <Loader2 className="animate-spin text-blue-500" size={32} />
+            <Loader2 className="animate-spin text-[#4f37d3]" size={32} />
           </div>
         ) : null}
         
@@ -159,8 +159,8 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
             <defs>
               {/* Gradiente adaptado para fondo blanco: vibrante arriba, desvanecido a transparente abajo */}
               <linearGradient id="colorVentasNeon" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4400ff" stopOpacity={0.25}/>
-                <stop offset="95%" stopColor="#4400ff" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#4f37d3" stopOpacity={0.25}/>
+                <stop offset="95%" stopColor="#4f37d3" stopOpacity={0}/>
               </linearGradient>
             </defs>
 
@@ -185,7 +185,7 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
             />
             
             <Tooltip 
-              cursor={{ stroke: '#4400ff', strokeWidth: 1, strokeDasharray: '4 4' }}
+              cursor={{ stroke: '#4f37d3', strokeWidth: 1, strokeDasharray: '4 4' }}
               isAnimationActive={true}
               animationDuration={200}
               content={({ active, payload, label }) => {
@@ -195,13 +195,13 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
                     <div className="bg-white/95 backdrop-blur-md p-4 rounded-(--radius-card) border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.08)] animate-in fade-in zoom-in-95 duration-200">
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
                         <div className="bg-purple-50 p-1.5 rounded-md border border-purple-100">
-                            <DollarSign size={14} className="text-[#4400ff]"/>
+                            <DollarSign size={14} className="text-[#4f37d3]"/>
                         </div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
                       </div>
                       <p className="text-xl font-black flex items-baseline gap-1.5 text-gray-950 tabular-nums">
                         ${valorSeguro.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        <TrendingUp size={16} className="text-[#4400ff] shrink-0"/>
+                        <TrendingUp size={16} className="text-[#4f37d3] shrink-0"/>
                       </p>
                     </div>
                   );
@@ -218,7 +218,7 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
               dataKey="ventas" 
               
               // Trazo vibrante e intenso para el "efecto dibujo" sobre blanco
-              stroke="#4400ff" 
+              stroke="#4f37d3" 
               strokeWidth={2}
               fill="url(#colorVentasNeon)" 
               
@@ -226,17 +226,17 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
               dot={{ 
                 r: 4, 
                 fill: "#FFFFFF", 
-                stroke: "#4400ff", 
+                stroke: "#4f37d3", 
                 strokeWidth: 2 
               }}
               
               // Círculo más prominente al pasar el mouse
               activeDot={{ 
                 r: 6, 
-                fill: "#4400ff", 
+                fill: "#4f37d3", 
                 stroke: "#FFFFFF", 
                 strokeWidth: 3,
-                style: { filter: 'drop-shadow(0px 0px 4px rgba(68, 0, 255, 0.5))' }
+                style: { filter: 'drop-shadow(0px 0px 4px rgba(79, 55, 211, 0.5))' }
               }}
               connectNulls={true}
             />

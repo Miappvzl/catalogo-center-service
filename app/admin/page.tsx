@@ -89,7 +89,7 @@ export default async function AdminDashboard() {
                     <div className="p-3.5 pl-[1.5px] text-black">
                         <DollarSign size={24} strokeWidth={2.5}/>
                     </div>
-                    <span className="text-[10px] font-bold bg-[#5500ff0b]  text-[#5500ffa1] px-2.5 py-1 rounded-[var(--radius-badge)] uppercase tracking-wide">
+                    <span className="text-[10px] font-bold bg-[#5500ff0b]  text-[#4f37d3] px-2.5 py-1 rounded-[var(--radius-badge)] uppercase tracking-wide">
                         Hoy
                     </span>
                 </div>
@@ -98,7 +98,7 @@ export default async function AdminDashboard() {
                         {currencySymbol}{salesTodayUSD.toFixed(2)}
                     </p>
                     <div className="flex items-center gap-1.5 mt-2">
-                        <LineChart size={12} className="text-[#5500ffa1]"/>
+                        <LineChart size={12} className="text-[#4f37d3]"/>
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide  opacity-60">Ingreso Neto</p>
                     </div>
                 </div>
