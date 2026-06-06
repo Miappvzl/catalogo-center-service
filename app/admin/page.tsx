@@ -121,15 +121,22 @@ export default async function AdminDashboard() {
                         </div>
                     )}
                 </div>
-                <div className="relative z-10">
-                    <p className="text-4xl font-black tracking-tighter">{pendingOrdersCount}</p>
-                    <div className="flex items-center justify-between mt-1">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors">Por Despachar</p>
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
-                            <ArrowRight size={12}/>
-                        </div>
-                    </div>
-                </div>
+                
+<div className="relative z-10">
+    <p className="text-4xl font-black tracking-tighter mb-1">{pendingOrdersCount}</p>
+    
+    {/* Ajuste de jerarquía visual: La flecha anclada a la acción, no flotando */}
+    <div className="flex items-center gap-2">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors">
+            Por Despachar
+        </p>
+        <ArrowRight 
+            size={12} 
+            className="text-gray-500 group-hover:text-white transition-all duration-300 translate-x-0 group-hover:translate-x-1" 
+            strokeWidth={3}
+        />
+    </div>
+</div>
             </Link>
 
             {/* 4. ALERTAS DE INVENTARIO */}

@@ -29,7 +29,6 @@ export default function RateWidget({
   const safeEur = Number(eurRate) || 0
   const activeRate = optimisticCurrency === 'usd' ? safeUsd : safeEur
 
-
   const handleCurrencyChange = (currency: 'usd' | 'eur') => {
     startTransition(() => {
       setOptimisticCurrency(currency)
@@ -40,14 +39,15 @@ export default function RateWidget({
   }
 
   return (
-    <section className="bg-white p-6 rounded-[var(--radius-card)] card-interactive h-full flex flex-col justify-between relative overflow-hidden group">
-        <div className="relative z-10">
-            <header className="flex items-center gap-1 mb-6 pb-2 border-b border-gray-100">
-                <div className="p-3 pl-[1.5px] text-black">
-                    <Wallet size={24} strokeWidth={2.5} />
+    <section className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between h-full border border-gray-200/60">
+        
+        <div>
+            <header className="flex items-center gap-3 mb-5">
+                <div className="p-2.5 bg-[#F6F6F6] rounded-xl text-black">
+                    <Wallet size={20} strokeWidth={2} />
                 </div>
                 <div>
-                    <h2 className="text-lg font-black text-gray-900 leading-tight">
+                    <h2 className="text-base font-black text-gray-900 leading-tight">
                         Tasa Activa
                     </h2>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
@@ -56,48 +56,55 @@ export default function RateWidget({
                 </div>
             </header>
             
-            <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-gray-900 tracking-tighter">
-                        Bs {activeRate.toFixed(2)}
+            <div className="mb-6">
+                <div className="flex items-baseline gap-1 mb-1">
+                    {/* El efecto de parpadeo lento y sofisticado cuando isPending es true */}
+                    <span className={`text-4xl font-black text-gray-900 tracking-tighter tabular-nums transition-all duration-700 ease-in-out ${isPending ? 'opacity-30 animate-[pulse_1.5s_ease-in-out_infinite]' : 'opacity-100'}`}>
+                        <span className="text-2xl text-gray-400 mr-1">Bs</span>
+                        {activeRate.toFixed(2)}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                    <RefreshCw className={`w-3 h-3 ${isPending ? "animate-spin text-black" : ""}`} />
-                   
-
-<span>
-  {isPending ? 'Actualizando...' : (lastUpdated ? `Última actualización: ${lastUpdated}` : 'Última actualización: N/A')}
-</span>
+                
+                <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    <RefreshCw className={`w-3 h-3 ${isPending ? "animate-spin text-black" : "opacity-70"}`} />
+                    <span className={`${isPending ? 'text-black' : ''} transition-colors`}>
+                        {isPending ? 'Sincronizando...' : (lastUpdated ? `Última actualización: ${lastUpdated}` : 'Última actualización: N/A')}
+                    </span>
                 </div>
             </div>
         </div>
 
-        {/* SELECTOR SEGMENTADO (Borderless & Shadow Subtle) */}
-        <div className="relative z-10  flex bg-gray-100 p-1 rounded-(--radius-btn)   shrink-0 shadow-inner">
+        {/* SELECTOR SEGMENTADO (Estilo Sliding Pill) */}
+        <div className="relative flex bg-[#F6F6F6] p-1 rounded-xl shrink-0">
+            
+            {/* El fondo dinámico que se desliza (La magia está en el cubic-bezier) */}
+            <div 
+                className={`absolute top-1 bottom-1 w-[calc(50%-0.25rem)] bg-white rounded-lg shadow-sm border border-gray-200/50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    optimisticCurrency === 'usd' ? 'translate-x-0' : 'translate-x-full'
+                }`}
+            />
+
+            {/* Botones transparentes por encima del pill deslizante */}
             <button
                 type="button"
                 onClick={() => handleCurrencyChange('usd')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[.6rem] text-xs font-bold transition-all cursor-pointer ${
-                    optimisticCurrency === 'usd'
-                        ? "bg-white text-black shadow-subtle border border-transparent"
-                        : "text-gray-400 hover:text-black border border-transparent hover:bg-gray-100"
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors duration-300 cursor-pointer ${
+                    optimisticCurrency === 'usd' ? "text-black" : "text-gray-400 hover:text-black"
                 }`}
             >
-                <DollarSign size={14} strokeWidth={3} /> USD
+                <DollarSign size={14} strokeWidth={2.5} /> USD
             </button>
+            
             <button
                 type="button"
                 onClick={() => handleCurrencyChange('eur')}
                 disabled={isPending}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[.6rem] text-xs font-bold transition-all cursor-pointer ${
-                    optimisticCurrency === 'eur'
-                        ? "bg-white text-black shadow-subtle border border-transparent"
-                        : "text-gray-400 hover:text-black  border border-transparent hover:bg-gray-100"
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-colors duration-300 cursor-pointer ${
+                    optimisticCurrency === 'eur' ? "text-black" : "text-gray-400 hover:text-black"
                 }`}
             >
-                <Euro size={14} strokeWidth={3} /> EUR
+                <Euro size={14} strokeWidth={2.5} /> EUR
             </button>
         </div>
     </section>
