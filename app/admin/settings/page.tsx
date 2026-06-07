@@ -17,6 +17,7 @@ import CategorySorter from '@/components/admin/CategorySorter'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from '@/components/NumberInput'
+import PayPalSetupCard from '@/components/admin/PayPalSetupCard'
 
 const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
     <div className={`w-11 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${active ? `${activeColor} border-transparent justify-end shadow-subtle` : 'bg-white border-gray-200 justify-start shadow-sm'}`}>
@@ -539,6 +540,7 @@ export default function SettingsPage() {
                     </section>
                 </div>
 
+                <PayPalSetupCard storeId={store.id} />
                 <PaymentSettings storeId={store.id} initialData={store.payment_config} />
                 <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
                 <CategorySorter storeId={store.id} initialOrder={store.categories_order} />

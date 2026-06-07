@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+import PayPalGateway from "./checkout/PayPalGateway";
 import {
-    User,
-    MapPin,
     Store,
     Truck,
     Package,
@@ -17,8 +17,9 @@ import {
     Loader2,
     MessageCircle,
     Copy,
-    Coffee,
-    Sparkle
+    Sparkle,
+    Zap,
+    ArrowLeft
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
@@ -58,6 +59,7 @@ interface PaymentBlock {
     currency: "usd" | "ves";
     isHardCurrency: boolean;
     receiptFile: File | null;
+    receipt_url?: string; // 🚀 AÑADE ESTA LÍNEA
 }
 
 const BrandLogos = {
@@ -112,6 +114,14 @@ const BrandLogos = {
             height={size}
         />
     ),
+    PayPal: ({ className, size }: any) => (
+        <Icon
+            icon="simple-icons:paypal"
+            className={className}
+            width={size}
+            height={size}
+        />
+    ),
 };
 
 // 🚀 DICCIONARIO DE AGENCIAS DE ENVÍO
@@ -139,6 +149,9 @@ export default function CheckoutProcess({
     const { items, clearCart } = useCart();
     const [loading, setLoading] = useState(false);
     const [supabase] = useState(() => getSupabase());
+    const [pfOriginBank, setPfOriginBank] = useState('');
+    const [pfOriginPhone, setPfOriginPhone] = useState('');
+    const [pfReference, setPfReference] = useState('');
 
     // 🚀 LÓGICA DE PORTAPAPELES (Para el Brand Portal)
     const [copied, setCopied] = useState(false);
@@ -173,6 +186,8 @@ export default function CheckoutProcess({
         Zinli: "zinli",
         WallyTech: "wally",
         Efectivo: "cash",
+        'Pago Flash': 'pago_flash',
+        'PayPal': 'paypal'
     };
     // Zinli y Wally son Dólares. Transferencia asume Bolívares por defecto.
     const hardCurrencyMethods = [
@@ -181,6 +196,7 @@ export default function CheckoutProcess({
         "Zinli",
         "WallyTech",
         "Efectivo",
+        "PayPal"
     ];
 
     const activePaymentMethods = useMemo(() => {
@@ -192,7 +208,8 @@ export default function CheckoutProcess({
         if (payments.zinli?.active) active.push("Zinli");
         if (payments.wally?.active) active.push("WallyTech");
         if (payments.cash?.active) active.push("Efectivo");
-
+        if (payments.pago_flash?.active) active.push("Pago Flash");
+        if (payments.paypal?.active) active.push("PayPal");
         return active;
     }, [payments]);
 
@@ -203,6 +220,92 @@ export default function CheckoutProcess({
         if (shipping.methods?.tealca) active.push("Tealca");
         return active;
     }, [shipping]);
+
+    // 🚀 ESTADOS P2P PAGO FLASH (UX MINIMALISTA)
+    const [p2pStep, setP2pStep] = useState<'idle' | 'step1' | 'step2'>('idle');
+    const [pfTransaction, setPfTransaction] = useState({ pfId: '', orderId: '', orderNumber: 0 });
+    const [p2pForm, setP2pForm] = useState({ bankCode: '', phoneCode: '0414', phone: '', reference: '', document: '' });
+    const [isVerifying, setIsVerifying] = useState(false);
+    
+    // 🚀 NUEVO: Gatillo de Auto-Submit para pasarelas automatizadas
+    const [autoSubmitTrigger, setAutoSubmitTrigger] = useState(false);
+
+   
+    // 🚀 HELPER: GENERADOR DE WHATSAPP OMNICANAL (TICKET PREMIUM)
+    const generateWaMessage = (orderNum: string | number, isP2P: boolean = false) => {
+        // 1. Lógica de Envíos (Intacta)
+        let deliveryInfoFull = "Servicio en Local / Experiencia";
+        if (needsShipping) {
+            if (clientData.deliveryType === "courier") {
+                deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+            } else if (clientData.deliveryType === "local_delivery") {
+                deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
+            } else if (clientData.deliveryType === "pickup") {
+                deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+            }
+        }
+
+        // 🚀 INGENIERÍA VISUAL: Generador de Filas Simétricas (Efecto POS Premium)
+        // Calcula el relleno exacto ignorando los caracteres de formato de WhatsApp (* y ~)
+        const row = (left: string, right: string, width: number = 28) => {
+            const cleanLeft = left.replace(/[\*~]/g, "");
+            const cleanRight = right.replace(/[\*~]/g, "");
+            const dotsCount = Math.max(2, width - cleanLeft.length - cleanRight.length);
+            return `${left} ${".".repeat(dotsCount)} ${right}\n`;
+        };
+
+        // 2. Construcción Estructural del Ticket
+        let msg = `*TICKET DE ORDEN #${orderNum}*\n`;
+        msg += `============================\n\n`;
+
+        msg += `*DATOS DEL CLIENTE*\n`;
+        msg += `NOMBRE: ${clientData.name}\n`;
+        msg += `CONTACTO: ${clientData.phone}\n\n`;
+
+        msg += `*DETALLE DE COMPRA*\n`;
+        cartEngine.processedItems.forEach((item: any) => {
+            const pt = item.finalListPrice < item.listPrice
+                ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
+                : `*$${item.listPrice.toFixed(2)}*`;
+
+            const itemName = `${item.quantity}x ${item.name}`;
+
+            // Si tiene variante, colocamos el nombre limpio y la variante abajo alineada con el precio
+            if (item.variantInfo && item.variantInfo !== 'N/A') {
+                msg += `${itemName}\n`;
+                msg += row(`  Var: ${item.variantInfo}`, pt);
+            } else {
+                msg += row(itemName, pt);
+            }
+        });
+
+        msg += `\n*RESUMEN FINANCIERO*\n`;
+        msg += row("SUBTOTAL BASE", `$${cartEngine.totalListNominal.toFixed(2)}`);
+        if (cartEngine.listPromoDiscounts > 0) msg += row("DESC. CAMPAÑA", `-$${cartEngine.listPromoDiscounts.toFixed(2)}`);
+        if (wholesaleDiscountList > 0) msg += row("DESC. MAYORISTA", `-$${wholesaleDiscountList.toFixed(2)}`);
+        if (affiliateDiscountList && affiliateDiscountList > 0) msg += row(`CÓDIGO (${affiliateCode})`, `-$${affiliateDiscountList.toFixed(2)}`);
+        if (actualFxSavings > 0) msg += row("BENEFICIO DIVISA", `-$${actualFxSavings.toFixed(2)}`);
+        if (applyTax && taxAmountListUSD > 0) msg += row("I.V.A APLICADO", `+$${taxAmountListUSD.toFixed(2)}`);
+        if (deliveryCost > 0) msg += row("CARGO DELIVERY", `+$${deliveryCost.toFixed(2)}`);
+
+        msg += `============================\n`;
+        msg += row("*TOTAL FINAL*", `*$${grandTotalUSD.toFixed(2)}*`);
+        msg += `\n`;
+
+        if (isP2P) {
+            msg += `*MÉTODO DE PAGO*\n`;
+            msg += `PAGO FLASH AUTOMATIZADO\n`;
+            msg += row("MONTO", `Bs ${grandTotalBs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}`);
+            msg += row("REFERENCIA", p2pForm.reference);
+            msg += `\n`;
+        }
+
+        msg += `*LOGÍSTICA Y ENTREGA*\n`;
+        msg += `SERVICIO: ${deliveryInfoFull}\n`;
+        if (clientData.notes) msg += `NOTAS: ${clientData.notes}\n`;
+
+        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    };
 
     // --- ESTADOS LOGÍSTICOS ---
     const [clientData, setClientData] = useState({
@@ -332,7 +435,11 @@ export default function CheckoutProcess({
     const isPaidInFull = remainingListUSD <= 0.01 && splitPayments.length > 0;
     const missingReceipts = splitPayments.some(
         (p) =>
-            receiptConfig.strict_mode && p.method !== "Efectivo" && !p.receiptFile,
+            receiptConfig.strict_mode &&
+            p.method !== "Efectivo" &&
+            p.method !== "Pago Flash" && // 🚀 EXCLUIMOS PAGO FLASH AQUÍ
+            p.method !== "PayPal" && // 🚀 EXCLUIMOS PAYPAL AQUÍ
+            !p.receiptFile,
     );
 
     // Alias Dinámicos para el Footer
@@ -484,6 +591,12 @@ export default function CheckoutProcess({
                     btnSelected: baseSelected,
                     btnIdle: baseIdle,
                 };
+            case "PayPal":
+                return {
+                    icon: BrandLogos.PayPal,
+                    btnSelected: baseSelected,
+                    btnIdle: baseIdle,
+                };
             default:
                 return {
                     icon: CreditCard,
@@ -493,15 +606,11 @@ export default function CheckoutProcess({
         }
     };
 
+    
+
     // --- PROCESAR ORDEN A BASE DE DATOS ---
     const handleCheckout = async () => {
-        if (!clientData.name || !clientData.phone)
-            return Swal.fire({
-                title: "Faltan Datos",
-                text: "Nombre y teléfono son obligatorios",
-                icon: "warning",
-                confirmButtonColor: "#000",
-            });
+        if (!clientData.name || !clientData.phone) return Swal.fire({ title: "Faltan Datos", text: "Nombre y teléfono son obligatorios", icon: "warning", confirmButtonColor: "#000" });
 
         // 🚀 ESCUDO FISCAL BLINDADO
         if (isStrictTax && wantsFiscalData) {
@@ -599,7 +708,7 @@ export default function CheckoutProcess({
                                 ? p.amount
                                 : Number((p.amount * activeRate).toFixed(2)),
                         currency: p.currency,
-                        receipt_url: receiptPublicUrl,
+                        receipt_url: p.receipt_url || receiptPublicUrl, // 🚀 USA EL TXID SI EXISTE
                     };
                 }),
             );
@@ -623,60 +732,89 @@ export default function CheckoutProcess({
                 uploadedPayments.length === 1 ? uploadedPayments[0].method : "Mixto";
 
             // 2. Insertar Orden
-            const { data: order, error: orderError } = await supabase
-                .from("orders")
-                .insert({
-                    store_id: storeId,
-                    customer_name: clientData.name,
-                    customer_phone: clientData.phone,
-                    total_usd: Number(grandTotalUSD.toFixed(2)),
-                    total_bs: Number(grandTotalBs.toFixed(2)),
-                    exchange_rate: activeRate,
-                    currency_type: currency,
-                    status: "pending",
-                    payment_method: finalPaymentMethod, // 🚀 INYECCIÓN: Etiqueta dinámica real
-                    split_payments: uploadedPayments,
+            // 🚀 BIFURCADOR ARQUITECTÓNICO: MODO AUTOMATIZADO VS MANUAL
+            const isAutomatedGateway = finalPaymentMethod === "Pago Flash";
+            let order: any;
 
-                    shipping_method: finalShippingMethod,
-                    delivery_info: deliveryInfoFull,
-                    shipping_cost: Number(deliveryCost.toFixed(2)),
-                    discount_amount: Number(
-                        (
-                            wholesaleDiscountList +
-                            cartEngine.listPromoDiscounts +
-                            (affiliateDiscountList || 0)
-                        ).toFixed(2),
-                    ),
-                    affiliate_code: affiliateCode || null,
-                    // 🚀 INYECCIÓN FISCAL OMNICANAL Y DETERMINISTA
-                    document_type: isStrictTax ? "invoice" : "note",
-                    is_tax_applied: applyTax,
-                    tax_percentage: applyTax ? taxPercentage : 0,
-                    subtotal_usd: Number(totalListUSD_base.toFixed(2)),
-                    tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
-                    // 🚀 NUEVO: PERSISTENCIA DE DESCUENTOS PARA EL PDF
-                    promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
-                    wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                    affiliate_discount_usd: Number(
-                        (affiliateDiscountList || 0).toFixed(2),
-                    ),
-                    fx_savings_usd: Number(actualFxSavings.toFixed(2)),
-                    // Si quiere datos fiscales, guardamos su cédula/dirección, sino, guardamos la de envío o null
-                    customer_dni:
-                        (isStrictTax && wantsFiscalData) ||
-                            clientData.deliveryType === "courier"
-                            ? clientData.identityCard
-                            : null,
-                    customer_address:
-                        isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
-                })
-                .select()
-                .single();
-            if (orderError) {
-                console.error("Order DB Error Técnico:", orderError);
-                throw new Error(
-                    "Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.",
-                );
+            if (isAutomatedGateway) {
+                setLoading(true);
+                try {
+                    // 1. Llamamos al INIT (Crea la orden y genera la intención en Pago Flash)
+                    const initRes = await fetch('/api/checkout/pago-flash/init', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            storeId,
+                            clientData,
+                            orderData: {
+                                total_usd: Number(grandTotalUSD.toFixed(2)),
+                                total_bs: Number(grandTotalBs.toFixed(2)),
+                                exchange_rate: activeRate,
+                                currency_type: currency,
+                                shipping_method: finalShippingMethod,
+                                delivery_info: deliveryInfoFull
+                            },
+                            items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
+                        })
+                    });
+
+                    const initData = await initRes.json();
+                    if (!initRes.ok || !initData.success) throw new Error(initData.error || 'Fallo al iniciar el pago.');
+
+                    // 🚀 ABRE EL PASO 1 DEL MODAL
+                    setPfTransaction({ pfId: initData.pf_transaction_id, orderId: initData.order_id, orderNumber: initData.order_number || 0 });
+                    setP2pStep('step1');
+
+                } catch (error: any) {
+                    Swal.fire({ title: 'Error de Conexión', text: error.message, icon: 'error', confirmButtonColor: '#000' });
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+            else {
+                // =========================================================
+                // RUTA B: FLUJO TRADICIONAL (INSERT DIRECTO PARA ZELLE/CASH/TRANSFERENCIA)
+                // =========================================================
+                const { data: insertedOrder, error: orderError } = await supabase
+                    .from("orders")
+                    .insert({
+                        store_id: storeId,
+                        customer_name: clientData.name,
+                        customer_phone: clientData.phone,
+                        total_usd: Number(grandTotalUSD.toFixed(2)),
+                        total_bs: Number(grandTotalBs.toFixed(2)),
+                        exchange_rate: activeRate,
+                        currency_type: currency,
+                        status: "pending",
+                        payment_method: finalPaymentMethod,
+                        split_payments: uploadedPayments,
+                        shipping_method: finalShippingMethod,
+                        delivery_info: deliveryInfoFull,
+                        shipping_cost: Number(deliveryCost.toFixed(2)),
+                        discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                        affiliate_code: affiliateCode || null,
+                        document_type: isStrictTax ? "invoice" : "note",
+                        is_tax_applied: applyTax,
+                        tax_percentage: applyTax ? taxPercentage : 0,
+                        subtotal_usd: Number(totalListUSD_base.toFixed(2)),
+                        tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
+                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                        fx_savings_usd: Number(actualFxSavings.toFixed(2)),
+                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null,
+                        customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
+                    })
+                    .select()
+                    .single();
+
+                if (orderError) {
+                    console.error("Order DB Error Técnico:", orderError);
+                    throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
+                }
+
+                order = insertedOrder; // Asignamos la orden para que el resto del código (Items, Web Push, WhatsApp) continúe
             }
 
             // 3. Insertar Items
@@ -833,6 +971,55 @@ export default function CheckoutProcess({
             setLoading(false);
         }
     };
+
+    // 🚀 MOTOR VERIFICADOR P2P
+    const handleVerifyP2P = async () => {
+        if (!p2pForm.bankCode || !p2pForm.phone || !p2pForm.reference || !p2pForm.document) {
+            return Swal.fire({ title: 'Faltan Datos', text: 'Completa todos los campos para verificar.', icon: 'warning', confirmButtonColor: '#000' });
+        }
+
+        setIsVerifying(true);
+        try {
+            const verifyRes = await fetch('/api/checkout/pago-flash/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storeId, orderId: pfTransaction.orderId, pfTransactionId: pfTransaction.pfId, amount: Number(grandTotalUSD.toFixed(2)), p2pData: p2pForm
+                })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.success) throw new Error(verifyData.error || 'No pudimos validar tu pago. Verifica la referencia.');
+
+            // ÉXITO ABSOLUTO
+            clearCart();
+            const waLink = generateWaMessage(pfTransaction.orderNumber, true);
+            onSuccess(pfTransaction.orderNumber, waLink, pfTransaction.orderId);
+
+        } catch (error: any) {
+            // Mantiene el modal en Paso 2 para que corrija el error
+            Swal.fire({ title: 'Validación Rechazada', text: error.message, icon: 'error', confirmButtonColor: '#000' });
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+
+     // 🚀 MOTOR DE AUTO-CHECKOUT
+    useEffect(() => {
+        if (autoSubmitTrigger) {
+            // Si el pago se cubrió por completo y no faltan captures de otros métodos
+            if (isPaidInFull && !missingReceipts) {
+                handleCheckout();
+            } else {
+                // Si es un pago mixto y aún debe dinero, solo le avisamos
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } });
+                Toast.fire({ icon: 'success', title: 'Abono validado. Completa el resto.' });
+            }
+            setAutoSubmitTrigger(false); // Reseteamos el gatillo
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoSubmitTrigger, isPaidInFull, missingReceipts]);
+
 
     const stepVariants = {
         hidden: { opacity: 0, x: 20 },
@@ -1272,23 +1459,23 @@ export default function CheckoutProcess({
                             </div>
                         )}
                     </div>
-               ) : (
-    <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
-        <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
-            {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
-            <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
-        </div>
-        <div className="flex flex-col">
-            {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
-            <h3 className="font-black text-sm text-[var(--store-text-main)]">
-                {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
-            </h3>
-            <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
-                {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
-            </p>
-        </div>
-    </div>
-)}
+                ) : (
+                    <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
+                        <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
+                            {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
+                            <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
+                        </div>
+                        <div className="flex flex-col">
+                            {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
+                            <h3 className="font-black text-sm text-[var(--store-text-main)]">
+                                {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
+                            </h3>
+                            <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
+                                {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
                 <div className="space-y-6">
@@ -1380,7 +1567,10 @@ export default function CheckoutProcess({
                                 {splitPayments.map((block) => {
                                     // Validación correcta: Si Strict Mode está activo, y NO es Efectivo, se pide captura.
                                     const requiresReceipt =
-                                        receiptConfig.strict_mode && block.method !== "Efectivo";
+                                        receiptConfig.strict_mode &&
+                                        block.method !== "Efectivo" &&
+                                        block.method !== "Pago Flash" && // 🚀 EXCLUIMOS PAGO FLASH AQUÍ
+                                        block.method !== "PayPal"; // 🚀 EXCLUIMOS PAYPAL AQUÍ
 
                                     return (
                                         <motion.div
@@ -1499,10 +1689,7 @@ export default function CheckoutProcess({
                                 className="overflow-hidden"
                             >
                                 {(() => {
-                                    const requiresReceipt =
-                                        receiptConfig.strict_mode &&
-                                        activePaymentInput !== "Efectivo" &&
-                                        activePaymentInput !== "Zelle";
+                                    
                                     const singlePaymentBlock =
                                         paymentMode === "single"
                                             ? splitPayments.find(
@@ -1511,8 +1698,78 @@ export default function CheckoutProcess({
                                             : null;
 
                                     return (
+
                                         <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
-                                            {paymentMode === "split" ? (
+                                            {activePaymentInput === "Pago Flash" ? (
+                                                <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
+                                                    <div className="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100 shrink-0">
+                                                        <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
+                                                    </div>
+                                                    <p className="text-xs font-medium text-gray-500 leading-relaxed">
+                                                        <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
+                                                        Transfiere desde tu banco y tu orden se aprobará en segundos.
+                                                    </p>
+                                                </div>
+
+
+
+                                                
+                                            ) : activePaymentInput === "PayPal" ? (
+
+                                          
+    <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
+       <PayPalGateway 
+    storeId={storeId}
+    clientId={payments.paypal?.client_id}
+    amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
+    onSuccess={(transactionId) => {
+        const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
+        
+        // 🚀 CORRECCIÓN DE DUPLICADO: Reemplazo inteligente de estado
+        setSplitPayments(prevPayments => {
+            if (paymentMode === "single") {
+                // Si es pago único, DESTRUÍMOS el bloque fantasma y lo reemplazamos por el 100% real validado
+                return [{
+                    id: `pay-${Date.now()}`,
+                    method: "PayPal",
+                    amount: finalAmount,
+                    currency: "usd",
+                    isHardCurrency: true,
+                    receiptFile: null,
+                    receipt_url: `PayPal TxID: ${transactionId}`
+                }];
+            } else {
+                // Si es pago mixto, SÍ lo sumamos al arreglo anterior
+                return [
+                    ...prevPayments,
+                    {
+                        id: `pay-${Date.now()}`,
+                        method: "PayPal",
+                        amount: finalAmount,
+                        currency: "usd",
+                        isHardCurrency: true,
+                        receiptFile: null,
+                        receipt_url: `PayPal TxID: ${transactionId}`
+                    }
+                ];
+            }
+        });
+
+        setActivePaymentInput(null);
+        setPaymentAmount("");
+        
+        // 🚀 DISPARAMOS EL AUTO-CHECKOUT EN LUGAR DE LA ALERTA MANUAL
+        setAutoSubmitTrigger(true);
+    }}
+/>
+    </div>
+) : paymentMode === "split" ? (
+                                        
+                                         
+
+                                                
+
+
                                                 // 🚀 PORTAL MODO MIXTO (Naked Input Gigante)
                                                 <>
                                                     <div className="flex justify-between items-end gap-6">
@@ -1598,8 +1855,8 @@ export default function CheckoutProcess({
                                             ) : (
                                                 // 🚀 PORTAL MODO ÚNICO (Tipografía Directa y Uploader Inteligente)
                                                 (() => {
-                                                    const canUploadReceipt =
-                                                        activePaymentInput !== "Efectivo";
+                                                    // Antes decía: const canUploadReceipt = activePaymentInput !== "Efectivo";
+                                                    const canUploadReceipt = activePaymentInput !== "Efectivo" && activePaymentInput !== "Pago Flash";
                                                     const isMandatory =
                                                         receiptConfig.strict_mode && canUploadReceipt;
 
@@ -1846,17 +2103,106 @@ export default function CheckoutProcess({
                         {loading ? (
                             <Loader2 className="animate-spin" size={18} />
                         ) : missingReceipts && isPaidInFull ? (
-                            <>
-                                <Upload size={16} className="mb-0.5" /> Adjunta Recibos
-                            </>
+                            <><Upload size={16} className="mb-0.5" /> Adjunta Recibos</>
+                        ) : activePaymentInput === "Pago Flash" ? (
+                            <><Zap size={16} className="mb-0.5" /> Continuar a Pago Flash</>
                         ) : (
-                            <>
-                                <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
-                            </>
+                            <><MessageCircle size={16} className="mb-0.5" /> Enviar Pedido</>
                         )}
                     </button>
                 </div>
             </div>
+            {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */}
+            {/* 🚀 MODAL P2P PAGO FLASH (UX MINIMALISTA & FLUIDO) */}
+            <AnimatePresence mode="wait">
+                {p2pStep !== 'idle' && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 bg-black/30 backdrop-blur-md" onClick={() => p2pStep === 'step1' && setP2pStep('idle')} />
+
+                        <motion.div
+                            initial={{ scale: 0.96, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.96, opacity: 0, y: 10 }}
+                            transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
+                            className="relative bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col border border-gray-100/50"
+                        >
+                            <AnimatePresence mode="wait">
+                                {/* PASO 1: INSTRUCCIONES */}
+                                {p2pStep === 'step1' && (
+                                    <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+                                        <div className="p-7 text-center">
+                                            <h3 className="font-black text-xl text-gray-900 tracking-tight mb-1.5">Transfiere el total</h3>
+                                            <p className="text-xs text-gray-500 font-medium mb-6">Realiza el pago móvil exacto a estos datos.</p>
+                                            <p className="text-[40px] font-black text-gray-900 tracking-tighter mb-8 leading-none">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+
+                                            <div className="space-y-4 text-left">
+                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                                    <span className="text-xs text-gray-500 font-medium">Banco Destino</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.bank || '0102'}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                                    <span className="text-xs text-gray-500 font-medium">Cédula / RIF</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.dni}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs text-gray-500 font-medium">Teléfono</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.phone}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
+                                            <button onClick={() => setP2pStep('idle')} className="px-5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancelar</button>
+                                            <button onClick={() => setP2pStep('step2')} className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-sm">Ya transferí</button>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* PASO 2: VERIFICACIÓN */}
+                                {p2pStep === 'step2' && (
+                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                                        <div className="p-7">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <button onClick={() => setP2pStep('step1')} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"><ArrowLeft size={16} /></button>
+                                                <div>
+                                                    <h3 className="font-black text-lg text-gray-900 tracking-tight leading-none">Verifica tu pago</h3>
+                                                    <p className="text-[10px] text-gray-500 font-medium mt-1">Ingresa los datos desde donde enviaste el dinero.</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <select value={p2pForm.bankCode} onChange={e => setP2pForm({ ...p2pForm, bankCode: e.target.value })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                                    <option value="" disabled>¿Desde qué banco pagaste?</option>
+                                                    <option value="0102">Banco de Venezuela (0102)</option>
+                                                    <option value="0134">Banesco (0134)</option>
+                                                    <option value="0105">Mercantil (0105)</option>
+                                                    <option value="0108">Provincial (0108)</option>
+                                                </select>
+
+                                                <div className="flex gap-2">
+                                                    <select value={p2pForm.phoneCode} onChange={e => setP2pForm({ ...p2pForm, phoneCode: e.target.value })} className="w-24 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                                        <option value="0414">0414</option><option value="0424">0424</option><option value="0412">0412</option><option value="0416">0416</option><option value="0426">0426</option>
+                                                    </select>
+                                                    <input placeholder="Teléfono" value={p2pForm.phone} onChange={e => setP2pForm({ ...p2pForm, phone: e.target.value.replace(/\D/g, '') })} maxLength={7} className="flex-1 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+                                                </div>
+
+                                                <input placeholder="Cédula del titular de la cuenta" value={p2pForm.document} onChange={e => setP2pForm({ ...p2pForm, document: e.target.value.replace(/\D/g, '') })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+
+                                                <input placeholder="Últimos 6 dígitos de Referencia" value={p2pForm.reference} onChange={e => setP2pForm({ ...p2pForm, reference: e.target.value.replace(/\D/g, '') })} maxLength={8} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-black text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm tracking-widest text-center" />
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 border-t border-gray-100">
+                                            <button onClick={handleVerifyP2P} disabled={isVerifying} className="w-full bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+                                                {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

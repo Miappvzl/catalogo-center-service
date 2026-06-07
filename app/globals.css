@@ -63,6 +63,17 @@ input:-webkit-autofill:active {
     /* Mantiene el fondo blanco evitando que el navegador lo cambie */
     transition: background-color 5000s ease-in-out 0s;
 }
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes shimmer {
+  100% { 
+    transform: translateX(100%); 
+  }
+}
+
+
 
 @theme inline {
   --color-background: var(--background);

@@ -26,7 +26,8 @@ import {
   ClipboardCheck,
   Settings2,
   LayoutDashboard,
-  Database
+  Database,
+  Lock
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -432,8 +433,8 @@ const NodeTrustEcosystem = () => {
           </motion.div>
         </motion.div>
 
-        {/* COLUMNA DERECHA: Autoridad Técnica */}
-        <motion.div
+      {/* COLUMNA DERECHA: Autoridad Técnica (Pagos Globales) */}
+        <motion.div 
           initial={{ opacity: 0, x: 50 }}
           whileInView={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
@@ -443,22 +444,35 @@ const NodeTrustEcosystem = () => {
           <p className="text-slate-500 text-sm leading-relaxed mb-8 font-light max-w-[280px]">
             Olvida los cuadernos, el Excel y los descuadres de caja. Preziso unifica tus ventas físicas y digitales, automatizando el caos multimoneda para que te enfoques en escalar.
           </p>
-
-          {/* Tarjeta Dark Luxury - Sin sombra dura, borde sutil */}
-          <div className="flex flex-col items-start p-6 bg-[#050505] border border-zinc-800 rounded-2xl w-full max-w-[280px] group transition-colors hover:border-zinc-700">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">Motor de Control</span>
+          
+          {/* Tarjeta Dark Luxury - PayPal Nativo (Cero bordes, cero líneas) */}
+          <div className="flex flex-col items-start p-7 bg-[#050505] rounded-[1.5rem] w-full max-w-[280px] group transition-all duration-500 hover:bg-[#0a0a0a] shadow-[0_20px_60px_rgba(0,0,0,0.05)]">
+            
+            {/* Header Técnico */}
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
+                <Lock size={10} className="text-zinc-300" />
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+                Pasarela Nativa
+              </span>
             </div>
-
-            <span className="text-2xl font-black text-white leading-tight tracking-tighter mb-2 uppercase">
-              Stock Global<br />Unificado.
+            
+            {/* Logo Typográfico (Sustituye por el SVG oficial de PayPal si lo deseas) */}
+            <div className="mb-4">
+              <span className="text-3xl font-black italic text-white tracking-tighter opacity-90 group-hover:opacity-100 transition-opacity">
+                PayPal
+              </span>
+            </div>
+            
+            {/* Titular de Conversión */}
+            <span className="text-xl font-black text-white leading-tight tracking-tighter mb-4 uppercase">
+              Pagos Globales.<br />Cero Fricción.
             </span>
-
-            <div className="w-full h-[1px] bg-zinc-800 my-3" />
-
-            <span className="text-xs font-mono text-zinc-500 leading-relaxed text-left">
-              Si vendes por Instagram, se descuenta de tu mostrador al instante. Cero inventario fantasma.
+            
+            {/* Copy de Valor (Con espacio negativo en lugar de líneas divisorias) */}
+            <span className="text-xs font-mono text-zinc-500 leading-relaxed text-left mt-2">
+              Procesa pagos internacionales en piloto automático. Liquidez directa a tu cuenta, sin intermediarios.
             </span>
           </div>
         </motion.div>
