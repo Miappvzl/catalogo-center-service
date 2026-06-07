@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ExternalLink, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { Icon } from '@iconify/react';
 
 interface PayPalSetupCardProps {
     storeId: string;
@@ -25,6 +26,8 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
         if (!clientId || !secretKey) {
             return Swal.fire('Campos vacíos', 'Debes pegar ambas credenciales para continuar.', 'warning');
         }
+        
+        
 
         setIsSaving(true);
         try {
@@ -60,6 +63,15 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
         }
     };
 
+    const PayPalIcon = ({ className, size }: any) => (
+        <Icon
+            icon="simple-icons:paypal"
+            className={className}
+            width={size}
+            height={size}
+        />
+    );
+
     return (
         <>
             {/* LA TARJETA EN EL PANEL DE MÉTODOS DE PAGO */}
@@ -69,7 +81,7 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
 
                 <div className="flex items-center gap-4 relative z-10">
                     <div className={`p-3 rounded-xl border ${isActive ? 'bg-black border-black text-white' : 'bg-white border-zinc-200 text-zinc-900 shadow-sm'}`}>
-                        <Zap size={24} className={isActive ? 'fill-white' : ''} />
+                        <PayPalIcon size={20} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2 mb-0.5">

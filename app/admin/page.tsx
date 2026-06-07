@@ -18,6 +18,7 @@ import TopPerformers from '@/components/admin/TopPerformers'
 import FeatureOnboarding from '@/components/FeatureOnboarding'
 import FeatureLaunchModal from '@/components/FeatureLauchModal'
 import MerchandisingIntroModal from '@/components/MerchandisingIntroModal'
+import FeatureLaunchPayPal from '@/components/FeatureLaunchPayPal'
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies()
@@ -239,6 +240,7 @@ export default async function AdminDashboard() {
             <FeatureAnnouncement />
             <FeatureLaunchModal />
             <MerchandisingIntroModal />
+            <FeatureLaunchPayPal />
     </div>
   )
 }
