@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     template: "%s | Preziso"
   },
   description: "Sistema de ventas inteligente que actualiza tus precios a Tasa BCV automáticamente. Vende en dólares, cobra en bolívares y gestiona pedidos por WhatsApp.",
-  keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
+  keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor", "ecommerce venezuela", "preziso"],
 
   verification: {
     google: "M4XhHoatLNpxW7arB9a6LWkdKCUYm4u9UCZ5UOPK3ok", 
