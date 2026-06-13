@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
-
+// @ts-ignore: CSS imports are handled by Next.js build pipeline
+import "./globals.css";
 import { Toaster } from 'sonner';
 
 // 🚀 FUENTE PRINCIPAL: Inter (El estándar de oro para UI Premium y Legibilidad)
