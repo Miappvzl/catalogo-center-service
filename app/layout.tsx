@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
-// @ts-ignore: CSS imports are handled by Next.js build pipeline
 import "./globals.css";
 import { Toaster } from 'sonner';
 
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
     template: "%s | Preziso"
   },
   description: "Sistema de ventas inteligente que actualiza tus precios a Tasa BCV automáticamente. Vende en dólares, cobra en bolívares y gestiona pedidos por WhatsApp.",
-  keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor", "ecommerce venezuela", "preziso"],
+  keywords: ["catalogo digital", "venezuela", "tasa bcv", "automatizacion", "tienda online", "ventas whatsapp", "dolar monitor"],
 
   verification: {
     google: "M4XhHoatLNpxW7arB9a6LWkdKCUYm4u9UCZ5UOPK3ok", 
