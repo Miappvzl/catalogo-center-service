@@ -1,10 +1,10 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Banknote, Flame } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame } from 'lucide-react'
 import Image from 'next/image'
-import { useMemo } from 'react'
-import { motion } from 'framer-motion' // 🚀 1. RESTAURAMOS EL MOTOR
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion' 
 
 interface ProductCardProps {
   product: any;
@@ -14,11 +14,12 @@ interface ProductCardProps {
   index?: number;
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index = 0 }: ProductCardProps) {
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index }: ProductCardProps) {
+  const [isImageLoaded, setIsImageLoaded] = useState(false); // 🚀 Control del Blur-to-Clear
+
   const penalty = Number(product.usd_penalty || 0);
   const cashPrice = Number(product.usd_cash_price || 0);
   
-  // 🚀 LÓGICA DE PRECIO PÚBLICO SINCERO (Se mantiene de la iteración anterior)
   const listPrice = cashPrice + penalty;
   const compareAt = Number(product.compare_at_usd || 0);
   
@@ -26,69 +27,65 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
   const isPromo = activeCompareAt > listPrice; 
   const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
 
-  // 🚀 CEREBRO DE COLORES: Extracción y Deduplicación Absoluta
   const uniqueColors = useMemo(() => {
     if (!product.product_variants || !Array.isArray(product.product_variants)) return [];
     
     const colorMap = new Map();
     product.product_variants.forEach((v: any) => {
-      // Filtramos colores nulos o transparentes (ghost variants)
       if (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent') {
         if (!colorMap.has(v.color_hex)) {
           colorMap.set(v.color_hex, v.color_hex);
         }
       }
     });
-    
     return Array.from(colorMap.values());
   }, [product.product_variants]);
 
   return (
+    
     <motion.div 
-      // 🚀 2. TAILWIND CONTROLA EL HOVER: Física ultraligera sin JavaScript
+      // 🚀 AUTONOMÍA CON STAGGER MATEMÁTICO (Soporta Scroll Infinito)
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "50px" }}
+      transition={{ 
+        type: "tween", 
+        ease: [0.25, 1, 0.5, 1], 
+        duration: 0.4, 
+        delay: (index! % 12) * 0.05 // 🚀 Simula cascada en lotes de 12
+      }}
       className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
-      
-      // 🚀 3. FRAMER MOTION CONTROLA EL SCROLL: Solo opacidad, cero problemas de Layout
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, margin: "0px 0px 50px 0px" }}
-      transition={{ 
-        duration: 0.30, 
-        delay: Math.min(index * 0.05, 0.2), // Tope matemático rápido y fluido
-        ease: "easeOut" 
-      }}
     >
-      {/* 🚀 IMAGE CONTAINER: EDGE-TO-EDGE */}
-      <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center">
+      {/* IMAGE CONTAINER */}
+      <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[10px] aspect-[4/5] flex items-center justify-center border border-transparent group-hover:border-[var(--store-border)]/50 transition-colors">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+            onLoad={() => setIsImageLoaded(true)} // 🚀 Disparador del Fade In
+            className={`object-cover transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 will-change-transform ${isImageLoaded ? 'blur-0 opacity-100' : 'blur-md opacity-0 scale-110'}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] bg-[var(--store-bg)]">
             <ImageIcon size={32} strokeWidth={1.5} />
           </div>
         )}
-        {/* OVERLAY AGOTADO */}
+        
         {isOutOfStock && (
              <div className="absolute inset-0 bg-[var(--store-surface)]/40 backdrop-blur-[2px] flex items-center justify-center z-10">
-                 <span className="bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full">Agotado</span>
+                 <span className="bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full shadow-lg">Agotado</span>
              </div>
         )}
 
-        {/* ETIQUETA DE DESCUENTO ESTILO CLEAN */}
         {isPromo && !isOutOfStock && (
             <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-red-600 text-white text-[10px] md:text-xs font-black px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
                 -{promoPercent}%
             </div>
         )}
 
-        {/* 🚀 PASTILLA DE COLORES (Visual Stack) */}
         {uniqueColors.length > 1 && (
             <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">
                 {uniqueColors.slice(0, 3).map((colorHex, idx) => (
@@ -98,7 +95,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
                         style={{ backgroundColor: colorHex }}
                     />
                 ))}
-                {/* Indicador Numérico (Solo si hay más de 3 colores) */}
                 {uniqueColors.length > 3 && (
                     <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
                         +{uniqueColors.length - 3}
@@ -108,20 +104,15 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         )}
       </div>
 
-      {/* 🚀 CONTENT CONTAINER: AUTO-ALIGNMENT INYECTADO */}
+      {/* CONTENT CONTAINER */}
       <div className="flex flex-col flex-1 pt-3 pb-1">
-        
-        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-[0.05em] leading-snug group-hover:text-[var(--store-surface-text)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
+        <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-[0.05em] leading-snug group-hover:text-[var(--store-primary)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
           {product.name}
         </h3>
 
-        {/* CONTENEDOR FLEXIBLE QUE EMPUJA EL PRECIO AL FONDO PARA ALINEACIÓN PERFECTA */}
-        {/* ELIMINADO: mt-auto. INYECTADO: flex-1 flex flex-col justify-end */}
         <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
-          
-          <div className="flex items-end justify-between gap-2  pt-3">
+          <div className="flex items-end justify-between gap-2 pt-3 border-t border-[var(--store-border)]/30">
             <div className="flex flex-col min-w-0">
-              {/* PRECIO PÚBLICO REAL */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {isPromo && (
                   <span className="text-[10px] md:text-xs font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
@@ -137,10 +128,9 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
               </span>
             </div>
 
-            {/* 🚀 BOTÓN FIJO: SIEMPRE EN EL MISMO LUGAR */}
             <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 md:w-9 md:h-9 rounded-full border text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-[var(--store-border)] text-[var(--store-surface-text)]  cursor-not-allowed' : 'text-[var(--store-surface-text)]   group-hover:bg-[var(--store-primary)]  group-hover:text-[var(--store-primary-text)] active:scale-90'}`}
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-full border text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed' : 'text-[var(--store-surface-text)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90 shadow-sm'}`}
               aria-label="Ver producto"
             >
               <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
@@ -148,11 +138,10 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
           </div>
         </div>
 
-        {/* NUDGE HONESTO Y LIMPIO */}
         {penalty > 0 && !isOutOfStock && (
-          <div className="mt-3 inline-flex items-center gap-1.5   text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)]   py-1 rounded-full self-start transition-colors">
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)] py-1 rounded-full self-start transition-colors">
             <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
-            <span>Paga ${cashPrice.toFixed(2)} en DIvisas</span>
+            <span>Paga ${cashPrice.toFixed(2)} en Divisas</span>
           </div>
         )}
       </div>

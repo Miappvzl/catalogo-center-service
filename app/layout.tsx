@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
+
 import { Toaster } from 'sonner';
 
 // 🚀 FUENTE PRINCIPAL: Inter (El estándar de oro para UI Premium y Legibilidad)
@@ -99,7 +99,7 @@ export default function RootLayout({
         className={`${inter.variable} ${playfair.variable} ${jetbrains.variable} font-sans antialiased notranslate`}
       >
         {children}
-        <Toaster position="bottom-right" theme="light" closeButton richColors />
+        <Toaster position="bottom-center" />
       </body>
     </html>
   );

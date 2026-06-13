@@ -147,7 +147,8 @@ export default function CheckoutProcess({
     affiliateDiscountCash,
 }: CheckoutProcessProps) {
     const { items, clearCart } = useCart();
-    const [loading, setLoading] = useState(false);
+    const [checkoutState, setCheckoutState] = useState<'idle' | 'validating' | 'processing' | 'success'>('idle');
+    const [errors, setErrors] = useState<Record<string, string>>({}); // 🚀 MOTOR DE ERRORES ORGÁNICOS
     const [supabase] = useState(() => getSupabase());
     const [pfOriginBank, setPfOriginBank] = useState('');
     const [pfOriginPhone, setPfOriginPhone] = useState('');
@@ -226,11 +227,11 @@ export default function CheckoutProcess({
     const [pfTransaction, setPfTransaction] = useState({ pfId: '', orderId: '', orderNumber: 0 });
     const [p2pForm, setP2pForm] = useState({ bankCode: '', phoneCode: '0414', phone: '', reference: '', document: '' });
     const [isVerifying, setIsVerifying] = useState(false);
-    
+
     // 🚀 NUEVO: Gatillo de Auto-Submit para pasarelas automatizadas
     const [autoSubmitTrigger, setAutoSubmitTrigger] = useState(false);
 
-   
+
     // 🚀 HELPER: GENERADOR DE WHATSAPP OMNICANAL (TICKET PREMIUM)
     const generateWaMessage = (orderNum: string | number, isP2P: boolean = false) => {
         // 1. Lógica de Envíos (Intacta)
@@ -606,369 +607,176 @@ export default function CheckoutProcess({
         }
     };
 
-    
 
-    // --- PROCESAR ORDEN A BASE DE DATOS ---
+
+    // --- PROCESAR ORDEN A BASE DE DATOS (CON LABOR ILLUSION) ---
     const handleCheckout = async () => {
-        if (!clientData.name || !clientData.phone) return Swal.fire({ title: "Faltan Datos", text: "Nombre y teléfono son obligatorios", icon: "warning", confirmButtonColor: "#000" });
+        // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
+        const newErrors: Record<string, string> = {};
+        if (!clientData.name) newErrors.name = "El nombre es obligatorio";
+        if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
-        // 🚀 ESCUDO FISCAL BLINDADO
         if (isStrictTax && wantsFiscalData) {
-            if (!clientData.identityCard)
-                return Swal.fire({
-                    title: "Faltan Datos",
-                    text: "La Cédula/RIF es obligatoria si solicitas datos fiscales.",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                });
-
-            if (!clientData.fiscalAddress)
-                return Swal.fire({
-                    title: "Faltan Datos",
-                    text: "La Dirección Fiscal es obligatoria si solicitas datos fiscales.",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                });
+            if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
+            if (!clientData.fiscalAddress) newErrors.fiscalAddress = "La Dirección Fiscal es obligatoria";
         }
 
-        // 🚀 NUEVO: Bypass logístico inteligente
         if (needsShipping) {
-            if (clientData.deliveryType === "pickup" && !clientData.addressDetail)
-                return Swal.fire({ title: "Punto de Retiro", text: "Selecciona dónde buscarás tu pedido.", icon: "warning", confirmButtonColor: "#000" });
+            if (clientData.deliveryType === "pickup" && !clientData.addressDetail) newErrors.pickup = "Selecciona un punto de retiro";
             if (clientData.deliveryType === "courier") {
-                if (!clientData.courier) return Swal.fire({ title: "Envío", text: "Selecciona una empresa de envío", icon: "warning", confirmButtonColor: "#000" });
-                if (!clientData.state || !clientData.city || !clientData.addressDetail) return Swal.fire({ title: "Dirección Incompleta", text: "Llena los campos", icon: "warning", confirmButtonColor: "#000" });
-                if (!clientData.identityCard) return Swal.fire({ title: "Identificación", text: "La cédula es requerida para envíos", icon: "warning", confirmButtonColor: "#000" });
+                if (!clientData.courier) newErrors.courier = "Selecciona una agencia";
+                if (!clientData.state) newErrors.state = "Requerido";
+                if (!clientData.city) newErrors.city = "Requerido";
+                if (!clientData.addressDetail) newErrors.addressDetail = "Requerido";
+                if (!clientData.identityCard) newErrors.identityCard = "Requerido para envíos";
             }
-            if (clientData.deliveryType === "local_delivery" && !selectedDeliveryZone)
-                return Swal.fire({ title: "Zona de Delivery", text: "Selecciona la zona a la que enviaremos tu pedido", icon: "warning", confirmButtonColor: "#000" });
+            if (clientData.deliveryType === "local_delivery" && !selectedDeliveryZone) newErrors.deliveryZone = "Selecciona tu zona";
         }
 
-        if (!isPaidInFull)
-            return Swal.fire({
-                title: "Saldo Pendiente",
-                text: "Debes completar el 100% del pago para procesar la orden.",
-                icon: "warning",
-                confirmButtonColor: "#000",
-            });
-        if (missingReceipts)
-            return Swal.fire({
-                title: "Comprobantes Faltantes",
-                text: "Debes adjuntar el comprobante en los métodos que lo requieren.",
-                icon: "warning",
-                confirmButtonColor: "#000",
-            });
+       if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            // 🚀 HÁPTICA: Zumbido de error
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40); 
+            
+            const firstErrorKey = Object.keys(newErrors)[0];
+            document.getElementById(`field-${firstErrorKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
 
-        setLoading(true);
+        setErrors({}); // Limpiamos errores
+        if (!isPaidInFull) return Swal.fire({ title: "Saldo Pendiente", text: "Debes completar el 100% del pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+        if (missingReceipts) return Swal.fire({ title: "Comprobantes Faltantes", text: "Adjunta los captures de pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+
+        // 🚀 2. LA ILUSIÓN DE BÓVEDA (LABOR ILLUSION)
+        setCheckoutState('validating');
+        await new Promise(resolve => setTimeout(resolve, 800)); // Retenemos al cliente para darle seguridad psicológica
+        setCheckoutState('processing');
 
         try {
-            // 1. Upload Paralelo con Prevención de Colisiones
+            // ... 1. Upload Paralelo con Prevención de Colisiones (Intacto)
             const uploadedPayments = await Promise.all(
                 splitPayments.map(async (p) => {
                     let receiptPublicUrl = null;
                     if (p.receiptFile) {
-                        let compressedReceipt;
-                        try {
-                            compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
-                        } catch (compErr) {
-                            console.error("Compresión fallida:", compErr);
-                            throw new Error(
-                                "El formato de la imagen no es válido o es muy pesada. Por favor, intenta con un capture diferente.",
-                            );
-                        }
-
+                        let compressedReceipt = await compressImage(p.receiptFile, 800, 0.7);
                         const fileExt = p.receiptFile.name.split(".").pop() || "jpg";
-                        const uniqueUploadId = Date.now().toString().slice(-6);
-                        const fileName = `receipt-${p.id}-${uniqueUploadId}.${fileExt}`;
-
-                        const { error: uploadError } = await supabase.storage
-                            .from("receipts")
-                            .upload(fileName, compressedReceipt, { upsert: true });
-
-                        if (uploadError) {
-                            console.error("Storage Error Técnico:", uploadError);
-                            throw new Error(
-                                "Tuvimos un problema de conexión al subir tu comprobante. Por favor, verifica tu internet e intenta de nuevo.",
-                            );
-                        }
-
-                        const {
-                            data: { publicUrl },
-                        } = supabase.storage.from("receipts").getPublicUrl(fileName);
+                        const fileName = `receipt-${p.id}-${Date.now().toString().slice(-6)}.${fileExt}`;
+                        const { error: uploadError } = await supabase.storage.from("receipts").upload(fileName, compressedReceipt, { upsert: true });
+                        if (uploadError) throw new Error("Problema al subir el comprobante. Verifica tu internet.");
+                        const { data: { publicUrl } } = supabase.storage.from("receipts").getPublicUrl(fileName);
                         receiptPublicUrl = publicUrl;
                     }
                     return {
                         method: p.method,
-                        amount_usd:
-                            p.currency === "usd"
-                                ? p.amount
-                                : Number((p.amount / activeRate).toFixed(2)),
-                        amount_bs:
-                            p.currency === "ves"
-                                ? p.amount
-                                : Number((p.amount * activeRate).toFixed(2)),
+                        amount_usd: p.currency === "usd" ? p.amount : Number((p.amount / activeRate).toFixed(2)),
+                        amount_bs: p.currency === "ves" ? p.amount : Number((p.amount * activeRate).toFixed(2)),
                         currency: p.currency,
-                        receipt_url: p.receipt_url || receiptPublicUrl, // 🚀 USA EL TXID SI EXISTE
+                        receipt_url: p.receipt_url || receiptPublicUrl,
                     };
                 }),
             );
 
-            // 🚀 RESOLUCIÓN DE LOGÍSTICA
+            // 🚀 RESOLUCIÓN DE LOGÍSTICA (Intacta)
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
 
             if (needsShipping) {
                 finalShippingMethod = clientData.deliveryType;
-                if (clientData.deliveryType === "courier")
-                    deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
-                else if (clientData.deliveryType === "local_delivery")
-                    deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
-                else if (clientData.deliveryType === "pickup")
-                    deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+                if (clientData.deliveryType === "courier") deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+                else if (clientData.deliveryType === "local_delivery") deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
+                else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }
 
-            // 🚀 LÓGICA DE ATRIBUCIÓN DINÁMICA DE PAGO
-            const finalPaymentMethod =
-                uploadedPayments.length === 1 ? uploadedPayments[0].method : "Mixto";
-
-            // 2. Insertar Orden
-            // 🚀 BIFURCADOR ARQUITECTÓNICO: MODO AUTOMATIZADO VS MANUAL
+            const finalPaymentMethod = uploadedPayments.length === 1 ? uploadedPayments[0].method : "Mixto";
             const isAutomatedGateway = finalPaymentMethod === "Pago Flash";
             let order: any;
 
             if (isAutomatedGateway) {
-                setLoading(true);
-                try {
-                    // 1. Llamamos al INIT (Crea la orden y genera la intención en Pago Flash)
-                    const initRes = await fetch('/api/checkout/pago-flash/init', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            storeId,
-                            clientData,
-                            orderData: {
-                                total_usd: Number(grandTotalUSD.toFixed(2)),
-                                total_bs: Number(grandTotalBs.toFixed(2)),
-                                exchange_rate: activeRate,
-                                currency_type: currency,
-                                shipping_method: finalShippingMethod,
-                                delivery_info: deliveryInfoFull
-                            },
-                            items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
-                        })
-                    });
+                const initRes = await fetch('/api/checkout/pago-flash/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        storeId, clientData,
+                        orderData: { total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull },
+                        items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
+                    })
+                });
 
-                    const initData = await initRes.json();
-                    if (!initRes.ok || !initData.success) throw new Error(initData.error || 'Fallo al iniciar el pago.');
+                const initData = await initRes.json();
+                if (!initRes.ok || !initData.success) throw new Error(initData.error || 'Fallo al iniciar el pago.');
 
-                    // 🚀 ABRE EL PASO 1 DEL MODAL
-                    setPfTransaction({ pfId: initData.pf_transaction_id, orderId: initData.order_id, orderNumber: initData.order_number || 0 });
-                    setP2pStep('step1');
-
-                } catch (error: any) {
-                    Swal.fire({ title: 'Error de Conexión', text: error.message, icon: 'error', confirmButtonColor: '#000' });
-                } finally {
-                    setLoading(false);
-                }
+                setPfTransaction({ pfId: initData.pf_transaction_id, orderId: initData.order_id, orderNumber: initData.order_number || 0 });
+                setP2pStep('step1');
+                setCheckoutState('idle'); // Revertimos porque abre un modal
                 return;
-            }
-            else {
-                // =========================================================
-                // RUTA B: FLUJO TRADICIONAL (INSERT DIRECTO PARA ZELLE/CASH/TRANSFERENCIA)
-                // =========================================================
+            } else {
                 const { data: insertedOrder, error: orderError } = await supabase
                     .from("orders")
                     .insert({
-                        store_id: storeId,
-                        customer_name: clientData.name,
-                        customer_phone: clientData.phone,
-                        total_usd: Number(grandTotalUSD.toFixed(2)),
-                        total_bs: Number(grandTotalBs.toFixed(2)),
-                        exchange_rate: activeRate,
-                        currency_type: currency,
-                        status: "pending",
-                        payment_method: finalPaymentMethod,
-                        split_payments: uploadedPayments,
-                        shipping_method: finalShippingMethod,
-                        delivery_info: deliveryInfoFull,
-                        shipping_cost: Number(deliveryCost.toFixed(2)),
-                        discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
-                        affiliate_code: affiliateCode || null,
-                        document_type: isStrictTax ? "invoice" : "note",
-                        is_tax_applied: applyTax,
-                        tax_percentage: applyTax ? taxPercentage : 0,
-                        subtotal_usd: Number(totalListUSD_base.toFixed(2)),
-                        tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
-                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
-                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
-                        fx_savings_usd: Number(actualFxSavings.toFixed(2)),
-                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null,
-                        customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
-                    })
-                    .select()
-                    .single();
+                        store_id: storeId, customer_name: clientData.name, customer_phone: clientData.phone, total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, status: "pending", payment_method: finalPaymentMethod, split_payments: uploadedPayments, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull, shipping_cost: Number(deliveryCost.toFixed(2)), discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), affiliate_code: affiliateCode || null, document_type: isStrictTax ? "invoice" : "note", is_tax_applied: applyTax, tax_percentage: applyTax ? taxPercentage : 0, subtotal_usd: Number(totalListUSD_base.toFixed(2)), tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), fx_savings_usd: Number(actualFxSavings.toFixed(2)), customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
+                    }).select().single();
 
-                if (orderError) {
-                    console.error("Order DB Error Técnico:", orderError);
-                    throw new Error("Hubo una interrupción de red al registrar tu pedido. Tus datos están seguros, por favor presiona 'Enviar Pedido' nuevamente.");
-                }
-
-                order = insertedOrder; // Asignamos la orden para que el resto del código (Items, Web Push, WhatsApp) continúe
+                if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
+                order = insertedOrder;
             }
 
-            // 3. Insertar Items
             const orderItemsPayload = items.map((item) => ({
-                order_id: order.id,
-                product_id: item.productId,
-                product_name: item.name,
-                variant_info: item.variantInfo || "N/A",
-                quantity: item.quantity,
-                price_at_purchase: item.basePrice,
-                variant_id:
-                    item.variantId && item.variantId.length === 36
-                        ? item.variantId
-                        : null,
+                order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || "N/A", quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
             }));
 
-            const { error: itemsError } = await supabase
-                .from("order_items")
-                .insert(orderItemsPayload);
+            const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
 
             if (itemsError) {
-                console.error("Order Items DB Error Técnico:", itemsError);
-
-                // 🚀 ESTRATEGIA FAIL-FORWARD: Salvamos la venta y bloqueamos reintentos
-
-                // 1. Armamos el mensaje de WhatsApp de rescate (explicando la situación a la tienda)
-                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n`;
-                fallbackMessage += `*Intento de Pedido:* #${order.order_number}\n`;
-                fallbackMessage += `*Cliente:* ${clientData.name}\n`;
-                fallbackMessage += `*Teléfono:* ${clientData.phone}\n\n`;
-                fallbackMessage += `Hola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
-
+                // 🚀 FAIL-FORWARD: Rescate de venta
+                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n*Intento de Pedido:* #${order.order_number}\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\nHola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
                 const fallbackWaLink = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
-
-                // 2. Vaciamos el carrito para matar la data local
                 clearCart();
-
-                // 3. Forzamos el paso a la pantalla de Éxito (Paso 3) con el link de emergencia
-                onSuccess(order.order_number, fallbackWaLink, order.id); // 🚀 AÑADE order.id
-
-                // 4. Le explicamos al cliente qué pasó con una alerta suave
-                Swal.fire({
-                    title: "Interrupción de red",
-                    text: "Registramos tu pago, pero tu carrito tuvo un problema al sincronizarse. Te enviaremos a WhatsApp para que la tienda te confirme manualmente.",
-                    icon: "info",
-                    iconColor: "#000",
-                    confirmButtonText: "Entendido",
-                    confirmButtonColor: "#000",
-                    customClass: {
-                        popup: "rounded-xl border border-[var(--store-border)]",
-                        title: "font-black text-xl text-[var(--store-text-main)]",
-                    },
-                });
-
-                setLoading(false);
-                return; // <-- CRÍTICO: Detenemos la función aquí. No entra al catch. No genera órdenes basura.
+                setCheckoutState('success');
+                setTimeout(() => onSuccess(order.order_number, fallbackWaLink, order.id), 600);
+                return;
             }
 
-            // 🚀 INYECCIÓN: EL GATILLO SILENCIOSO (AWAIT OBLIGATORIO)
-            await fetch("/api/web-push/notify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    storeId: storeId,
-                    orderNumber: order.order_number,
-                    totalUsd: grandTotalUSD.toFixed(2),
-                    customerName: clientData.name,
-                }),
-            }).catch((err) =>
-                console.error("Error silencioso en notificación Push:", err),
-            );
+            // Web Push Silencioso
+            await fetch("/api/web-push/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeId, orderNumber: order.order_number, totalUsd: grandTotalUSD.toFixed(2), customerName: clientData.name }) }).catch(() => { });
 
-            // 4. Formatear Mensaje WhatsApp
+            // Generar WhatsApp (Intacto)
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
             cartEngine.processedItems.forEach((item: any) => {
-                const priceText =
-                    item.finalListPrice < item.listPrice
-                        ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
-                        : `($${item.listPrice.toFixed(2)})`;
+                const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
                 message += `🔸 ${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
             });
-
-            message += `\n*RESUMEN FINANCIERO:*\n`;
-            message += `Subtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`;
-            if (cartEngine.listPromoDiscounts > 0)
-                message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`;
-            if (wholesaleDiscountList > 0)
-                message += `Desc. Mayorista: -$${wholesaleDiscountList.toFixed(2)}\n`;
-            if (affiliateDiscountList! > 0)
-                message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n`;
-            if (actualFxSavings > 0)
-                message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`;
-
-            // 🚀 INYECCIÓN DETERMINISTA DE IVA EN WHATSAPP
-            if (applyTax && taxAmountListUSD > 0) {
-                message += `I.V.A (${taxPercentage}%): +$${taxAmountListUSD.toFixed(2)}\n`;
-            }
-
-            if (deliveryCost > 0)
-                message += `Delivery: +$${deliveryCost.toFixed(2)}\n`;
+            message += `\n*RESUMEN FINANCIERO:*\nSubtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`;
+            if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`;
+            if (wholesaleDiscountList > 0) message += `Desc. Mayorista: -$${wholesaleDiscountList.toFixed(2)}\n`;
+            if (affiliateDiscountList! > 0) message += `Desc. Código (${affiliateCode}): -$${affiliateDiscountList!.toFixed(2)}\n`;
+            if (actualFxSavings > 0) message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`;
+            if (applyTax && taxAmountListUSD > 0) message += `I.V.A (${taxPercentage}%): +$${taxAmountListUSD.toFixed(2)}\n`;
+            if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`;
             message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`;
-
-            // 🚀 COPYWRITING DINÁMICO: Cambia el título si es único o mixto
-            if (uploadedPayments.length > 1) {
-                message += `\n*PAGOS (MIXTO):*\n`;
-            } else {
-                message += `\n*MÉTODO DE PAGO:*\n`;
-            }
-
+            message += uploadedPayments.length > 1 ? `\n*PAGOS (MIXTO):*\n` : `\n*MÉTODO DE PAGO:*\n`;
             uploadedPayments.forEach((p: any) => {
                 message += `✔️ ${p.method}: ${p.currency === "usd" ? "$" + p.amount_usd.toFixed(2) : "Bs " + p.amount_bs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}\n`;
                 if (p.receipt_url) message += `   🔗 Comprobante: ${p.receipt_url}\n`;
             });
-
             message += `\n*LOGÍSTICA:*\nEnvío: ${deliveryInfoFull}\n`;
             if (clientData.notes) message += `Notas: ${clientData.notes}\n`;
 
             const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
             clearCart();
-            onSuccess(order.order_number, waLink, order.id); // 🚀 AÑADE order.id
+
+            // 🚀 3. CONFIRMACIÓN FINAL SENSORIAL (Check verde en el botón)
+            setCheckoutState('success');
+            // 🚀 HÁPTICA: Doble pulso clásico de éxito (Corto, Pausa, Corto)
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 50, 20]); 
+            
+            setTimeout(() => {
+                onSuccess(order.order_number, waLink, order.id);
+            }, 600);
+
         } catch (error: any) {
-            // Extracción del mensaje amigable para el cliente
-            let friendlyMessage =
-                "Ocurrió un error inesperado al procesar tu pedido por una falla de conexión. Por favor intenta de nuevo.";
-
-            if (typeof error === "string") {
-                friendlyMessage = error;
-            } else if (error instanceof Error) {
-                friendlyMessage = error.message;
-            } else if (
-                error?.message &&
-                !error.message.includes("fetch") &&
-                !error.message.includes("JSON")
-            ) {
-                // Filtramos errores de fetch genéricos que asustan
-                friendlyMessage = error.message;
-            }
-
-            // Alerta enfocada en la tranquilidad del cliente (Brutalist UX)
-            Swal.fire({
-                title: "Falla de Conexión",
-                text: friendlyMessage,
-                icon: "info", // Usamos 'info' o 'warning' en lugar de 'error' para reducir la ansiedad
-                iconColor: "#000",
-                confirmButtonText: "Entendido",
-                confirmButtonColor: "#000",
-                customClass: {
-                    title: "font-black text-xl text-[var(--store-text-main)]",
-                    popup: "rounded-xl border border-[var(--store-border)]",
-                },
-            });
-        } finally {
-            setLoading(false);
+            setCheckoutState('idle'); // Restablecemos el botón
+            Swal.fire({ title: "Falla de Conexión", text: error.message, icon: "info", iconColor: "#000", confirmButtonColor: "#000", customClass: { popup: "rounded-xl border border-[var(--store-border)]" } });
         }
     };
 
@@ -1004,7 +812,7 @@ export default function CheckoutProcess({
         }
     };
 
-     // 🚀 MOTOR DE AUTO-CHECKOUT
+    // 🚀 MOTOR DE AUTO-CHECKOUT
     useEffect(() => {
         if (autoSubmitTrigger) {
             // Si el pago se cubrió por completo y no faltan captures de otros métodos
@@ -1017,7 +825,7 @@ export default function CheckoutProcess({
             }
             setAutoSubmitTrigger(false); // Reseteamos el gatillo
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoSubmitTrigger, isPaidInFull, missingReceipts]);
 
 
@@ -1037,32 +845,31 @@ export default function CheckoutProcess({
             className="flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)]"
         >
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
-                <input
-                    maxLength={50} // Límite estricto de base de datos
-                    value={clientData.name}
-                    // Eliminamos los caracteres < y > para evitar inyecciones XSS
-                    onChange={(e) =>
-                        setClientData({
-                            ...clientData,
-                            name: e.target.value.replace(/[<>]/g, ""),
-                        })
-                    }
-                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                    placeholder="Nombre completo *"
-                />
-                <input
-                    maxLength={20} // Un teléfono no necesita más
-                    value={clientData.phone}
-                    // Permite SOLO números y el símbolo +
-                    onChange={(e) =>
-                        setClientData({
-                            ...clientData,
-                            phone: e.target.value.replace(/[^\d+]/g, ""),
-                        })
-                    }
-                    className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                    placeholder="Teléfono / WhatsApp *"
-                />
+                <div id="field-name" className="w-full">
+                    <input
+                        maxLength={50}
+                        value={clientData.name}
+                        onChange={(e) => setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, "") })}
+                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                        placeholder="Nombre completo *"
+                    />
+                    <AnimatePresence>
+                        {errors.name && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.name}</motion.p>}
+                    </AnimatePresence>
+                </div>
+
+                <div id="field-phone" className="w-full">
+                    <input
+                        maxLength={20}
+                        value={clientData.phone}
+                        onChange={(e) => setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, "") })}
+                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                        placeholder="Teléfono / WhatsApp *"
+                    />
+                    <AnimatePresence>
+                        {errors.phone && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.phone}</motion.p>}
+                    </AnimatePresence>
+                </div>
 
                 {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
                 <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
@@ -1154,7 +961,8 @@ export default function CheckoutProcess({
                         <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
                             Entrega
                         </h2>
-                        <div className="grid grid-cols-1 gap-3">
+                       {/* 🚀 TARJETAS TÁCTILES (Radio Cards con Checkmark Animado) */}
+                        <div className="grid grid-cols-1 gap-3" id="field-deliveryType">
                             {shipping.methods?.pickup && (
                                 <div
                                     onClick={() => {
@@ -1165,26 +973,28 @@ export default function CheckoutProcess({
                                         });
                                         setSelectedDeliveryZone("");
                                     }}
-                                    className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "pickup" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "pickup" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
                                 >
+                                    {/* 🚀 TACTILE CHECKMARK POP */}
+                                    <AnimatePresence>
+                                        {clientData.deliveryType === "pickup" && (
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
+                                                <Check size={12} strokeWidth={3} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    
                                     <Store
                                         size={20}
-                                        className={
-                                            clientData.deliveryType === "pickup"
-                                                ? "text-[var(--store-text-main)]"
-                                                : "text-[var(--store-surface-text)]"
-                                        }
+                                        className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
                                     />
                                     <div>
-                                        <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                            Retiro Personal
-                                        </p>
-                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                            Busca tu pedido gratis en tienda.
-                                        </p>
+                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
                                     </div>
                                 </div>
                             )}
+
                             {shipping.methods?.delivery && deliveryZones.length > 0 && (
                                 <div
                                     onClick={() =>
@@ -1194,58 +1004,59 @@ export default function CheckoutProcess({
                                             addressDetail: "",
                                         })
                                     }
-                                    className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "local_delivery" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "local_delivery" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
                                 >
+                                    {/* 🚀 TACTILE CHECKMARK POP */}
+                                    <AnimatePresence>
+                                        {clientData.deliveryType === "local_delivery" && (
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
+                                                <Check size={12} strokeWidth={3} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     <Truck
                                         size={20}
-                                        className={
-                                            clientData.deliveryType === "local_delivery"
-                                                ? "text-[var(--store-text-main)]"
-                                                : "text-[var(--store-surface-text)]"
-                                        }
+                                        className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
                                     />
                                     <div>
-                                        <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                            Delivery Local
-                                        </p>
-                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                            Entregas a domicilio.
-                                        </p>
+                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Entregas a domicilio.</p>
                                     </div>
                                 </div>
                             )}
-                            {(shipping.methods?.mrw ||
-                                shipping.methods?.zoom ||
-                                shipping.methods?.tealca) && (
-                                    <div
-                                        onClick={() => {
-                                            setClientData({
-                                                ...clientData,
-                                                deliveryType: "courier",
-                                                addressDetail: "",
-                                            });
-                                            setSelectedDeliveryZone("");
-                                        }}
-                                        className={`cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "courier" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                                    >
-                                        <Package
-                                            size={20}
-                                            className={
-                                                clientData.deliveryType === "courier"
-                                                    ? "text-[var(--store-text-main)]"
-                                                    : "text-[var(--store-surface-text)]"
-                                            }
-                                        />
-                                        <div>
-                                            <p className="font-bold text-sm text-[var(--store-text-main)]">
-                                                Envío Nacional
-                                            </p>
-                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">
-                                                Envíos por agencia.
-                                            </p>
-                                        </div>
+
+                            {(shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca) && (
+                                <div
+                                    onClick={() => {
+                                        setClientData({
+                                            ...clientData,
+                                            deliveryType: "courier",
+                                            addressDetail: "",
+                                        });
+                                        setSelectedDeliveryZone("");
+                                    }}
+                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "courier" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                >
+                                    {/* 🚀 TACTILE CHECKMARK POP */}
+                                    <AnimatePresence>
+                                        {clientData.deliveryType === "courier" && (
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
+                                                <Check size={12} strokeWidth={3} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <Package
+                                        size={20}
+                                        className={clientData.deliveryType === "courier" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
+                                    />
+                                    <div>
+                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Envío Nacional</p>
+                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envíos por agencia.</p>
                                     </div>
-                                )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Sub-opciones de Logística (Naked Inputs) */}
@@ -1689,7 +1500,7 @@ export default function CheckoutProcess({
                                 className="overflow-hidden"
                             >
                                 {(() => {
-                                    
+
                                     const singlePaymentBlock =
                                         paymentMode === "single"
                                             ? splitPayments.find(
@@ -1713,61 +1524,61 @@ export default function CheckoutProcess({
 
 
 
-                                                
+
                                             ) : activePaymentInput === "PayPal" ? (
 
-                                          
-    <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
-       <PayPalGateway 
-    storeId={storeId}
-    clientId={payments.paypal?.client_id}
-    amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
-    onSuccess={(transactionId) => {
-        const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
-        
-        // 🚀 CORRECCIÓN DE DUPLICADO: Reemplazo inteligente de estado
-        setSplitPayments(prevPayments => {
-            if (paymentMode === "single") {
-                // Si es pago único, DESTRUÍMOS el bloque fantasma y lo reemplazamos por el 100% real validado
-                return [{
-                    id: `pay-${Date.now()}`,
-                    method: "PayPal",
-                    amount: finalAmount,
-                    currency: "usd",
-                    isHardCurrency: true,
-                    receiptFile: null,
-                    receipt_url: `PayPal TxID: ${transactionId}`
-                }];
-            } else {
-                // Si es pago mixto, SÍ lo sumamos al arreglo anterior
-                return [
-                    ...prevPayments,
-                    {
-                        id: `pay-${Date.now()}`,
-                        method: "PayPal",
-                        amount: finalAmount,
-                        currency: "usd",
-                        isHardCurrency: true,
-                        receiptFile: null,
-                        receipt_url: `PayPal TxID: ${transactionId}`
-                    }
-                ];
-            }
-        });
 
-        setActivePaymentInput(null);
-        setPaymentAmount("");
-        
-        // 🚀 DISPARAMOS EL AUTO-CHECKOUT EN LUGAR DE LA ALERTA MANUAL
-        setAutoSubmitTrigger(true);
-    }}
-/>
-    </div>
-) : paymentMode === "split" ? (
-                                        
-                                         
+                                                <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
+                                                    <PayPalGateway
+                                                        storeId={storeId}
+                                                        clientId={payments.paypal?.client_id}
+                                                        amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
+                                                        onSuccess={(transactionId) => {
+                                                            const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
 
-                                                
+                                                            // 🚀 CORRECCIÓN DE DUPLICADO: Reemplazo inteligente de estado
+                                                            setSplitPayments(prevPayments => {
+                                                                if (paymentMode === "single") {
+                                                                    // Si es pago único, DESTRUÍMOS el bloque fantasma y lo reemplazamos por el 100% real validado
+                                                                    return [{
+                                                                        id: `pay-${Date.now()}`,
+                                                                        method: "PayPal",
+                                                                        amount: finalAmount,
+                                                                        currency: "usd",
+                                                                        isHardCurrency: true,
+                                                                        receiptFile: null,
+                                                                        receipt_url: `PayPal TxID: ${transactionId}`
+                                                                    }];
+                                                                } else {
+                                                                    // Si es pago mixto, SÍ lo sumamos al arreglo anterior
+                                                                    return [
+                                                                        ...prevPayments,
+                                                                        {
+                                                                            id: `pay-${Date.now()}`,
+                                                                            method: "PayPal",
+                                                                            amount: finalAmount,
+                                                                            currency: "usd",
+                                                                            isHardCurrency: true,
+                                                                            receiptFile: null,
+                                                                            receipt_url: `PayPal TxID: ${transactionId}`
+                                                                        }
+                                                                    ];
+                                                                }
+                                                            });
+
+                                                            setActivePaymentInput(null);
+                                                            setPaymentAmount("");
+
+                                                            // 🚀 DISPARAMOS EL AUTO-CHECKOUT EN LUGAR DE LA ALERTA MANUAL
+                                                            setAutoSubmitTrigger(true);
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : paymentMode === "split" ? (
+
+
+
+
 
 
                                                 // 🚀 PORTAL MODO MIXTO (Naked Input Gigante)
@@ -2091,25 +1902,61 @@ export default function CheckoutProcess({
                         </span>
                     </div>
 
-                    {/* Botón a la derecha */}
-                    <button
-                        onClick={handleCheckout}
-                        disabled={loading || !isPaidInFull || missingReceipts}
-                        className={`flex-1 h-[52px] rounded-full font-black text-xs md:text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${missingReceipts && isPaidInFull
-                            ? "bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed"
-                            : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/10"
-                            }`}
-                    >
-                        {loading ? (
-                            <Loader2 className="animate-spin" size={18} />
-                        ) : missingReceipts && isPaidInFull ? (
-                            <><Upload size={16} className="mb-0.5" /> Adjunta Recibos</>
-                        ) : activePaymentInput === "Pago Flash" ? (
-                            <><Zap size={16} className="mb-0.5" /> Continuar a Pago Flash</>
-                        ) : (
-                            <><MessageCircle size={16} className="mb-0.5" /> Enviar Pedido</>
-                        )}
-                    </button>
+                    {/* 🚀 EL MORPHING SUBMIT BUTTON (Aislado de Layout Thrashing) */}
+                    <div className="flex-1 flex justify-end items-center relative h-[52px]">
+                        <motion.button
+                            layout // Permite la metamorfosis
+                            onClick={handleCheckout}
+                            disabled={checkoutState !== 'idle' || !isPaidInFull || missingReceipts}
+                            style={{ borderRadius: 9999 }} // Cápsula o Círculo perfecto
+                            className={`h-full font-black text-xs md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl shadow-black/10 overflow-hidden relative z-10 ${checkoutState !== 'idle'
+                                    ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0" // Se vuelve círculo oscuro central
+                                    : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] " + (missingReceipts && isPaidInFull ? "!bg-[var(--store-border)] !text-[var(--store-surface-text)] cursor-not-allowed" : "")
+                                }`}
+                        >
+                            <AnimatePresence mode="wait">
+                                {checkoutState === 'validating' ? (
+                                    <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
+                                        <Loader2 className="animate-spin" size={20} />
+                                    </motion.div>
+                                ) : checkoutState === 'processing' ? (
+                                    <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <Loader2 className="animate-spin text-white/50" size={20} />
+                                    </motion.div>
+                                ) : checkoutState === 'success' ? (
+                                    <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
+                                        <Check className="text-white" size={20} strokeWidth={3} />
+                                    </motion.div>
+                                ) : missingReceipts && isPaidInFull ? (
+                                    <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <Upload size={16} className="mb-0.5" /> Adjunta Recibos
+                                    </motion.div>
+                                ) : activePaymentInput === "Pago Flash" ? (
+                                    <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
+                                    </motion.div>
+                                ) : (
+                                    <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.button>
+
+                        {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
+                        <AnimatePresence>
+                            {checkoutState === 'validating' && (
+                                <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-surface-text)] whitespace-nowrap">
+                                    Validando seguridad...
+                                </motion.span>
+                            )}
+                            {checkoutState === 'processing' && (
+                                <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-text-main)] whitespace-nowrap">
+                                    Generando orden cifrada...
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
             {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */}

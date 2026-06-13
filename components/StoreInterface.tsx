@@ -10,7 +10,7 @@ import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
 import Image from 'next/image'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 
 
@@ -43,6 +43,7 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
         return
       }
 
+      
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
       const seconds = Math.floor((distance % (1000 * 60)) / 1000)
@@ -65,6 +66,45 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
     </div>
   )
 }
+
+// 🚀 MICRO-COMPONENTE AISLADO: HUD Central (Zero React Overhead en la tienda)
+const CartHUDIndicator = () => {
+  const [hudData, setHudData] = useState({ visible: false, quantity: 0 });
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleHUD = (e: any) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setHudData({ visible: true, quantity: e.detail.quantity });
+      timeoutRef.current = setTimeout(() => setHudData({ visible: false, quantity: 0 }), 1500);
+    };
+    document.addEventListener('showCartHUD', handleHUD);
+    return () => document.removeEventListener('showCartHUD', handleHUD);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {hudData.visible && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-none flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/80 backdrop-blur-2xl rounded-[32px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/10"
+        >
+          <svg className="w-14 h-14 text-[var(--store-primary-text)] mb-2 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }} d="M20 6L9 17l-5-5" />
+          </svg>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, type: "spring", damping: 15 }} className="bg-white/20 px-3 py-1 rounded-full border border-white/10">
+            <span className="text-[var(--store-primary-text)] font-black text-xs tracking-widest tabular-nums">+{hudData.quantity} UND</span>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+
 
 
 // 🚀 INYECCIÓN: BANNER DE RECUPERACIÓN DE PRESUPUESTO (CORREGIDO)
@@ -140,10 +180,116 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
   const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
+   // 🚀 LA PIEZA FALTANTE: El Controlador Imperativo del carrito Desktop
+  const cartControls = useAnimation();
+      const badgeControls = useAnimation();
+
 
 const searchParams = useSearchParams()
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
+
+// 🚀 CEREBRO DE ORQUESTACIÓN: Motor de Vuelo Vainilla (Web Animations API - Zero React)
+  useEffect(() => {
+    // A. ESCUCHADOR DEL IMPACTO (Física Invertida Desktop)
+    const handleImpact = () => {
+      cartControls.start({
+         // 🚀 y: [0, -5, 3, 0] -> Golpeado desde abajo (sube), rebota al caer, se asienta
+         y: [0, -5, 3, 0],
+         scale: [1, 0.85, 1.15, 1], // Aplastado contra el techo, estirado al caer
+         transition: { 
+             duration: 0.4, 
+             ease: "easeInOut", 
+             times: [0, 0.2, 0.6, 1] 
+         }
+      });
+    };
+
+    const handleFly = (e: any) => {
+      const targets = document.querySelectorAll('[data-cart-target="true"]');
+      let destNode = targets[0]; 
+      for(let i=0; i<targets.length; i++) {
+          const rect = targets[i].getBoundingClientRect();
+          if(rect.width > 0 && rect.height > 0) { destNode = targets[i]; break; }
+      }
+
+      if (!destNode) { handleImpact(); return; }
+
+      const startRect = e.detail.startRect;
+      const destRect = destNode.getBoundingClientRect();
+
+      // 🚀 MATEMÁTICA DEL SQUIRCLE: Forzamos un cuadrado perfecto centrado
+      const size = Math.min(startRect.width, startRect.height);
+      const offsetX = (startRect.width - size) / 2;
+      const offsetY = (startRect.height - size) / 2;
+
+      // 🚀 INYECCIÓN NATIVA AL DOM
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'fixed';
+      wrapper.style.top = `${startRect.top}px`;
+      wrapper.style.left = `${startRect.left}px`;
+      wrapper.style.width = `${size}px`;
+      wrapper.style.height = `${size}px`;
+      wrapper.style.zIndex = '999999';
+      wrapper.style.pointerEvents = 'none';
+
+      const img = document.createElement('img');
+      img.src = e.detail.src;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      // 🚀 SQUIRCLE PERFECTO (Proporción exacta de Apple)
+      img.style.borderRadius = '22%'; 
+      img.style.objectFit = 'cover';
+      img.style.willChange = 'transform, opacity';
+      // 🚀 SOMBRA PREMIUM (Física y profundidad 3D)
+      img.style.boxShadow = '0 25px 50px -12px rgba(0,0,0,0.4), 0 10px 25px -5px rgba(0,0,0,0.2)';
+      // Fondo blanco por si el producto es un PNG transparente
+      img.style.backgroundColor = '#ffffff'; 
+
+      wrapper.appendChild(img);
+      document.body.appendChild(wrapper);
+
+      // Coordenadas de trayectoria (Calculadas desde el centro del nuevo cuadrado)
+      const startCenterX = startRect.left + offsetX + size / 2;
+      const startCenterY = startRect.top + offsetY + size / 2;
+      const destCenterX = destRect.left + destRect.width / 2;
+      const destCenterY = destRect.top + destRect.height / 2;
+
+      const deltaX = destCenterX - startCenterX;
+      const deltaY = destCenterY - startCenterY;
+
+      // 🚀 ANIMACIÓN EJE X (El Avance Lineal)
+      wrapper.animate([
+          { transform: `translate(${offsetX}px, ${offsetY}px)` },
+          { transform: `translate(${offsetX + deltaX}px, ${offsetY}px)` }
+      ], { duration: 550, easing: 'linear', fill: 'forwards' });
+
+      // 🚀 ANIMACIÓN AERODINÁMICA (Y, Escala, Inclinación y Absorción)
+      const yAnim = img.animate([
+          // Despegue (Cuadrado original, opacidad 100%)
+          { transform: `translateY(0px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+          // Vuelo medio (Se inclina hacia atrás -15deg por el viento, se encoge al 60%)
+          { transform: `translateY(${deltaY * 0.6}px) scale(0.6) rotate(-15deg)`, opacity: 1, offset: 0.6 },
+          // Aterrizaje (Se endereza, se hace tamaño 0 para entrar a la bolsa, se desvanece)
+          { transform: `translateY(${deltaY}px) scale(0) rotate(0deg)`, opacity: 0, offset: 1 }
+      ], { duration: 550, easing: 'ease-in', fill: 'forwards' });
+
+      yAnim.onfinish = () => {
+          wrapper.remove();
+          document.dispatchEvent(new CustomEvent('cartImpact')); 
+      };
+    };
+
+    document.addEventListener('cartImpact', handleImpact);
+    document.addEventListener('flyToCart', handleFly);
+    return () => {
+      document.removeEventListener('cartImpact', handleImpact);
+      document.removeEventListener('flyToCart', handleFly);
+    };
+  }, [cartControls]);
+
+  
+
 
  useEffect(() => {
     const ref = searchParams?.get('ref');
@@ -609,20 +755,39 @@ const searchParams = useSearchParams()
             {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
             <div className="hidden md:flex shrink-0 w-12 h-11">
               <button
+                 data-cart-target="true" 
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
                 className={`cursor-pointer relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
-                {/* El div envoltorio hace que el SVG rote perfectamente */}
-                <div className={hasItems ? "animate-wiggle origin-bottom inline-block" : ""}>
+                {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
+                <motion.div 
+                    animate={cartControls} 
+                    className={hasItems ? "inline-block origin-top" : "inline-block origin-top"}
+                >
                   <ShoppingCart size={18} strokeWidth={2.5} />
-                </div>
+                </motion.div>
 
-                {hasItems && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] cursor-pointer">
-                    {totalItems}
-                  </span>
-                )}
+                {/* 🚀 BADGE EXPLOSIVO: Sincronizado con la física del móvil */}
+                <AnimatePresence>
+                  {hasItems && (
+                    <motion.span 
+                      key={totalItems} 
+                      initial={{ scale: 0, y: 10, opacity: 0 }}
+                      animate={{ scale: 1, y: 0, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ 
+                          type: "spring", 
+                          stiffness: 500, 
+                          damping: 12,    
+                          mass: 1 
+                      }}
+                      className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
+                    >
+                      {totalItems}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </button>
             </div>
 
@@ -733,11 +898,10 @@ const searchParams = useSearchParams()
               </section>
           )}
 
-          {/* 🚀 ARQUITECTURA DE CUADRÍCULA ESTRICTA (CSS Grid Estándar) */}
+         {/* 🚀 DEVOLVEMOS EL DIV NORMAL AL PADRE */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => { // 🚀 Usamos standardProducts
+            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => { 
               const pricing = getProductPricing(product)
-
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
                 ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
                 : (product.stock || 0) <= 0;
@@ -749,7 +913,7 @@ const searchParams = useSearchParams()
                   pricing={pricing}
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
-                  index={index}
+                  index={index} // 🚀 CRÍTICO: Pasar el index
                 />
               )
             })}
@@ -882,7 +1046,8 @@ const searchParams = useSearchParams()
           </div>
         )}
       </AnimatePresence>
-
+     
+<CartHUDIndicator />
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

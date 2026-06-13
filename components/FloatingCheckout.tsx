@@ -3,12 +3,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
-import { AnimatePresence, motion, Variants } from 'framer-motion'
+import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
 import ProductCard from './ProductCard'
 import CheckoutProcess from './CheckoutProcess'
+import confetti from 'canvas-confetti'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { calculateCartEngine } from '@/utils/cartLogic'
+import NumberTicker from './NumberTicker'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -23,10 +25,86 @@ interface CheckoutProps {
 }
 
 export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null }: CheckoutProps) {
-   const { items, removeItem, updateQuantity, addOrderToHistory } = useCart()
+    const { items, removeItem, updateQuantity, addOrderToHistory } = useCart()
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState(1)
+    const [direction, setDirection] = useState(1) 
+    const [isTransitioning, setIsTransitioning] = useState(false) // 🚀 CANDADO SÍNCRONO
+    const [cartBump, setCartBump] = useState(false)
+
+   // 🚀 ENRUTADOR ESPACIAL BLINDADO
+    const changeStep = (newStep: number) => {
+        setIsTransitioning(true); // 1. Matamos el scroll ANTES de animar
+        setStep((prev) => {
+            setDirection(newStep > prev ? 1 : -1);
+            return newStep;
+        });
+    };
+
+  // 🚀 FÍSICAS DE SUPERPOSICIÓN (Parallax Apple Style - ZERO BUGS)
+    const walletVariants: Variants = {
+        initial: (direction: number) => ({
+            // Si avanza, viene de abajo (100%). Si retrocede, la bolsa nace un poco más arriba (-8%).
+            y: direction > 0 ? "100%" : "-8%", 
+            filter: direction > 0 ? "brightness(1)" : "brightness(0.6)", 
+            zIndex: direction > 0 ? 50 : 10,  
+            opacity: 1 
+        }),
+        animate: {
+            y: "0%",
+            filter: "brightness(1)",
+            zIndex: 30, 
+            opacity: 1,
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
+        },
+        exit: (direction: number) => ({
+            // Si retrocede, cae (100%). Si avanza, la bolsa se esconde hacia arriba (-8%).
+            y: direction < 0 ? "100%" : "-8%", 
+            filter: direction < 0 ? "brightness(1)" : "brightness(0.6)",
+            zIndex: direction < 0 ? 50 : 10,
+            opacity: 1,
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
+        })
+    };
+
+    // 🚀 ANTI-GHOST SCROLLBAR: Congela el scroll durante el vuelo 3D
+    const scrollVariants: Variants = {
+        initial: { overflowY: "hidden" },
+        animate: { 
+            // Magia: Lo reactiva SOLO cuando termina la animación
+            transitionEnd: { overflowY: "auto" } 
+        },
+        exit: { 
+            // Magia: Lo apaga en el milisegundo 0 del despegue
+            overflowY: "hidden",
+            transition: { duration: 0 } 
+        }
+    };
+
+    // 🚀 CONTROLADOR IMPERATIVO DEL IMPACTO (Física Squash & Stretch)
+    const cartControls = useAnimation()
+
+    useEffect(() => {
+        const handleImpact = () => {
+            // Saltamos la cola de renderizado. 
+            // y: [0, 5, -3, 0] -> Se hunde por el peso, rebota, se asienta.
+            // scale: [1, 0.85, 1.15, 1] -> Se aplasta, se estira, recupera su forma.
+
+           if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10)
+            cartControls.start({
+                y: [0, 5, -3, 0],
+                scale: [1, 0.85, 1.15, 1],
+                transition: {
+                    duration: 0.4,
+                    ease: "easeInOut",
+                    times: [0, 0.2, 0.6, 1] // Sincronización milimétrica de los fotogramas
+                }
+            });
+        };
+        document.addEventListener('cartImpact', handleImpact);
+        return () => document.removeEventListener('cartImpact', handleImpact);
+    }, [cartControls]);
 
     const [whatsappUrl, setWhatsappUrl] = useState('')
     const [generatedOrderNumber, setGeneratedOrderNumber] = useState<number | null>(null)
@@ -45,27 +123,79 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     // 🚀 EFECTO 2: Enrutador Automático (Si abre el carrito vacío pero hay orden, va al Paso 3)
     useEffect(() => {
         if (isOpen && items.length === 0 && generatedOrderNumber) {
-            setStep(3);
+            changeStep(3); // 🚀 Actualizado
         } else if (isOpen && items.length > 0 && step !== 2) {
-            setStep(1);
+            changeStep(1); // Si abre el carrito con items, aseguramos que esté en el Paso 1
         }
     }, [isOpen, items.length, generatedOrderNumber]);
 
-    // 🚀 EFECTO 3: Limpiador Inteligente (Solo borra la orden si el cliente empieza a comprar de nuevo)
+   const [hasFiredConfetti, setHasFiredConfetti] = useState(false);
+
+    // 🚀 EFECTO 3: Limpiador Inteligente Anti-Zombies
     useEffect(() => {
         if (items.length > 0 && generatedOrderNumber) {
             setGeneratedOrderNumber(null);
             setGeneratedOrderId(null);
             setHasClickedWhatsApp(false);
+            setHasFiredConfetti(false); 
+            if (step === 3) changeStep(1); // 🚀 Si añade un producto, lo regresamos a la bolsa
         }
     }, [items.length]);
 
-    // 🚀 CIERRE SEGURO: Ya no destruimos la data, solo ocultamos el drawer
+   // 🚀 EFECTO DE DOPAMINA (CONFETI INTELIGENTE BLINDADO)
+    useEffect(() => {
+        // 🚀 CRÍTICO: Añadimos isOpen para que jamás dispare si el cajón está cerrado
+        if (step === 3 && !isWhatsAppInterception && !hasFiredConfetti && isOpen) {
+            
+            const triggerConfetti = () => {
+                setHasFiredConfetti(true);
+                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([30, 50, 30, 50, 50]);
+
+                const duration = 2000;
+                const end = Date.now() + duration;
+
+                const frame = () => {
+                    import('canvas-confetti').then((confetti) => {
+                        confetti.default({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: ['#111111', '#059669', '#25D366'], zIndex: 999999 });
+                        confetti.default({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: ['#111111', '#059669', '#25D366'], zIndex: 999999 });
+                    });
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                };
+                frame();
+            };
+
+            // 🧠 RETRASO TÁCTICO: Le damos 500ms al Sistema Operativo para saltar a WhatsApp.
+            const timeoutId = setTimeout(() => {
+                if (document.visibilityState === 'visible') {
+                    // Si después de medio segundo sigue aquí (le dio a Omitir), disparamos.
+                    triggerConfetti();
+                } else {
+                    // Si se fue a WhatsApp, dejamos la trampa armada para cuando regrese.
+                    const handleVisibility = () => {
+                        if (document.visibilityState === 'visible') {
+                            triggerConfetti();
+                            document.removeEventListener('visibilitychange', handleVisibility);
+                        }
+                    };
+                    document.addEventListener('visibilitychange', handleVisibility);
+                }
+            }, 500);
+
+            // Limpiamos el timeout si el usuario cierra el modal rápido
+            return () => clearTimeout(timeoutId);
+        }
+    }, [step, isWhatsAppInterception, hasFiredConfetti, isOpen]);
+
+    const handleOpenModal = () => { changeStep(1); setIsOpen(true); } // 🚀 Actualizado
+
+   // 🚀 CIERRE SEGURO: Evitamos el Estado Zombie
     const handleCloseModal = () => {
         setIsOpen(false);
-        setTimeout(() => setIsWhatsAppInterception(false), 300);
+        setTimeout(() => {
+            setIsWhatsAppInterception(false);
+            if (step === 3) changeStep(1); // 🚀 Forzamos volver a la bolsa al cerrar
+        }, 300);
     }
-    const handleOpenModal = () => { setStep(1); setIsOpen(true); }
 
     const isEurMode = currency === 'eur'
     const activeRate = isEurMode ? rates.eur : rates.usd
@@ -150,7 +280,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     return (
         <>
-        {/* 🚀 GATILLO MOBILE DINÁMICO (Se destruye al enviar WhatsApp) */}
+            {/* 🚀 GATILLO MOBILE DINÁMICO (Se destruye al enviar WhatsApp) */}
             <AnimatePresence>
                 {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
                     <motion.div
@@ -164,25 +294,43 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             // ESTADO A: CARRITO NORMAL
                             <>
                                 <div className="flex items-center gap-3.5 cursor-pointer group" onClick={() => setIsOpen(true)}>
-                                    <div className="relative">
-                                        <div className="bg-[var(--store-primary)]/80 p-2.5 rounded-full transition-colors group-hover:bg-[var(--store-border)]">
+                                    <div className="relative" data-cart-target="true">
+                                        <motion.div
+                                            // 🚀 ÍCONO: Conectado a la física de impacto (Squash & Stretch)
+                                            animate={cartControls}
+                                            className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom"
+                                        >
                                             <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
-                                        </div>
-                                        <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
+                                        </motion.div>
+
+                                        {/* 🚀 BADGE: Efecto "Pop" explosivo al actualizar el número */}
+                                        <motion.span
+                                            key={totalItemsCount}
+                                            initial={{ scale: 0, y: 10, opacity: 0 }}
+                                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 500, // Tensión alta para que sea rápido
+                                                damping: 12,    // Rebote natural
+                                                mass: 1
+                                            }}
+                                            className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
+                                        >
                                             {totalItemsCount}
-                                        </span>
+                                        </motion.span>
                                     </div>
-                                    <div className="flex flex-col items-start">
-                                        <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                        <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                                    </div>
+
                                 </div>
+                                <div className="flex flex-col items-start">
+                                    <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
+                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                </div>
+
                                 <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20">
                                     Pagar
                                 </button>
                             </>
                         ) : (
-                            // ESTADO B: 🚀 GATILLO DE RESCATE (Desaparece al cumplir)
                             <div className="flex items-center gap-3 w-full cursor-pointer group" onClick={() => setIsOpen(true)}>
                                 <div className="p-2.5 rounded-full transition-colors bg-[var(--store-primary)] animate-pulse shadow-[0_0_15px_var(--store-primary)]">
                                     <MessageCircle size={22} className="text-[var(--store-primary-text)]" />
@@ -202,7 +350,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                 )}
             </AnimatePresence>
 
-            {/* 🚀 NUEVO: DESKTOP FLOATING NUDGE (Notificación Minimalista) */}
+            {/*  NUEVO: DESKTOP FLOATING NUDGE (Notificación Minimalista) */}
             <AnimatePresence>
                 {!isOpen && items.length === 0 && generatedOrderNumber && !hasClickedWhatsApp && (
                     <motion.div
@@ -215,15 +363,15 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         <div className="p-3 bg-[var(--store-primary)] rounded-full animate-pulse shadow-[0_0_15px_var(--store-primary)]">
                             <MessageCircle size={24} className="text-[var(--store-primary-text)]" />
                         </div>
-                       <div className="flex flex-col min-w-0"> 
-  <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight">
-    Pedido #{generatedOrderNumber}
-  </span> 
-  <span className="text-[11px] font-bold text-[var(--store-primary)] mt-0.5 flex items-center gap-1">
-    <TriangleAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" /> 
-    Falta enviar WhatsApp
-  </span> 
-</div>
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight">
+                                Pedido #{generatedOrderNumber}
+                            </span>
+                            <span className="text-[11px] font-bold text-[var(--store-primary)] mt-0.5 flex items-center gap-1">
+                                <TriangleAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                Falta enviar WhatsApp
+                            </span>
+                        </div>
                         <div className="ml-2 bg-[var(--store-bg)] p-2 rounded-xl border border-[var(--store-border)] text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-hover:border-[var(--store-primary)]/30 transition-colors">
                             <ArrowUpRight size={16} className="text-[var(--store-surface-text)]  group-hover:text-[var(--store-text-main)]" />
                         </div>
@@ -249,7 +397,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             </motion.div>
                                         ) : (
                                             <motion.div key="header-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex items-center gap-3">
-                                                <button onClick={() => setStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
+                                                <button onClick={() => changeStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
                                                 <div>
                                                     <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Checkout</h2>
                                                     <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Completa tu envío y pago</p>
@@ -281,92 +429,119 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                 </div>
                             )}
 
-                            {/* CONTENEDOR MULTI-PASO */}
-                            <div className="flex-1 relative overflow-hidden bg-[var(--store-surface)]">
-                                <AnimatePresence mode="wait">
+                          {/* CONTENEDOR MULTI-PASO (SOLID STACKING) */}
+<div className="flex-1 relative overflow-hidden bg-transparent">
+                                <AnimatePresence initial={false} custom={direction}>
 
-                                    {/* --- PASO 1: LA BOLSA --- */}
+                                  {/* --- PASO 1: LA BOLSA --- */}
                                     {step === 1 && (
-                                        <motion.div key="step-1" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full">
-
-                                            {/* 1. EL CONTENEDOR DE SCROLL: Le agregamos pb-[140px] (o el alto aproximado de tu footer) para que los últimos items se puedan ver bien al bajar del todo */}
-                                            <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth no-scrollbar pb-[140px]">
-                                                <div className="space-y-0 flex-1">
-                                                    {cartEngine.processedItems.map((item) => (
-                                                        <div key={item.id} className="flex gap-4 p-4 bg-[var(--store-surface)]">
-                                                            <div className="w-20 h-20 bg-[var(--store-surface)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
-                                                                <Image
-                                                                    src={getOptimizedUrl(item.image)}
-                                                                    alt={item.name}
-                                                                    fill
-                                                                    sizes="80px"
-                                                                    className="object-cover "
-                                                                />
-                                                            </div>
-                                                            <div className="flex-1 flex flex-col justify-between py-0.5">
-                                                                <div>
-
-                                                                    {/* 🚀 SMART BADGE DINÁMICO */}
-                                                                    {/* 🚀 SMART BADGE DINÁMICO BLINDADO */}
-                                                                    {item.badge && (
-                                                                        <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${item.badge.type === 'pending'
-                                                                            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm'
-                                                                            : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
-                                                                            }`}>
-                                                                            {item.badge.text}
-                                                                        </span>
-                                                                    )}
-                                                                    <div className="flex justify-between items-start">
-                                                                        <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
-                                                                        <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors  p-1.5 rounded-md hover:bg-[var(--store-primary)]/20"><Trash2 size={14} /></button>
-                                                                    </div>
-                                                                    <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
-
-                                                                    {/* 🚀 NUEVO: BADGE DE SERVICIO PARA CARRITO MIXTO */}
-                                                                    {item.requiresShipping === false && (
-                                                                        <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded-md uppercase tracking-wider w-fit max-w-full">
-                                                                            <Sparkle size={10} className="shrink-0" />
-                                                                            <span className="truncate">
-                                                                                {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
-                                                                            </span>
-                                                                        </span>
-                                                                    )}
+                                        <motion.div 
+                                            key="step-1" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                            // 🚀 INYECCIÓN 1: overflow-hidden en el padre para cortar sangrados
+                                            className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full z-10 origin-top will-change-transform shadow-2xl overflow-hidden"
+                                        >
+                                            {/* 🚀 INYECCIÓN 2: transform-gpu aísla el scroll en su propia capa de video */}
+                                           {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
+                                            <motion.div 
+                                                variants={scrollVariants}
+                                                className="flex-1 overflow-x-hidden scroll-smooth no-scrollbar pb-[140px]"
+                                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                            >
+                                                <div className="space-y-0 flex-1 overflow-x-hidden">
+                                                    {/* 🚀 EL MOTOR DE COLAPSO ORGÁNICO (Cero popLayout) */}
+                                                    <AnimatePresence initial={false}>
+                                                        {cartEngine.processedItems.map((item) => (
+                                                            <motion.div
+                                                                key={item.id}
+                                                                layout="position" // 🚀 Solo reubica sin recalcular escalas internas
+                                                                initial={{ opacity: 0, height: 0, scale: 0.9 }}
+                                                                animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                                                // 🚀 Colapsa la altura a 0 y corta el contenido. El resto sube suavemente.
+                                                                exit={{
+                                                                    opacity: 0,
+                                                                    height: 0,
+                                                                    scale: 0.9,
+                                                                    x: -20,
+                                                                    paddingTop: 0,
+                                                                    paddingBottom: 0,
+                                                                    borderWidth: 0,
+                                                                    overflow: 'hidden'
+                                                                }}
+                                                                transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+                                                                className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top"
+                                                            >
+                                                                <div className="w-20 h-20 bg-[var(--store-surface)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
+                                                                    <Image
+                                                                        src={getOptimizedUrl(item.image)}
+                                                                        alt={item.name}
+                                                                        fill
+                                                                        sizes="80px"
+                                                                        className="object-cover "
+                                                                    />
                                                                 </div>
 
-                                                                <div className="flex items-end justify-between mt-2">
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        {item.finalListPrice < item.listPrice ? (
-                                                                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
-                                                                                    {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
-                                                                                </span>
-                                                                                <span className="font-black text-base text-red-600 leading-none">
-                                                                                    {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="font-black text-base text-[var(--store-text-main)] leading-none">
-                                                                                {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
+                                                                <div className="flex-1 flex flex-col justify-between py-0.5">
+                                                                    <div>
+                                                                        {item.badge && (
+                                                                            <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${item.badge.type === 'pending'
+                                                                                ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm'
+                                                                                : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
+                                                                                }`}>
+                                                                                {item.badge.text}
                                                                             </span>
                                                                         )}
-                                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
-                                                                            Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                                                        </span>
+                                                                        <div className="flex justify-between items-start">
+                                                                            <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
+                                                                            <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 hover:bg-red-50 transition-colors p-1.5 rounded-md active:scale-90"><Trash2 size={14} /></button>
+                                                                        </div>
+                                                                        <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
+
+                                                                        {item.requiresShipping === false && (
+                                                                            <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded-md uppercase tracking-wider w-fit max-w-full">
+                                                                                <Sparkle size={10} className="shrink-0" />
+                                                                                <span className="truncate">
+                                                                                    {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
+                                                                                </span>
+                                                                            </span>
+                                                                        )}
                                                                     </div>
 
-                                                                    <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60">
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                                                                            <Minus size={14} strokeWidth={3} />
-                                                                        </button>
-                                                                        <span className="text-xs font-bold w-3 text-center text-[var(--store-text-main)]">{item.quantity}</span>
-                                                                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                                                                            <Plus size={14} strokeWidth={3} />
-                                                                        </button>
+                                                                    <div className="flex items-end justify-between mt-2">
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            {item.finalListPrice < item.listPrice ? (
+                                                                                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
+                                                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                    </span>
+                                                                                    <span className="font-black text-base text-red-600 leading-none">
+                                                                                        {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="font-black text-base text-[var(--store-text-main)] leading-none">
+                                                                                    {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                </span>
+                                                                            )}
+                                                                            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
+                                                                                Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60 bg-[var(--store-bg)]">
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90">
+                                                                                <Minus size={14} strokeWidth={3} />
+                                                                            </button>
+                                                                            <span className="text-xs font-bold w-3 text-center text-[var(--store-text-main)]">{item.quantity}</span>
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90">
+                                                                                <Plus size={14} strokeWidth={3} />
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                            </motion.div>
+                                                        ))}
+                                                    </AnimatePresence>
                                                 </div>
 
                                                 {/* CROSS-SELLING */}
@@ -416,58 +591,73 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         </div>
                                                     </div>
                                                 )}
-                                            </div>
+                                            </motion.div>
 
                                             {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
                                             <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)]/30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
                                                     <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none flex items-center">
+                                                            {currencySymbol}<NumberTicker value={step1GrandTotalUSD} />
+                                                        </span>
+                                                        <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none flex items-center gap-1">
+                                                            Bs <NumberTicker value={step1GrandTotalBs} />
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => setStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 border border-[var(--store-border)]">
+                                                <button onClick={() => changeStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 border border-[var(--store-border)]">
                                                     Ir al Checkout <ChevronRight size={16} />
                                                 </button>
                                             </div>
                                         </motion.div>
                                     )}
 
-                                    {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
+                                   {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
                                     {step === 2 && (
-                                        <CheckoutProcess
-                                            storeId={storeId}
-                                            storeConfig={storeConfig}
-                                            currency={currency}
-                                            rates={rates}
-                                            phone={phone}
-                                            cartEngine={cartEngine}
-                                            wholesaleDiscountList={wholesaleDiscountList}
-                                            wholesaleDiscountCash={wholesaleDiscountCash}
-                                            // 🚀 INYECCIONES AQUÍ:
-                                            affiliateCode={affiliateCode}
-                                            affiliateDiscountList={affiliateDiscountList}
-                                            affiliateDiscountCash={affiliateDiscountCash}
-                                           
-                                               onSuccess={(orderNumber: number, waUrl: string, orderId: string) => { 
-                                                setGeneratedOrderNumber(orderNumber);
-                                                setWhatsappUrl(waUrl);
-                                                setGeneratedOrderId(orderId); 
-                                                
-                                                // 🚀 GUARDAMOS EN EL HISTORIAL PERSISTENTE
-                                                addOrderToHistory({ id: orderId, number: orderNumber });
-                                                
-                                                setIsWhatsAppInterception(true); 
-                                                setStep(3);
-                                            }}
-                                            onBack={() => setStep(1)}
-                                        />
+                                        <motion.div 
+                                            key="step-2" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                            // 🚀 El padre solo anima y corta (overflow-hidden)
+                                            className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full z-20 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)] overflow-hidden"
+                                        >
+                                          {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
+                                            <motion.div 
+                                                variants={scrollVariants}
+                                                className="w-full h-full no-scrollbar"
+                                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                            >
+                                                <CheckoutProcess
+                                                storeId={storeId}
+                                                storeConfig={storeConfig}
+                                                currency={currency}
+                                                rates={rates}
+                                                phone={phone}
+                                                cartEngine={cartEngine}
+                                                wholesaleDiscountList={wholesaleDiscountList}
+                                                wholesaleDiscountCash={wholesaleDiscountCash}
+                                                affiliateCode={affiliateCode}
+                                                affiliateDiscountList={affiliateDiscountList}
+                                                affiliateDiscountCash={affiliateDiscountCash}
+                                                onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
+                                                    setGeneratedOrderNumber(orderNumber);
+                                                    setWhatsappUrl(waUrl);
+                                                    setGeneratedOrderId(orderId);
+                                                    addOrderToHistory({ id: orderId, number: orderNumber });
+                                                    setIsWhatsAppInterception(true);
+                                                    changeStep(3); // 🚀 USA EL MOTOR ESPACIAL
+                                                }}
+                                                onBack={() => changeStep(1)} // 🚀 USA EL MOTOR ESPACIAL
+                                            />
+                                        </motion.div>
+                                        </motion.div>
                                     )}
-
                                     {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
-                                        <motion.div key="step-3" variants={stepVariants} initial="hidden" animate="enter" exit="exit" className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)]">
+                                        <motion.div 
+                                            key="step-3" 
+                                            custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                            className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)] z-30 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)]"
+                                        >
 
                                             {/* 🚀 MODAL DE INTERCEPCIÓN (PEAJE PSICOLÓGICO) */}
                                             <AnimatePresence>
@@ -520,9 +710,26 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 )}
                                             </AnimatePresence>
 
-                                            <div className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6">
-                                                <Check size={40} className="text-[var(--store-incentive)]" strokeWidth={3} />
-                                            </div>
+                                           {/* 🚀 EL CHECKMARK GLORIOSO ANIMADO */}
+                                            <motion.div 
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
+                                                className="w-20 h-20 bg-[var(--store-incentive)]/10 rounded-full flex items-center justify-center shrink-0 mb-6 relative overflow-hidden"
+                                            >
+                                                {/* Efecto de expansión trasera */}
+                                                <motion.div initial={{ scale: 0, opacity: 1 }} animate={{ scale: 2, opacity: 0 }} transition={{ duration: 1, delay: 0.4 }} className="absolute inset-0 bg-[var(--store-incentive)] rounded-full" />
+                                                
+                                                {/* SVG que se dibuja a sí mismo */}
+                                                <svg className="w-10 h-10 text-[var(--store-incentive)] relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <motion.path 
+                                                        d="M20 6L9 17l-5-5" 
+                                                        initial={{ pathLength: 0 }} 
+                                                        animate={{ pathLength: 1 }} 
+                                                        transition={{ duration: 0.5, ease: "easeOut", delay: 0.5 }} 
+                                                    />
+                                                </svg>
+                                            </motion.div>
 
                                             <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">¡Pedido #{generatedOrderNumber}!</h2>
 
@@ -543,14 +750,14 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     rel="noopener noreferrer"
                                                     onClick={() => setHasClickedWhatsApp(true)} // Por si hacen clic directo desde aquí
                                                     className={`w-full px-6 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-95 shadow-[0_4px_10px_rgba(0,0,0,0.03)] border border-[var(--store-border)] ${hasClickedWhatsApp
-                                                            ? "bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)] opacity-80" // 🚀 ESTADO SECUNDARIO: Discreto y pacífico
-                                                            : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90" // 🚀 ESTADO PRIMARIO: Llamativo (si evadió el modal)
+                                                        ? "bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)] opacity-80" // 🚀 ESTADO SECUNDARIO: Discreto y pacífico
+                                                        : "bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90" // 🚀 ESTADO PRIMARIO: Llamativo (si evadió el modal)
                                                         }`}
                                                 >
                                                     {hasClickedWhatsApp ? <Check size={18} className="text-emerald-500" strokeWidth={3} /> : <MessageCircle size={18} />}
                                                     {hasClickedWhatsApp ? "Mensaje Enviado (Reenviar)" : "Enviar a WhatsApp"}
                                                 </a>
-                                               
+
                                                 <button onClick={handleCloseModal} className="w-full bg-[var(--store-surface)] text-[var(--store-text-main)] px-6 py-4 rounded-xl font-bold text-sm hover:bg-[var(--store-border)] transition-all active:scale-95 border border-[var(--store-border)]">
                                                     Volver a la Tienda
                                                 </button>
