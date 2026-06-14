@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
@@ -180,6 +180,36 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
   const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
+  const featuredCarouselRef = useRef<HTMLDivElement>(null); // 🚀 Ref del escaparate
+
+  // 🚀 MOTOR DE DESPLAZAMIENTO INTELIGENTE (Cinta Transportadora)
+  const scrollFeatured = (direction: 'left' | 'right') => {
+      if (!featuredCarouselRef.current) return;
+      const container = featuredCarouselRef.current;
+      
+      // Leemos el ancho de la primera tarjeta dinámicamente
+      const firstCard = container.children[0] as HTMLElement;
+      if (!firstCard) return;
+      
+      // Ancho de la tarjeta + 24px (gap-6)
+      const scrollAmount = firstCard.offsetWidth + 24; 
+
+      if (direction === 'right') {
+          // Si llegamos al límite derecho, rebobinamos como máquina de escribir
+          if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+              container.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+              container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+          }
+      } else {
+          // Si estamos al inicio y damos atrás, vamos rápido al final
+          if (container.scrollLeft <= 10) {
+              container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' });
+          } else {
+              container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+          }
+      }
+  };
    // 🚀 LA PIEZA FALTANTE: El Controlador Imperativo del carrito Desktop
   const cartControls = useAnimation();
       const badgeControls = useAnimation();
@@ -865,7 +895,7 @@ const searchParams = useSearchParams()
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
 
         <>
-          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+         {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && (
               <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
                   <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
@@ -874,26 +904,52 @@ const searchParams = useSearchParams()
                       </div>
                   </div>
                   
-                  {/* Carrusel Horizontal */}
-                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory">
-                     {featuredProducts.map((product: any, idx: number) => {
-                          const pricing = getProductPricing(product)
-                          const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
-                              ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-                              : (product.stock || 0) <= 0;
+                  {/* 🚀 CONTENEDOR RELATIVO PARA BOTONES FLOTANTES */}
+                  <div className="relative group">
+                      
+                      {/* 🚀 BOTÓN IZQUIERDO (Clean Look Apple Style) */}
+                      <button 
+                          onClick={() => scrollFeatured('left')}
+                          className="hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all opacity-90 hover:opacity-100"
+                          aria-label="Anterior"
+                      >
+                          <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
+                      </button>
 
-                          return (
-                              <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
-                                  <ProductCard 
-                                      product={product} 
-                                      pricing={pricing} 
-                                      onOpen={handleOpenProduct}
-                                      isOutOfStock={isCompletelyOutOfStock}
-                                      index={idx}
-                                  />
-                              </div>
-                          )
-                      })}
+                      {/* Carrusel Horizontal */}
+                      <div 
+                          ref={featuredCarouselRef} // 🚀 CONECTAMOS LA REFERENCIA
+                          className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth"
+                      >
+                         {featuredProducts.map((product: any, idx: number) => {
+                              const pricing = getProductPricing(product)
+                              const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                                  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                                  : (product.stock || 0) <= 0;
+
+                              return (
+                                  <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
+                                      <ProductCard 
+                                          product={product} 
+                                          pricing={pricing} 
+                                          onOpen={handleOpenProduct}
+                                          isOutOfStock={isCompletelyOutOfStock}
+                                          index={idx}
+                                      />
+                                  </div>
+                              )
+                          })}
+                      </div>
+
+                      {/* 🚀 BOTÓN DERECHO (Clean Look Apple Style) */}
+                      <button 
+                          onClick={() => scrollFeatured('right')}
+                          className="hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all opacity-90 hover:opacity-100"
+                          aria-label="Siguiente"
+                      >
+                          <ChevronRight size={24} strokeWidth={2.5} className="-mr-0.5" />
+                      </button>
+                      
                   </div>
               </section>
           )}
