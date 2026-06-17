@@ -49,9 +49,9 @@ export default function OnboardingWizard() {
         return Swal.fire({ icon: 'error', title: 'Oops...', text: 'Esa URL ya está ocupada por otro negocio. Prueba añadiendo tu ciudad.', confirmButtonColor: '#000' })
       }
 
-      // 2. Crear la tienda (Con 14 días de prueba)
+      // 2. Crear la tienda (Con 7 días de prueba - Modo de Alta Conversión)
       const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 14) // 14 DÍAS EXACTOS
+      trialEndDate.setDate(trialEndDate.getDate() + 7) // Reducido a 7 DÍAS EXACTOS
 
       const { error } = await supabase.from('stores').insert([{
           user_id: user.id,
