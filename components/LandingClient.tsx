@@ -1547,7 +1547,7 @@ const NodeEightExtraction = () => {
 
             <Link href="/login" className="mt-12 w-full relative group/btn overflow-hidden rounded-xl bg-black text-white py-5 flex justify-center items-center gap-3 z-10">
               <span className="font-bold text-xs uppercase tracking-[0.2em] relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500">
-                Inicializar Nodo
+                7 dias gratis
               </span>
               <ArrowUpRight size={16} strokeWidth={2} className="relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500" />
               <div className="absolute inset-0 bg-zinc-200 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-0" />
