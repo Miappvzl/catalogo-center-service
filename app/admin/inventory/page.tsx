@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -278,6 +278,40 @@ export default function InventoryPage() {
 
     const stats = useMemo(() => ({ total: items.length, low: items.filter(i => i.stock > 0 && i.stock <= 3).length, out: items.filter(i => i.stock === 0).length }), [items])
 
+
+    
+    // =========================================
+    // 🚀 MOTOR DE UX: SENSOR DE SCROLL HORIZONTAL
+    // =========================================
+    const tableScrollRef = useRef<HTMLDivElement>(null)
+    const [isScrolledToEnd, setIsScrolledToEnd] = useState(false)
+    const [isScrollable, setIsScrollable] = useState(false)
+
+    const checkScroll = () => {
+        if (tableScrollRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = tableScrollRef.current
+            setIsScrollable(scrollWidth > clientWidth)
+            setIsScrolledToEnd(Math.ceil(scrollLeft + clientWidth) >= scrollWidth - 5)
+        }
+    }
+
+    // 🚀 PROPULSOR CINÉTICO: Si el usuario toca la flecha, desplazamos la tabla
+    const scrollRight = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation() // Evita que el clic atraviese hacia el Link del producto
+        if (tableScrollRef.current) {
+            tableScrollRef.current.scrollBy({ left: 180, behavior: 'smooth' })
+        }
+    }
+
+   
+    // Calibramos el sensor cuando cargan los items o se rota la pantalla
+    useEffect(() => {
+        checkScroll()
+        window.addEventListener('resize', checkScroll)
+        return () => window.removeEventListener('resize', checkScroll)
+    }, [filteredItems])
+    
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-gray-900 flex flex-col">
             {/* HEADER STICKY */}
@@ -310,7 +344,7 @@ export default function InventoryPage() {
                 </div>
             </div>
 
-            <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
+          <div className="w-full max-w-[100vw] flex-1 relative">
                 <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
                     {/* CONTROLES */}
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
@@ -354,8 +388,8 @@ export default function InventoryPage() {
                         )}
                     </div>
 
-                    {/* TABLA ELITE (Borderless) */}
-                    <div className="bg-white rounded-[var(--radius-card)] overflow-hidden w-full max-w-full">
+                  {/* TABLA ELITE (Borderless) */}
+                    <div className="bg-white rounded-[var(--radius-card)] w-full max-w-full relative ">
                         {loading ? (
                             <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300" /></div>
                         ) : filteredItems.length === 0 ? (
@@ -365,16 +399,34 @@ export default function InventoryPage() {
                                 </div>
                                 <p className="text-gray-400 font-bold text-sm">No se encontraron items.</p>
                             </div>
-                        ) : (
-                            <div className="overflow-x-auto w-full max-w-full">
-                                <table className="w-full text-left border-collapse min-w-[600px]">
+                     ) : (
+                            <div className="relative w-full max-w-full">
+                              {/* 🚀 INDICADOR DE PROFUNDIDAD Y PÍLDORA MAGNÉTICA (Bordes Esculpidos) */}
+                                <div 
+                                    className={`absolute right-0 top-0 h-full w-12 rounded-r-[var(--radius-card)] bg-gradient-to-l from-black/10 via-black/[0.02] to-transparent pointer-events-none z-10 md:hidden transition-opacity duration-500 ${isScrollable && !isScrolledToEnd ? 'opacity-100' : 'opacity-0'}`}
+                                >
+                                    {/* 🚀 El "Elevador" ahora es interactivo y tiene masa (pointer-events-auto) */}
+                                    <div 
+                                        onClick={scrollRight}
+                                        className="sticky top-[35vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.2)] border border-gray-200 pointer-events-auto cursor-pointer active:scale-90 transition-transform"
+                                    >
+                                        <ChevronRight size={16} className="text-zinc-800 animate-pulse" />
+                                    </div>
+                                </div>
+                                
+                                <div 
+                                    ref={tableScrollRef}
+                                    onScroll={checkScroll}
+                                    className="overflow-x-auto w-full max-w-full no-scrollbar relative z-0"
+                                >
+                                    <table className="w-full text-left border-collapse min-w-[600px]">
                                     <thead>
                                         <tr className="border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                                            <th className="p-4 md:p-6">Producto</th>
+                                            <th className="p-4 md:p-6 rounded-tl-[var(--radius-card)]">Producto</th>
                                             <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
                                             <th className="p-4 md:p-6 text-center">Gestión Rápida</th>
                                             <th className="p-4 md:p-6 text-center">Exhibición</th>
-                                            <th className="p-4 md:p-6 text-right">Estado</th>
+                                            <th className="p-4 md:p-6 text-right rounded-tr-[var(--radius-card)]">Estado</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -397,37 +449,44 @@ export default function InventoryPage() {
                                                 statusText = 'Bajo'
                                             }
 
+
+
                                             return (
                                                 <tr key={item.rowId} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
-                                                    <td className="p-4 md:p-6 align-middle">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0 relative">
+                                                   <td className="p-4 md:p-6 align-middle">
+                                                        {/* 🚀 PORTAL FRONTAL: Enlace directo que elimina la necesidad de scroll horizontal para la acción principal */}
+                                                       <Link href={`/admin/product/edit/${item.productId}`} className="flex items-center gap-4 group/portal active:scale-[0.98] active:opacity-70 transition-all duration-200 origin-left" title="Editar producto">
+                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0 relative border border-transparent group-hover/portal:border-gray-200 transition-colors">
                                                                 {item.image ? (
                                                                     <Image
                                                                         src={getOptimizedUrl(item.image)}
                                                                         alt={item.name}
                                                                         fill
                                                                         sizes="48px"
-                                                                        className="object-cover mix-blend-multiply"
+                                                                        className="object-cover mix-blend-multiply group-hover/portal:scale-105 transition-transform duration-500"
                                                                     />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={16} /></div>
                                                                 )}
                                                             </div>
                                                             <div className="min-w-0 flex-1">
-                                                                <p className="font-bold text-sm text-gray-900 leading-tight group-hover:text-black truncate pr-4">{item.name}</p>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <p className="font-bold text-sm text-gray-900 leading-tight group-hover/portal:text-black truncate">{item.name}</p>
+                                                                    {/* 🚀 MICRO-INTERACCIÓN: Flecha magnética */}
+                                                                    <ArrowUpRight size={14} className="text-gray-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
+                                                                </div>
                                                                 <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide font-medium hidden md:block">{item.category}</p>
                                                                 <div className="flex items-center gap-2 mt-1.5 md:hidden">
-                                                                    <div className="flex items-center gap-1.5 px-1.5 py-1 bg-gray-50 rounded-md">
+                                                                    <div className="flex items-center gap-1.5 px-1.5 py-1 bg-gray-50 rounded-md group-hover/portal:bg-gray-100 transition-colors">
                                                                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.hex }}></span>
                                                                         <span className="text-[10px] text-gray-600 font-bold capitalize leading-none truncate max-w-[60px]">{item.color}</span>
                                                                     </div>
-                                                                    <div className="flex items-center px-2 py-1 bg-gray-50 rounded-md">
+                                                                    <div className="flex items-center px-2 py-1 bg-gray-50 rounded-md group-hover/portal:bg-gray-100 transition-colors">
                                                                         <span className="text-[10px] text-gray-500 font-mono font-bold leading-none">{item.size}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                                                        </Link>
                                                     </td>
                                                     <td className="p-4 md:p-6 hidden md:table-cell align-middle">
                                                         <div className="flex items-center gap-2">
@@ -508,9 +567,10 @@ export default function InventoryPage() {
                                                             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${statusColor}`}>
                                                                 <StatusIcon size={12} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
                                                             </div>
-                                                            <Link href={`/admin/product/edit/${item.productId}`} className="text-gray-400 hover:text-black transition-colors bg-transparent hover:bg-gray-50 p-2 rounded-[var(--radius-btn)] shrink-0" title="Editar producto completo">
+                                                            <Link href={`/admin/product/edit/${item.productId}`} className="hidden md:flex text-gray-400 hover:text-black transition-colors bg-transparent hover:bg-gray-50 p-2 rounded-[var(--radius-btn)] shrink-0" title="Editar producto completo">
                                                                 <ArrowUpRight size={16} />
                                                             </Link>
+                                                            
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -519,6 +579,7 @@ export default function InventoryPage() {
                                     </tbody>
                                 </table>
                             </div>
+                             </div>
                         )}
                     </div>
                 </div>
