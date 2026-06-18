@@ -54,7 +54,7 @@ export default function SettingsPage() {
 
     // 🚀 NUEVO: Mantenemos el backup de shipping_config para no sobreescribir métodos de envío
     const [shippingRaw, setShippingRaw] = useState<any>({})
-    
+
     // 🚀 NUEVO: Estado aislado para la UI de Servicios
     const [serviceConfig, setServiceConfig] = useState({
         service_badge: '',
@@ -113,7 +113,7 @@ export default function SettingsPage() {
         setIsDirty(true)
     }
 
-  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
 
         const file = e.target.files[0]
@@ -121,7 +121,7 @@ export default function SettingsPage() {
 
         // 🚀 ELITE GATEKEEPER: Validación estricta de dimensiones físicas en memoria
         try {
-            const dimensions = await new Promise<{width: number, height: number}>((resolve, reject) => {
+            const dimensions = await new Promise<{ width: number, height: number }>((resolve, reject) => {
                 const img = new window.Image();
                 img.onload = () => {
                     URL.revokeObjectURL(img.src); // Limpiamos la memoria del navegador inmediatamente
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         setUploadingHero(true)
         try {
             // Se mantiene el compresor para optimizar el peso (KBs), aunque las dimensiones ya son correctas
-            const compressedFile = await compressImage(file, 1920, 0.8) 
+            const compressedFile = await compressImage(file, 1920, 0.8)
             const fileName = `hero-${store.id}-${Date.now()}.jpg`
 
             const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressedFile)
@@ -221,7 +221,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen">
+        <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen overflow-x-hidden w-full max-w-[100vw]">
             <AdminHeader store={store} title="Configuración" />
 
             <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8 mt-6 md:mt-8">
