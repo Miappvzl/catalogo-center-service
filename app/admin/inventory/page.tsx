@@ -408,7 +408,7 @@ export default function InventoryPage() {
                                     {/* 🚀 El "Elevador" ahora es interactivo y tiene masa (pointer-events-auto) */}
                                     <div 
                                         onClick={scrollRight}
-                                        className="sticky top-[35vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.2)] border border-gray-200 pointer-events-auto cursor-pointer active:scale-90 transition-transform"
+                                        className="sticky top-[60vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.1)]  pointer-events-auto cursor-pointer active:scale-90 transition-transform"
                                     >
                                         <ChevronRight size={16} className="text-zinc-800 animate-pulse" />
                                     </div>
