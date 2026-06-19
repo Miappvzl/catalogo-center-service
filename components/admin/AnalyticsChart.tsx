@@ -108,100 +108,115 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
   // ------------------------------------------------------------------
 
   return (
-    <div className="bg-white p-6 md:p-7 rounded-(--radius-card) border border-gray-100 flex flex-col h-full w-full relative group transition-all duration-300 overflow-hidden">
+    <div className="bg-white p-6 md:p-8 rounded-[var(--radius-card)] flex flex-col h-full w-full relative group transition-all duration-500 overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.02)]">
       
+      {/* 🚀 HEADER DE ANALÍTICAS (Clean Look + Titanium Ring) */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-5 mb-10">
         <div>
-          <h3 className="font-bold text-gray-500 flex items-center gap-2 text-xs uppercase tracking-widest mb-1.5">
-            <BarChart3 size={16} className="text-gray-300" /> Ingresos Brutos
-          </h3>
-          <div className="flex items-baseline gap-2.5">
-             {/* Span referenciado para la mutación directa. Empieza con $0.00 hasta que cargue la data */}
+          <div className="flex items-center gap-2 mb-2">
+            {/* Anillo de Titanio Estratégico */}
+            <div className="w-6 h-6 rounded-full p-[1.5px] bg-gradient-to-tr from-zinc-400 via-zinc-100 to-zinc-300 shadow-sm shrink-0">
+               <div className="w-full h-full bg-white rounded-full flex items-center justify-center shadow-inner">
+                  <BarChart3 size={12} className="text-zinc-700" strokeWidth={2.5} />
+               </div>
+            </div>
+            <h3 className="font-black text-zinc-400 text-[10px] uppercase tracking-widest leading-none mt-0.5">
+              Ingresos Brutos
+            </h3>
+          </div>
+          
+          <div className="flex items-baseline gap-3">
+             {/* Span mutado directamente en el DOM a 60fps */}
              <span 
                 ref={animatedTotalRef}
-                className="text-4xl md:text-5xl font-black tracking-tighter text-gray-950 tabular-nums"
+                className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-900 tabular-nums"
              >
-               $0,00
+                $0,00
              </span>
-             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50  px-2 py-0.5 rounded-(--radius-badge)">
+             <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 px-2 py-1 rounded-[var(--radius-badge)] border border-black/5">
                 {timeRange === '7d' ? '7 días' : '30 días'}
              </span>
           </div>
         </div>
 
-        <div className="flex bg-gray-100 p-1 rounded-(--radius-btn) w-fit shrink-0 shadow-inner">
+        {/* 🚀 SELECTOR SEGMENTADO (Inner shadow mantenida, bordes eliminados) */}
+        <div className="flex bg-zinc-100/80 p-1.5 rounded-[var(--radius-btn)] w-fit shrink-0 shadow-inner ring-1 ring-black/[0.02]">
           <button
             onClick={() => setTimeRange('7d')}
-            className={`px-5 py-2 text-xs font-bold rounded-[10px] transition-all duration-300 flex items-center gap-1.5 ${timeRange === '7d' ? 'bg-white text-black shadow-subtle' : 'text-gray-500 hover:text-black'}`}
+            className={`px-5 py-2 text-[11px] font-black uppercase tracking-widest rounded-[10px] transition-all duration-500 flex items-center gap-2 ${timeRange === '7d' ? 'bg-white text-zinc-900 shadow-[0_2px_10px_rgba(0,0,0,0.04)] scale-[1.02]' : 'text-zinc-400 hover:text-zinc-600 scale-100'}`}
           >
-            {timeRange === '7d' && <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"/>}
+            {timeRange === '7d' && <div className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse"/>}
             7 Días
           </button>
           <button
             onClick={() => setTimeRange('30d')}
-            className={`px-5 py-2 text-xs font-bold rounded-(--radius-badge) transition-all duration-300 flex items-center gap-1.5 ${timeRange === '30d' ? 'bg-white text-black shadow-subtle' : 'text-gray-500 hover:text-black'}`}
+            className={`px-5 py-2 text-[11px] font-black uppercase tracking-widest rounded-[10px] transition-all duration-500 flex items-center gap-2 ${timeRange === '30d' ? 'bg-white text-zinc-900 shadow-[0_2px_10px_rgba(0,0,0,0.04)] scale-[1.02]' : 'text-zinc-400 hover:text-zinc-600 scale-100'}`}
           >
-            {timeRange === '30d' && <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"/>}
+            {timeRange === '30d' && <div className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse"/>}
             30 Días
           </button>
         </div>
       </div>
 
-      <div className="flex-1 min-h-70 md:min-h-80 w-full relative">
+      <div className="flex-1 min-h-[250px] md:min-h-[300px] w-full relative">
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 animate-in fade-in transition-all">
-            <Loader2 className="animate-spin text-[#4f37d3]" size={32} />
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10 animate-in fade-in transition-all">
+            <Loader2 className="animate-spin text-zinc-300" size={32} />
           </div>
         ) : null}
         
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
             <defs>
-              {/* Gradiente adaptado para fondo blanco: vibrante arriba, desvanecido a transparente abajo */}
-              <linearGradient id="colorVentasNeon" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4f37d3" stopOpacity={0.25}/>
-                <stop offset="95%" stopColor="#4f37d3" stopOpacity={0}/>
+              {/* 🚀 GRADIENTE LIQUID TITANIUM: Plata denso a transparente puro */}
+              <linearGradient id="colorTitanium" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#71717a" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#e4e4e7" stopOpacity={0}/>
               </linearGradient>
             </defs>
 
-            {/* Grícula estilo tech pero sutil para el fondo blanco */}
-            <CartesianGrid vertical={true} horizontal={true} stroke="#F3F4F6" strokeDasharray="4 4" strokeWidth={1} />
+            {/* Cuadrícula técnica ultra-sutil */}
+            <CartesianGrid vertical={false} horizontal={true} stroke="#f4f4f5" strokeDasharray="4 4" strokeWidth={1} />
             
             <XAxis 
               dataKey="date" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: '#9CA3AF', fontWeight: 600 }}
-              dy={12}
+              tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700 }}
+              dy={15}
               minTickGap={timeRange === '30d' ? 20 : 0} 
             />
             
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: '#9CA3AF', fontWeight: 600 }}
+              tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 700, fontFamily: 'monospace' }}
               tickFormatter={(value) => `$${value.toLocaleString()}`}
-              dx={-5}
+              dx={-10}
             />
             
             <Tooltip 
-              cursor={{ stroke: '#4f37d3', strokeWidth: 1, strokeDasharray: '4 4' }}
+              cursor={{ stroke: '#d4d4d8', strokeWidth: 1.5, strokeDasharray: '4 4' }}
               isAnimationActive={true}
               animationDuration={200}
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length > 0) {
                   const valorSeguro = Number(payload[0]?.value || 0);
                   return (
-                    <div className="bg-white/95 backdrop-blur-md p-4 rounded-(--radius-card) border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.08)] animate-in fade-in zoom-in-95 duration-200">
-                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                        <div className="bg-purple-50 p-1.5 rounded-md border border-purple-100">
-                            <DollarSign size={14} className="text-[#4f37d3]"/>
+                    // 🚀 TOOLTIP ELITE: Glassmorphism absoluto sin bordes pesados
+                    <div className="bg-white/90 backdrop-blur-2xl p-4 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-zinc-100">
+                        {/* Anillo de Titanio en el Tooltip */}
+                        <div className="w-6 h-6 rounded-full p-[1.5px] bg-gradient-to-tr from-zinc-400 via-zinc-100 to-zinc-300 shadow-sm shrink-0">
+                           <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                              <DollarSign size={10} className="text-zinc-800" strokeWidth={3}/>
+                           </div>
                         </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{label}</p>
                       </div>
-                      <p className="text-xl font-black flex items-baseline gap-1.5 text-gray-950 tabular-nums">
+                      <p className="text-2xl font-black flex items-center gap-1.5 text-zinc-900 tabular-nums tracking-tighter">
                         ${valorSeguro.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        <TrendingUp size={16} className="text-[#4f37d3] shrink-0"/>
+                        <TrendingUp size={16} className="text-zinc-300 shrink-0 ml-1"/>
                       </p>
                     </div>
                   );
@@ -212,31 +227,31 @@ export default function AnalyticsChart({ storeId }: AnalyticsChartProps) {
             
             <Area 
               isAnimationActive={true}
-              animationDuration={1200}
-              animationEasing="ease-in-out"
+              animationDuration={1500}
+              animationEasing="ease-out"
               type="monotone" 
               dataKey="ventas" 
               
-              // Trazo vibrante e intenso para el "efecto dibujo" sobre blanco
-              stroke="#4f37d3" 
-              strokeWidth={2}
-              fill="url(#colorVentasNeon)" 
+              // 🚀 LÍNEA DE GRAFITO: Tinta sólida y profunda
+              stroke="#18181b" 
+              strokeWidth={2.5}
+              fill="url(#colorTitanium)" 
               
-              // Círculos huecos en TODOS los vértices, como en la imagen
+              // Vértices limpios
               dot={{ 
                 r: 4, 
-                fill: "#FFFFFF", 
-                stroke: "#4f37d3", 
+                fill: "#ffffff", 
+                stroke: "#18181b", 
                 strokeWidth: 2 
               }}
               
-              // Círculo más prominente al pasar el mouse
+              // Vértice activo (Hover): Más presencia, sombra suave
               activeDot={{ 
                 r: 6, 
-                fill: "#4f37d3", 
-                stroke: "#FFFFFF", 
+                fill: "#18181b", 
+                stroke: "#ffffff", 
                 strokeWidth: 3,
-                style: { filter: 'drop-shadow(0px 0px 4px rgba(79, 55, 211, 0.5))' }
+                style: { filter: 'drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.15))' }
               }}
               connectNulls={true}
             />
