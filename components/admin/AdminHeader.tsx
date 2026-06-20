@@ -95,48 +95,34 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
       {/* 🚀 HEADER BLINDADO (Sin bordes, shadow ultra-suave y blur agresivo) */}
       <header className={`bg-white/70 backdrop-blur-2xl sticky top-0 z-40 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform shadow-[0_10px_40px_rgba(0,0,0,0.02)] ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         
-        {/* TITULO DE TIENDA (Micro-interacción de portal) */}
+       {/* TITULO DE PÁGINA O PORTAL DE TIENDA */}
         <div>
-          <a href={`/${store.slug}`} target="_blank" className="group flex items-center gap-2.5 outline-none active:scale-95 transition-transform origin-left">
-            <span className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900 group-hover:text-zinc-600 transition-colors">
-              {title || store?.name || 'Cargando...'}
-            </span>
-            <div className="w-6 h-6 rounded-full bg-zinc-100/80 flex items-center justify-center group-hover:bg-zinc-200 group-hover:scale-110 transition-all duration-300">
-              <ArrowUpRight size={13} className="text-zinc-500 group-hover:text-zinc-900" strokeWidth={2.5} />
+          {title ? (
+            /* 🚀 MODO SECCIÓN: Título estático inerte para pantallas como "Configuración" */
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900">
+                {title}
+              </span>
             </div>
-          </a>
+          ) : (
+            /* 🚀 MODO DASHBOARD: Portal interactivo hacia el Storefront público */
+            <a href={`/${store.slug}`} target="_blank" className="group flex items-center gap-2.5 outline-none active:scale-95 transition-transform origin-left" title="Ver mi tienda">
+              <span className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900 group-hover:text-zinc-600 transition-colors">
+                {store?.name || 'Cargando...'}
+              </span>
+              <div className="w-6 h-6 rounded-full bg-zinc-100/80 flex items-center justify-center group-hover:bg-zinc-200 group-hover:scale-110 transition-all duration-300">
+                <ArrowUpRight size={13} className="text-zinc-500 group-hover:text-zinc-900" strokeWidth={2.5} />
+              </div>
+            </a>
+          )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
 
           {/* CENTRO DE NOTIFICACIONES */}
           {store?.id && <NotificationBell storeId={store.id} />}
 
-          {/* EDITOR DE LOGO (Clean UI - Sin bordes duros) */}
-          <div className="relative cursor-pointer group active:scale-95 transition-transform" onClick={() => fileInputRef.current?.click()}>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-zinc-50 flex items-center justify-center overflow-hidden transition-all group-hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] relative">
-              {uploading ? (
-                <Loader2 className="animate-spin text-zinc-400" size={18} />
-              ) : store?.logo_url ? (
-                <Image
-                  src={getOptimizedUrl(store.logo_url)}
-                  alt="Logo"
-                  width={56}
-                  height={56}
-                  className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500"
-                />
-              ) : (
-                <ShoppingBag size={16} className="text-zinc-400 group-hover:text-zinc-900 transition-colors" />
-              )}
-            </div>
-
-            {/* Micro-badge de edición */}
-            <div className="absolute -bottom-0.5 -right-0.5 bg-zinc-900 text-white w-4 h-4 md:w-[18px] md:h-[18px] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-              <Edit2 size={9} strokeWidth={3} />
-            </div>
-          </div>
+          
 
           {/* AVATAR & DROPDOWN (Estética Dark Tech pura) */}
           <div className="relative">

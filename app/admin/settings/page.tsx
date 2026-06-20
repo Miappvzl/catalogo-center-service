@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2, Zap } from 'lucide-react'
+import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2, Zap, Edit2, ShoppingBag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -32,7 +32,9 @@ export default function SettingsPage() {
     const [store, setStore] = useState<any>(null)
 
     // Estados de Configuración
-    const [identity, setIdentity] = useState({ phone: '', name: '', hero_url: '' })
+    const [identity, setIdentity] = useState({ phone: '', name: '', hero_url: '', logo_url: '' })
+    const [uploadingLogo, setUploadingLogo] = useState(false)
+    const logoInputRef = useRef<HTMLInputElement>(null)
     const [wholesale, setWholesale] = useState({ active: false, min_items: 6, discount_percentage: 15 })
     const [receipt, setReceipt] = useState({ strict_mode: false })
 
@@ -70,7 +72,7 @@ export default function SettingsPage() {
             const { data } = await supabase.from('stores').select('*').eq('user_id', user.id).single()
             if (data) {
                 setStore(data)
-                setIdentity({ phone: data.phone || '', name: data.name, hero_url: data.hero_url || '' })
+                setIdentity({ phone: data.phone || '', name: data.name, hero_url: data.hero_url || '', logo_url: data.logo_url || '' })
                 setWholesale(data.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 })
                 setReceipt(data.receipt_config || { strict_mode: false })
                 // 🚀 NUEVO: Inicializamos el estado desde la BD
@@ -111,6 +113,36 @@ export default function SettingsPage() {
     const handleAffiliateChange = (field: string, value: any) => {
         setAffiliate(prev => ({ ...prev, [field]: value }))
         setIsDirty(true)
+    }
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return
+        const file = e.target.files[0]
+        if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'error')
+        if (file.size > 2 * 1024 * 1024) return Swal.fire('Error', 'El logo no debe superar los 2MB', 'warning')
+
+        setUploadingLogo(true)
+        try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `logo-${store.id}-${Date.now()}.${fileExt}`
+
+            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, file)
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
+
+            setIdentity(prev => ({ ...prev, logo_url: publicUrl }))
+            await supabase.from('stores').update({ logo_url: publicUrl }).eq('id', store.id)
+            await revalidateStoreCache()
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            Toast.fire({ icon: 'success', title: 'Logotipo Oficial Actualizado' })
+        } catch (error) {
+            Swal.fire('Error', 'Falló la subida del logo', 'error')
+        } finally {
+            setUploadingLogo(false)
+            if (logoInputRef.current) logoInputRef.current.value = ''
+        }
     }
 
     const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,10 +260,45 @@ export default function SettingsPage() {
 
                 <div className="space-y-6">
                     <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
+                        
                         <div className="mb-6">
                             <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Globe size={20} className="text-black" /> Identidad de Marca</h3>
                             <p className="text-sm text-gray-500 mt-1">La información pública que verán tus clientes.</p>
                         </div>
+
+                        {/* 🚀 UPLOADER DE LOGOTIPO (Clean Look) */}
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-8 pb-8 border-b border-black/5">
+                            <div className="relative group cursor-pointer shrink-0 active:scale-95 transition-transform" onClick={() => logoInputRef.current?.click()}>
+                                <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                                
+                                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center overflow-hidden transition-all group-hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] relative">
+                                    {uploadingLogo ? (
+                                        <Loader2 className="animate-spin text-zinc-400" size={24} />
+                                    ) : identity.logo_url ? (
+                                        <Image
+                                            src={getOptimizedUrl(identity.logo_url)}
+                                            alt="Logo de la tienda"
+                                            fill
+                                            sizes="96px"
+                                            className="object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-500"
+                                        />
+                                    ) : (
+                                        <ShoppingBag size={28} className="text-zinc-300 group-hover:text-zinc-800 transition-colors" />
+                                    )}
+                                </div>
+                                {/* Micro-badge de edición */}
+                                <div className="absolute bottom-0 right-0 bg-white border border-zinc-200 text-zinc-600 w-7 h-7 rounded-full flex items-center justify-center group-hover:bg-zinc-900 group-hover:text-white group-hover:border-zinc-900 transition-colors shadow-sm">
+                                    <Edit2 size={12} strokeWidth={2.5} />
+                                </div>
+                            </div>
+                            <div className="text-center sm:text-left mt-2 sm:mt-1">
+                                <h4 className="text-sm font-black text-zinc-900">Logotipo Oficial</h4>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1.5 mb-2">Máx 2MB. Formato Cuadrado (1:1)</p>
+                                <p className="text-xs text-zinc-500 max-w-sm leading-relaxed">Este es el isotipo que representará a tu marca en el header de tu tienda y en los recibos de los clientes.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                             <div>
