@@ -1,246 +1,412 @@
 import { createServerClient } from '@supabase/ssr'
+
 import { cookies } from 'next/headers'
+
 import Link from 'next/link'
+
 import FeatureAnnouncement from '@/components/FeatureAnnouncement'
-import { 
-  Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,  
-  Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
-  SquareArrowOutUpRight,
-  ChartNoAxesColumnIncreasing,
-  LineChart
+
+import {
+
+    Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,
+
+    Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
+
+    SquareArrowOutUpRight,
+
+    ChartNoAxesColumnIncreasing,
+
+    LineChart
+
 } from 'lucide-react'
 
+
+
 // COMPONENTES IMPORTADOS
+
 import RateWidget from '@/components/admin/RateWidget'
+
 import AdminHeader from '@/components/admin/AdminHeader'
+
 import AnalyticsChart from '@/components/admin/AnalyticsChart'
+
 import TopPerformers from '@/components/admin/TopPerformers'
+
 import FeatureOnboarding from '@/components/FeatureOnboarding'
+
 import FeatureLaunchModal from '@/components/FeatureLauchModal'
+
 import MerchandisingIntroModal from '@/components/MerchandisingIntroModal'
+
 import FeatureLaunchPayPal from '@/components/FeatureLaunchPayPal'
 
+
+
 export default async function AdminDashboard() {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() } } }
-  )
 
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  const today = new Date().toISOString().split('T')[0]
-  
-  const { data: store } = await supabase.from('stores').select('*').eq('user_id', user?.id).single()
+    const cookieStore = await cookies()
 
-  const [productsRes, variantsRes, pendingRes, todayOrdersRes, configRes, recentOrdersRes] = await Promise.all([
-    supabase.from('products').select('id', { count: 'exact', head: true }).eq('store_id', store.id),
-    supabase.from('product_variants').select('stock, products!inner(store_id)').eq('products.store_id', store.id).lte('stock', 3),
-    supabase.from('orders').select('id', { count: 'exact', head: true }).eq('store_id', store.id).eq('status', 'pending'),
-    supabase.from('orders').select('total_usd, total_bs, exchange_rate').eq('store_id', store.id).gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled'),
-    supabase.from('app_config').select('usd_rate, eur_rate, updated_at').eq('id', 1).single(),
-    supabase.from('orders').select('*').eq('store_id', store.id).order('created_at', { ascending: false }).limit(5)
-  ])
+    const supabase = createServerClient(
 
-  const totalProducts = productsRes.count || 0
-  const lowStockCount = variantsRes.data?.length || 0
-  const pendingOrdersCount = pendingRes.count || 0
-  const todayOrders = todayOrdersRes.data || []
-  const salesTodayUSD = todayOrders.reduce((acc, o) => acc + Number(o.total_usd || 0), 0)
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
 
-  const usdRate = configRes.data?.usd_rate ?? 0
-  const eurRate = configRes.data?.eur_rate ?? 0
-  // --- PARCHE ARCHITECTURE: Server-Side Time Formatting ---
-  let formattedLastUpdated = null;
-  if (configRes.data?.updated_at) {
-    formattedLastUpdated = new Intl.DateTimeFormat('es-VE', {
-      timeZone: 'America/Caracas',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true
-    }).format(new Date(configRes.data.updated_at));
-  }
-  const storeCurrency = store?.currency_type === 'eur' ? 'eur' : 'usd'
-  const currencySymbol = store?.currency_symbol || '$'
-  const recentOrders = recentOrdersRes.data || []
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 
-  return (
-    <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative no-scrrollbar">
-      <AdminHeader store={store} />
-      
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
-        
-        {/* --- BENTO GRID SYSTEM 2.0 (BORDERLESS) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            
-            {/* 1. RATE WIDGET */}
-            <div className="col-span-1 min-h-[160px]">
-                <RateWidget 
-                    storeCurrency={storeCurrency} 
-                    usdRate={usdRate} 
-                    eurRate={eurRate} 
-                    lastUpdated={formattedLastUpdated} 
-                />
-            </div>
+        { cookies: { getAll() { return cookieStore.getAll() } } }
 
-            {/* 2. VENTAS HOY */}
-            <div className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-between group min-h-[160px]">
-                <div className="flex justify-between items-start">
-                    <div className="p-3.5 pl-[1.5px] text-black">
-                        <DollarSign size={24} strokeWidth={2.5}/>
+    )
+
+
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+
+
+    const today = new Date().toISOString().split('T')[0]
+
+
+
+    const { data: store } = await supabase.from('stores').select('*').eq('user_id', user?.id).single()
+
+
+
+    const [productsRes, variantsRes, pendingRes, todayOrdersRes, configRes, recentOrdersRes] = await Promise.all([
+
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('store_id', store.id),
+
+        supabase.from('product_variants').select('stock, products!inner(store_id)').eq('products.store_id', store.id).lte('stock', 3),
+
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('store_id', store.id).eq('status', 'pending'),
+
+        supabase.from('orders').select('total_usd, total_bs, exchange_rate').eq('store_id', store.id).gte('created_at', `${today}T00:00:00Z`).neq('status', 'cancelled'),
+
+        supabase.from('app_config').select('usd_rate, eur_rate, updated_at').eq('id', 1).single(),
+
+        supabase.from('orders').select('*').eq('store_id', store.id).order('created_at', { ascending: false }).limit(5)
+
+    ])
+
+
+
+    const totalProducts = productsRes.count || 0
+
+    const lowStockCount = variantsRes.data?.length || 0
+
+    const pendingOrdersCount = pendingRes.count || 0
+
+    const todayOrders = todayOrdersRes.data || []
+
+    const salesTodayUSD = todayOrders.reduce((acc, o) => acc + Number(o.total_usd || 0), 0)
+
+
+
+    const usdRate = configRes.data?.usd_rate ?? 0
+
+    const eurRate = configRes.data?.eur_rate ?? 0
+
+    // --- PARCHE ARCHITECTURE: Server-Side Time Formatting ---
+
+    let formattedLastUpdated = null;
+
+    if (configRes.data?.updated_at) {
+
+        formattedLastUpdated = new Intl.DateTimeFormat('es-VE', {
+
+            timeZone: 'America/Caracas',
+
+            hour: 'numeric',
+
+            minute: 'numeric',
+
+            hour12: true
+
+        }).format(new Date(configRes.data.updated_at));
+
+    }
+
+    const storeCurrency = store?.currency_type === 'eur' ? 'eur' : 'usd'
+
+    const currencySymbol = store?.currency_symbol || '$'
+
+    const recentOrders = recentOrdersRes.data || []
+
+
+
+    return (
+
+        <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative no-scrrollbar">
+
+            <AdminHeader store={store} />
+
+
+
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
+
+
+
+                {/* --- BENTO GRID SYSTEM 2.0 (BORDERLESS) --- */}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+
+
+
+                    {/* 1. RATE WIDGET */}
+
+                    <div className="col-span-1 min-h-[160px]">
+
+                        <RateWidget
+
+                            storeCurrency={storeCurrency}
+
+                            usdRate={usdRate}
+
+                            eurRate={eurRate}
+
+                            lastUpdated={formattedLastUpdated}
+
+                        />
+
                     </div>
-                    <span className="text-[10px] font-bold bg-[#5500ff0b]  text-[#4f37d3] px-2.5 py-1 rounded-[var(--radius-badge)] uppercase tracking-wide">
-                        Hoy
-                    </span>
-                </div>
-                <div>
-                    <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none">
-                        {currencySymbol}{salesTodayUSD.toFixed(2)}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-2">
-                        <LineChart size={12} className="text-[#4f37d3]"/>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide  opacity-60">Ingreso Neto</p>
-                    </div>
-                </div>
-            </div>
 
-            {/* 3. PEDIDOS PENDIENTES */}
-            <Link href="/admin/orders" className="bg-black text-white p-6 rounded-[var(--radius-card)] shadow-subtle flex flex-col justify-between group relative overflow-hidden transition-all active:scale-[0.98] min-h-[160px]">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-white/10 transition-all"></div>
-                <div className="flex justify-between items-start relative z-10">
-                    <div className="p-3.5 pl-[1.5px] text-white">
-                        <Clock size={24} strokeWidth={2.5}/>
-                    </div>
-                    {pendingOrdersCount > 0 && (
-                        <div className="flex items-center gap-2 bg-red-500/20 px-2.5 py-1.5 rounded-[var(--radius-badge)]">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                            <span className="text-[9px] font-bold text-red-200 uppercase tracking-wide">Acción</span>
-                        </div>
-                    )}
-                </div>
-                
-<div className="relative z-10">
-    <p className="text-4xl font-black tracking-tighter mb-1">{pendingOrdersCount}</p>
+
+
+                   {/* 2. VENTAS HOY */}
+<div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group min-h-[160px] transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] active:scale-[0.98] active:bg-[#fafafa] cursor-default">
     
-    {/* Ajuste de jerarquía visual: La flecha anclada a la acción, no flotando */}
-    <div className="flex items-center gap-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors">
-            Por Despachar
+    <div className="flex justify-between items-start relative z-10">
+        {/* Contenedor del Ícono: Polaridad Activa en Hover */}
+        <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
+            <DollarSign size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+        </div>
+        
+        {/* Badge 'Hoy': Paleta Titanium con Status Dot en tiempo real */}
+        <div className="flex items-center gap-1.5 bg-gray-900 text-white px-2.5 py-1 rounded-[var(--radius-badge)] shadow-sm">
+            <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+            <span className="text-[9px] font-bold uppercase tracking-widest">
+                Hoy
+            </span>
+        </div>
+    </div>
+    
+    <div className="relative z-10 mt-2">
+        {/* Cifra Financiera: Tabular nums y Micro-desplazamiento */}
+        <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none group-hover:translate-x-0.5 transition-transform duration-500 ease-out tabular-nums">
+            {currencySymbol}{salesTodayUSD.toFixed(2)}
         </p>
-        <ArrowRight 
-            size={12} 
-            className="text-gray-500 group-hover:text-white transition-all duration-300 translate-x-0 group-hover:translate-x-1" 
-            strokeWidth={3}
-        />
+        
+        {/* Etiqueta Auxiliar: Contraste Editorial */}
+        <div className="flex items-center gap-2 mt-2.5">
+            <LineChart size={14} strokeWidth={2.5} className="text-gray-400 group-hover:text-gray-900 transition-colors duration-500 ease-out" />
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500 ease-out">
+                Ingreso Neto
+            </p>
+        </div>
     </div>
 </div>
-            </Link>
 
-            {/* 4. ALERTAS DE INVENTARIO */}
-            <Link href="/admin/inventory" className={`bg-white p-6 rounded-[var(--radius-card)] card-interactive flex flex-col justify-between group transition-colors active:scale-[0.98] min-h-[160px] ${lowStockCount > 0 ? 'hover:border-red-400' : 'hover:border-black'}`}>
-                <div className="flex justify-between items-start">
-                    <div className={`p-3.5 pl-[1.5px] ${lowStockCount > 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                        {lowStockCount > 0 ? <AlertTriangle size={24} strokeWidth={2.5} /> : <Box size={24} strokeWidth={2.5} />}
+
+                 {/* 3. PEDIDOS PENDIENTES (Dark Luxury Hardware Node) */}
+<Link 
+    href="/admin/orders" 
+    className="bg-black text-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group relative overflow-hidden transition-all duration-500 ease-out active:scale-[0.98] active:bg-[#0a0a0a] hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.5)] min-h-[160px]"
+>
+    {/* Efecto Cinematográfico: Backlight Bloom */}
+    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-white/10 transition-all duration-500 ease-out"></div>
+    
+    <div className="flex justify-between items-start relative z-10">
+        {/* Contenedor del Ícono: Regla matemática 11x11 y brillo interactivo */}
+        <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-white/5 text-gray-300 group-hover:bg-white/10 group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
+            <Clock size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+        </div>
+        
+        {/* Badge de Acción: Estética Glassmorphism Premium (Cero rojo) */}
+        {pendingOrdersCount > 0 && (
+            <div className="flex items-center gap-1.5 bg-white/10 border border-white/5 px-2.5 py-1 rounded-[var(--radius-badge)] backdrop-blur-md shadow-sm">
+                <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)] animate-pulse"></span>
+                <span className="text-[9px] font-bold text-gray-200 uppercase tracking-widest mt-[1px]">Acción</span>
+            </div>
+        )}
+    </div>
+
+    <div className="relative z-10 mt-2">
+        {/* Cifra Inmutable: tabular-nums y micro-desplazamiento */}
+        <p className="text-4xl font-black tracking-tighter text-white leading-none mb-2.5 tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
+            {pendingOrdersCount}
+        </p>
+
+        {/* Jerarquía de salida (Affordance) */}
+        <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors duration-500 ease-out">
+                Por Despachar
+            </p>
+            <ArrowRight 
+                size={14} 
+                className="text-gray-500 group-hover:text-white transition-all duration-500 ease-out translate-x-0 group-hover:translate-x-1" 
+                strokeWidth={2.5}
+            />
+        </div>
+    </div>
+</Link>
+
+
+
+                    {/* 4. ALERTAS DE INVENTARIO */}
+<Link 
+    href="/admin/inventory" 
+    className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out active:scale-[0.98] active:bg-[#fafafa] hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[160px]"
+>
+    <div className="flex justify-between items-start relative z-10">
+        
+        {/* Habitáculo Matemático y Polaridad Condicional */}
+        <div className={`w-11 h-11 rounded-[var(--radius-btn)] flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
+            lowStockCount > 0 
+                ? 'bg-red-50/50 text-red-800 group-hover:bg-[#450a0a] group-hover:text-white' // Rojo editorial hiper-oscuro en hover
+                : 'bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white'
+        }`}>
+            {lowStockCount > 0 ? (
+                <AlertTriangle size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+            ) : (
+                <Box size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+            )}
+        </div>
+
+        {/* Status Dot Semántico: Comunica urgencia sin saturar la pantalla */}
+        {lowStockCount > 0 && (
+            <div className="flex items-center gap-1.5 bg-[#fef2f2]  px-2.5 py-1 rounded-[var(--radius-badge)]">
+                <span className="w-1 h-1 rounded-full bg-red-600 shadow-[0_0_4px_rgba(220,38,38,0.5)] animate-pulse"></span>
+                <span className="text-[9px] font-bold text-red-800 uppercase tracking-widest mt-[1px]">
+                    Atención
+                </span>
+            </div>
+        )}
+    </div>
+
+    <div className="relative z-10 mt-2">
+        {/* Jerarquía intacta: El número principal se mantiene anclado a la paleta Titanium */}
+        <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
+            {lowStockCount > 0 ? lowStockCount : totalProducts}
+        </p>
+        
+        {/* Etiqueta dinámica con micro-interacción de foco */}
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2.5 group-hover:text-gray-900 transition-colors duration-500 ease-out">
+            {lowStockCount > 0 ? 'Stock Crítico' : 'Productos Activos'}
+        </p>
+    </div>
+</Link>
+
+
+
+                    {/* --- FILA 2: GRÁFICO GIGANTE --- */}
+
+                    <div className="col-span-1 md:col-span-2 lg:col-span-4 min-h-[350px]">
+
+                        {store?.id ? <AnalyticsChart storeId={store.id} /> : null}
+
                     </div>
+
+
+
+                    {/* --- FILA 3: INTELIGENCIA Y ACTIVIDAD --- */}
+
+                    <div className="col-span-1 md:col-span-2 lg:col-span-2">
+
+                        {store?.id ? <TopPerformers storeId={store.id} /> : null}
+
+                    </div>
+
+
+
+                    {/* ÚLTIMOS PEDIDOS */}
+<div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-[var(--radius-card)] flex flex-col overflow-hidden relative">
+    
+    {/* Header sin bordes sólidos, estructurado mediante Negative Space */}
+    <div className="p-6 flex justify-between items-center relative z-10">
+        <h3 className="font-black text-gray-900 flex items-center gap-2 text-xs uppercase tracking-widest">
+            Actividad Reciente
+        </h3>
+        
+        {/* Botón fantasma con transición sutil (Titanium feel) */}
+        <Link href="/admin/orders" className="group text-[10px] font-bold text-gray-500 hover:text-gray-900 transition-all duration-300 uppercase tracking-widest rounded-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#f6f6f6]">
+            Ver Todo <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300"/>
+        </Link>
+    </div>
+
+    {/* Contenedor de lista utilizando padding y gap en lugar de líneas divisorias */}
+    <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5 no-scrollbar">
+        {recentOrders.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3 min-h-[150px]">
+                <div className="w-12 h-12 bg-[#f6f6f6] rounded-full flex items-center justify-center">
+                    <Package size={20} className="opacity-30 text-gray-600"/>
                 </div>
-                <div>
-                    <p className={`text-4xl font-black tracking-tighter ${lowStockCount > 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                        {lowStockCount > 0 ? lowStockCount : totalProducts}
-                    </p>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 group-hover:text-gray-900 transition-colors">
-                        {lowStockCount > 0 ? 'Stock Crítico' : 'Productos Activos'}
-                    </p>
-                </div>
-            </Link>
-
-            {/* --- FILA 2: GRÁFICO GIGANTE --- */}
-            <div className="col-span-1 md:col-span-2 lg:col-span-4 min-h-[350px]">
-                {store?.id ? <AnalyticsChart storeId={store.id} /> : null}
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 text-gray-500">Sin pedidos recientes</p>
             </div>
-
-            {/* --- FILA 3: INTELIGENCIA Y ACTIVIDAD --- */}
-            <div className="col-span-1 md:col-span-2 lg:col-span-2">
-                {store?.id ? <TopPerformers storeId={store.id} /> : null}
-            </div>
-
-            {/* ÚLTIMOS PEDIDOS */}
-            <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-[var(--radius-card)] flex flex-col overflow-hidden relative">
+        ) : (
+            recentOrders.map((order) => {
+                const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : order.status === 'cancelled' ? XCircle : Package;
                 
-                <div className="p-5 border-b-2 border-[#F6F6F6] flex justify-between  items-center ">
-                    <h3 className="font-black text-gray-900 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        Actividad Reciente
-                    </h3>
-                    
-                    <Link href="/admin/orders" className="text-[0.7rem] font-bold text-gray-600  hover:text-white transition-colors  uppercase tracking-wide rounded-full flex items-center gap-1 bg-white hover:bg-black border border-gray-600  hover:border-white px-4 py-2">
-                        Ver Todo <ArrowUpRight size={14}/>
-                    </Link>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-                    {recentOrders.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3 min-h-[150px]">
-                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center border border-transparent">
-                                <Package size={20} className="opacity-30"/>
-                            </div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sin pedidos recientes</p>
-                        </div>
-                   ) : (
-                        recentOrders.map((order) => {
-                            // 1. Icono dinámico corregido
-                            const StatusIcon = order.status === 'pending' ? Clock : order.status === 'paid' ? DollarSign : order.status === 'cancelled' ? XCircle : Package;
+                return (
+                  <Link 
+    href="/admin/orders" 
+    key={order.id} 
+    // Añadimos: active:scale-[0.98] active:bg-[#f0f0f0] y ajustamos la curva de transición
+    className="group flex items-center justify-between p-3.5 bg-white hover:bg-[#fafafa] active:bg-[#f0f0f0] active:scale-[0.98] transition-all duration-300 ease-out rounded-[var(--radius-card)] hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"
+>
+                        <div className="flex items-center gap-4">
+                            {/* Contenedor de ícono: Activo por defecto, Inversión total en hover/active */}
+<div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-300 ease-out flex items-center justify-center shrink-0">
+    <StatusIcon size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-300 ease-out" />
+</div>
                             
-                            return (
-                            <Link href="/admin/orders" key={order.id} className="group flex items-center justify-between p-4 border-b border-[#f6f6f6] bg-white hover:bg-gray-50 transition-all">
-                                <div className="flex items-center gap-4">
-                                    {/* 2. Color del contenedor del ícono corregido */}
-                                    <div className={`w-10 h-10 rounded-[var(--radius-btn)] flex items-center justify-center shrink-0 ${
-                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
-                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
-                                        order.status === 'cancelled' ? 'bg-red-50 text-red-600' :
-                                        'bg-gray-50 text-gray-500'
-                                    }`}>
-                                        <StatusIcon size={18} strokeWidth={2.5} />
-                                    </div>
-                                    
-                                    <div>
-                                        <p className="font-bold text-sm text-gray-900 leading-none mb-1.5 truncate max-w-[120px] sm:max-w-[200px]">{order.customer_name}</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-[var(--radius-badge)]">
-                                                #{order.order_number}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-black text-sm text-gray-900">${Number(order.total_usd).toFixed(2)}</p>
-                                    
-                                    {/* 3. Etiqueta de texto y color corregidos */}
-                                    <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-[var(--radius-badge)] uppercase tracking-wider ${
-                                        order.status === 'pending' ? 'bg-yellow-50 text-yellow-700' : 
-                                        order.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
-                                        order.status === 'cancelled' ? 'bg-red-50 text-red-700' :
-                                        'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : order.status === 'cancelled' ? 'Cancelado' : 'Enviado'}
+                            <div>
+                                {/* Micro-interacción: Ligero desplazamiento del texto al hacer hover */}
+                                <p className="font-bold text-sm text-gray-900 leading-none mb-1.5 truncate max-w-[120px] sm:max-w-[200px] group-hover:translate-x-0.5 transition-transform duration-300">
+                                    {order.customer_name}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider">
+                                        #{order.order_number}
                                     </span>
                                 </div>
-                            </Link>
-                        )})
-                    )}
-                </div>
-            </div>
-        </div>
-      </main>
-      {/* Inyección del Modal One-Time */}
-      <FeatureOnboarding />
-            <FeatureAnnouncement />
-            <FeatureLaunchModal />
-            <MerchandisingIntroModal />
-            <FeatureLaunchPayPal />
+                            </div>
+                        </div>
+                        
+                        <div className="text-right flex flex-col items-end">
+                            <p className="font-black text-sm text-gray-900">${Number(order.total_usd).toFixed(2)}</p>
+                            
+                            {/* Implementación del Status Dot con resplandor cinemático */}
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                    order.status === 'pending' ? 'bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]' : 
+                                    order.status === 'paid' ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' :
+                                    order.status === 'cancelled' ? 'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]' :
+                                    'bg-gray-400'
+                                }`}></span>
+                                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                                    {order.status === 'pending' ? 'Pendiente' : order.status === 'paid' ? 'Pagado' : order.status === 'cancelled' ? 'Cancelado' : 'Enviado'}
+                                </span>
+                            </div>
+                        </div>
+                    </Link>
+                )
+            })
+        )}
     </div>
-  )
+</div>
+
+                </div>
+
+            </main>
+
+            {/* Inyección del Modal One-Time */}
+
+            <FeatureOnboarding />
+
+
+
+            <FeatureLaunchPayPal />
+
+        </div>
+
+    )
+
 }
