@@ -1,9 +1,10 @@
+// app/login/page.tsx
 'use client'
 
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { Lock, Mail, Loader2, UserPlus, ArrowRight, MailCheck, RefreshCw } from 'lucide-react'
+import { Lock, Mail, Loader2, UserPlus, ArrowRight, ShieldCheck } from 'lucide-react'
 import Swal from 'sweetalert2'
 
 export default function LoginPage() {
@@ -12,8 +13,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   
-  // NUEVO ESTADO: Sala de espera
-  const [waitingEmail, setWaitingEmail] = useState(false)
+  // NUEVOS ESTADOS: Verificación OTP
+  const [waitingOtp, setWaitingOtp] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
 
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -21,18 +23,20 @@ export default function LoginPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  // 1. MANEJADOR DE LOGIN Y REGISTRO
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
       if (isRegistering) {
+        // En registro, Supabase enviará automáticamente el {{ .Token }} si configuraste el Email Template
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
 
         if (data.user && !data.session) {
-          // Congelamos la pantalla en la "Sala de espera"
-          setWaitingEmail(true)
+          // Cambiamos a la vista de validación de 6 dígitos
+          setWaitingOtp(true)
           setLoading(false)
           return
         }
@@ -52,114 +56,140 @@ export default function LoginPage() {
       const errorMessage = err.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : err.message
       Swal.fire({
         title: 'Acceso denegado', text: errorMessage, icon: 'error', confirmButtonText: 'Intentar de nuevo',
-        buttonsStyling: false, customClass: { popup: 'rounded-3xl', confirmButton: 'bg-black text-white px-6 py-3 rounded-xl font-bold mt-4 w-full' }
+        buttonsStyling: false, customClass: { popup: 'rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] bg-white border-0', confirmButton: 'bg-black text-white px-6 py-4 rounded-xl font-bold mt-4 w-full' }
       })
       setLoading(false)
     }
   }
 
-  // FUNCIÓN CROSS-DEVICE: Intenta hacer login silencioso
-  const checkSession = async () => {
+  // 2. MANEJADOR DE VERIFICACIÓN OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLoading(true)
 
-    // Intentamos iniciar sesión con los datos que tenemos en memoria
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otpCode,
+        type: 'signup'
+      })
 
-    if (error) {
-      // Si el error es específicamente que el correo no está confirmado
-      if (error.message.includes('Email not confirmed')) {
-        Swal.fire({ 
-          title: 'Aún no confirmado', 
-          text: 'No hemos detectado la confirmación en nuestro servidor. ¿Seguro que hiciste clic en el enlace?', 
-          icon: 'info', 
-          confirmButtonText: 'Entendido', 
-          buttonsStyling: false, 
-          customClass: { popup: 'rounded-3xl border border-gray-200', confirmButton: 'bg-black text-white px-6 py-3 rounded-xl font-bold mt-4 w-full' }
-        })
-      } else {
-        // Si hay otro error (ej. se cayó el internet)
-        Swal.fire({ title: 'Error', text: error.message, icon: 'error', confirmButtonColor: '#000' })
-      }
-      setLoading(false)
-    } else {
-      // ¡ÉXITO! Supabase verificó que el correo fue confirmado en otro dispositivo y nos dio acceso
+      if (error) throw error
+
+      // Si es exitoso, la sesión se establece automáticamente
       router.refresh()
       router.push('/admin')
+
+    } catch (err: any) {
+      Swal.fire({
+        title: 'Código Inválido', text: 'El código ingresado es incorrecto o ha expirado.', icon: 'error', confirmButtonText: 'Intentar de nuevo',
+        buttonsStyling: false, customClass: { popup: 'rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] bg-white border-0', confirmButton: 'bg-black text-white px-6 py-4 rounded-xl font-bold mt-4 w-full' }
+      })
+      setLoading(false)
     }
   }
-  // RENDERIZADO CONDICIONAL: Sala de Espera
-  if (waitingEmail) {
+
+  // RENDERIZADO CONDICIONAL: Vista de Verificación OTP
+  if (waitingOtp) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[##F6F6F6] p-4 font-sans relative">
-        <div className="bg-white p-10 rounded-3xl w-full max-w-md border border-gray-200 text-center relative z-10 shadow-sm">
-          <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <MailCheck size={32} className="text-white" strokeWidth={2.5} />
+      <div className="min-h-screen flex items-center justify-center bg-white p-6 font-sans">
+        <div className="bg-white p-10 rounded-3xl w-full max-w-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center flex flex-col items-center gap-8">
+          <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center">
+            <ShieldCheck size={32} className="text-white" strokeWidth={2} />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Revisa tu correo</h1>
-          <p className="text-sm font-medium text-gray-500 mb-8">
-            Hemos enviado un enlace mágico a <b className="text-black">{email}</b>. 
-            Haz clic en él desde tu teléfono o PC para activar tu cuenta.
-          </p>
+          
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-black text-black tracking-tight">Código de Seguridad</h1>
+            <p className="text-sm font-medium text-black/60">
+              Ingresa el código de 6 dígitos que enviamos a <br/><b className="text-black">{email}</b>
+            </p>
+          </div>
+
+          <form onSubmit={handleVerifyOtp} className="w-full flex flex-col gap-8">
+            <input
+              type="text"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} // Solo números
+              className="w-full text-center text-4xl tracking-[0.5em] font-black text-black py-6 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl outline-none border border-transparent focus:border-black transition-all placeholder:text-black/10"
+              placeholder="000000"
+              required
+            />
+            
+            <button 
+              type="submit" 
+              disabled={loading || otpCode.length !== 6}
+              className="w-full bg-black text-white font-bold py-6 rounded-2xl flex items-center justify-center gap-2 hover:bg-black/90 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="animate-spin" size={24} /> : 'Verificar y Entrar'}
+            </button>
+          </form>
+          
           <button 
-            onClick={checkSession} disabled={loading}
-            className="w-full bg-black text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 transition-all active:scale-95"
+            type="button"
+            onClick={() => { setWaitingOtp(false); setOtpCode(''); }}
+            className="text-xs font-bold text-black/40 hover:text-black transition-colors uppercase tracking-widest"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : <> <RefreshCw size={18} /> Ya confirmé, entrar </>}
+            Volver
           </button>
         </div>
       </div>
     )
   }
 
+  // RENDERIZADO PRINCIPAL: Login / Register (Estética Clean Look estricta)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F6F6F6] p-4 font-sans relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-white p-6 font-sans relative overflow-hidden">
       
-      {/* BACKGROUND DECORATION FLAT */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-gray-200/50 rounded-full blur-3xl -z-10"></div>
+      {/* BACKGROUND DECORATION SOFT */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-black/[0.02] rounded-full blur-3xl -z-10"></div>
       
-      <div className="bg-white p-8 md:p-10 rounded-3xl w-full max-w-md border border-gray-200 transition-all z-10">
+      <div className="bg-white p-8 md:p-12 rounded-3xl w-full max-w-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all z-10">
 
         {/* HEADER */}
-        <div className="text-center mb-10">
-          <div className="text-white w-14 h-14 bg-black rounded-2xl flex items-center justify-center mx-auto mb-5 border border-black transition-transform hover:scale-105">
-            {isRegistering ? <UserPlus size={26} strokeWidth={2.5} /> : <Lock size={26} strokeWidth={2.5} />}
+        <div className="text-center mb-10 flex flex-col items-center gap-4">
+          <div className="text-white w-16 h-16 bg-black rounded-2xl flex items-center justify-center transition-transform hover:scale-105 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+            {isRegistering ? <UserPlus size={28} strokeWidth={2} /> : <Lock size={28} strokeWidth={2} />}
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-            {isRegistering ? 'Únete a Preziso' : 'Bienvenido de nuevo'}
-          </h1>
-          <p className="text-gray-500 text-sm mt-1.5 font-medium">
-            {isRegistering ? 'Empieza a vender hoy mismo' : 'Ingresa a tu panel de control'}
-          </p>
+          <div>
+            <h1 className="text-3xl font-black text-black tracking-tight">
+              {isRegistering ? 'Únete a Preziso' : 'Bienvenido'}
+            </h1>
+            <p className="text-black/50 text-sm mt-2 font-medium">
+              {isRegistering ? 'El sistema operativo de tu tienda' : 'Ingresa a tu panel de control'}
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-5">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</label>
+        <form onSubmit={handleAuth} className="space-y-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-bold text-black/40 uppercase tracking-widest ml-1">
+              Correo Electrónico
+            </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-4 text-gray-400" size={18} />
+              <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-black/40" size={20} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition-all"
+                className="w-full pl-14 pr-6 py-5 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-transparent rounded-2xl text-base font-semibold text-black focus:outline-none focus:border-black transition-all placeholder:text-black/20"
                 placeholder="tu@email.com"
                 required
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Contraseña</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-[11px] font-bold text-black/40 uppercase tracking-widest ml-1">
+              Contraseña
+            </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-4 text-gray-400" size={18} />
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-black/40" size={20} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition-all"
+                className="w-full pl-14 pr-6 py-5 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-transparent rounded-2xl text-base font-semibold text-black focus:outline-none focus:border-black transition-all placeholder:text-black/20"
                 placeholder="Mínimo 6 caracteres"
                 minLength={6}
                 required
@@ -170,15 +200,15 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white font-bold py-4 rounded-2xl hover:bg-gray-800 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-black text-white font-bold py-5 rounded-2xl hover:bg-black/90 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? <>Crear Cuenta <ArrowRight size={18}/></> : 'Ingresar')}
+            {loading ? <Loader2 className="animate-spin" size={24} /> : (isRegistering ? <>Crear Cuenta <ArrowRight size={20}/></> : 'Ingresar')}
           </button>
         </form>
 
-        {/* SWITCH LOGIN / REGISTER (Minimalista) */}
-        <div className="mt-8 text-center pt-6 border-t border-gray-100">
-          <p className="text-sm font-medium text-gray-500">
+        {/* SWITCH LOGIN / REGISTER */}
+        <div className="mt-10 text-center">
+          <p className="text-sm font-medium text-black/50">
             {isRegistering ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}
             <button
               type="button"
@@ -187,7 +217,7 @@ export default function LoginPage() {
                 setEmail('')
                 setPassword('')
               }}
-              className="ml-2 font-black text-black hover:text-gray-600 transition-colors focus:outline-none uppercase tracking-wide text-xs"
+              className="ml-2 font-black text-black hover:text-black/70 transition-colors focus:outline-none uppercase tracking-wide text-xs"
             >
               {isRegistering ? 'Inicia Sesión' : 'Regístrate'}
             </button>
