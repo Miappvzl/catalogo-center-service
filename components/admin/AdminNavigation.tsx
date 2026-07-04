@@ -138,7 +138,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
           if (linksInCategory.length === 0) return null;
 
           return (
-            <div key={category} className={`relative pb-2 ${idx !== 0 ? 'pt-4' : ''}`}>
+            <div key={category} className={`relative pb-2 ${idx !== -1 ? 'pt-4' : ''}`}>
               
               {/* 🚀 PATRÓN UX: Indicador visual de separación cuando está colapsado */}
               <div className="absolute left-1/2 -translate-x-1/2 top-6 w-4 h-[2px] rounded-full bg-gray-200 transition-opacity duration-[400ms] group-hover/sidebar:opacity-0" />
@@ -157,14 +157,14 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                     <GuardedLink
                       key={link.href}
                       href={link.href}
-                      className={`relative flex items-center p-1.5 rounded-xl text-sm font-medium transition-colors duration-200 ${
+                      className={`relative flex items-center p-1.5 rounded-[11px] text-sm font-medium transition-colors duration-200 ${
                         isActive ? 'text-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >
                      {isActive && (
                         <motion.div
                           layoutId="desktop-nav-indicator"
-                          className="absolute inset-0 bg-gray-100 rounded-xl -z-10 overflow-hidden"
+                          className="absolute inset-0 bg-gray-100 rounded-[11px] -z-10 overflow-hidden"
                           transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         >
                            {/* 1. SANGRADO PERFECTO (Cero Cortes) */}
@@ -207,7 +207,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
                   <div className="pt-2">
                     <GuardedLink
                       href="/admin/product/new"
-                      className="relative flex items-center p-1.5 rounded-xl text-sm font-bold text-gray-500 hover:text-black transition-colors border border-transparent group-hover/sidebar:border-gray-200 border-dashed hover:!border-black bg-white group-hover/sidebar:bg-transparent"
+                      className="relative flex items-center p-1.5 rounded-[11px] text-sm font-bold text-gray-500 hover:text-black transition-colors border border-transparent group-hover/sidebar:border-gray-200 border-dashed hover:!border-black bg-white group-hover/sidebar:bg-transparent"
                     >
                       <div className="flex items-center justify-center w-10 h-10 flex-shrink-0 bg-gray-50 group-hover/sidebar:bg-transparent rounded-lg">
                         <Plus size={20} />
