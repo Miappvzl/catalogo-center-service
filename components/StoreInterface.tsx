@@ -944,7 +944,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                           onOpen={handleOpenProduct}
                           isOutOfStock={isCompletelyOutOfStock}
                           index={idx}
-                          isFavorite={favoriteIds.has(String(product.id))}
+                          //isFavorite={favoriteIds.has(String(product.id))}
                         />
                       </div>
                     )
@@ -982,7 +982,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
                   index={index} // 🚀 CRÍTICO: Pasar el index
-                  isFavorite={favoriteIds.has(String(product.id))}
+                  //isFavorite={favoriteIds.has(String(product.id))}
                 />
               )
             })}
