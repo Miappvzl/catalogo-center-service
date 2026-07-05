@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
@@ -11,7 +11,10 @@ import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { getSupabase } from '@/lib/supabase-client'
+import CustomerAuth from '@/components/passport/CustomerAuth'
+
 
 
 
@@ -20,7 +23,7 @@ const CategoryPill = ({ label, active, onClick }: { label: string, active: boole
     onClick={onClick}
     className={`px-5 py-2 md:px-6 md:py-2 rounded-full text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
       ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
-      : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:bg-[var(--store-surface)] hover:text-[var(--store-text-main)]'
+      : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)]/40 hover:bg-[var(--store-surface)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]'
       }`}
   >
     {label}
@@ -43,7 +46,7 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
         return
       }
 
-      
+
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
       const seconds = Math.floor((distance % (1000 * 60)) / 1000)
@@ -109,151 +112,289 @@ const CartHUDIndicator = () => {
 
 // 🚀 INYECCIÓN: BANNER DE RECUPERACIÓN DE PRESUPUESTO (CORREGIDO)
 const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
-    const [savedQuote, setSavedQuote] = useState<{ id: string, total: number } | null>(null)
-    const [isVisible, setIsVisible] = useState(false)
+  const [savedQuote, setSavedQuote] = useState<{ id: string, total: number } | null>(null)
+  const [isVisible, setIsVisible] = useState(false)
 
-    useEffect(() => {
-        const stored = localStorage.getItem('preziso_pending_quote')
-        if (stored) {
-            try {
-                const data = JSON.parse(stored)
-                // Validamos que el presupuesto pertenezca a la tienda actual
-                if (data.slug === currentSlug) {
-                    setSavedQuote(data)
-                    setIsVisible(true) // Dispara la animación de entrada
-                }
-            } catch (e) { }
+  useEffect(() => {
+    const stored = localStorage.getItem('preziso_pending_quote')
+    if (stored) {
+      try {
+        const data = JSON.parse(stored)
+        // Validamos que el presupuesto pertenezca a la tienda actual
+        if (data.slug === currentSlug) {
+          setSavedQuote(data)
+          setIsVisible(true) // Dispara la animación de entrada
         }
-    }, [currentSlug])
-
-    
-
-    // Función manejadora para un cierre suave
-    const handleClose = () => {
-        setIsVisible(false) // 1. Dispara la animación de salida
-        
-        // 2. Espera 300ms a que termine la animación para destruir los datos
-        setTimeout(() => {
-            localStorage.removeItem('preziso_pending_quote')
-            setSavedQuote(null)
-        }, 300) 
+      } catch (e) { }
     }
+  }, [currentSlug])
 
-    
 
-    return (
-        <AnimatePresence>
-            {isVisible && savedQuote && (
-                <motion.div 
-                    initial={{ y: -100, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -100, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-xl origin-top"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="bg-white/20 p-1.5 rounded-full shrink-0"><FileText size={16} /></div>
-                        <div className="flex flex-col min-w-0">
-                            <p className="font-bold uppercase tracking-widest text-[9px] text-gray-400">Cotización Pendiente</p>
-                            <p className="font-medium text-xs truncate">Monto a pagar: <span className="font-black text-white">${Number(savedQuote.total).toFixed(2)}</span></p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <Link 
-                            href={`/quote/${savedQuote.id}`} /* 🚀 CORRECCIÓN: Ruta relativa limpia sin duplicar el slug */
-                            className="bg-white text-black px-4 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-1 shadow-sm active:scale-95"
-                        >
-                            Retomar <ArrowRight size={12} strokeWidth={3} />
-                        </Link>
-                        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white transition-colors active:scale-90">
-                            <X size={16} />
-                        </button>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    )
+
+  // Función manejadora para un cierre suave
+  const handleClose = () => {
+    setIsVisible(false) // 1. Dispara la animación de salida
+
+    // 2. Espera 300ms a que termine la animación para destruir los datos
+    setTimeout(() => {
+      localStorage.removeItem('preziso_pending_quote')
+      setSavedQuote(null)
+    }, 300)
+  }
+
+
+
+  return (
+    <AnimatePresence>
+      {isVisible && savedQuote && (
+        <motion.div
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -100, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-xl origin-top"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-1.5 rounded-full shrink-0"><FileText size={16} /></div>
+            <div className="flex flex-col min-w-0">
+              <p className="font-bold uppercase tracking-widest text-[9px] text-gray-400">Cotización Pendiente</p>
+              <p className="font-medium text-xs truncate">Monto a pagar: <span className="font-black text-white">${Number(savedQuote.total).toFixed(2)}</span></p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/quote/${savedQuote.id}`} /* 🚀 CORRECCIÓN: Ruta relativa limpia sin duplicar el slug */
+              className="bg-white text-black px-4 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+            >
+              Retomar <ArrowRight size={12} strokeWidth={3} />
+            </Link>
+            <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white transition-colors active:scale-90">
+              <X size={16} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 }
 
 interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
-  const carouselRef = useRef<HTMLDivElement>(null) // 🚀 Referencia para el auto-scroll
-  const [activePromo, setActivePromo] = useState<any>(null) // 🚀 Estado del filtro de campaña
-  const featuredCarouselRef = useRef<HTMLDivElement>(null); // 🚀 Ref del escaparate
-
-  // 🚀 MOTOR DE DESPLAZAMIENTO INTELIGENTE (Cinta Transportadora)
-  const scrollFeatured = (direction: 'left' | 'right') => {
-      if (!featuredCarouselRef.current) return;
-      const container = featuredCarouselRef.current;
-      
-      // Leemos el ancho de la primera tarjeta dinámicamente
-      const firstCard = container.children[0] as HTMLElement;
-      if (!firstCard) return;
-      
-      // Ancho de la tarjeta + 24px (gap-6)
-      const scrollAmount = firstCard.offsetWidth + 24; 
-
-      if (direction === 'right') {
-          // Si llegamos al límite derecho, rebobinamos como máquina de escribir
-          if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
-              container.scrollTo({ left: 0, behavior: 'smooth' });
-          } else {
-              container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-          }
-      } else {
-          // Si estamos al inicio y damos atrás, vamos rápido al final
-          if (container.scrollLeft <= 10) {
-              container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' });
-          } else {
-              container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-          }
-      }
-  };
-   // 🚀 LA PIEZA FALTANTE: El Controlador Imperativo del carrito Desktop
-  const cartControls = useAnimation();
-      const badgeControls = useAnimation();
-
-
-const searchParams = useSearchParams()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // 1. TODOS LOS HOOKS DE ESTADO JUNTOS (INCONDICIONALES)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+  const [activePromo, setActivePromo] = useState<any>(null)
+  const [featuredScrollStatus, setFeaturedScrollStatus] = useState({ left: false, right: true })
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('Todos')
+  const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
+  const [isStickyVisible, setIsStickyVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isDarkHero, setIsDarkHero] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(12)
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
-// 🚀 CEREBRO DE ORQUESTACIÓN: Motor de Vuelo Vainilla (Web Animations API - Zero React)
+  // 2. REFS DE CONTROL DEL DOM
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const featuredCarouselRef = useRef<HTMLDivElement>(null)
+  const categoryScrollRef = useRef<HTMLDivElement>(null)
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
+  const supabase = useMemo(() => getSupabase(), [])
+  const { items, orderHistory } = useCart()
+  const cartControls = useAnimation()
+  const badgeControls = useAnimation()
+
+  // 4. MEMOS Y CONSTANTES DE DERIVACIÓN (Usando ? por seguridad si store es nulo)
+  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
+  const hasItems = items.length > 0
+  const isEur = store?.currency_type === 'eur'
+  const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
+
+  // 5. MÉTODOS DE AYUDA Y AUXILIARES
+  const checkFeaturedScrollStatus = () => {
+    if (!featuredCarouselRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = featuredCarouselRef.current;
+    const canScrollLeft = scrollLeft > 4;
+    const canScrollRight = scrollLeft + clientWidth < scrollWidth - 4;
+    setFeaturedScrollStatus({ left: canScrollLeft, right: canScrollRight });
+  }
+
+  const scrollFeatured = (dir: 'left' | 'right') => {
+    if (featuredCarouselRef.current) {
+      const container = featuredCarouselRef.current;
+      const scrollAmount = container.clientWidth * 0.75;
+      container.scrollBy({
+        left: dir === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  }
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (!categoryScrollRef.current) return;
+    const container = categoryScrollRef.current;
+    const scrollAmount = (container.clientWidth * 0.6) || 300;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  }
+
+  const normalizeCategory = (cat: string) => {
+    if (!cat) return ""
+    const trimmed = cat.trim().toLowerCase()
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+  }
+
+  const categories = useMemo(() => {
+    const rawCats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
+    const uniqueCats = Array.from(new Set(rawCats))
+    const savedOrder = store?.categories_order || []
+    const sortedCats = uniqueCats.sort((a, b) => {
+      const indexA = savedOrder.indexOf(a)
+      const indexB = savedOrder.indexOf(b)
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+      if (indexA !== -1) return -1
+      if (indexB !== -1) return 1
+      return a.localeCompare(b)
+    })
+    return ['Todos', ...sortedCats]
+  }, [products, store?.categories_order])
+
+  // 🚀 CLASIFICACIÓN (DECLARADA ANTES DE LOS EFFECTS QUE LA LEEN)
+  const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
+    const baseFiltered = products.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      const productCatClean = normalizeCategory(p.category)
+      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
+      const matchesPromo = activePromo ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) : true
+      return matchesSearch && matchesCategory && matchesPromo
+    })
+    const featured = baseFiltered.filter(p => p.is_featured)
+    return { featured, standard: baseFiltered }
+  }, [products, debouncedSearch, selectedCategory, activePromo])
+
+  // 6. TODOS LOS EFECTOS DE CICLO DE VIDA (UNIFICADOS ABAJO)
   useEffect(() => {
-    // A. ESCUCHADOR DEL IMPACTO (Física Invertida Desktop)
+    supabase.auth.getUser().then(({ data }: { data: any }) => setCurrentUser(data.user))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      setCurrentUser(session?.user || null)
+    })
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  useEffect(() => {
+    if (!currentUser || !store?.id) {
+      setFavoriteIds(new Set())
+      return
+    }
+    const fetchFavorites = async () => {
+      const { data } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('store_id', store.id)
+        .eq('customer_id', currentUser.id)
+      if (data) setFavoriteIds(new Set(data.map((f: any) => String(f.product_id))))
+    }
+    fetchFavorites()
+  }, [currentUser, store?.id, supabase])
+
+  useEffect(() => {
+    const handleToggleFavorite = async (e: any) => {
+      const product = e.detail
+      if (!currentUser) {
+        setIsAuthModalOpen(true)
+        return
+      }
+      const productId = String(product.id)
+      const isFav = favoriteIds.has(productId)
+
+      setFavoriteIds(prev => {
+        const newSet = new Set(prev)
+        if (isFav) newSet.delete(productId)
+        else newSet.add(productId)
+        return newSet
+      })
+
+      try {
+        if (isFav) {
+          const { error } = await supabase
+            .from('favorites')
+            .delete()
+            .eq('store_id', store.id)
+            .eq('customer_id', currentUser.id)
+            .eq('product_id', product.id)
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from('favorites')
+            .insert({ store_id: store.id, customer_id: currentUser.id, product_id: product.id })
+          if (error) throw error
+        }
+      } catch (error) {
+        console.error('Error mutando favorito:', error)
+        setFavoriteIds(prev => {
+          const newSet = new Set(prev)
+          if (isFav) newSet.add(productId)
+          else newSet.delete(productId)
+          return newSet
+        })
+      }
+    }
+    const handleOpenAuth = () => setIsAuthModalOpen(true)
+    document.addEventListener('toggleFavorite', handleToggleFavorite)
+    document.addEventListener('openAuthModal', handleOpenAuth)
+    return () => {
+      document.removeEventListener('toggleFavorite', handleToggleFavorite)
+      document.removeEventListener('openAuthModal', handleOpenAuth)
+    }
+  }, [currentUser, favoriteIds, store?.id, supabase])
+
+  // 🚀 AHORA EL EFFECT ENCUENTRA A featuredProducts YA INICIALIZADO SIN ERRORES DE TDZ
+  useEffect(() => {
+    const timer = setTimeout(() => { checkFeaturedScrollStatus(); }, 300);
+    window.addEventListener('resize', checkFeaturedScrollStatus);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkFeaturedScrollStatus);
+    };
+  }, [featuredProducts]);
+
+  useEffect(() => {
     const handleImpact = () => {
       cartControls.start({
-         // 🚀 y: [0, -5, 3, 0] -> Golpeado desde abajo (sube), rebota al caer, se asienta
-         y: [0, -5, 3, 0],
-         scale: [1, 0.85, 1.15, 1], // Aplastado contra el techo, estirado al caer
-         transition: { 
-             duration: 0.4, 
-             ease: "easeInOut", 
-             times: [0, 0.2, 0.6, 1] 
-         }
+        y: [0, -5, 3, 0],
+        scale: [1, 0.85, 1.15, 1],
+        transition: { duration: 0.4, ease: "easeInOut", times: [0, 0.2, 0.6, 1] }
       });
     };
-
     const handleFly = (e: any) => {
       const targets = document.querySelectorAll('[data-cart-target="true"]');
-      let destNode = targets[0]; 
-      for(let i=0; i<targets.length; i++) {
-          const rect = targets[i].getBoundingClientRect();
-          if(rect.width > 0 && rect.height > 0) { destNode = targets[i]; break; }
+      let destNode = targets[0];
+      for (let i = 0; i < targets.length; i++) {
+        const rect = targets[i].getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) { destNode = targets[i]; break; }
       }
-
       if (!destNode) { handleImpact(); return; }
 
       const startRect = e.detail.startRect;
       const destRect = destNode.getBoundingClientRect();
-
-      // 🚀 MATEMÁTICA DEL SQUIRCLE: Forzamos un cuadrado perfecto centrado
       const size = Math.min(startRect.width, startRect.height);
       const offsetX = (startRect.width - size) / 2;
       const offsetY = (startRect.height - size) / 2;
 
-      // 🚀 INYECCIÓN NATIVA AL DOM
       const wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
       wrapper.style.top = `${startRect.top}px`;
@@ -267,49 +408,38 @@ const searchParams = useSearchParams()
       img.src = e.detail.src;
       img.style.width = '100%';
       img.style.height = '100%';
-      // 🚀 SQUIRCLE PERFECTO (Proporción exacta de Apple)
-      img.style.borderRadius = '22%'; 
+      img.style.borderRadius = '22%';
       img.style.objectFit = 'cover';
       img.style.willChange = 'transform, opacity';
-      // 🚀 SOMBRA PREMIUM (Física y profundidad 3D)
       img.style.boxShadow = '0 25px 50px -12px rgba(0,0,0,0.4), 0 10px 25px -5px rgba(0,0,0,0.2)';
-      // Fondo blanco por si el producto es un PNG transparente
-      img.style.backgroundColor = '#ffffff'; 
+      img.style.backgroundColor = '#ffffff';
 
       wrapper.appendChild(img);
       document.body.appendChild(wrapper);
 
-      // Coordenadas de trayectoria (Calculadas desde el centro del nuevo cuadrado)
       const startCenterX = startRect.left + offsetX + size / 2;
       const startCenterY = startRect.top + offsetY + size / 2;
       const destCenterX = destRect.left + destRect.width / 2;
       const destCenterY = destRect.top + destRect.height / 2;
-
       const deltaX = destCenterX - startCenterX;
       const deltaY = destCenterY - startCenterY;
 
-      // 🚀 ANIMACIÓN EJE X (El Avance Lineal)
       wrapper.animate([
-          { transform: `translate(${offsetX}px, ${offsetY}px)` },
-          { transform: `translate(${offsetX + deltaX}px, ${offsetY}px)` }
+        { transform: `translate(${offsetX}px, ${offsetY}px)` },
+        { transform: `translate(${offsetX + deltaX}px, ${offsetY}px)` }
       ], { duration: 550, easing: 'linear', fill: 'forwards' });
 
-      // 🚀 ANIMACIÓN AERODINÁMICA (Y, Escala, Inclinación y Absorción)
       const yAnim = img.animate([
-          // Despegue (Cuadrado original, opacidad 100%)
-          { transform: `translateY(0px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
-          // Vuelo medio (Se inclina hacia atrás -15deg por el viento, se encoge al 60%)
-          { transform: `translateY(${deltaY * 0.6}px) scale(0.6) rotate(-15deg)`, opacity: 1, offset: 0.6 },
-          // Aterrizaje (Se endereza, se hace tamaño 0 para entrar a la bolsa, se desvanece)
-          { transform: `translateY(${deltaY}px) scale(0) rotate(0deg)`, opacity: 0, offset: 1 }
+        { transform: `translateY(0px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+        { transform: `translateY(${deltaY * 0.6}px) scale(0.6) rotate(-15deg)`, opacity: 1, offset: 0.6 },
+        { transform: `translateY(${deltaY}px) scale(0) rotate(0deg)`, opacity: 0, offset: 1 }
       ], { duration: 550, easing: 'ease-in', fill: 'forwards' });
 
       yAnim.onfinish = () => {
-          wrapper.remove();
-          document.dispatchEvent(new CustomEvent('cartImpact')); 
+        wrapper.remove();
+        document.dispatchEvent(new CustomEvent('cartImpact'));
       };
     };
-
     document.addEventListener('cartImpact', handleImpact);
     document.addEventListener('flyToCart', handleFly);
     return () => {
@@ -318,193 +448,57 @@ const searchParams = useSearchParams()
     };
   }, [cartControls]);
 
-  
-
-
- useEffect(() => {
-    const ref = searchParams?.get('ref');
-    const storedRef = sessionStorage.getItem('preziso_ref');
-
-    if (ref && store?.affiliate_config?.active) {
-      setAffiliateCode(ref);
-      if (storedRef !== ref) {
-        sessionStorage.setItem('preziso_ref', ref);
-        setShowPromoModal(true); // 🚀 REEMPLAZO AQUÍ
-        // Cerramos el modal automáticamente después de 5 segundos
-        setTimeout(() => setShowPromoModal(false), 5000); 
-      }
-    } else if (storedRef) {
-      setAffiliateCode(storedRef);
-    }
-  }, [searchParams, store]);
-
-  if (!store) return (
-    
-    <div className="min-h-screen bg-[var(--store-surface)] pb-32 font-sans w-full overflow-hidden no-scrollbar [scrollbar-gutter:auto] [&::-webkit-scrollbar]:hidden pointer-events-none select-none">
-      {/* SKELETON: HERO SECTION */}
-      <div className="w-full h-[35vh] md:h-[25vh] bg-[var(--store-border)] animate-pulse relative flex items-start border-b border-[var(--store-border)]">
-        <div className="max-w-[1500px] w-full mx-auto px-4 md:px-8 pt-5 md:pt-6 flex items-start justify-between">
-          {/* Logo & Info Skeleton */}
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-[var(--store-border)] rounded-full shrink-0"></div>
-            <div className="flex flex-col gap-2">
-              <div className="w-32 md:w-48 h-3.5 bg-[var(--store-border)] rounded-full"></div>
-              <div className="w-20 h-2 bg-[var(--store-border)] rounded-full"></div>
-            </div>
-          </div>
-          {/* Tasa Skeleton */}
-          <div className="w-24 h-4 bg-[var(--store-border)] rounded-full mt-2 md:mt-3"></div>
-        </div>
-      </div>
-
-      {/* SKELETON: NAVBAR (Buscador y Categorías) */}
-      <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)] pb-4 pt-4 md:pt-6">
-        <div className="max-w-[1500px] mx-auto px-4  md:px-8 ">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
-            {/* Buscador Skeleton */}
-            <div className="w-full md:max-w-md h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
-
-            {/* Categorías Skeleton */}
-            <div className="w-full md:flex-1 flex gap-2 overflow-hidden animate-pulse">
-              <div className="w-16 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
-              <div className="w-24 h-8 bg-[var(--store-border)] rounded-full shrink-0"></div>
-              <div className="w-20 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden sm:block"></div>
-              <div className="w-28 h-8 bg-[var(--store-border)] rounded-full shrink-0 hidden md:block"></div>
-            </div>
-
-            {/* Gatillo Carrito Skeleton */}
-            <div className="hidden md:block w-11 h-11 bg-[var(--store-border)] animate-pulse rounded-full shrink-0"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* SKELETON: GRID DE PRODUCTOS */}
-      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-          {/* Generamos 10 tarjetas fantasma en memoria dinámicamente */}
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-3">
-              {/* Foto del producto */}
-              <div className="w-full aspect-square bg-[var(--store-border)] animate-pulse rounded-[var(--radius-card,1rem)]"></div>
-              {/* Textos */}
-              <div className="space-y-2 px-1">
-                <div className="w-3/4 h-3 bg-[var(--store-border)] animate-pulse rounded-full"></div>
-                <div className="w-1/2 h-2.5 bg-[var(--store-border)]/70 animate-pulse rounded-full"></div>
-                <div className="w-1/3 h-4 bg-gray-200 animate-pulse rounded-full mt-1"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-    </div>
-  )
-
- const { items, orderHistory } = useCart() // 🚀 Extraemos el historial
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false) // 🚀 Estado del modal
-  const hasItems = items.length > 0;
-  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0);
-
-  const isEur = store.currency_type === 'eur'
-  const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
-
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('') // 🚀 NUEVO: Estado retrasado
-  const [selectedCategory, setSelectedCategory] = useState('Todos')
-  // 🚀 RECEPTOR DE TELEMETRÍA (Iframe PostMessage)
-  const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
-
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      console.log('2. TIENDA RECIBIÓ ALGO:', event.origin, event.data)
-      // Validación robusta: Aceptamos mensajes de tu dominio local o tu dominio de producción
       const isLocalhost = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
       const isPrezisoDomain = event.origin.includes('preziso.shop');
-
       if (!isLocalhost && !isPrezisoDomain) return;
-
       if (event.data?.type === 'UPDATE_THEME') {
         setLiveConfig(event.data.config);
       }
     };
-
-    // Encendemos el receptor SIEMPRE. Es seguro porque ya filtramos por 'origin' arriba,
-    // y evitamos que los middlewares de Next.js rompan el editor al borrar los parámetros de la URL.
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
-  // 🚀 NUEVO: Motor de Debounce (300ms)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 300)
-
-    // Función de limpieza: destruye el timer si el usuario teclea antes de los 300ms
+    const timer = setTimeout(() => { setDebouncedSearch(search) }, 300)
     return () => clearTimeout(timer)
   }, [search])
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
-
-  const [isStickyVisible, setIsStickyVisible] = useState(true)
-  const [lastScrollY, setLastScrollY] = useState(0)
-  const [isDarkHero, setIsDarkHero] = useState(true) // Por defecto oscuro (texto blanco)
-
-  const [visibleCount, setVisibleCount] = useState(12)
-  const observerTarget = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setVisibleCount(12)
-  }, [debouncedSearch, selectedCategory]) // Cambiamos 'search' por 'debouncedSearch'
 
   useEffect(() => {
     if (!store?.hero_url) return;
-
     const img = new window.Image()
-    img.crossOrigin = "Anonymous"; // Crucial para evitar bloqueos CORS
+    img.crossOrigin = "Anonymous";
     img.src = store.hero_url;
-
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-
-        canvas.width = img.width;
-        canvas.height = img.height * 0.2; // Analizamos solo el 20% superior donde vive el header
-
+        canvas.width = img.width; canvas.height = img.height * 0.2;
         ctx.drawImage(img, 0, 0, img.width, img.height * 0.2, 0, 0, canvas.width, canvas.height);
-
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-
         let r = 0, g = 0, b = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          r += data[i]; g += data[i + 1]; b += data[i + 2];
-        }
-
+        for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
         const pixels = data.length / 4;
-        // Fórmula de Luminancia Relativa (YIQ)
         const luminance = ((r / pixels) * 299 + (g / pixels) * 587 + (b / pixels) * 114) / 1000;
-
-        // Si luminancia es menor a 128, es oscuro -> texto blanco. Si es mayor, es claro -> texto oscuro.
         setIsDarkHero(luminance < 128);
       } catch (e) {
-        console.warn("No se pudo analizar el contraste por CORS, usando default oscuro.");
         setIsDarkHero(true);
       }
     };
   }, [store?.hero_url]);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 12)
-        }
-      },
-      { threshold: 0.1 }
-    )
+    setVisibleCount(12)
+  }, [debouncedSearch, selectedCategory])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) setVisibleCount((prev) => prev + 12)
+    }, { threshold: 0.1 })
     if (observerTarget.current) observer.observe(observerTarget.current)
     return () => observer.disconnect()
   }, [])
@@ -513,11 +507,7 @@ const searchParams = useSearchParams()
     const controlNavbar = () => {
       if (typeof window !== 'undefined') {
         const currentScrollY = window.scrollY
-        if (currentScrollY < 350) {
-          setIsStickyVisible(true)
-          setLastScrollY(currentScrollY)
-          return
-        }
+        if (currentScrollY < 350) { setIsStickyVisible(true); setLastScrollY(currentScrollY); return; }
         setIsStickyVisible(currentScrollY <= lastScrollY)
         setLastScrollY(currentScrollY)
       }
@@ -529,90 +519,40 @@ const searchParams = useSearchParams()
   useEffect(() => {
     const handleOpenFromCart = (e: any) => {
       const product = e.detail;
-      if (product) {
-        setSelectedProductForModal(product);
-        setIsModalOpen(true);
-      }
+      if (product) { setSelectedProductForModal(product); setIsModalOpen(true); }
     };
     document.addEventListener('openProductModal', handleOpenFromCart);
     return () => document.removeEventListener('openProductModal', handleOpenFromCart);
   }, []);
 
-  // 🚀 Auto-Scroll del Carrusel de Promociones
   useEffect(() => {
     if (!promotions || promotions.length <= 1) return;
     const interval = setInterval(() => {
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth - 10) {
-          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
-        }
+        if (scrollLeft + clientWidth >= scrollWidth - 10) { carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' }); }
+        else { carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' }); }
       }
-    }, 5000); // Cambia cada 5 segundos
+    }, 5000);
     return () => clearInterval(interval);
   }, [promotions]);
 
-  const normalizeCategory = (cat: string) => {
-    if (!cat) return ""
-    const trimmed = cat.trim().toLowerCase()
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
-  }
+  useEffect(() => {
+    const ref = searchParams?.get('ref');
+    const storedRef = sessionStorage.getItem('preziso_ref');
+    if (ref && store?.affiliate_config?.active) {
+      setAffiliateCode(ref);
+      if (storedRef !== ref) {
+        sessionStorage.setItem('preziso_ref', ref);
+        setShowPromoModal(true);
+        setTimeout(() => setShowPromoModal(false), 5000);
+      }
+    } else if (storedRef) {
+      setAffiliateCode(storedRef);
+    }
+  }, [searchParams, store]);
 
-  const categories = useMemo(() => {
-    // 1. Extraemos todas las categorías únicas de los productos actuales
-    const rawCats = products.map(p => normalizeCategory(p.category)).filter(Boolean)
-    const uniqueCats = Array.from(new Set(rawCats))
-
-    // 2. Leemos el orden guardado por el admin (si existe)
-    const savedOrder = store?.categories_order || []
-
-    // 3. Ordenamos las categorías respetando el arreglo del admin
-    const sortedCats = uniqueCats.sort((a, b) => {
-      const indexA = savedOrder.indexOf(a)
-      const indexB = savedOrder.indexOf(b)
-
-      // Si ambas están en la lista guardada, respetamos su orden
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB
-      // Si solo A está en la lista, A va primero
-      if (indexA !== -1) return -1
-      // Si solo B está en la lista, B va primero
-      if (indexB !== -1) return 1
-      // Si ninguna está (ej: categorías nuevas), las ordenamos alfabéticamente al final
-      return a.localeCompare(b)
-    })
-
-    // 4. "Todos" siempre va de primero indiscutiblemente
-    return ['Todos', ...sortedCats]
-  }, [products, store?.categories_order])
-
- // 🚀 MOTOR DE CLASIFICACIÓN UNIVERSAL (Respeta el orden del servidor)
-  const { featured:featuredProducts, standard:standardProducts } = useMemo(() => {
-    // 1. Aplicamos búsqueda y filtros de categoría
-    const baseFiltered = products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      const productCatClean = normalizeCategory(p.category)
-      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
-      
-      const matchesPromo = activePromo
-        ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id))
-        : true
-
-      return matchesSearch && matchesCategory && matchesPromo
-    })
-
-    // 2. Clasificación simple: el orden ya viene perfecto desde el servidor
-    const featured = baseFiltered.filter(p => p.is_featured)
-    const standard = baseFiltered // La cuadrícula completa muestra todo en el orden maestro
-
-    return { featured, standard }
-  }, [products, debouncedSearch, selectedCategory, activePromo])
-
-  const handleOpenProduct = (product: any) => {
-    setSelectedProductForModal(product)
-    setIsModalOpen(true)
-  }
+  const handleOpenProduct = (product: any) => { setSelectedProductForModal(product); setIsModalOpen(true); }
 
   const getProductPricing = (product: any) => {
     const cashPrice = Number(product.usd_cash_price || 0)
@@ -623,11 +563,15 @@ const searchParams = useSearchParams()
     return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
   }
 
+  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+
+ 
+  // ==========================================
+  // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
+  // ==========================================
   return (
-    // ✅ AHORA:
-    <div
-      className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]"
-      style={{
+    <div className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]" style={{
+    
         // Los 3 originales
         '--store-primary': activeTheme.colors?.primary || '#000000',
         '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
@@ -639,8 +583,8 @@ const searchParams = useSearchParams()
         '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
         '--store-border': activeTheme.colors?.border || '#d4d4d499',
         // 🚀 La nueva variable psicológica
-    '--store-incentive': activeTheme.colors?.incentive || '#059669',
-  
+        '--store-incentive': activeTheme.colors?.incentive || '#059669',
+
       } as React.CSSProperties}
     >
 
@@ -667,7 +611,7 @@ const searchParams = useSearchParams()
             <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
               {store.name}
             </h1>
-           
+
           </div>
         </div>
 
@@ -693,17 +637,17 @@ const searchParams = useSearchParams()
       {/* --- 2. HERO BANNER (ELITE NATURAL FLOW MASK) --- */}
       {store.hero_url && (
         <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)]/30 flex justify-center overflow-hidden">
-          
+
           {/* La máscara envuelve a la imagen como una segunda piel */}
           <div className="relative w-full max-w-[1100px] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)] [mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)]">
-            
+
             {/* Al quitar "fill" y usar "w-full h-auto", el navegador calcula la altura perfecta sin espacios vacíos y sin recortar NADA */}
             <Image
               src={getOptimizedUrl(store.hero_url)}
               alt={`Banner de ${store.name}`}
               width={1920}
               height={600}
-              className="w-full h-auto block" 
+              className="w-full h-auto block"
               crossOrigin="anonymous"
               priority
             />
@@ -718,8 +662,8 @@ const searchParams = useSearchParams()
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
 
-           {/* 1. BUSCADOR Y ACCIONES MOBILE (Izquierda) */}
-            <div className="flex items-center w-full md:max-w-md gap-3">
+            {/* 1. BUSCADOR Y ACCIONES MOBILE (Izquierda) */}
+            <div className="flex items-center w-full md:max-w-sm gap-3">
               <div className="relative flex-1 group min-w-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
                 <input
@@ -727,7 +671,7 @@ const searchParams = useSearchParams()
                   placeholder="Buscar producto..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
+                  className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
                 />
                 {search && (
                   <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
@@ -735,6 +679,18 @@ const searchParams = useSearchParams()
                   </button>
                 )}
               </div>
+
+              {/* 🚀 GATILLO PERFIL (MOBILE) 
+              <div className="md:hidden shrink-0 w-11 h-11">
+                <button
+                  onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
+                  className="w-full h-full flex items-center justify-center relative rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] active:scale-95 transition-all duration-300"
+                  title="Mi Perfil"
+                >
+                  <UserCircle size={18} strokeWidth={2.5} />
+                </button>
+              </div>
+               */}
 
               {/* 🚀 GATILLO HISTORIAL (MOBILE ONLY) - Permite acceso al PDF limpiamente */}
               {orderHistory && orderHistory.length > 0 && (
@@ -753,20 +709,70 @@ const searchParams = useSearchParams()
               )}
             </div>
 
-            {/* 2. CATEGORÍAS (Centro) */}
-            {/* 🚀 INYECCIÓN: min-w-0 es el cinturón de seguridad que ancla la UI */}
-            <div className="relative w-full md:flex-1 min-w-0 flex items-center">
-              <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar pr-10">
-                {categories.map(cat => (
-                  <CategoryPill key={cat} label={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} />
-                ))}
-              </div>
+           {/* --- CONTENEDOR DE CATEGORÍAS (Con Máscara Alfa Anti-Líneas) --- */}
+<div className="w-full md:flex-1 min-w-0 relative group flex items-center">
+  
+  {/* Flecha Izquierda: Ahora es un contenedor limpio, sin degradados de fondo */}
+  <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    <button
+      onClick={() => scrollCategories('left')}
+      className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
+      aria-label="Desplazar izquierda"
+    >
+      <ChevronLeft size={14} strokeWidth={2.5} />
+    </button>
+  </div>
 
-              {/* Fade Gradient a la derecha */}
-              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-[var(--store-bg)] via-[var(--store-bg)]/80 to-transparent pointer-events-none z-10"></div>
+  {/* 🚀 EL CAMBIO CLAVE: 
+    Se aplican propiedades de máscara CSS para desvanecer los píxeles directamente.
+    Esto hace que cualquier texto o pastilla se disuelva en la nada de forma fluida.
+  */}
+  <div
+    ref={categoryScrollRef}
+    className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
+    style={{
+      WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)',
+      maskImage: 'linear-gradient(to right, transparent 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)',
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none'
+    }}
+  >
+    {categories.map((category) => (
+      <CategoryPill
+        key={category}
+        label={category}
+        active={selectedCategory === category}
+        onClick={() => setSelectedCategory(category)}
+      />
+    ))}
+  </div>
+
+  {/* Flecha Derecha: Contenedor limpio, sin degradados de fondo */}
+  <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    <button
+      onClick={() => scrollCategories('right')}
+      className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
+      aria-label="Desplazar derecha"
+    >
+      <ChevronRight size={14} strokeWidth={2.5} />
+    </button>
+  </div>
+
+</div>
+
+            {/* 🚀 GATILLO DE PERFIL (DESKTOP)
+            <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
+              <button
+                onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
+                className="cursor-pointer relative p-3 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
+                title="Mi Perfil"
+              >
+                <UserCircle size={18} strokeWidth={2.5} />
+              </button>
             </div>
+             */}
 
-{/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
+            {/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
             {orderHistory && orderHistory.length > 0 && (
               <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
                 <button
@@ -785,15 +791,15 @@ const searchParams = useSearchParams()
             {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
             <div className="hidden md:flex shrink-0 w-12 h-11">
               <button
-                 data-cart-target="true" 
+                data-cart-target="true"
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
                 className={`cursor-pointer relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
                 {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
-                <motion.div 
-                    animate={cartControls} 
-                    className={hasItems ? "inline-block origin-top" : "inline-block origin-top"}
+                <motion.div
+                  animate={cartControls}
+                  className={hasItems ? "inline-block origin-top" : "inline-block origin-top"}
                 >
                   <ShoppingCart size={18} strokeWidth={2.5} />
                 </motion.div>
@@ -801,16 +807,16 @@ const searchParams = useSearchParams()
                 {/* 🚀 BADGE EXPLOSIVO: Sincronizado con la física del móvil */}
                 <AnimatePresence>
                   {hasItems && (
-                    <motion.span 
-                      key={totalItems} 
+                    <motion.span
+                      key={totalItems}
                       initial={{ scale: 0, y: 10, opacity: 0 }}
                       animate={{ scale: 1, y: 0, opacity: 1 }}
                       exit={{ scale: 0, opacity: 0 }}
-                      transition={{ 
-                          type: "spring", 
-                          stiffness: 500, 
-                          damping: 12,    
-                          mass: 1 
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 12,
+                        mass: 1
                       }}
                       className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
                     >
@@ -895,68 +901,74 @@ const searchParams = useSearchParams()
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
 
         <>
-         {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && (
-              <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                  <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
-                      <div>
-                          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
+            <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
+                </div>
+              </div>
+
+              {/* 🚀 SE CAMBIA 'group' A 'group/featured' PARA ELIMINAR LA COLISIÓN CON LOS CARRITOS */}
+              <div className="relative group/featured">
+
+                {/* 🚀 BOTÓN IZQUIERDO (Clean Look Apple Style - Control de Hover de Hardware) */}
+                <button
+                  onClick={() => scrollFeatured('left')}
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${
+                    featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                  }`}
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
+                </button>
+
+                {/* Carrusel Horizontal */}
+                <div
+                  ref={featuredCarouselRef} // 🚀 CONECTAMOS LA REFERENCIA
+                  onScroll={checkFeaturedScrollStatus} // 🚀 DETECTA EL MOVIMIENTO REACTIVAMENTE
+                  className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth"
+                >
+                  {featuredProducts.map((product: any, idx: number) => {
+                    const pricing = getProductPricing(product)
+                    const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                      ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                      : (product.stock || 0) <= 0;
+
+                    return (
+                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
+                        <ProductCard
+                          product={product}
+                          pricing={pricing}
+                          onOpen={handleOpenProduct}
+                          isOutOfStock={isCompletelyOutOfStock}
+                          index={idx}
+                          isFavorite={favoriteIds.has(String(product.id))}
+                        />
                       </div>
-                  </div>
-                  
-                  {/* 🚀 CONTENEDOR RELATIVO PARA BOTONES FLOTANTES */}
-                  <div className="relative group">
-                      
-                      {/* 🚀 BOTÓN IZQUIERDO (Clean Look Apple Style) */}
-                      <button 
-                          onClick={() => scrollFeatured('left')}
-                          className="hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all opacity-90 hover:opacity-100"
-                          aria-label="Anterior"
-                      >
-                          <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
-                      </button>
+                    )
+                  })}
+                </div>
 
-                      {/* Carrusel Horizontal */}
-                      <div 
-                          ref={featuredCarouselRef} // 🚀 CONECTAMOS LA REFERENCIA
-                          className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth"
-                      >
-                         {featuredProducts.map((product: any, idx: number) => {
-                              const pricing = getProductPricing(product)
-                              const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
-                                  ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-                                  : (product.stock || 0) <= 0;
+                {/* 🚀 BOTÓN DERECHO (Clean Look Apple Style - Control de Hover de Hardware) */}
+                <button
+                  onClick={() => scrollFeatured('right')}
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${
+                    featuredScrollStatus.right || !featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                  }`}
+                  aria-label="Siguiente"
+                >
+                  <ChevronRight size={24} strokeWidth={2.5} className="-mr-0.5" />
+                </button>
 
-                              return (
-                                  <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
-                                      <ProductCard 
-                                          product={product} 
-                                          pricing={pricing} 
-                                          onOpen={handleOpenProduct}
-                                          isOutOfStock={isCompletelyOutOfStock}
-                                          index={idx}
-                                      />
-                                  </div>
-                              )
-                          })}
-                      </div>
-
-                      {/* 🚀 BOTÓN DERECHO (Clean Look Apple Style) */}
-                      <button 
-                          onClick={() => scrollFeatured('right')}
-                          className="hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all opacity-90 hover:opacity-100"
-                          aria-label="Siguiente"
-                      >
-                          <ChevronRight size={24} strokeWidth={2.5} className="-mr-0.5" />
-                      </button>
-                      
-                  </div>
-              </section>
+              </div>
+            </section>
           )}
 
-         {/* 🚀 DEVOLVEMOS EL DIV NORMAL AL PADRE */}
+          {/* 🚀 DEVOLVEMOS EL DIV NORMAL AL PADRE */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => { 
+            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => {
               const pricing = getProductPricing(product)
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
                 ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
@@ -970,6 +982,7 @@ const searchParams = useSearchParams()
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
                   index={index} // 🚀 CRÍTICO: Pasar el index
+                  isFavorite={favoriteIds.has(String(product.id))}
                 />
               )
             })}
@@ -984,31 +997,31 @@ const searchParams = useSearchParams()
         </>
 
         {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
-            <AnimatePresence>
-                {showPromoModal && affiliateCode && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
-                    >
-                        <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
-                            <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
-                                <Tag size={20} />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
-                                <p className="text-sm font-black leading-tight">
-                                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
-                                </p>
-                            </div>
-                            <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
-                                <X size={16} />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+        <AnimatePresence>
+          {showPromoModal && affiliateCode && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
+            >
+              <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
+                <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
+                  <Tag size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
+                  <p className="text-sm font-black leading-tight">
+                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
+                  </p>
+                </div>
+                <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </main>
 
@@ -1040,8 +1053,8 @@ const searchParams = useSearchParams()
         products={products}
         promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
         affiliateCode={affiliateCode} // 🚀 INYECCIÓN AQUÍ
+        favoriteIds={favoriteIds} // 🚀 INYECCIÓN PARA CROSS-SELLING
       />
-
       <ProductModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -1051,17 +1064,18 @@ const searchParams = useSearchParams()
         promotions={promotions}
         activePromoContext={activePromo}
         storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
+        isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
       />
 
-{/* 🚀 MODAL DE HISTORIAL DE PEDIDOS (CLEAN LOOK) */}
+      {/* 🚀 MODAL DE HISTORIAL DE PEDIDOS (CLEAN LOOK) */}
       <AnimatePresence>
         {isHistoryModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsHistoryModalOpen(false)} />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative bg-[var(--store-surface)] w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[80vh] border border-[var(--store-border)]"
             >
               <div className="p-6 pb-4 flex justify-between items-start shrink-0 border-b border-[var(--store-border)]/50">
@@ -1073,11 +1087,11 @@ const searchParams = useSearchParams()
                   <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
-              
+
               <div className="overflow-y-auto p-4 flex flex-col gap-3 no-scrollbar bg-[var(--store-bg)]">
-               {orderHistory.map((order) => (
-                  <a 
-                    key={order.id} 
+                {orderHistory.map((order) => (
+                  <a
+                    key={order.id}
                     href={`/quote/${order.id}`} // 🚀 Ruta relativa limpia (Evita el 404 por slug duplicado)
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1102,8 +1116,36 @@ const searchParams = useSearchParams()
           </div>
         )}
       </AnimatePresence>
-     
-<CartHUDIndicator />
+
+      {/* 🚀 MODAL GLOBAL DE AUTENTICACIÓN (PASSPORT) */}
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAuthModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md z-10"
+            >
+              <div className="absolute top-4 right-4 z-20">
+                <button onClick={() => setIsAuthModalOpen(false)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors active:scale-95">
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              <CustomerAuth storeName={store.name} onSuccess={() => setIsAuthModalOpen(false)} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <CartHUDIndicator />
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

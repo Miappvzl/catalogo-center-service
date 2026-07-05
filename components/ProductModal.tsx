@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -18,10 +18,11 @@ interface ProductModalProps {
     rates: { usd: number, eur: number }
     promotions?: any[]
     activePromoContext?: any
-    storeConfig?: any // 🚀 NUEVO
+    storeConfig?: any
+    isFavorite?: boolean // 🚀 ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
 }
 
-export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext, storeConfig }: ProductModalProps) {
+export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext, storeConfig, isFavorite = false }: ProductModalProps) {
     const { addItem } = useCart()
     const [supabase] = useState(() => getSupabase())
 
@@ -380,6 +381,22 @@ Mi duda es la siguiente: `;
                         <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
                             <X size={20} strokeWidth={2} />
                         </button>
+
+                        {/* 🚀 BOTÓN DE FAVORITO (MODAL) 
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+                          }}
+                          className={`absolute top-4 left-4 z-50 p-2 rounded-full transition-colors backdrop-blur border active:scale-95 ${
+                            isFavorite 
+                              ? 'bg-red-50/90 border-red-200 text-red-500 hover:bg-red-100' 
+                              : 'bg-[var(--store-surface)]/90 border-[var(--store-border)] text-[var(--store-surface-text)] hover:bg-[var(--store-bg)] hover:text-red-500'
+                          }`}
+                        >
+                            <Heart size={20} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
+                        </button>
+                        */}
 
                         <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -21,19 +21,24 @@ interface CheckoutProps {
     storeConfig: any
     products: any[]
     promotions?: any[]
-    affiliateCode?: string | null // 🚀 NUEVO
+    affiliateCode?: string | null
+    favoriteIds?: Set<string> // 🚀 ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
 }
 
-export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null }: CheckoutProps) {
+export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set() }: CheckoutProps) {
     const { items, removeItem, updateQuantity, addOrderToHistory } = useCart()
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState(1)
-    const [direction, setDirection] = useState(1) 
+    const [direction, setDirection] = useState(1)
     const [isTransitioning, setIsTransitioning] = useState(false) // 🚀 CANDADO SÍNCRONO
     const [cartBump, setCartBump] = useState(false)
 
-   // 🚀 ENRUTADOR ESPACIAL BLINDADO
+
+
+
+
+    // 🚀 ENRUTADOR ESPACIAL BLINDADO
     const changeStep = (newStep: number) => {
         setIsTransitioning(true); // 1. Matamos el scroll ANTES de animar
         setStep((prev) => {
@@ -42,25 +47,25 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         });
     };
 
-  // 🚀 FÍSICAS DE SUPERPOSICIÓN (Parallax Apple Style - ZERO BUGS)
+    // 🚀 FÍSICAS DE SUPERPOSICIÓN (Parallax Apple Style - ZERO BUGS)
     const walletVariants: Variants = {
         initial: (direction: number) => ({
             // Si avanza, viene de abajo (100%). Si retrocede, la bolsa nace un poco más arriba (-8%).
-            y: direction > 0 ? "100%" : "-8%", 
-            filter: direction > 0 ? "brightness(1)" : "brightness(0.6)", 
-            zIndex: direction > 0 ? 50 : 10,  
-            opacity: 1 
+            y: direction > 0 ? "100%" : "-8%",
+            filter: direction > 0 ? "brightness(1)" : "brightness(0.6)",
+            zIndex: direction > 0 ? 50 : 10,
+            opacity: 1
         }),
         animate: {
             y: "0%",
             filter: "brightness(1)",
-            zIndex: 30, 
+            zIndex: 30,
             opacity: 1,
             transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
         },
         exit: (direction: number) => ({
             // Si retrocede, cae (100%). Si avanza, la bolsa se esconde hacia arriba (-8%).
-            y: direction < 0 ? "100%" : "-8%", 
+            y: direction < 0 ? "100%" : "-8%",
             filter: direction < 0 ? "brightness(1)" : "brightness(0.6)",
             zIndex: direction < 0 ? 50 : 10,
             opacity: 1,
@@ -71,14 +76,14 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     // 🚀 ANTI-GHOST SCROLLBAR: Congela el scroll durante el vuelo 3D
     const scrollVariants: Variants = {
         initial: { overflowY: "hidden" },
-        animate: { 
+        animate: {
             // Magia: Lo reactiva SOLO cuando termina la animación
-            transitionEnd: { overflowY: "auto" } 
+            transitionEnd: { overflowY: "auto" }
         },
-        exit: { 
+        exit: {
             // Magia: Lo apaga en el milisegundo 0 del despegue
             overflowY: "hidden",
-            transition: { duration: 0 } 
+            transition: { duration: 0 }
         }
     };
 
@@ -91,7 +96,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             // y: [0, 5, -3, 0] -> Se hunde por el peso, rebota, se asienta.
             // scale: [1, 0.85, 1.15, 1] -> Se aplasta, se estira, recupera su forma.
 
-           if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10)
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10)
             cartControls.start({
                 y: [0, 5, -3, 0],
                 scale: [1, 0.85, 1.15, 1],
@@ -129,7 +134,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         }
     }, [isOpen, items.length, generatedOrderNumber]);
 
-   const [hasFiredConfetti, setHasFiredConfetti] = useState(false);
+    const [hasFiredConfetti, setHasFiredConfetti] = useState(false);
 
     // 🚀 EFECTO 3: Limpiador Inteligente Anti-Zombies
     useEffect(() => {
@@ -137,16 +142,16 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             setGeneratedOrderNumber(null);
             setGeneratedOrderId(null);
             setHasClickedWhatsApp(false);
-            setHasFiredConfetti(false); 
+            setHasFiredConfetti(false);
             if (step === 3) changeStep(1); // 🚀 Si añade un producto, lo regresamos a la bolsa
         }
     }, [items.length]);
 
-   // 🚀 EFECTO DE DOPAMINA (CONFETI INTELIGENTE BLINDADO)
+    // 🚀 EFECTO DE DOPAMINA (CONFETI INTELIGENTE BLINDADO)
     useEffect(() => {
         // 🚀 CRÍTICO: Añadimos isOpen para que jamás dispare si el cajón está cerrado
         if (step === 3 && !isWhatsAppInterception && !hasFiredConfetti && isOpen) {
-            
+
             const triggerConfetti = () => {
                 setHasFiredConfetti(true);
                 if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([30, 50, 30, 50, 50]);
@@ -188,7 +193,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const handleOpenModal = () => { changeStep(1); setIsOpen(true); } // 🚀 Actualizado
 
-   // 🚀 CIERRE SEGURO: Evitamos el Estado Zombie
+    // 🚀 CIERRE SEGURO: Evitamos el Estado Zombie
     const handleCloseModal = () => {
         setIsOpen(false);
         setTimeout(() => {
@@ -215,6 +220,55 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         })
         return recommendations.slice(0, 10)
     }, [items, products])
+
+
+    // --- 🚀 MÁQUINA DE SCROLL Y ESTADO REACTIVO PARA SUGERENCIAS ---
+    const recommendScrollRef = useRef<HTMLDivElement>(null)
+    const [scrollStatus, setScrollStatus] = useState({ left: false, right: false })
+
+    const checkScrollStatus = () => {
+        if (!recommendScrollRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = recommendScrollRef.current;
+
+        // Tolerancia de subpíxel para pantallas de alta densidad (Retina)
+        const canScrollLeft = scrollLeft > 2;
+        const canScrollRight = scrollLeft + clientWidth < scrollWidth - 2;
+
+        setScrollStatus({ left: canScrollLeft, right: canScrollRight });
+    };
+
+    const scrollRecommend = (dir: 'left' | 'right') => {
+        if (recommendScrollRef.current) {
+            const container = recommendScrollRef.current;
+            // Desplaza exactamente el ancho visible para una navegación fluida
+            const scrollAmount = container.clientWidth * 0.75;
+            container.scrollBy({
+                left: dir === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
+
+    useEffect(() => {
+        // Delay micro-optimizado para esperar que el DOM pinte los productos antes de calcular el scroll
+        const timer = setTimeout(() => {
+            checkScrollStatus();
+        }, 200);
+
+        window.addEventListener('resize', checkScrollStatus);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', checkScrollStatus);
+        };
+    }, [recommendedProducts]);
+
+    const recommendedMaskStyle = useMemo(() => {
+        const fadeWidth = '32px';
+        const leftMask = scrollStatus.left ? `transparent 0%, #000 ${fadeWidth}` : `#000 0%`;
+        const rightMask = scrollStatus.right ? `#000 calc(100% - ${fadeWidth}), transparent 100%` : `#000 100%`;
+        return { WebkitMaskImage: `linear-gradient(to right, ${leftMask}, ${rightMask})`, maskImage: `linear-gradient(to right, ${leftMask}, ${rightMask})` };
+    }, [scrollStatus]);
+
 
     // --- 🚀 MOTOR MATEMÁTICO PRINCIPAL ---
     const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
@@ -429,20 +483,20 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                 </div>
                             )}
 
-                          {/* CONTENEDOR MULTI-PASO (SOLID STACKING) */}
-<div className="flex-1 relative overflow-hidden bg-transparent">
+                            {/* CONTENEDOR MULTI-PASO (SOLID STACKING) */}
+                            <div className="flex-1 relative overflow-hidden bg-transparent">
                                 <AnimatePresence initial={false} custom={direction}>
 
-                                  {/* --- PASO 1: LA BOLSA --- */}
+                                    {/* --- PASO 1: LA BOLSA --- */}
                                     {step === 1 && (
-                                        <motion.div 
-                                            key="step-1" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                        <motion.div
+                                            key="step-1" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit"
                                             // 🚀 INYECCIÓN 1: overflow-hidden en el padre para cortar sangrados
                                             className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full z-10 origin-top will-change-transform shadow-2xl overflow-hidden"
                                         >
                                             {/* 🚀 INYECCIÓN 2: transform-gpu aísla el scroll en su propia capa de video */}
-                                           {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
-                                            <motion.div 
+                                            {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
+                                            <motion.div
                                                 variants={scrollVariants}
                                                 className="flex-1 overflow-x-hidden scroll-smooth no-scrollbar pb-[140px]"
                                                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -543,16 +597,37 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         ))}
                                                     </AnimatePresence>
                                                 </div>
-
-                                                {/* CROSS-SELLING */}
-                                                {recommendedProducts.length > 0 && (
-                                                    <div className="mt-8 border-t p-5 md:px-9 md:py-7 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
-                                                            <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
+{/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
+                                            {recommendedProducts.length > 0 && (
+                                                <div className="mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
+                                                        <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
+                                                    </div>
+                                                    
+                                                    {/* 🛡️ SE TRADUCE 'group' A 'group/carousel' PARA AISLAR EL CONTEXTO VISUAL */}
+                                                    <div className="w-full relative group/carousel flex items-center overflow-hidden">
+                                                        
+                                                        {/* Flecha Izquierda: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
+                                                        <div className={`absolute left-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${
+                                                            scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                                                        }`}>
+                                                            <button
+                                                                onClick={() => scrollRecommend('left')}
+                                                                className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
+                                                                aria-label="Desplazar izquierda"
+                                                            >
+                                                                <ChevronLeft size={14} strokeWidth={2.5} />
+                                                            </button>
                                                         </div>
-                                                        {/* 🚀 ASESINO DE SCROLL VERTICAL: Agregamos flex-row, flex-nowrap, overflow-y-hidden y pt-3 */}
-                                                        <div className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 ml-2 gap-4 pb-4 snap-x no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6 items-stretch">
+
+                                                        {/* Tira Horizontal de Scroll */}
+                                                        <div
+                                                            ref={recommendScrollRef}
+                                                            onScroll={checkScrollStatus}
+                                                            className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 gap-3 pb-4 snap-x no-scrollbar items-stretch w-full"
+                                                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', ...recommendedMaskStyle }}
+                                                        >
                                                             {recommendedProducts.map((product, index) => {
                                                                 const cashPrice = Number(product.usd_cash_price || 0)
                                                                 const markup = Number(product.usd_penalty || 0)
@@ -563,20 +638,38 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                     : (product.stock || 0) <= 0;
 
                                                                 return (
-                                                                    <div key={product.id} className="w-[150px] md:w-[160px] shrink-0 snap-start flex flex-col [&>div]:h-full">
-                                                                        <ProductCard
+                                                                    <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                       <ProductCard
                                                                             product={product}
                                                                             pricing={pricing}
                                                                             onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
                                                                             isOutOfStock={isCompletelyOutOfStock}
                                                                             index={index}
+                                                                            isFavorite={favoriteIds.has(String(product.id))}
                                                                         />
                                                                     </div>
                                                                 )
                                                             })}
                                                         </div>
+
+                                                        {/* Flecha Derecha: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
+                                                        <div className={`absolute right-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${
+                                                            scrollStatus.right || !scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                                                        }`}>
+                                                            <button
+                                                                onClick={() => scrollRecommend('right')}
+                                                                className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
+                                                                aria-label="Desplazar derecha"
+                                                            >
+                                                                <ChevronRight size={14} strokeWidth={2.5} />
+                                                            </button>
+                                                        </div>
+
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
+
+
                                                 {/* 🚀 NUDGE DE AHORRO: Actualizado con IVA Proporcional */}
                                                 {step1FxSavings > 0 && (
                                                     <div className="px-4 pb-10 bg-[var(--store-bg)] pt-6">
@@ -613,49 +706,49 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                         </motion.div>
                                     )}
 
-                                   {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
+                                    {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
                                     {step === 2 && (
-                                        <motion.div 
-                                            key="step-2" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                        <motion.div
+                                            key="step-2" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit"
                                             // 🚀 El padre solo anima y corta (overflow-hidden)
                                             className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full z-20 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)] overflow-hidden"
                                         >
-                                          {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
-                                            <motion.div 
+                                            {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}
+                                            <motion.div
                                                 variants={scrollVariants}
                                                 className="w-full h-full no-scrollbar"
                                                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                                             >
                                                 <CheckoutProcess
-                                                storeId={storeId}
-                                                storeConfig={storeConfig}
-                                                currency={currency}
-                                                rates={rates}
-                                                phone={phone}
-                                                cartEngine={cartEngine}
-                                                wholesaleDiscountList={wholesaleDiscountList}
-                                                wholesaleDiscountCash={wholesaleDiscountCash}
-                                                affiliateCode={affiliateCode}
-                                                affiliateDiscountList={affiliateDiscountList}
-                                                affiliateDiscountCash={affiliateDiscountCash}
-                                                onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
-                                                    setGeneratedOrderNumber(orderNumber);
-                                                    setWhatsappUrl(waUrl);
-                                                    setGeneratedOrderId(orderId);
-                                                    addOrderToHistory({ id: orderId, number: orderNumber });
-                                                    setIsWhatsAppInterception(true);
-                                                    changeStep(3); // 🚀 USA EL MOTOR ESPACIAL
-                                                }}
-                                                onBack={() => changeStep(1)} // 🚀 USA EL MOTOR ESPACIAL
-                                            />
-                                        </motion.div>
+                                                    storeId={storeId}
+                                                    storeConfig={storeConfig}
+                                                    currency={currency}
+                                                    rates={rates}
+                                                    phone={phone}
+                                                    cartEngine={cartEngine}
+                                                    wholesaleDiscountList={wholesaleDiscountList}
+                                                    wholesaleDiscountCash={wholesaleDiscountCash}
+                                                    affiliateCode={affiliateCode}
+                                                    affiliateDiscountList={affiliateDiscountList}
+                                                    affiliateDiscountCash={affiliateDiscountCash}
+                                                    onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
+                                                        setGeneratedOrderNumber(orderNumber);
+                                                        setWhatsappUrl(waUrl);
+                                                        setGeneratedOrderId(orderId);
+                                                        addOrderToHistory({ id: orderId, number: orderNumber });
+                                                        setIsWhatsAppInterception(true);
+                                                        changeStep(3); // 🚀 USA EL MOTOR ESPACIAL
+                                                    }}
+                                                    onBack={() => changeStep(1)} // 🚀 USA EL MOTOR ESPACIAL
+                                                />
+                                            </motion.div>
                                         </motion.div>
                                     )}
                                     {/* --- PASO 3: ÉXITO --- */}
                                     {step === 3 && (
-                                        <motion.div 
-                                            key="step-3" 
-                                            custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit" 
+                                        <motion.div
+                                            key="step-3"
+                                            custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit"
                                             className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)] z-30 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)]"
                                         >
 
@@ -710,8 +803,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 )}
                                             </AnimatePresence>
 
-                                           {/* 🚀 EL CHECKMARK GLORIOSO ANIMADO */}
-                                            <motion.div 
+                                            {/* 🚀 EL CHECKMARK GLORIOSO ANIMADO */}
+                                            <motion.div
                                                 initial={{ scale: 0 }}
                                                 animate={{ scale: 1 }}
                                                 transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
@@ -719,14 +812,14 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             >
                                                 {/* Efecto de expansión trasera */}
                                                 <motion.div initial={{ scale: 0, opacity: 1 }} animate={{ scale: 2, opacity: 0 }} transition={{ duration: 1, delay: 0.4 }} className="absolute inset-0 bg-[var(--store-incentive)] rounded-full" />
-                                                
+
                                                 {/* SVG que se dibuja a sí mismo */}
                                                 <svg className="w-10 h-10 text-[var(--store-incentive)] relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <motion.path 
-                                                        d="M20 6L9 17l-5-5" 
-                                                        initial={{ pathLength: 0 }} 
-                                                        animate={{ pathLength: 1 }} 
-                                                        transition={{ duration: 0.5, ease: "easeOut", delay: 0.5 }} 
+                                                    <motion.path
+                                                        d="M20 6L9 17l-5-5"
+                                                        initial={{ pathLength: 0 }}
+                                                        animate={{ pathLength: 1 }}
+                                                        transition={{ duration: 0.5, ease: "easeOut", delay: 0.5 }}
                                                     />
                                                 </svg>
                                             </motion.div>
@@ -791,7 +884,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     </span>
                                                     <div className="flex items-center gap-1">
                                                         <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
-                                                        <ArrowUpRight size={15} strokeWidth={2} className="color-[#00cd61] animate-pulse" />
+                                                        <ArrowUpRight size={15} strokeWidth={2} className="text-[#00cd61] animate-pulse" />
                                                     </div>
                                                 </a>
                                             </div>
@@ -807,3 +900,4 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         </>
     )
 }
+// 🛡️ AQUÍ SOLO DEBE QUEDAR UNA LLAVE. CUALQUIER OTRA ADICIONAL DEBE SER ELIMINADA.
