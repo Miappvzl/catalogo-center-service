@@ -645,7 +645,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                             onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
                                                                             isOutOfStock={isCompletelyOutOfStock}
                                                                             index={index}
-                                                                            isFavorite={favoriteIds.has(String(product.id))}
+                                                                            // 🚫 COMENTADO TEMPORALMENTE HASTA QUE LA FEATURE DE PASSPORT/FAVORITOS ESTÉ LISTA:
+                                                                            // isFavorite={favoriteIds.has(String(product.id))}
+                                                                          
                                                                         />
                                                                     </div>
                                                                 )
