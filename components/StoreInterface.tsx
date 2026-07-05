@@ -13,7 +13,7 @@ import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
-import CustomerAuth from '@/components/passport/CustomerAuth'
+//import CustomerAuth from '@/components/passport/CustomerAuth'
 
 
 
@@ -1117,7 +1117,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         )}
       </AnimatePresence>
 
-      {/* 🚀 MODAL GLOBAL DE AUTENTICACIÓN (PASSPORT) */}
+      {/* 🚀 MODAL GLOBAL DE AUTENTICACIÓN (PASSPORT) 
       <AnimatePresence>
         {isAuthModalOpen && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -1144,6 +1144,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
           </div>
         )}
       </AnimatePresence>
+      */}
 
       <CartHUDIndicator />
       <style jsx global>{`
