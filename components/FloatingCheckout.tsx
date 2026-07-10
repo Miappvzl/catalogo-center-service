@@ -597,79 +597,77 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         ))}
                                                     </AnimatePresence>
                                                 </div>
-{/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
-                                            {recommendedProducts.length > 0 && (
-                                                <div className="mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
-                                                        <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
-                                                    </div>
-                                                    
-                                                    {/* 🛡️ SE TRADUCE 'group' A 'group/carousel' PARA AISLAR EL CONTEXTO VISUAL */}
-                                                    <div className="w-full relative group/carousel flex items-center overflow-hidden">
-                                                        
-                                                        {/* Flecha Izquierda: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
-                                                        <div className={`absolute left-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${
-                                                            scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
-                                                        }`}>
-                                                            <button
-                                                                onClick={() => scrollRecommend('left')}
-                                                                className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
-                                                                aria-label="Desplazar izquierda"
+                                                {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
+                                                {recommendedProducts.length > 0 && (
+                                                    <div className="mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
+                                                            <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
+                                                        </div>
+
+                                                        {/* 🛡️ SE TRADUCE 'group' A 'group/carousel' PARA AISLAR EL CONTEXTO VISUAL */}
+                                                        <div className="w-full relative group/carousel flex items-center overflow-hidden">
+
+                                                            {/* Flecha Izquierda: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
+                                                            <div className={`absolute left-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                                                                }`}>
+                                                                <button
+                                                                    onClick={() => scrollRecommend('left')}
+                                                                    className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
+                                                                    aria-label="Desplazar izquierda"
+                                                                >
+                                                                    <ChevronLeft size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </div>
+
+                                                            {/* Tira Horizontal de Scroll */}
+                                                            <div
+                                                                ref={recommendScrollRef}
+                                                                onScroll={checkScrollStatus}
+                                                                className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 gap-3 pb-4 snap-x no-scrollbar items-stretch w-full"
+                                                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', ...recommendedMaskStyle }}
                                                             >
-                                                                <ChevronLeft size={14} strokeWidth={2.5} />
-                                                            </button>
+                                                                {recommendedProducts.map((product, index) => {
+                                                                    const cashPrice = Number(product.usd_cash_price || 0)
+                                                                    const markup = Number(product.usd_penalty || 0)
+                                                                    const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
+
+                                                                    const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
+                                                                        ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
+                                                                        : (product.stock || 0) <= 0;
+
+                                                                    return (
+                                                                        <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                            <ProductCard
+                                                                                product={product}
+                                                                                pricing={pricing}
+                                                                                onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
+                                                                                isOutOfStock={isCompletelyOutOfStock}
+                                                                                index={index}
+                                                                            
+                                                                            isFavorite={favoriteIds.has(String(product.id))}
+
+                                                                            />
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+
+                                                            {/* Flecha Derecha: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
+                                                            <div className={`absolute right-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${scrollStatus.right || !scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                                                                }`}>
+                                                                <button
+                                                                    onClick={() => scrollRecommend('right')}
+                                                                    className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
+                                                                    aria-label="Desplazar derecha"
+                                                                >
+                                                                    <ChevronRight size={14} strokeWidth={2.5} />
+                                                                </button>
+                                                            </div>
+
                                                         </div>
-
-                                                        {/* Tira Horizontal de Scroll */}
-                                                        <div
-                                                            ref={recommendScrollRef}
-                                                            onScroll={checkScrollStatus}
-                                                            className="flex flex-row flex-nowrap overflow-x-auto overflow-y-hidden pt-3 gap-3 pb-4 snap-x no-scrollbar items-stretch w-full"
-                                                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', ...recommendedMaskStyle }}
-                                                        >
-                                                            {recommendedProducts.map((product, index) => {
-                                                                const cashPrice = Number(product.usd_cash_price || 0)
-                                                                const markup = Number(product.usd_penalty || 0)
-                                                                const pricing = { cashPrice, priceInBs: (cashPrice + markup) * activeRate, discountPercent: 0, hasDiscount: markup > 0, listPrice: cashPrice + markup, isPromo: false, compareAt: Number(product.compare_at_usd || 0) }
-
-                                                                const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
-                                                                    ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-                                                                    : (product.stock || 0) <= 0;
-
-                                                                return (
-                                                                    <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
-                                                                       <ProductCard
-                                                                            product={product}
-                                                                            pricing={pricing}
-                                                                            onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
-                                                                            isOutOfStock={isCompletelyOutOfStock}
-                                                                            index={index}
-                                                                            // 🚫 COMENTADO TEMPORALMENTE HASTA QUE LA FEATURE DE PASSPORT/FAVORITOS ESTÉ LISTA:
-                                                                            // isFavorite={favoriteIds.has(String(product.id))}
-                                                                          
-                                                                        />
-                                                                    </div>
-                                                                )
-                                                            })}
-                                                        </div>
-
-                                                        {/* Flecha Derecha: Responde estrictamente a md:group-hover/carousel:opacity-100 */}
-                                                        <div className={`absolute right-2 z-30 hidden md:flex items-center transition-all duration-300 md:opacity-0 md:group-hover/carousel:opacity-100 ${
-                                                            scrollStatus.right || !scrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
-                                                        }`}>
-                                                            <button
-                                                                onClick={() => scrollRecommend('right')}
-                                                                className="p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 border border-[var(--store-border)]/10"
-                                                                aria-label="Desplazar derecha"
-                                                            >
-                                                                <ChevronRight size={14} strokeWidth={2.5} />
-                                                            </button>
-                                                        </div>
-
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
 
 
                                                 {/* 🚀 NUDGE DE AHORRO: Actualizado con IVA Proporcional */}
@@ -902,4 +900,3 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         </>
     )
 }
-// 🛡️ AQUÍ SOLO DEBE QUEDAR UNA LLAVE. CUALQUIER OTRA ADICIONAL DEBE SER ELIMINADA.

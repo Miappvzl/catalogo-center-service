@@ -13,7 +13,7 @@ import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
-//import CustomerAuth from '@/components/passport/CustomerAuth'
+import CustomerAuth from '@/components/passport/CustomerAuth'
 
 
 
@@ -183,7 +183,7 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // 1. TODOS LOS HOOKS DE ESTADO JUNTOS (INCONDICIONALES)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -552,6 +552,10 @@ export default function StoreInterface({ store, products, rates, promotions = []
     }
   }, [searchParams, store]);
 
+  useEffect(() => {
+  handleCategoryScroll();
+}, []);
+
   const handleOpenProduct = (product: any) => { setSelectedProductForModal(product); setIsModalOpen(true); }
 
   const getProductPricing = (product: any) => {
@@ -565,27 +569,42 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
   const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
 
- 
+  // Estado para controlar si el scroll ha avanzado hacia la derecha (activando la máscara izquierda)
+const [isScrolledLeft, setIsScrolledLeft] = useState(false);
+
+// Función atada al evento onScroll del contenedor
+const handleCategoryScroll = () => {
+  if (categoryScrollRef.current) {
+    // Si scrollLeft es mayor a 0, significa que nos hemos desplazado
+    setIsScrolledLeft(categoryScrollRef.current.scrollLeft > 0);
+  }
+};
+
+const dynamicMask = `linear-gradient(to right, ${
+  isScrolledLeft ? 'transparent' : '#000'
+} 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
+
+
   // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
   return (
     <div className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]" style={{
-    
-        // Los 3 originales
-        '--store-primary': activeTheme.colors?.primary || '#000000',
-        '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
-        '--store-bg': activeTheme.colors?.background || '#ffffff',
 
-        // 🚀 Los 4 nuevos que le dan soporte absoluto al Modo Oscuro y White-Label
-        '--store-text-main': activeTheme.colors?.text_main || '#111111',
-        '--store-surface': activeTheme.colors?.surface || '#ffffff',
-        '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
-        '--store-border': activeTheme.colors?.border || '#d4d4d499',
-        // 🚀 La nueva variable psicológica
-        '--store-incentive': activeTheme.colors?.incentive || '#059669',
+      // Los 3 originales
+      '--store-primary': activeTheme.colors?.primary || '#000000',
+      '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
+      '--store-bg': activeTheme.colors?.background || '#ffffff',
 
-      } as React.CSSProperties}
+      // 🚀 Los 4 nuevos que le dan soporte absoluto al Modo Oscuro y White-Label
+      '--store-text-main': activeTheme.colors?.text_main || '#111111',
+      '--store-surface': activeTheme.colors?.surface || '#ffffff',
+      '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
+      '--store-border': activeTheme.colors?.border || '#d4d4d499',
+      // 🚀 La nueva variable psicológica
+      '--store-incentive': activeTheme.colors?.incentive || '#059669',
+
+    } as React.CSSProperties}
     >
 
       {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
@@ -680,7 +699,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                 )}
               </div>
 
-              {/* 🚀 GATILLO PERFIL (MOBILE) 
+              {/* 🚀 GATILLO PERFIL (MOBILE)  */}
               <div className="md:hidden shrink-0 w-11 h-11">
                 <button
                   onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
@@ -690,7 +709,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                   <UserCircle size={18} strokeWidth={2.5} />
                 </button>
               </div>
-               */}
+
 
               {/* 🚀 GATILLO HISTORIAL (MOBILE ONLY) - Permite acceso al PDF limpiamente */}
               {orderHistory && orderHistory.length > 0 && (
@@ -709,58 +728,60 @@ export default function StoreInterface({ store, products, rates, promotions = []
               )}
             </div>
 
-           {/* --- CONTENEDOR DE CATEGORÍAS (Con Máscara Alfa Anti-Líneas) --- */}
-<div className="w-full md:flex-1 min-w-0 relative group flex items-center">
-  
-  {/* Flecha Izquierda: Ahora es un contenedor limpio, sin degradados de fondo */}
-  <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-    <button
-      onClick={() => scrollCategories('left')}
-      className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
-      aria-label="Desplazar izquierda"
-    >
-      <ChevronLeft size={14} strokeWidth={2.5} />
-    </button>
-  </div>
+            {/* --- CONTENEDOR DE CATEGORÍAS (Con Máscara Alfa Anti-Líneas) --- */}
+            <div className="w-full md:flex-1 min-w-0 relative group flex items-center">
 
-  {/* 🚀 EL CAMBIO CLAVE: 
+              {/* Flecha Izquierda: Ahora es un contenedor limpio, sin degradados de fondo */}
+              <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={() => scrollCategories('left')}
+                  className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
+                  aria-label="Desplazar izquierda"
+                >
+                  <ChevronLeft size={14} strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {/* 🚀 EL CAMBIO CLAVE: 
     Se aplican propiedades de máscara CSS para desvanecer los píxeles directamente.
     Esto hace que cualquier texto o pastilla se disuelva en la nada de forma fluida.
   */}
-  <div
-    ref={categoryScrollRef}
-    className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
-    style={{
-      WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)',
-      maskImage: 'linear-gradient(to right, transparent 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)',
-      scrollbarWidth: 'none',
-      msOverflowStyle: 'none'
-    }}
-  >
-    {categories.map((category) => (
-      <CategoryPill
-        key={category}
-        label={category}
-        active={selectedCategory === category}
-        onClick={() => setSelectedCategory(category)}
-      />
-    ))}
-  </div>
-
-  {/* Flecha Derecha: Contenedor limpio, sin degradados de fondo */}
-  <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-    <button
-      onClick={() => scrollCategories('right')}
-      className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
-      aria-label="Desplazar derecha"
-    >
-      <ChevronRight size={14} strokeWidth={2.5} />
-    </button>
-  </div>
-
+            {/* 🚀 EL CAMBIO CLAVE: Máscara reactiva vinculada al estado del scroll */}
+<div 
+  ref={categoryScrollRef}
+  onScroll={handleCategoryScroll}
+  className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
+  style={{
+    WebkitMaskImage: dynamicMask,
+    maskImage: dynamicMask,
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none'
+  }}
+>
+  {categories.map((category) => (
+    <CategoryPill
+      key={category}
+      label={category}
+      active={selectedCategory === category}
+      onClick={() => setSelectedCategory(category)}
+    />
+  ))}
 </div>
 
-            {/* 🚀 GATILLO DE PERFIL (DESKTOP)
+              {/* Flecha Derecha: Contenedor limpio, sin degradados de fondo */}
+              <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={() => scrollCategories('right')}
+                  className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
+                  aria-label="Desplazar derecha"
+                >
+                  <ChevronRight size={14} strokeWidth={2.5} />
+                </button>
+              </div>
+
+            </div>
+
+            {/* 🚀 GATILLO DE PERFIL (DESKTOP)  */}
             <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
               <button
                 onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
@@ -770,7 +791,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                 <UserCircle size={18} strokeWidth={2.5} />
               </button>
             </div>
-             */}
+
 
             {/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
             {orderHistory && orderHistory.length > 0 && (
@@ -916,9 +937,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
                 {/* 🚀 BOTÓN IZQUIERDO (Clean Look Apple Style - Control de Hover de Hardware) */}
                 <button
                   onClick={() => scrollFeatured('left')}
-                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${
-                    featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
-                  }`}
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                    }`}
                   aria-label="Anterior"
                 >
                   <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
@@ -944,7 +964,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                           onOpen={handleOpenProduct}
                           isOutOfStock={isCompletelyOutOfStock}
                           index={idx}
-                          //isFavorite={favoriteIds.has(String(product.id))}
+                          isFavorite={favoriteIds.has(String(product.id))}
                         />
                       </div>
                     )
@@ -954,9 +974,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
                 {/* 🚀 BOTÓN DERECHO (Clean Look Apple Style - Control de Hover de Hardware) */}
                 <button
                   onClick={() => scrollFeatured('right')}
-                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${
-                    featuredScrollStatus.right || !featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
-                  }`}
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.right || !featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                    }`}
                   aria-label="Siguiente"
                 >
                   <ChevronRight size={24} strokeWidth={2.5} className="-mr-0.5" />
@@ -982,7 +1001,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
                   index={index} // 🚀 CRÍTICO: Pasar el index
-                  //isFavorite={favoriteIds.has(String(product.id))}
+                  isFavorite={favoriteIds.has(String(product.id))}
                 />
               )
             })}
@@ -1117,7 +1136,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         )}
       </AnimatePresence>
 
-      {/* 🚀 MODAL GLOBAL DE AUTENTICACIÓN (PASSPORT) 
+      {/* 🚀 MODAL GLOBAL DE AUTENTICACIÓN (PASSPORT)   */}
       <AnimatePresence>
         {isAuthModalOpen && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -1144,7 +1163,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
           </div>
         )}
       </AnimatePresence>
-      */}
+
 
       <CartHUDIndicator />
       <style jsx global>{`

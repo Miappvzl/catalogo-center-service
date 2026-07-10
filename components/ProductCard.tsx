@@ -1,7 +1,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame, Heart } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion' 
@@ -12,9 +12,10 @@ interface ProductCardProps {
   onOpen: (product: any) => void;
   isOutOfStock?: boolean;
   index?: number;
+  isFavorite?: boolean; // 🚀 NUEVO
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index }: ProductCardProps) {
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index, isFavorite = false }: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false); // 🚀 Control del Blur-to-Clear
 
   const penalty = Number(product.usd_penalty || 0);
@@ -85,6 +86,24 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
                 -{promoPercent}%
             </div>
         )}
+        
+        {/* 🚀 BOTÓN DE FAVORITO (INTENCIÓN DE COMPRA) */}
+        
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+          }}
+          className={`absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20 p-2 backdrop-blur-md rounded-full transition-all shadow-sm active:scale-90 ${
+            isFavorite 
+              ? 'bg-red-50 text-red-500 hover:bg-red-100' 
+              : 'bg-[var(--store-surface)]/80 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)]'
+          }`}
+          aria-label="Añadir a favoritos"
+        >
+          <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
+        </button>
+        
 
         {uniqueColors.length > 1 && (
             <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">

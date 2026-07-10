@@ -169,10 +169,8 @@ export default async function AdminDashboard() {
 
 
 
-    return (
-
-        <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative no-scrrollbar">
-
+ return (
+    <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
             <AdminHeader store={store} />
 
 
@@ -431,11 +429,7 @@ export default async function AdminDashboard() {
 
             {/* Inyección del Modal One-Time */}
 
-            <FeatureOnboarding />
-
-
-
-            <FeatureLaunchPayPal />
+        
 
         </div>
 

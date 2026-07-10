@@ -75,6 +75,8 @@ input:-webkit-autofill:active {
 
 
 
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -180,4 +182,43 @@ body {
   }
 }
 
+/* 1. Para Chrome, Safari, Edge y Opera (Efecto de scroll flotante) */
+::-webkit-scrollbar {
+  /* Hacemos el área del scroll más ancha para dar espacio al aire lateral */
+  width: 14px !important; 
+  height: 14px !important;
+}
 
+/* Ocultar por completo las flechas de arriba y abajo */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* El fondo debe ser totalmente transparente para que se vea el fondo de tu web */
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* La barra negra que se desliza */
+::-webkit-scrollbar-thumb {
+  background-color: #66666692 !important; /* Color negro */
+  border-radius: 9999px !important; /* Mantiene la forma de píldora redondeada */
+  
+  /* TRUCO PARA EL EFECTO FLOTANTE: */
+  background-clip: padding-box !important; /* Evita que el color negro invada el borde transparente */
+  border: 3.9px solid transparent !important; /* Este borde transparente de 4px crea la separación del borde de la pantalla */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #1a1a1a91 !important;
+}
+
+/* 2. Para Firefox (La personalización avanzada no está soportada de la misma forma) */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #00000094 transparent;
+  }
+}

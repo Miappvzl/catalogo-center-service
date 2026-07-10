@@ -382,7 +382,7 @@ Mi duda es la siguiente: `;
                             <X size={20} strokeWidth={2} />
                         </button>
 
-                        {/* 🚀 BOTÓN DE FAVORITO (MODAL) 
+                        {/* 🚀 BOTÓN DE FAVORITO (MODAL) */}
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -396,7 +396,7 @@ Mi duda es la siguiente: `;
                         >
                             <Heart size={20} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
                         </button>
-                        */}
+                        
 
                         <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (

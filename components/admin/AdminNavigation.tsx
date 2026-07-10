@@ -3,18 +3,21 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText, User } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText, User, Gift } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useEditorGuard } from '@/app/store/useEditorGuard'
 import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+// 🚀 IMPORTA EL NUEVO MODAL PROMOCIONAL AL INICIO DE TU ARCHIVO AdminNavigation.tsx:
+import VueltoPromoModal from '@/components/admin/VueltoPromoModal';
 
 const NAV_LINKS = [
   // 📌 General
   { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General' },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General' },
+  { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' }, // 🚀 RUTA DE CLIENTES INTEGRADA
 
   // 📌 Punto de Venta
   { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
@@ -98,8 +101,7 @@ const GuardedLink = ({ href, children, className }: any) => {
 
 
 
-// --- DESKTOP SIDEBAR (Arquitectura de Nivel Élite - Zero Reflow) ---
-const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
+const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void }) => {
   const [copied, setCopied] = useState(false)
   const copyLink = () => {
     if (!store?.slug) return
@@ -224,8 +226,26 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
         })}
       </nav>
 
-      {/* BOTTOM SECTION */}
+      
+        {/* BOTTOM SECTION */}
       <div className="mt-auto pt-4 border-t border-gray-100 space-y-1 px-3 pb-6 flex-shrink-0">
+        
+       {/* 🚀 ITEM NATIVO EN SIDEBAR (Se vuelve un botón gradiente violeta sutil e integrado) */}
+        {!isVueltoActive && (
+          <button
+            onClick={onOpenPromo} // 🚀 CORREGIDO: Llama al callback prop
+            className="w-full flex items-center p-1.5 rounded-xl bg-gradient-to-r from-[#000000c3] to-[#1e1533] text-white hover:opacity-95 transition-all text-left shadow-[0_8px_30px_rgb(79,55,211,0.08)] mb-2"
+          >
+            <div className="flex items-center justify-center w-10 h-10 flex-shrink-0">
+              <Gift size={18} className="animate-pulse text-white" />
+            </div>
+            <span className="ml-3 text-xs font-medium whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-[400ms]">
+              Vuelto Inteligente
+            </span>
+          </button>
+        )}
+
+        
         {store && (
           <div className="flex items-center rounded-xl bg-white group-hover/sidebar:bg-gray-50 transition-colors overflow-hidden border border-transparent group-hover/sidebar:border-gray-100">
             <Link
@@ -284,8 +304,7 @@ const DesktopSidebar = ({ pathname, store, onLogout }: { pathname: string, store
   );
 }
 
-// --- MOBILE SIDEBAR (Arquitectura de Nivel Élite) ---
-const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store: any, onLogout: () => void }) => {
+const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -408,6 +427,19 @@ const MobileSidebar = ({ pathname, store, onLogout }: { pathname: string, store:
 
                 )
               })}
+
+              {/* 🚀 ITEM NATIVO EN EL MENU LATERAL MÓVIL */}
+              {!isVueltoActive && (
+                <div className="pt-2">
+                  <button
+                    onClick={onOpenPromo} // 🚀 CORREGIDO: Llama al callback prop
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#000000] to-[#153322] shadow-[0_8px_30px_rgb(79,55,211,0.08)]"
+                  >
+                    <Gift size={20} className="animate-pulse" />
+                    <span>Activar Vuelto Inteligente</span>
+                  </button>
+                </div>
+              )}
               <div className="pt-4 mt-4 border-t border-gray-100">
                 <GuardedLink
                   href="/admin/product/new"
@@ -564,11 +596,17 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     </div>
   )
 }
+
+
 interface NavProps { store: any }
 export default function AdminNavigation({ store }: NavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = getSupabase()
+
+  // Estado reactivo local para renderizado en caliente del modal promo
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [storeConfigLocal, setStoreConfigLocal] = useState(store?.payment_config || {});
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -576,11 +614,42 @@ export default function AdminNavigation({ store }: NavProps) {
     router.push('/login')
   }
 
+  // Comprobar estado de activación de manera reactiva local
+  const isVueltoActive = storeConfigLocal?.store_credit_active === true;
+
   return (
     <>
-      <DesktopSidebar pathname={pathname} store={store} onLogout={handleLogout} />
-      <MobileSidebar pathname={pathname} store={store} onLogout={handleLogout} />
+      {/* 🚀 Propagamos isVueltoActive y onOpenPromo hacia los componentes hijos */}
+      <DesktopSidebar 
+        pathname={pathname} 
+        store={store} 
+        onLogout={handleLogout} 
+        isVueltoActive={isVueltoActive} 
+        onOpenPromo={() => setPromoModalOpen(true)} 
+      />
+      <MobileSidebar 
+        pathname={pathname} 
+        store={store} 
+        onLogout={handleLogout} 
+        isVueltoActive={isVueltoActive} 
+        onOpenPromo={() => setPromoModalOpen(true)} 
+      />
       <MobileBottomBar pathname={pathname} />
+
+      {/* 🚀 MODAL PROMOCIONAL CON AUDITORÍA LEGAL */}
+      {store && (
+        <VueltoPromoModal
+          isOpen={promoModalOpen}
+          onClose={() => setPromoModalOpen(false)}
+          storeId={store.id}
+          onSuccess={() => {
+            // Sincronización de estado instantánea en caliente (0ms)
+            const updatedConfig = { ...storeConfigLocal, store_credit_active: true };
+            setStoreConfigLocal(updatedConfig);
+            router.refresh();
+          }}
+        />
+      )}
     </>
   )
 }
