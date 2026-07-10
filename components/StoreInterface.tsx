@@ -14,6 +14,7 @@ import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import CustomerAuth from '@/components/passport/CustomerAuth'
+import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRADA
 
 
 
@@ -699,10 +700,11 @@ const dynamicMask = `linear-gradient(to right, ${
                 )}
               </div>
 
-              {/* 🚀 GATILLO PERFIL (MOBILE)  */}
+             {/* 🚀 GATILLO PERFIL (MOBILE)  */}
               <div className="md:hidden shrink-0 w-11 h-11">
                 <button
-                  onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
+                  // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
+                  onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
                   className="w-full h-full flex items-center justify-center relative rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] active:scale-95 transition-all duration-300"
                   title="Mi Perfil"
                 >
@@ -784,7 +786,8 @@ const dynamicMask = `linear-gradient(to right, ${
             {/* 🚀 GATILLO DE PERFIL (DESKTOP)  */}
             <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
               <button
-                onClick={() => currentUser ? router.push('/passport') : setIsAuthModalOpen(true)}
+                // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
+                onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
                 className="cursor-pointer relative p-3 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
                 title="Mi Perfil"
               >
