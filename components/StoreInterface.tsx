@@ -296,7 +296,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return () => subscription.unsubscribe()
   }, [supabase])
 
- // 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos
+// 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos (Vía RPC Seguro)
   useEffect(() => {
     if (!currentUser || !store?.id) {
       setFavoriteIds(new Set())
@@ -305,12 +305,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
     const initCustomerOnStore = async () => {
       try {
-        // 1. Silent Onboarding: Aseguramos que exista la fila de saldo local (a $0.00) para registrar al cliente en esta tienda
-        // Se ejecuta con upsert defensivo para no sobreescribir balances si el cliente ya tiene saldo real
-        await supabase.from('store_credits').upsert(
-          { customer_id: currentUser.id, store_id: store.id, balance_usd: 0 },
-          { onConflict: 'customer_id,store_id' }
-        ).select().maybeSingle();
+        // 1. Silent Onboarding Seguro: Invocamos el RPC con privilegios elevados en el servidor
+        await supabase.rpc('onboard_customer', { p_store_id: store.id });
 
         // 2. Cargar los favoritos locales del cliente de forma normal
         const { data } = await supabase
