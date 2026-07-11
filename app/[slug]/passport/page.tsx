@@ -1,11 +1,12 @@
-// app/[slug]/passport/page.tsx
 import { createClient } from '@/utils/supabaseServer';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import StoreCreditCard from '@/components/passport/StoreCreditCard';
 import { Metadata } from 'next';
 import { UserCircle, Heart, Package, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import ShippingProfileForm from '@/components/passport/ShippingProfileForm';
+import { headers } from 'next/headers'; // 🚀 IMPORTACIÓN AGREGADA PARA LECTURA DE HOST EN SSR
+import { getOptimizedUrl } from '@/utils/cdn';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function PassportPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = await createClient();
+
+  // 🚀 DETECTAR SUBDOMINIO EN EL SERVIDOR PARA ENRUTAMIENTO DE RETORNO SEGURO
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const isSubdomain = 
+    host.includes('.') && 
+    !host.startsWith('www.') && 
+    !host.includes('localhost') && 
+    !host.startsWith('preziso.shop');
+
+  // Si estamos en subdominio el inicio es "/", si estamos en subcarpeta o localhost es "/[slug]"
+  const homeHref = isSubdomain ? '/' : `/${slug}`;
 
   // 1. OBTENER TIENDA Y USUARIO (En paralelo para reducir latencia)
   const [storeResponse, authResponse] = await Promise.all([
@@ -56,9 +69,8 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
               Inicia sesión para acceder a tu perfil, saldo a favor y favoritos en {store.name}.
             </p>
           </div>
-          {/* Asumiendo que tienes una ruta de login. Si no, esto puede abrir un modal */}
          <Link 
-            href="/"
+            href={homeHref} // 🚀 CORREGIDO CON HOMEHREF DINÁMICO
             className="mt-4 bg-black text-white px-8 py-4 rounded-xl font-medium tracking-wide shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-gray-900 transition-all"
           >
             Volver a la tienda
@@ -69,7 +81,6 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
   }
 
   // 3. OBTENER DATOS DEL PASSPORT (Saldo, Historial, Favoritos, Perfil)
-  // Nota: RLS garantiza que el usuario solo vea sus propios datos.
   
   // 3.1 Perfil del cliente
   const { data: customer } = await supabase
@@ -119,9 +130,9 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
   return (
     <div className="min-h-screen bg-white font-sans pb-20">
       {/* HEADER MINIMALISTA */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-50">
         <div className="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-black hover:opacity-70 transition-opacity">
+          <Link href={homeHref} className="flex items-center gap-3 text-black hover:opacity-70 transition-opacity">
             <ArrowLeft size={20} />
             <span className="font-medium tracking-wide">Volver a {store.name}</span>
           </Link>
@@ -148,7 +159,7 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
             storeId={store.id}
           />
 
-          {/* 🚀 NUEVO FORMULARIO CONTENEDOR DE IDENTIDAD UNIFICADA Y CHECKOUT 1-CLICK */}
+          {/* 🚀 FORMULARIO CONTENEDOR DE IDENTIDAD UNIFICADA Y CHECKOUT 1-CLICK */}
           <ShippingProfileForm 
             customerId={user.id} 
             initialData={{
@@ -179,7 +190,7 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
                 Aún no tienes productos guardados. Explora el catálogo y guarda lo que te gusta para más tarde.
               </p>
              <Link 
-                href="/"
+                href={homeHref} // 🚀 CORREGIDO CON HOMEHREF DINÁMICO
                 className="mt-2 text-black font-semibold hover:underline underline-offset-4"
               >
                 Explorar catálogo
@@ -192,7 +203,7 @@ export default async function PassportPage({ params }: { params: Promise<{ slug:
                   <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden shrink-0 relative">
                     {fav.products?.image_url ? (
                       <img 
-                        src={fav.products.image_url} 
+                        src={getOptimizedUrl(fav.products.image_url)} 
                         alt={fav.products.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
