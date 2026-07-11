@@ -2401,11 +2401,11 @@ export default function CheckoutProcess({
                                 onClick={handleCheckout}
                                 // 🚀 CORREGIDO: Bloqueo inteligente condicionado a isStoreCreditActive
                                 disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full font-black text-xs md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${
+                                className={`h-full font-black text-xs rounded-full md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${
                                     checkoutState !== 'idle'
                                         ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
                                         : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
-                                            ? "w-full bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none" // ESTADO GRIS APAGADO
+                                            ? "w-full bg-gray-100 text-gray-400 border  border-gray-200 cursor-not-allowed shadow-none" // ESTADO GRIS APAGADO
                                             : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] shadow-black/10"
                                 }`}
                             >

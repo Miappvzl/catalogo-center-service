@@ -296,20 +296,38 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return () => subscription.unsubscribe()
   }, [supabase])
 
+ // 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos
   useEffect(() => {
     if (!currentUser || !store?.id) {
       setFavoriteIds(new Set())
       return
     }
-    const fetchFavorites = async () => {
-      const { data } = await supabase
-        .from('favorites')
-        .select('product_id')
-        .eq('store_id', store.id)
-        .eq('customer_id', currentUser.id)
-      if (data) setFavoriteIds(new Set(data.map((f: any) => String(f.product_id))))
+
+    const initCustomerOnStore = async () => {
+      try {
+        // 1. Silent Onboarding: Aseguramos que exista la fila de saldo local (a $0.00) para registrar al cliente en esta tienda
+        // Se ejecuta con upsert defensivo para no sobreescribir balances si el cliente ya tiene saldo real
+        await supabase.from('store_credits').upsert(
+          { customer_id: currentUser.id, store_id: store.id, balance_usd: 0 },
+          { onConflict: 'customer_id,store_id' }
+        ).select().maybeSingle();
+
+        // 2. Cargar los favoritos locales del cliente de forma normal
+        const { data } = await supabase
+          .from('favorites')
+          .select('product_id')
+          .eq('store_id', store.id)
+          .eq('customer_id', currentUser.id)
+          
+        if (data) {
+          setFavoriteIds(new Set(data.map((f: any) => String(f.product_id))))
+        }
+      } catch (err) {
+        console.error('Alerta silenciosa: Falló el onboarding de inquilino para el cliente:', err);
+      }
     }
-    fetchFavorites()
+
+    initCustomerOnStore();
   }, [currentUser, store?.id, supabase])
 
   useEffect(() => {
