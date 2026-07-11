@@ -718,10 +718,14 @@ export default function CheckoutProcess({
     };
 
 
+   
+
     // 🚀 LÓGICA SMART TENDER Y CÁLCULO DE VUELTO (Anclado a la Verdad Absoluta)
+    const isStoreCreditActive = storeConfig?.payment_config?.store_credit_active === true; // 🚀 CONTROL DE ACTIVACIÓN DE VUELTO
+
     const targetCashAmount = Math.round(Math.max(0, totalCashUSD - appliedCreditUSD) * 100) / 100;
     const targetListAmount = Math.round(Math.max(0, totalListUSD - appliedCreditUSD) * 100) / 100;
-
+    
     // Parseo a prueba de balas (Soporta comas y puntos)
     const cleanTenderedStr = tenderedAmountStr.replace(',', '.').replace(/[^0-9.]/g, '');
     const tenderedAmount = Math.round((parseFloat(cleanTenderedStr) || 0) * 100) / 100;
@@ -729,7 +733,8 @@ export default function CheckoutProcess({
     let expectedChange = 0;
     let changeError = '';
 
-    if (tenderedAmount > targetCashAmount) {
+    // 🚀 MODIFICADO: Solo calcula vuelto si la tienda tiene activo el sistema
+    if (isStoreCreditActive && tenderedAmount > targetCashAmount) {
         expectedChange = Math.round((tenderedAmount - targetCashAmount) * 100) / 100;
         // 🚀 REGLA DE NEGOCIO: Evitar vueltos absurdos (Límite $100)
         if (expectedChange > 100) {
@@ -771,6 +776,8 @@ export default function CheckoutProcess({
         }
     }, [isFullyCoveredByCredit]);
 
+    
+
     // --- PROCESAR ORDEN A BASE DE DATOS (CON LABOR ILLUSION) ---
     const handleCheckout = async () => {
         // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
@@ -800,8 +807,8 @@ export default function CheckoutProcess({
             newErrors.payment = "Selecciona un método de pago";
         }
 
-        // 🚀 CANDADO LEGAL: VUELTO VIRTUAL Y KYC
-        if (activePaymentInput === 'Efectivo' && paymentMode === 'single') {
+       // 🚀 CANDADO LEGAL: VUELTO VIRTUAL Y KYC (Sincronizado con isStoreCreditActive)
+        if (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single') {
             if (tenderedAmount < targetCashAmount) {
                 newErrors.tendered = "El monto entregado es menor al total a pagar.";
             } else if (changeError) {
@@ -2071,8 +2078,8 @@ export default function CheckoutProcess({
                                                                         </div>
                                                                     )}
 
-                                                                    {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
-                                                                    {activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
+                                                                   {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
+                                                                    {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
                                                                         <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
                                                                             <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
                                                                                 ¿Con cuánto vas a pagar? (Monto en Billetes)
@@ -2208,9 +2215,9 @@ export default function CheckoutProcess({
 
                                                     {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
                                                     {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] mt-4 animate-in fade-in">
+                                                        <div className="text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all rounded-2xl p-5  shadow-[0_4px_20px_rgb(0,0,0,0.02)] mt-4 animate-in fade-in">
                                                             <div className="flex justify-between items-center mb-3">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-text-main)]">
                                                                     {activePaymentInput === 'Efectivo' ? 'Instrucciones de Pago' : 'Datos para Transferir'}
                                                                 </span>
 
@@ -2218,14 +2225,14 @@ export default function CheckoutProcess({
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || "")}
-                                                                        className="text-gray-400 hover:text-black transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                                                        className="text-[var(--store-text-main)] hover:text-black transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase"
                                                                     >
                                                                         {copied ? <Check size={12} /> : <Copy size={12} />}
                                                                         {copied ? "Copiado" : "Copiar"}
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                            <p className="text-sm font-medium text-gray-500 leading-relaxed whitespace-pre-wrap">
+                                                            <p className="text-sm font-medium 0412-9684050, V23719137, BANCRECER leading-relaxed whitespace-pre-wrap">
                                                                 {payments[paymentKeysMap[activePaymentInput]]?.details}
                                                             </p>
                                                         </div>
@@ -2392,15 +2399,15 @@ export default function CheckoutProcess({
                             <motion.button
                                 layout
                                 onClick={handleCheckout}
-                                // 🚀 BLOQUEO INTELIGENTE: Si falta dinero en efectivo, el botón se bloquea de verdad.
-                                disabled={checkoutState !== 'idle' || (activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                style={{ borderRadius: 9999 }}
-                                className={`h-full font-black text-xs md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${checkoutState !== 'idle'
-                                    ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
-                                    : (activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
-                                        ? "w-full bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none" // ESTADO GRIS APAGADO
-                                        : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] shadow-black/10"
-                                    }`}
+                                // 🚀 CORREGIDO: Bloqueo inteligente condicionado a isStoreCreditActive
+                                disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
+                                className={`h-full font-black text-xs md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${
+                                    checkoutState !== 'idle'
+                                        ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
+                                        : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
+                                            ? "w-full bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed shadow-none" // ESTADO GRIS APAGADO
+                                            : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] shadow-black/10"
+                                }`}
                             >
                                 <AnimatePresence mode="wait">
                                     {checkoutState === 'validating' ? (
@@ -2415,8 +2422,8 @@ export default function CheckoutProcess({
                                         <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
                                             <Check className="text-white" size={20} strokeWidth={3} />
                                         </motion.div>
-                                    ) : (activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
-                                        // 🚀 AVISO VISUAL DE BOTÓN APAGADO
+                                   ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
+                                        // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
                                         <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
                                             <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
                                         </motion.div>
