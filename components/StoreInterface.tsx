@@ -15,6 +15,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import CustomerAuth from '@/components/passport/CustomerAuth'
 import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRADA
+import BCVLogo from '@/components/icons/BCVLogo' // 🚀 Importación del logo modular
 
 
 
@@ -203,6 +204,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [isStickyVisible, setIsStickyVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isDarkHero, setIsDarkHero] = useState(true)
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(12)
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
@@ -677,22 +679,39 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
           </div>
         </div>
 
-        {/* Tasa BCV Minimalista */}
-        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0">
+       {/* Tasa Oficial Minimalista (Interactiva, con Respiración de Texto) */}
+        <button 
+          onClick={() => setIsRateModalOpen(true)}
+          className="group flex items-center gap-2 shrink-0 rounded-lg active:scale-95 transition-all"
+          aria-label="Ver detalles de la tasa"
+        >
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hidden sm:block">
+            {/* Recuperamos los textos explícitos adaptables */}
+            <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
               {isEur ? 'Tasa EUR' : 'Tasa BCV'}
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] sm:hidden">
+            <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors sm:hidden">
               {isEur ? 'EUR' : 'BCV'}
             </span>
           </div>
-          <div className="h-3 w-[1px] bg-[var(--store-border)]"></div>
-          <span className="font-mono text-xs font-bold tracking-tight text-[var(--store-text-main)]">
+          
+          <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
+          
+       {/* Monto unificado con clase de control rate-ticker */}
+          <div className="rate-ticker flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
+            
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="mr-0.5 select-none font-sans text-xs"
+            >
+              Bs.
+            </motion.span>
+            
             <NumberTicker value={activeRate} />
-          </span>
-        </div>
+            
+          </div>
+        </button>
 
       </div>
 
@@ -1192,6 +1211,58 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
 </div>
      
      
+{/* 🚀 MODAL MINIMALISTA DE TASA DE CAMBIO */}
+      <AnimatePresence>
+        {isRateModalOpen && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            {/* Backdrop desenfocado */}
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
+              onClick={() => setIsRateModalOpen(false)} 
+            />
+            
+            {/* Tarjeta Modal Estilo Apple/Brutalista */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="relative bg-[var(--store-bg)] border border-[var(--store-border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[1.5rem] w-full max-w-[280px] p-6 flex flex-col items-center text-center overflow-hidden"
+            >
+              <button 
+                onClick={() => setIsRateModalOpen(false)} 
+                className="absolute top-4 right-4 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-90"
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+
+              {/* Icono Grande en el Modal */}
+              <div className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--store-surface)] border border-[var(--store-border)]/50 text-[var(--store-text-main)] mb-4 shadow-sm">
+                 <BCVLogo className="w-7 h-auto" />
+              </div>
+              
+              <h4 className="text-sm font-black text-[var(--store-text-main)] tracking-tight mb-1.5 uppercase">
+                Tasa Oficial BCV
+              </h4>
+              
+              <p className="text-xs text-[var(--store-surface-text)] leading-relaxed px-2 font-medium">
+                Esta tienda cotiza sus precios basándose en la tasa oficial <strong className="text-[var(--store-text-main)] font-black uppercase">{isEur ? 'EUR' : 'USD'}</strong> del Banco Central de Venezuela.
+              </p>
+
+              <div className="mt-5 pt-4 border-t border-[var(--store-border)]/40 w-full flex justify-center">
+                <span className="font-mono text-xl font-black tracking-tight text-[var(--store-text-main)]">
+                  Bs. {activeRate.toFixed(2)}
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
@@ -1295,11 +1366,13 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
       </AnimatePresence>
 
 
-      <CartHUDIndicator />
+     <CartHUDIndicator />
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      
     </div>
   )
 }

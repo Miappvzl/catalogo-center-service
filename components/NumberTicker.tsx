@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
-// Micro-componente que controla un solo dígito
+// Micro-componente que controla un solo dígito (Alineación tipográfica pura)
 function Digit({ char }: { char: string }) {
   // Si es un punto o una coma, se queda fijo
   if (isNaN(Number(char))) {
@@ -13,7 +13,6 @@ function Digit({ char }: { char: string }) {
   return (
     <span 
       className="inline-block relative overflow-hidden" 
-      // 1ch = el ancho exacto de 1 caracter en fuentes monoespaciadas
       style={{ height: "1em", width: "1ch", lineHeight: "1em" }}
     >
       <motion.span
@@ -21,10 +20,15 @@ function Digit({ char }: { char: string }) {
         // y: -10% = 1, -20% = 2, etc. (La columna tiene 10 números, cada uno mide 10% del total)
         animate={{ y: `-${Number(char) * 10}%` }}
         transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}
-        className="absolute top-0 left-0 flex flex-col items-center justify-start will-change-transform"
+        // 🚀 MEJORA: Eliminamos 'flex flex-col' para evitar colisiones de alineamiento
+        className="absolute top-0 left-0 block w-full will-change-transform"
       >
         {Array.from({ length: 10 }).map((_, i) => (
-          <span key={i} className="h-[1em] flex items-center justify-center">
+          // 🚀 MEJORA: Centrado por línea de texto nativa (leading-[1em]), alineando los baselines
+          <span 
+            key={i} 
+            className="h-[1em] block text-center leading-[1em] select-none"
+          >
             {i}
           </span>
         ))}
