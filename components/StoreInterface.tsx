@@ -679,14 +679,13 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
           </div>
         </div>
 
-       {/* Tasa Oficial Minimalista (Interactiva, con Respiración de Texto) */}
+     {/* Tasa Oficial Minimalista (Interactiva, Estática y Pixel Perfect) */}
         <button 
           onClick={() => setIsRateModalOpen(true)}
-          className="group flex items-center gap-2 shrink-0 rounded-lg active:scale-95 transition-all"
+          className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-lg active:scale-95 transition-all"
           aria-label="Ver detalles de la tasa"
         >
           <div className="flex items-center gap-1.5">
-            {/* Recuperamos los textos explícitos adaptables */}
             <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
               {isEur ? 'Tasa EUR' : 'Tasa BCV'}
             </span>
@@ -697,9 +696,10 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
           
           <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
           
-       {/* Monto unificado con clase de control rate-ticker */}
-          <div className="rate-ticker flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
+          {/* Monto de Tasa (100% Alineado y Seguro en todo navegador) */}
+          <div className="flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
             
+            {/* Conservamos la respiración sutil en el Bs. */}
             <motion.span
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -708,7 +708,13 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
               Bs.
             </motion.span>
             
-            <NumberTicker value={activeRate} />
+            {/* Renderizado nativo formateado con comas venezolanas (es-VE) */}
+            <span className="tabular-nums">
+              {Intl.NumberFormat("es-VE", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(activeRate)}
+            </span>
             
           </div>
         </button>
