@@ -296,7 +296,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return () => subscription.unsubscribe()
   }, [supabase])
 
-// 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos (Vía RPC Seguro)
+  // 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos (Vía RPC Seguro)
   useEffect(() => {
     if (!currentUser || !store?.id) {
       setFavoriteIds(new Set())
@@ -314,7 +314,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
           .select('product_id')
           .eq('store_id', store.id)
           .eq('customer_id', currentUser.id)
-          
+
         if (data) {
           setFavoriteIds(new Set(data.map((f: any) => String(f.product_id))))
         }
@@ -568,8 +568,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
   }, [searchParams, store]);
 
   useEffect(() => {
-  handleCategoryScroll();
-}, []);
+    handleCategoryScroll();
+  }, []);
 
   const handleOpenProduct = (product: any) => { setSelectedProductForModal(product); setIsModalOpen(true); }
 
@@ -585,19 +585,18 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
 
   // Estado para controlar si el scroll ha avanzado hacia la derecha (activando la máscara izquierda)
-const [isScrolledLeft, setIsScrolledLeft] = useState(false);
+  const [isScrolledLeft, setIsScrolledLeft] = useState(false);
 
-// Función atada al evento onScroll del contenedor
-const handleCategoryScroll = () => {
-  if (categoryScrollRef.current) {
-    // Si scrollLeft es mayor a 0, significa que nos hemos desplazado
-    setIsScrolledLeft(categoryScrollRef.current.scrollLeft > 0);
-  }
-};
+  // Función atada al evento onScroll del contenedor
+  const handleCategoryScroll = () => {
+    if (categoryScrollRef.current) {
+      // Si scrollLeft es mayor a 0, significa que nos hemos desplazado
+      setIsScrolledLeft(categoryScrollRef.current.scrollLeft > 0);
+    }
+  };
 
-const dynamicMask = `linear-gradient(to right, ${
-  isScrolledLeft ? 'transparent' : '#000'
-} 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
+  const dynamicMask = `linear-gradient(to right, ${isScrolledLeft ? 'transparent' : '#000'
+    } 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
 
 
   // ==========================================
@@ -694,10 +693,10 @@ const dynamicMask = `linear-gradient(to right, ${
 
       <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl  pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center mb-3 md:mb-5">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center mb-3 md:mb-5">
 
             {/* 1. BUSCADOR Y ACCIONES MOBILE (Izquierda) */}
-            <div className="flex items-center w-full md:max-w-sm gap-3">
+            <div className="flex items-center w-full md:max-w-sm gap-1">
               <div className="relative flex-1 group min-w-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
                 <input
@@ -714,29 +713,29 @@ const dynamicMask = `linear-gradient(to right, ${
                 )}
               </div>
 
-             {/* 🚀 GATILLO PERFIL (MOBILE)  */}
-              <div className="md:hidden shrink-0 w-11 h-11">
+              {/* 🚀 GATILLO PERFIL (MOBILE)  */}
+              <div className="md:hidden shrink-0 w-13 h-14">
                 <button
                   // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
                   onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
-                  className="w-full h-full flex items-center justify-center relative rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] active:scale-95 transition-all duration-300"
+                  className="w-full h-full flex items-center justify-center relative rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)] active:scale-95 transition-all duration-300"
                   title="Mi Perfil"
                 >
-                  <UserCircle size={18} strokeWidth={2.5} />
+                  <UserCircle size={26} strokeWidth={1} />
                 </button>
               </div>
 
 
               {/* 🚀 GATILLO HISTORIAL (MOBILE ONLY) - Permite acceso al PDF limpiamente */}
               {orderHistory && orderHistory.length > 0 && (
-                <div className="md:hidden shrink-0 w-11 h-11">
+                <div className="md:hidden shrink-0 w-13 h-14">
                   <button
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="w-full h-full flex items-center justify-center relative rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] active:scale-95 transition-all duration-300"
+                    className="w-full h-full flex items-center justify-center relative rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)] active:scale-95 transition-all duration-300"
                     title="Mis Pedidos"
                   >
-                    <Receipt size={18} strokeWidth={2.5} />
-                    <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-sm">
+                    <Receipt size={26} strokeWidth={1} />
+                    <span className="absolute -top-[-2px] -right-[-4.5px] bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full ">
                       {orderHistory.length}
                     </span>
                   </button>
@@ -762,27 +761,27 @@ const dynamicMask = `linear-gradient(to right, ${
     Se aplican propiedades de máscara CSS para desvanecer los píxeles directamente.
     Esto hace que cualquier texto o pastilla se disuelva en la nada de forma fluida.
   */}
-            {/* 🚀 EL CAMBIO CLAVE: Máscara reactiva vinculada al estado del scroll */}
-<div 
-  ref={categoryScrollRef}
-  onScroll={handleCategoryScroll}
-  className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
-  style={{
-    WebkitMaskImage: dynamicMask,
-    maskImage: dynamicMask,
-    scrollbarWidth: 'none',
-    msOverflowStyle: 'none'
-  }}
->
-  {categories.map((category) => (
-    <CategoryPill
-      key={category}
-      label={category}
-      active={selectedCategory === category}
-      onClick={() => setSelectedCategory(category)}
-    />
-  ))}
-</div>
+              {/* 🚀 EL CAMBIO CLAVE: Máscara reactiva vinculada al estado del scroll */}
+              <div
+                ref={categoryScrollRef}
+                onScroll={handleCategoryScroll}
+                className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
+                style={{
+                  WebkitMaskImage: dynamicMask,
+                  maskImage: dynamicMask,
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
+                {categories.map((category) => (
+                  <CategoryPill
+                    key={category}
+                    label={category}
+                    active={selectedCategory === category}
+                    onClick={() => setSelectedCategory(category)}
+                  />
+                ))}
+              </div>
 
               {/* Flecha Derecha: Contenedor limpio, sin degradados de fondo */}
               <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -798,28 +797,28 @@ const dynamicMask = `linear-gradient(to right, ${
             </div>
 
             {/* 🚀 GATILLO DE PERFIL (DESKTOP)  */}
-            <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
+            <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
               <button
                 // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
                 onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
-                className="cursor-pointer relative p-3 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
+                className="cursor-pointer relative p-3 rounded-full  text-[var(--store-text-main)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
                 title="Mi Perfil"
               >
-                <UserCircle size={18} strokeWidth={2.5} />
+                <UserCircle size={25} strokeWidth={1.5} />
               </button>
             </div>
 
 
             {/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
             {orderHistory && orderHistory.length > 0 && (
-              <div className="hidden md:flex shrink-0 w-11 h-11 mr-2">
+              <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
                 <button
                   onClick={() => setIsHistoryModalOpen(true)}
-                  className="cursor-pointer relative p-3 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] focus:bg-[var(--store-bg)] text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
+                  className="cursor-pointer relative p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300"
                   title="Mis Pedidos"
                 >
-                  <Receipt size={18} strokeWidth={2.5} />
-                  <span className="absolute -top-1 -right-1 bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  <Receipt size={25} strokeWidth={1.5} />
+                  <span className="absolute -top-[0.125rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                     {orderHistory.length}
                   </span>
                 </button>
@@ -831,7 +830,7 @@ const dynamicMask = `linear-gradient(to right, ${
               <button
                 data-cart-target="true"
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
-                className={`cursor-pointer relative p-3 rounded-full border transition-all duration-300 ${hasItems ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
                 {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
@@ -839,7 +838,7 @@ const dynamicMask = `linear-gradient(to right, ${
                   animate={cartControls}
                   className={hasItems ? "inline-block origin-top" : "inline-block origin-top"}
                 >
-                  <ShoppingCart size={18} strokeWidth={2.5} />
+                  <ShoppingCart size={25} strokeWidth={1.5} />
                 </motion.div>
 
                 {/* 🚀 BADGE EXPLOSIVO: Sincronizado con la física del móvil */}
@@ -856,7 +855,7 @@ const dynamicMask = `linear-gradient(to right, ${
                         damping: 12,
                         mass: 1
                       }}
-                      className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
+                      className="absolute -top-[0.1rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full "
                     >
                       {totalItems}
                     </motion.span>
