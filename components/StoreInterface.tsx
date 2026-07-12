@@ -830,7 +830,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
               <button
                 data-cart-target="true"
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
-                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] border-[var(--store-primary)] hover:opacity-90' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] border-[var(--store-primary)] hover:opacity-90' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
                 {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
