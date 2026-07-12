@@ -189,6 +189,8 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+  // Ajusta 'storeData.theme' o 'storeData.isDark' según la estructura real de tu objeto
+  const isDarkTheme = store?.theme === "dark" || store?.isDark === true;
   const [activePromo, setActivePromo] = useState<any>(null)
   const [featuredScrollStatus, setFeaturedScrollStatus] = useState({ left: false, right: true })
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
@@ -814,11 +816,11 @@ export default function StoreInterface({ store, products, rates, promotions = []
               <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
                 <button
                   onClick={() => setIsHistoryModalOpen(true)}
-                  className="cursor-pointer relative p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300"
+                  className="cursor-pointer relative p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)]   transition-all duration-300"
                   title="Mis Pedidos"
                 >
                   <Receipt size={25} strokeWidth={1.5} />
-                  <span className="absolute -top-[0.125rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  <span className="absolute -top-[0.125rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                     {orderHistory.length}
                   </span>
                 </button>
@@ -830,7 +832,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
               <button
                 data-cart-target="true"
                 onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
-                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] border-[var(--store-primary)] hover:opacity-90' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)]'}`}
+                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-primary)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}
                 title="Ver Bolsa"
               >
                 {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
@@ -1059,25 +1061,111 @@ export default function StoreInterface({ store, products, rates, promotions = []
         </AnimatePresence>
 
       </main>
+{/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Mobile Touch Optimized) */}
+<div className="mt-16 pb-24 pt-8 w-full flex justify-center relative z-20 border-t border-[var(--store-border)]/40">
+  <motion.a
+    href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
+    target="_blank"
+    rel="noopener noreferrer"
+    initial="rest"
+    whileHover="hover"
+    whileTap="tap" // 🚀 PROPAGA EL ESTADO DE TOUCH A LOS HIJOS
+    variants={{
+      rest: { scale: 1 },
+      hover: { scale: 1 },
+      tap: { scale: 0.96 } // El scale del botón entero ocurre aquí en el tap
+    }}
+    className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] shadow-none"
+  >
+    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Rolling Shutter) */}
+    <div className="relative overflow-hidden flex items-center justify-center px-3 md:px-5 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-[var(--store-surface)]/30">
+      <motion.div
+        variants={{
+          rest: { y: 0 },
+          hover: { y: "-50%" },
+          tap: { y: "-50%" } // 🚀 SE ACTIVA EN MOBILE AL TOCAR
+        }}
+        transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
+        className="absolute top-0 left-0 w-full flex flex-col justify-between"
+        style={{ height: "200%" }}
+      >
+        <span className="h-1/2 flex items-center justify-center text-[8.5px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-surface-text)] whitespace-nowrap px-3 md:px-5">
+          Experiencia de compra impulsada por
+        </span>
+        <span className="h-1/2 flex items-center justify-center text-[8.5px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
+          Experiencia de compra impulsada por
+        </span>
+      </motion.div>
+      {/* Spacer estructural (Mantiene las proporciones de la celda rígidas) */}
+      <span className="text-[8.5px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none">
+        Experiencia de compra impulsada por
+      </span>
+    </div>
 
-
-      {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Tech Editorial - Strict Icon) */}
-      <div className="mt-8 pb-20 pt-6 border-t border-[var(--store-border)]/30 w-full flex justify-center">
-        <a
-          href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group inline-flex flex-col items-center gap-1.5"
-        >
-          <span className="text-[10px] font-bold  text-[var(--store-surface-text)] uppercase tracking-widest group-hover:text-[var(--store-surface-text)] transition-colors">
-            Experiencia de compra impulsada por
-          </span>
-          <div className="flex items-center gap-1.5">
-            <span className="font-black text-sm tracking-tight text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors">PREZISO</span>
-            <ArrowUpRight size={15} strokeWidth={2} className="text-[var(--store-surface-text)] animate-pulse" />
-          </div>
-        </a>
+    {/* Celda 2: Logo Ampliado en Cámara Aislada */}
+    <div className="relative flex items-center justify-center px-4 md:px-6 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-transparent overflow-hidden">
+      {/* Llenado de fondo geométrico al interactuar */}
+      <motion.div
+        variants={{
+          rest: { scaleY: 0, originY: 1 },
+          hover: { scaleY: 1, originY: 1 },
+          tap: { scaleY: 1, originY: 1 } // 🚀 SE ACTIVA EN MOBILE AL TOCAR
+        }}
+        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
+        className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
+      />
+      {/* 🚀 NOTA: Agregado group-active:scale-[1.03] para que CSS nativo responda al touch */}
+      <div className="relative z-10 h-[28px] md:h-[38px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.2] group-active:scale-[1.2]">
+        <img
+          src="/pezisologo.png"
+          alt="Preziso"
+          className="h-full w-auto object-contain dark:hidden"
+          loading="lazy"
+        />
+        <img
+          src="/pezisologow.png"
+          alt="Preziso"
+          className="h-full w-auto object-contain hidden dark:block"
+          loading="lazy"
+        />
       </div>
+    </div>
+
+    {/* Celda 3: Gatillo de Escape (Física de Hardware Diagonal) */}
+    {/* 🚀 NOTA: Agregado group-active:text-main para cambiar color al tocar */}
+    <div className="relative flex items-center justify-center w-11 md:w-14 h-full bg-transparent overflow-hidden text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-active:text-[var(--store-text-main)] transition-colors duration-300">
+      
+      {/* Flecha Original - Sale por arriba a la derecha */}
+      <motion.div
+        variants={{
+          rest: { x: 0, y: 0 },
+          hover: { x: 24, y: -24 },
+          tap: { x: 24, y: -24 } // 🚀 DISPARA EN TOUCH
+        }}
+        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
+        className="absolute"
+      >
+        <ArrowUpRight size={16} strokeWidth={1.5} />
+      </motion.div>
+      
+      {/* Nueva Flecha - Entra desde abajo a la izquierda */}
+      <motion.div
+        variants={{
+          rest: { x: -24, y: 24 },
+          hover: { x: 0, y: 0 },
+          tap: { x: 0, y: 0 } // 🚀 DISPARA EN TOUCH
+        }}
+        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1], delay: 0.04 }}
+        className="absolute"
+      >
+        <ArrowUpRight size={16} strokeWidth={2.5} />
+      </motion.div>
+
+    </div>
+  </motion.a>
+</div>
+     
+     
       <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
