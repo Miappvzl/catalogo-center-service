@@ -586,14 +586,32 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
 
 
-  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
 
-  // 🚀 DETECCIÓN MATEMÁTICA INFALIBLE: Leemos el HEX del fondo y calculamos su luminancia
-  const bgHex = (activeTheme.colors?.background || '#ffffff').replace('#', '');
-  const r = parseInt(bgHex.length === 3 ? bgHex[0]+bgHex[0] : bgHex.substring(0, 2), 16) || 255;
-  const g = parseInt(bgHex.length === 3 ? bgHex[1]+bgHex[1] : bgHex.substring(2, 4), 16) || 255;
-  const b = parseInt(bgHex.length === 3 ? bgHex[2]+bgHex[2] : bgHex.substring(4, 6), 16) || 255;
-  const isStoreDark = (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Si es menor a 128, el fondo es oscuro.
+  // 🚀 DETECCIÓN INFALIBLE V2: Superposición de estados (Base de Datos + Motor de Luminancia)
+  const isStoreDark = useMemo(() => {
+    // 1. Validamos si hay una bandera explícita de modo oscuro en la BD original
+    if (store?.theme === "dark" || store?.isDark === true) return true;
+
+    // 2. Si no la hay, analizamos matemáticamente el color hexadecimal inyectado
+    try {
+      const rawBg = activeTheme.colors?.background || '#ffffff';
+      
+      // Control de errores por si el usuario guardó palabras en lugar de HEX
+      if (rawBg.toLowerCase() === 'black' || rawBg.includes('0, 0, 0')) return true;
+
+      const bgHex = rawBg.replace('#', '');
+      const r = parseInt(bgHex.length === 3 ? bgHex[0]+bgHex[0] : bgHex.substring(0, 2), 16);
+      const g = parseInt(bgHex.length === 3 ? bgHex[1]+bgHex[1] : bgHex.substring(2, 4), 16);
+      const b = parseInt(bgHex.length === 3 ? bgHex[2]+bgHex[2] : bgHex.substring(4, 6), 16);
+      
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        return (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Menor a 128 = Fondo oscuro
+      }
+    } catch (e) {}
+
+    return false; // Por defecto es claro
+  }, [store, activeTheme]);
 
   // Estado para controlar si el scroll ha avanzado hacia la derecha (activando la máscara izquierda)
   const [isScrolledLeft, setIsScrolledLeft] = useState(false);
@@ -1129,9 +1147,9 @@ export default function StoreInterface({ store, products, rates, promotions = []
         transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
         className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
       />
-      <div className="relative z-10 h-[35px] md:h-[40px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
+      <div className="relative z-10 h-[25px] md:h-[30px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
         
-        {/* 🚀 CAMBIO CLAVE: Usamos isStoreDark calculado con matemáticas puras */}
+        {/* 🚀 El logo ahora obedece al Memo infalible */}
         <img
           src={isStoreDark ? "/pezisologow.png" : "/pezisologo.png"}
           alt="Preziso"
