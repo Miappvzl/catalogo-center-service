@@ -1061,7 +1061,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         </AnimatePresence>
 
       </main>
-{/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Mobile Touch Optimized) */}
+{/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Mobile & Theme Fixed) */}
 <div className="mt-16 pb-24 pt-8 w-full flex justify-center relative z-20 border-t border-[var(--store-border)]/40">
   <motion.a
     href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
@@ -1069,78 +1069,76 @@ export default function StoreInterface({ store, products, rates, promotions = []
     rel="noopener noreferrer"
     initial="rest"
     whileHover="hover"
-    whileTap="tap" // 🚀 PROPAGA EL ESTADO DE TOUCH A LOS HIJOS
+    whileTap="tap"
     variants={{
       rest: { scale: 1 },
       hover: { scale: 1 },
-      tap: { scale: 0.96 } // El scale del botón entero ocurre aquí en el tap
+      tap: { scale: 0.96 }
     }}
-    className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] shadow-none"
+    className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] sm:max-w-none shadow-none"
   >
-    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Rolling Shutter) */}
+    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Content Switching para evitar cortes) */}
     <div className="relative overflow-hidden flex items-center justify-center px-3 md:px-5 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-[var(--store-surface)]/30">
       <motion.div
         variants={{
           rest: { y: 0 },
           hover: { y: "-50%" },
-          tap: { y: "-50%" } // 🚀 SE ACTIVA EN MOBILE AL TOCAR
+          tap: { y: "-50%" }
         }}
         transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
         className="absolute top-0 left-0 w-full flex flex-col justify-between"
         style={{ height: "200%" }}
       >
-        <span className="h-1/2 flex items-center justify-center text-[8.5px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-surface-text)] whitespace-nowrap px-3 md:px-5">
-          Experiencia de compra impulsada por
+        {/* Texto Original (Arriba) */}
+        <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
+          <span className="sm:hidden">Impulsado por</span>
+          <span className="hidden sm:block">Experiencia de compra impulsada por</span>
         </span>
-        <span className="h-1/2 flex items-center justify-center text-[8.5px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
-          Experiencia de compra impulsada por
+        
+        {/* Texto Contraste (Abajo - Rolling in) */}
+        <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
+          <span className="sm:hidden">Impulsado por</span>
+          <span className="hidden sm:block">Experiencia de compra impulsada por</span>
         </span>
       </motion.div>
-      {/* Spacer estructural (Mantiene las proporciones de la celda rígidas) */}
-      <span className="text-[8.5px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none">
-        Experiencia de compra impulsada por
+      
+      {/* Spacer estructural (Determina el ancho de la celda rígidamente) */}
+      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none">
+        <span className="sm:hidden">Impulsado por</span>
+        <span className="hidden sm:block">Experiencia de compra impulsada por</span>
       </span>
     </div>
 
-    {/* Celda 2: Logo Ampliado en Cámara Aislada */}
+    {/* Celda 2: Logo (Lógica reactiva conectada al motor de temas de la app) */}
     <div className="relative flex items-center justify-center px-4 md:px-6 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-transparent overflow-hidden">
-      {/* Llenado de fondo geométrico al interactuar */}
       <motion.div
         variants={{
           rest: { scaleY: 0, originY: 1 },
           hover: { scaleY: 1, originY: 1 },
-          tap: { scaleY: 1, originY: 1 } // 🚀 SE ACTIVA EN MOBILE AL TOCAR
+          tap: { scaleY: 1, originY: 1 }
         }}
         transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
         className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
       />
-      {/* 🚀 NOTA: Agregado group-active:scale-[1.03] para que CSS nativo responda al touch */}
-      <div className="relative z-10 h-[28px] md:h-[38px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.2] group-active:scale-[1.2]">
+      <div className="relative z-10 h-[35px] md:h-[35px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
+        {/* 🚀 CORRECCIÓN DE TEMA: Ahora lee el estado 'isDarkTheme' de tu componente */}
         <img
-          src="/pezisologo.png"
+          src={isDarkTheme ? "/pezisologow.png" : "/pezisologo.png"}
           alt="Preziso"
-          className="h-full w-auto object-contain dark:hidden"
-          loading="lazy"
-        />
-        <img
-          src="/pezisologow.png"
-          alt="Preziso"
-          className="h-full w-auto object-contain hidden dark:block"
+          className="h-full w-auto object-contain transition-opacity duration-300"
           loading="lazy"
         />
       </div>
     </div>
 
     {/* Celda 3: Gatillo de Escape (Física de Hardware Diagonal) */}
-    {/* 🚀 NOTA: Agregado group-active:text-main para cambiar color al tocar */}
     <div className="relative flex items-center justify-center w-11 md:w-14 h-full bg-transparent overflow-hidden text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-active:text-[var(--store-text-main)] transition-colors duration-300">
       
-      {/* Flecha Original - Sale por arriba a la derecha */}
       <motion.div
         variants={{
           rest: { x: 0, y: 0 },
           hover: { x: 24, y: -24 },
-          tap: { x: 24, y: -24 } // 🚀 DISPARA EN TOUCH
+          tap: { x: 24, y: -24 }
         }}
         transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
         className="absolute"
@@ -1148,12 +1146,11 @@ export default function StoreInterface({ store, products, rates, promotions = []
         <ArrowUpRight size={16} strokeWidth={1.5} />
       </motion.div>
       
-      {/* Nueva Flecha - Entra desde abajo a la izquierda */}
       <motion.div
         variants={{
           rest: { x: -24, y: 24 },
           hover: { x: 0, y: 0 },
-          tap: { x: 0, y: 0 } // 🚀 DISPARA EN TOUCH
+          tap: { x: 0, y: 0 }
         }}
         transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1], delay: 0.04 }}
         className="absolute"

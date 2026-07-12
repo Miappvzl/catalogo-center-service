@@ -334,75 +334,125 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     return (
         <>
-            {/* 🚀 GATILLO MOBILE DINÁMICO (Se destruye al enviar WhatsApp) */}
-            <AnimatePresence>
-                {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
-                    <motion.div
-                        initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
-                        exit={{ y: "100%" }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/30 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+         
+
+{/* 🚀 GATILLO MOBILE DINÁMICO (Optimizado para Interfaces de Alta Gama) */}
+<AnimatePresence mode="wait">
+    {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
+        <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 220 }}
+            // 🌟 layout permite que el contenedor se adapte fluidamente si cambia de tamaño entre estados
+            layout
+            className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/30 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+        >
+            {items.length > 0 ? (
+                // ==========================================
+                // ESTADO A: CARRITO ACTIVO
+                // ==========================================
+                <>
+                    {/* 🌟 GRUPO INTERACTIVO: Ahora cuenta con feedback háptico visual (whileTap) */}
+                    <motion.div 
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                        className="flex items-center gap-3.5 cursor-pointer group select-none" 
+                        onClick={() => setIsOpen(true)}
                     >
-                        {items.length > 0 ? (
-                            // ESTADO A: CARRITO NORMAL
-                            <>
-                                <div className="flex items-center gap-3.5 cursor-pointer group" onClick={() => setIsOpen(true)}>
-                                    <div className="relative" data-cart-target="true">
-                                        <motion.div
-                                            // 🚀 ÍCONO: Conectado a la física de impacto (Squash & Stretch)
-                                            animate={cartControls}
-                                            className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom"
-                                        >
-                                            <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
-                                        </motion.div>
+                        <div className="relative" data-cart-target="true">
+                            {/* ÍCONO: Mantiene la física de impacto del sistema */}
+                            <motion.div
+                                animate={cartControls}
+                                className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom"
+                            >
+                                <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                            </motion.div>
 
-                                        {/* 🚀 BADGE: Efecto "Pop" explosivo al actualizar el número */}
-                                        <motion.span
-                                            key={totalItemsCount}
-                                            initial={{ scale: 0, y: 10, opacity: 0 }}
-                                            animate={{ scale: 1, y: 0, opacity: 1 }}
-                                            transition={{
-                                                type: "spring",
-                                                stiffness: 500, // Tensión alta para que sea rápido
-                                                damping: 12,    // Rebote natural
-                                                mass: 1
-                                            }}
-                                            className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
-                                        >
-                                            {totalItemsCount}
-                                        </motion.span>
-                                    </div>
+                            {/* BADGE: Efecto Pop Explosivo */}
+                            <motion.span
+                                key={totalItemsCount}
+                                initial={{ scale: 0, y: 8, opacity: 0 }}
+                                animate={{ scale: 1, y: 0, opacity: 1 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 600,
+                                    damping: 14,
+                                    mass: 0.8
+                                }}
+                                className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
+                            >
+                                {totalItemsCount}
+                            </motion.span>
+                        </div>
 
-                                </div>
-                                <div className="flex flex-col items-start">
-                                    <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">{currencySymbol}{step1GrandTotalUSD.toFixed(2)}</span>
-                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                                </div>
-
-                                <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20">
-                                    Pagar
-                                </button>
-                            </>
-                        ) : (
-                            <div className="flex items-center gap-3 w-full cursor-pointer group" onClick={() => setIsOpen(true)}>
-                                <div className="p-2.5 rounded-full transition-colors bg-[var(--store-primary)] animate-pulse shadow-[0_0_15px_var(--store-primary)]">
-                                    <MessageCircle size={22} className="text-[var(--store-primary-text)]" />
-                                </div>
-                                <div className="flex flex-col flex-1 min-w-0">
-                                    <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">Pedido #{generatedOrderNumber}</span>
-                                    <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)]">
-                                        Pendiente por WhatsApp
-                                    </span>
-                                </div>
-                                <button className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm">
-                                    Abrir
-                                </button>
-                            </div>
-                        )}
+                        {/* BLOQUE DE PRECIO: Tipografía y lectura ultra-limpia */}
+                        <div className="flex flex-col items-start structural-subcontainer">
+                            <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">
+                                {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                            </span>
+                            <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">
+                                Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
                     </motion.div>
-                )}
-            </AnimatePresence>
+
+                    {/* BOTÓN PRINCIPAL DE ACCIÓN */}
+                    <button 
+                        onClick={() => setIsOpen(true)} 
+                        className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer"
+                    >
+                        Pagar
+                    </button>
+                </>
+            ) : (
+                // ==========================================
+                // ESTADO B: PEDIDO PENDIENTE POR WHATSAPP
+                // ==========================================
+                <motion.div 
+                    whileTap={{ scale: 0.99 }}
+                    className="flex items-center gap-3 w-full cursor-pointer group select-none" 
+                    onClick={() => setIsOpen(true)}
+                >
+                    {/* 🌟 GLOW DE RESPIRACIÓN PREMIUM: Reemplaza al pulse genérico */}
+                    <motion.div 
+                        animate={{ 
+                            scale: [1, 1.04, 1],
+                            boxShadow: [
+                                "0 0 10px var(--store-primary)/20", 
+                                "0 0 20px var(--store-primary)/50", 
+                                "0 0 10px var(--store-primary)/20"
+                            ]
+                        }}
+                        transition={{ 
+                            repeat: Infinity, 
+                            duration: 2.2, 
+                            ease: "easeInOut" 
+                        }}
+                        className="p-2.5 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)]"
+                    >
+                        <MessageCircle size={22} strokeWidth={1.75} />
+                    </motion.div>
+
+                    {/* INFORMACIÓN DEL PEDIDO */}
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">
+                            Pedido #{generatedOrderNumber}
+                        </span>
+                        <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)] uppercase tracking-wider">
+                            Pendiente por WhatsApp
+                        </span>
+                    </div>
+
+                    {/* 🌟 ACCESIBILIDAD CORREGIDA: Cambiado de <button> a un <span> semántico */}
+                    <span className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-colors group-hover:bg-[var(--store-border)]/50 pointer-events-none select-none">
+                        Abrir
+                    </span>
+                </motion.div>
+            )}
+        </motion.div>
+    )}
+</AnimatePresence>
 
             {/*  NUEVO: DESKTOP FLOATING NUDGE (Notificación Minimalista) */}
             <AnimatePresence>
