@@ -584,7 +584,16 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
   }
 
+
+
   const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+
+  // 🚀 DETECCIÓN MATEMÁTICA INFALIBLE: Leemos el HEX del fondo y calculamos su luminancia
+  const bgHex = (activeTheme.colors?.background || '#ffffff').replace('#', '');
+  const r = parseInt(bgHex.length === 3 ? bgHex[0]+bgHex[0] : bgHex.substring(0, 2), 16) || 255;
+  const g = parseInt(bgHex.length === 3 ? bgHex[1]+bgHex[1] : bgHex.substring(2, 4), 16) || 255;
+  const b = parseInt(bgHex.length === 3 ? bgHex[2]+bgHex[2] : bgHex.substring(4, 6), 16) || 255;
+  const isStoreDark = (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Si es menor a 128, el fondo es oscuro.
 
   // Estado para controlar si el scroll ha avanzado hacia la derecha (activando la máscara izquierda)
   const [isScrolledLeft, setIsScrolledLeft] = useState(false);
@@ -1109,7 +1118,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
       </span>
     </div>
 
-    {/* Celda 2: Logo (Lógica reactiva conectada al motor de temas de la app) */}
+   {/* Celda 2: Logo (Lógica reactiva conectada matemáticamente a la luminancia) */}
     <div className="relative flex items-center justify-center px-4 md:px-6 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-transparent overflow-hidden">
       <motion.div
         variants={{
@@ -1120,14 +1129,16 @@ export default function StoreInterface({ store, products, rates, promotions = []
         transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
         className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
       />
-      <div className="relative z-10 h-[35px] md:h-[35px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
-        {/* 🚀 CORRECCIÓN DE TEMA: Ahora lee el estado 'isDarkTheme' de tu componente */}
+      <div className="relative z-10 h-[35px] md:h-[40px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
+        
+        {/* 🚀 CAMBIO CLAVE: Usamos isStoreDark calculado con matemáticas puras */}
         <img
-          src={isDarkTheme ? "/pezisologow.png" : "/pezisologo.png"}
+          src={isStoreDark ? "/pezisologow.png" : "/pezisologo.png"}
           alt="Preziso"
           className="h-full w-auto object-contain transition-opacity duration-300"
           loading="lazy"
         />
+        
       </div>
     </div>
 
