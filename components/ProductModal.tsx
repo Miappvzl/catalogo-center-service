@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -40,6 +40,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
     const [isAdding, setIsAdding] = useState(false) // 🚀 Controla el micro-delay de feedback
     const [isHiding, setIsHiding] = useState(false); // 🚀 NUEVO: Controla la invisibilidad inmediata
+    const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
+    const [isShippingOpen, setIsShippingOpen] = useState(false)
 
 
     const isEur = currency === 'eur'
@@ -47,6 +49,20 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
 
     // Resetea el estado al abrir
     useEffect(() => { if (isOpen) setIsHiding(false); }, [isOpen]);
+
+    // 🚀 CONTROLADOR DEL SCROLL DE FONDO: Bloquea el desplazamiento del body al abrir el modal
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        
+        // Cleanup para restaurar el scroll si el componente se desmonta inesperadamente
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
 
     // 🚀 CONTROLADOR IMPERATIVO DEL IMPACTO (GPU Directo)
     const cartControls = useAnimation();
@@ -369,7 +385,7 @@ Mi duda es la siguiente: `;
                         className={`absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity] transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
                     />
 
-                    {/* 🚀 FASE 2: Contenedor con Aceleración GPU */}
+                    {/* 🚀 FASE 2: Contenedor con Aceleración GPU (Caja rígida, sin scroll) */}
                     <motion.div
                         variants={modalVariants}
                         initial="hidden"
@@ -383,22 +399,25 @@ Mi duda es la siguiente: `;
                         </button>
 
                         {/* 🚀 BOTÓN DE FAVORITO (MODAL) */}
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-                          }}
-                          className={`absolute top-4 left-4 z-50 p-2 rounded-full transition-colors backdrop-blur border active:scale-95 ${
-                            isFavorite 
-                              ? 'bg-red-50/90 border-red-200 text-red-500 hover:bg-red-100' 
-                              : 'bg-[var(--store-surface)]/90 border-[var(--store-border)] text-[var(--store-surface-text)] hover:bg-[var(--store-bg)] hover:text-red-500'
-                          }`}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+                            }}
+                            className={`absolute top-4 left-4 z-50 p-2 rounded-full transition-colors backdrop-blur border active:scale-95 ${isFavorite
+                                    ? 'bg-red-50/90 border-red-200 text-red-500 hover:bg-red-100'
+                                    : 'bg-[var(--store-surface)]/90 border-[var(--store-border)] text-[var(--store-surface-text)] hover:bg-[var(--store-bg)] hover:text-red-500'
+                                }`}
                         >
                             <Heart size={20} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
                         </button>
-                        
 
-                        <div className="w-full h-[45%] md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden">
+                        {/* 🚀 NUEVO: Envoltorio de scroll unificado exclusivo para mobile */}
+                        <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[140px] md:pb-0 no-scrollbar">
+
+
+                       {/* 🚀 Contenedor de Imagen (Auto-alto y aspecto cuadrado en mobile) */}
+                        <div className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden">
                             {currentGallery.length > 0 ? (
                                 <Image
                                     id="modal-main-image" // 🚀 INYECCIÓN: Coordenada de Salida
@@ -424,10 +443,11 @@ Mi duda es la siguiente: `;
                         </div>
 
                         {/* 🚀 EL CONTENEDOR PADRE DE LA DERECHA: Le agregamos "relative" para anclar el footer */}
-                        <div className="w-full h-[55%] md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
+                        {/* 🚀 Contenedor de Detalle (Flexible en mobile) */}
+                        <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
 
-                            {/* 1. EL ÁREA DE SCROLL: Le agregamos pb-[140px] md:pb-[130px] para que los botones no tapen el texto final */}
-                            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-[140px] md:pb-[130px]">
+                         {/* 1. EL ÁREA DE DETALLES: Sin scroll en mobile, scrollable en escritorio */}
+                            <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-6 md:pb-[140px]">
                                 <div>
                                     <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
                                     <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
@@ -503,11 +523,7 @@ Mi duda es la siguiente: `;
                                         </div>
                                     )}
 
-                                    {product?.description && (
-                                        <p className="text-sm text-[var(--store-surface-text)] mt-6 leading-relaxed whitespace-pre-line border-t border-[var(--store-border)] pt-6">
-                                            {product.description}
-                                        </p>
-                                    )}
+                                    
                                 </div>
 
                                 {loading ? (
@@ -621,29 +637,93 @@ Mi duda es la siguiente: `;
                                             </>
                                         )}
 
-                                        {/* 🚀 ETIQUETA LOGÍSTICA (Herencia Global vs Local) */}
+                                        {/* 🚀 ACORDEÓN DE DESCRIPCIÓN */}
+                                    {product?.description && (
+                                        <div className="border-t border-[var(--store-border)]/40 mt-6 pt-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                                                className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <Eye size={16} className="text-[var(--store-surface-text)] transition-colors" />
+                                                    <span className="text-[11px] font-black uppercase tracking-wider">Descripción</span>
+                                                </div>
+                                                <motion.div
+                                                    animate={{ rotate: isDescriptionOpen ? 45 : 0 }}
+                                                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                    className="text-[var(--store-surface-text)] shrink-0"
+                                                >
+                                                    <Plus size={16} />
+                                                </motion.div>
+                                            </button>
+
+                                            <motion.div
+                                                initial={false}
+                                                animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }}
+                                                transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                                                className="overflow-hidden"
+                                            >
+                                                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pb-4 pt-2">
+                                                    {product.description}
+                                                </p>
+                                            </motion.div>
+                                        </div>
+                                    )}
+
+                                        {/* 🚀 ACORDEÓN LOGÍSTICO DE ENVÍO */}
                                         {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                            <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-2xl border border-[var(--store-border)]">
-                                                <div className="bg-[var(--store-surface)] p-2 rounded-xl border border-[var(--store-border)] shrink-0">
-                                                    <Truck size={16} className="text-[var(--store-text-main)]" />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
-                                                        {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
-                                                    </span>
-                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
-                                                        {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
-                                                    </span>
-                                                </div>
+                                            <div className="border-t border-[var(--store-border)]/40 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsShippingOpen(!isShippingOpen)}
+                                                    className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Truck size={16} className="text-[var(--store-surface-text)] transition-colors" />
+                                                        <span className="text-[11px] font-black uppercase tracking-wider">Envío</span>
+                                                    </div>
+                                                    <motion.div
+                                                        animate={{ rotate: isShippingOpen ? 45 : 0 }}
+                                                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                        className="text-[var(--store-surface-text)] shrink-0"
+                                                    >
+                                                        <Plus size={16} />
+                                                    </motion.div>
+                                                </button>
+
+                                                <motion.div
+                                                    initial={false}
+                                                    animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }}
+                                                    transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]/50 mt-2 mb-4">
+                                                        <div className="bg-[var(--store-surface)] p-2 rounded-lg border border-[var(--store-border)] shrink-0">
+                                                            <Truck size={14} className="text-[var(--store-text-main)]" />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
+                                                                {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
+                                                            </span>
+                                                            <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
+                                                                {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
                                             </div>
                                         )}
                                     </div>
                                 )}
                             </div>
+                            </div>
+                            
+                            
 
 
-                            {/* 2. EL FOOTER ABSOLUTO: Lo sacamos del flujo, lo anclamos abajo y le ponemos el cristal */}
-                            <div className="absolute bottom-0 left-0 right-0 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                           {/* 2. EL FOOTER: Extraído del flujo de scroll. Fijo abajo en mobile, absoluto a la derecha en escritorio */}
+                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
 
                                 <div className="flex gap-3 md:gap-4">
                                     {/* Controles de +/- */}
