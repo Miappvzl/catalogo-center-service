@@ -231,7 +231,7 @@ const missions = store.onboarding_missions || { mission_1: false, mission_2: fal
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-neutral-200 ">
-                                <span className="text-xs font-bold text-gray-900">{completedCount}/3</span>
+                                <span className="text-xs font-bold text-gray-900">{completedCount}/4</span>
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Completadas</span>
                             </div>
                         </div>
