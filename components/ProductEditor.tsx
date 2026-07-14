@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { ArrowLeft, Upload, Plus, Save, Loader2, DollarSign, Trash2, X, Box, AlertTriangle, ImageIcon, ChevronDown, ChevronUp, ImagePlus, Receipt, Star } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import MissionTour from '@/components/MissionTour'
 import { getSupabase } from '@/lib/supabase-client'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -20,11 +21,27 @@ interface ProductEditorProps {
 }
 
 const COMMON_SIZES = ['S', 'M', 'L', 'XL', '38', '40', '42', 'Única']
-
 export default function ProductEditor({ productId, rates, storeSettings }: ProductEditorProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = getSupabase()
 
+// --- LÓGICA DE MISIONES (SPOTLIGHT ENGINE) ---
+    const mission = searchParams.get('mission')
+    const isMission1 = mission === '1'
+    const isMission2 = mission === '2'
+    const isMission3 = mission === '3'
+    const isMission4 = mission === '4'
+    const [tourStep, setTourStep] = useState(1)
+
+    const getSpotlightClass = (targetMission: string | number, step: number, type: 'input' | 'button' | 'container' = 'input') => {
+        if (String(mission) !== String(targetMission) || tourStep !== step) return 'transition-all duration-300'
+        
+        const base = 'relative z-[60] ring-4 ring-black/10 shadow-2xl transition-all duration-300 scale-[1.02] pointer-events-auto'
+        if (type === 'button') return `${base} ring-white/30` 
+        if (type === 'container') return `${base}`
+        return `${base} bg-white rounded-xl` 
+    }
     const mainImageInputRef = useRef<HTMLInputElement>(null)
     const productGalleryInputRef = useRef<HTMLInputElement>(null)
     const variantImageInputRef = useRef<HTMLInputElement>(null)
@@ -101,9 +118,30 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 setIsCategoryDropdownOpen(false)
             }
         }
+
+
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
+
+    
+   // 🚀 AUTO-PRELLENADO Y AUTO-SCROLL
+    useEffect(() => {
+        if (!productId) {
+            if (isMission2) {
+                setFormData(prev => ({ ...prev, name: 'Zapatos Nike Air Max (Prueba)', category: 'Calzado', price: 120, image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=600' }))
+                setTimeout(() => document.getElementById('tour-step-2-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 800)
+            }
+           if (isMission3) {
+                setFormData(prev => ({ ...prev, name: 'Reloj Inteligente Pro', category: 'Electrónica', price: 45, image_url: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?q=80&w=600' }))
+                setTimeout(() => document.getElementById('tour-step-3-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 800)
+            }
+            if (isMission4) {
+                setFormData(prev => ({ ...prev, name: 'Perfume Importado Premium', category: 'Belleza', price: 50, image_url: 'https://images.unsplash.com/photo-1587017539504-67cfbddac569?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }))
+                setTimeout(() => document.getElementById('tour-step-4-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 800)
+            }
+        }
+    }, [isMission2, isMission3, isMission4, productId])
 
     const addSizeFromInput = (value: string = sizeInputValue) => {
         const cleanValue = value.replace(/,/g, '').trim().toUpperCase()
@@ -437,6 +475,8 @@ is_featured: product.is_featured || false,
             const { error: prodError } = await supabase.from('products').delete().eq('id', productId);
             if (prodError) throw prodError;
 
+           
+
             // 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
             await revalidateStoreCache()
 
@@ -526,6 +566,31 @@ is_featured: product.is_featured || false,
                 }
             }
 
+           // 🚀 COMPLETAR MISIONES (Persistencia)
+            if (isMission1 || isMission2 || isMission3 || isMission4) {
+                const { data: st } = await supabase.from('stores').select('onboarding_missions').eq('id', storeSettings!.id).single()
+                const currentMissions = st?.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false }
+                
+                const payload = isMission1 ? { ...currentMissions, mission_1: true }
+                              : isMission2 ? { ...currentMissions, mission_2: true }
+                              : isMission3 ? { ...currentMissions, mission_3: true }
+                              : { ...currentMissions, mission_4: true }
+
+                await supabase.from('stores').update({ onboarding_missions: payload }).eq('id', storeSettings!.id)
+                
+                Swal.fire({ 
+                    title: '¡Academia Preziso Completada!', 
+                    text: '¡Felicidades! Ya eres un experto dominando tu tienda.', 
+                    icon: 'success', 
+                    confirmButtonColor: '#10b981', 
+                    customClass: { popup: 'rounded-[24px]' } 
+                })
+                router.push('/admin')
+                return
+            }
+
+          
+
             // 🚀 MATA LA CACHÉ DE LA TIENDA PÚBLICA
             await revalidateStoreCache()
 
@@ -574,8 +639,9 @@ is_featured: product.is_featured || false,
     return (
         <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white overflow-x-clip w-full max-w-[100vw]">
 
-            {/* HEADER */}
-            <div className={`bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+           {/* HEADER */}
+           
+         <div className={`backdrop-blur-xl border-b border-gray-100 sticky top-0 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'} ${((isMission1 && tourStep === 4) || (isMission2 && tourStep === 5) || (isMission3 && tourStep === 4) || (isMission4 && tourStep === 3)) ? 'z-[60] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] ring-4 ring-black/5 relative' : 'z-40 bg-white/90'}`}>
                 <div className="flex items-center gap-3 md:gap-6 min-w-0">
                     <button onClick={handleExit} className="p-2 shrink-0 hover:bg-gray-100 border border-gray-100 rounded-full transition-colors group" title="Volver">
                         <ArrowLeft className="text-gray-500 group-hover:text-black transition-colors w-4 h-4 md:w-5 md:h-5" />
@@ -583,7 +649,7 @@ is_featured: product.is_featured || false,
                     <div className="min-w-0">
                         <h1 className="font-black text-lg md:text-2xl leading-none truncate">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
                         <div className="flex items-center gap-2 mt-1.5 md:mt-2 overflow-hidden">
-                            <span className={`text-[9px] px-2 py-0.5 rounded-[var(--radius-badge)] font-bold uppercase whitespace-nowrap ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-(--radius-badge) font-bold uppercase whitespace-nowrap ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                                 {isEur ? 'EUR' : 'USD'} Base
                             </span>
                         </div>
@@ -591,7 +657,8 @@ is_featured: product.is_featured || false,
                 </div>
                 <div className="flex items-center gap-2 md:gap-5 shrink-0 pl-2">
                     <button onClick={handleExit} className="hidden md:block px-4 py-2 text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase tracking-wide">Cancelar</button>
-                    <button onClick={handleSave} disabled={saving} className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full shadow-subtle font-bold text-xs md:text-sm hover:bg-gray-800 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-70 border border-black">
+                    <button onClick={handleSave} disabled={saving} className={`bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full shadow-subtle font-bold text-xs md:text-sm 
+                        hover:bg-gray-800 active:scale-95 flex items-center gap-2 disabled:opacity-70 border border-black  ${isMission1 ? getSpotlightClass('1', 4, 'button') : isMission2 ? getSpotlightClass('2', 5, 'button') : isMission3 ? getSpotlightClass('3', 4, 'button') : getSpotlightClass('4', 3, 'button')}`}>
                         {saving ? <Loader2 className="animate-spin w-3.5 h-3.5 md:w-4 md:h-4" /> : <Save strokeWidth={2.5} className="w-3.5 h-3.5 md:w-4 md:h-4" />}
                         <span className="hidden sm:block">Guardar Producto</span>
                         <span className="sm:hidden">Guardar</span>
@@ -618,7 +685,7 @@ is_featured: product.is_featured || false,
                 <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent space-y-6">
                     <h3 className="text-lg font-black text-gray-900 border-b border-gray-100 pb-3">1. Información Básica</h3>
                     <div className="space-y-5">
-                        <div>
+                       <div className={getSpotlightClass('1', 1)}>
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Nombre del Producto</label>
                             <input value={formData.name} onChange={e => updateForm('name', e.target.value)} placeholder="Ej: Nike Air Force 1" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) px-4 py-3.5 font-bold text-[16px] md:text-sm text-gray-900 placeholder:text-gray-400 transition-all outline-none" />
                         </div>
@@ -694,6 +761,7 @@ is_featured: product.is_featured || false,
                     </h3>
                     
                     {/* Toggle de Destacado (Único control en el editor) */}
+                    <div id="tour-step-3-3" className={`p-3 -m-3 rounded-2xl ${getSpotlightClass('3', 3, 'container')}`}>
                     <div
                         className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_featured ? 'bg-black border-black' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
                         onClick={() => updateForm('is_featured', !formData.is_featured)}
@@ -712,14 +780,17 @@ is_featured: product.is_featured || false,
                             <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_featured ? 'bg-white' : 'bg-gray-300'}`} />
                         </div>
                     </div>
+                    </div>
                 </div>
 
                 {/* CARD 2: MEDIOS Y GALERÍA */}
                 <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent  space-y-6 mb-auto">
                     <h3 className="text-lg font-black text-gray-900 border-b border-gray-100 pb-3">2. Fotos del Producto</h3>
                     <div className="flex flex-col md:flex-row gap-6 items-start">
+                        
+                
                         {/* Foto Principal */}
-                        <div className="w-full md:w-1/3">
+                        <div id="tour-step-2" className={`w-full md:w-1/3 p-2 ${getSpotlightClass('1', 2, 'container')}`}>
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">Foto Portada (Obligatoria)</label>
                             <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'main')} />
                             <div onClick={() => mainImageInputRef.current?.click()} className={`aspect-square bg-[#f6f6f6] rounded-(--radius-card) border border-dashed ${uploading ? 'border-gray-300 animate-pulse' : 'border-gray-300 hover:border-black'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all`}>
@@ -773,21 +844,21 @@ is_featured: product.is_featured || false,
                 {/* CARD 3: ESTRATEGIA DE PRECIO E IMPUESTOS */}
                 <div className="bg-white relative top-13 p-5 pb-14 rounded-(--radius-card) border border-transparent space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div>
+                     <div id="tour-step-3" className={`p-2 ${getSpotlightClass('1', 3)}`}>
                             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Divisa (Base) *</label>
                             <div className="relative group">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
                                 <NumberInput min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-black focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-black text-[16px] md:text-xl text-gray-900 outline-none transition-all" />
                             </div>
                         </div>
-                        <div>
+                        <div id="tour-step-3-1" className={`p-3 -m-3 rounded-2xl ${getSpotlightClass('3', 1, 'container')}`}>
                             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Precio Anterior (Tachado)</label>
                             <div className="relative group">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-red-500 transition-colors">$</span>
                                 <NumberInput min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full bg-[#f6f6f6] border border-transparent focus:bg-white focus:border-red-500 focus:shadow-subtle rounded-(--radius-btn) pl-8 pr-4 py-3.5 font-bold text-[16px] md:text-lg text-red-600 outline-none transition-all" />
                             </div>
                         </div>
-                        <div>
+                        <div id="tour-step-4-1" className={`p-3 -m-3 rounded-2xl ${getSpotlightClass('4', 1, 'container')}`}>
                             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 block ml-1">Margen Conversión (Opcional)</label>
                             <div className="relative group">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-black transition-colors">$</span>
@@ -818,7 +889,8 @@ is_featured: product.is_featured || false,
                     </div>
 )}
                 </div>
-                <div className="bg-[#0A0A0A] rounded-(--radius-card) p-6 text-center relative overflow-hidden mt-4 border border-[#222] shadow-xl">
+                <div id="tour-step-4-2" className={`p-3 -m-3 rounded-2xl ${getSpotlightClass('4', 2, 'container')}`}>
+                <div className="bg-[#0A0A0A] rounded-(--radius-card) p-6 text-center relative overflow-hidden mt-4 mb-4 border border-[#222]">
                     <div className="relative z-10 flex flex-col items-center gap-3">
                         <span className="bg-white/10 text-white/70 px-2.5 py-1 rounded-(--radius-badge) text-[9px] font-bold uppercase tracking-wider border border-white/10">
                             {rateLabel} Actual: {activeRate.toFixed(2)}
@@ -834,28 +906,30 @@ is_featured: product.is_featured || false,
                             <p className="text-[10px] text-white/40 font-medium">Equivale a ${math.listPrice.toFixed(2)} Divisa Full</p>
                         </div>
                     </div>
+                    </div>
                 </div>
 
-         <ProductWholesaleConfig 
-                  initialActive={formData.wholesale_active}
-                  initialMinQty={formData.wholesale_min_qty}
-                  initialDiscountPct={formData.wholesale_discount_pct}
-                  onChange={(wholesaleData) => {
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      wholesale_active: wholesaleData.wholesale_active,
-                      wholesale_min_qty: wholesaleData.wholesale_min_qty,
-                      wholesale_discount_pct: wholesaleData.wholesale_discount_pct
-                    }));
-                    // 🚀 GATILLO: Le avisa a React que hay cambios sin guardar
-                    setIsDirty(true); 
-                  }}
-                />
+         <div id="tour-step-3-2" className={`p-3 -m-3 rounded-2xl ${getSpotlightClass('3', 2, 'container')}`}>
+                    <ProductWholesaleConfig 
+                        initialActive={formData.wholesale_active}
+                        initialMinQty={formData.wholesale_min_qty}
+                        initialDiscountPct={formData.wholesale_discount_pct}
+                        onChange={(wholesaleData) => {
+                            setFormData(prev => ({ 
+                            ...prev, 
+                            wholesale_active: wholesaleData.wholesale_active,
+                            wholesale_min_qty: wholesaleData.wholesale_min_qty,
+                            wholesale_discount_pct: wholesaleData.wholesale_discount_pct
+                            }));
+                            setIsDirty(true); 
+                        }}
+                    />
+                </div>
                 {/* CARD 4: INVENTARIO Y LOGÍSTICA */}
                 <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border border-transparent shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 border-b border-gray-100 pb-3">
                         <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Box size={20} /> 4. Inventario y Variantes</h3>
-                        <div className="flex bg-gray-50 border border-gray-100 rounded-(--radius-btn) p-1 w-full sm:w-auto">
+                     <div id="tour-step-2-1" className={`flex bg-gray-50 border border-gray-100 rounded-(--radius-btn) p-1 w-full sm:w-auto ${getSpotlightClass('2', 1, 'container')}`}>
                             <button onClick={(e) => { e.preventDefault(); setHasVariants(false); setIsDirty(true); }} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-(--radius-badge) text-xs font-bold transition-all ${!hasVariants ? 'bg-white text-black shadow-subtle border border-transparent' : 'text-gray-500 hover:text-black border border-transparent'}`}>
                                 Producto Único
                             </button>
@@ -874,11 +948,11 @@ is_featured: product.is_featured || false,
                     ) : (
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full">
                             {/* CREADOR RÁPIDO DE VARIANTES (100% MOBILE RESPONSIVE) */}
-                            <div className="bg-gray-50 rounded-(--radius-card) p-5 md:p-6 border border-transparent mb-8 w-full overflow-hidden box-border">
+                            <div className="bg-gray-50 rounded-(--radius-card) p-5 md:p-6 border border-transparent mb-8 w-full box-border">
                                 <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')} />
                                 <div className="space-y-6">
                                     <div className="flex flex-col md:flex-row gap-6">
-                                        <div className="flex-1 min-w-0">
+                                      <div id="tour-step-2-2" className={`flex-1 min-w-0 p-3 -m-3 rounded-2xl ${getSpotlightClass('2', 2, 'container')}`}>
                                             <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Atributo Primario</label>
                                                 <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
@@ -886,7 +960,7 @@ is_featured: product.is_featured || false,
                                                     <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">¿Lleva Color?</span>
                                                 </label>
                                             </div>
-                                            <div className="flex items-center gap-3 bg-white p-2 rounded-(--radius-btn) border border-transparent focus-within:border-black focus-within:shadow-subtle transition-all shadow-sm h-14">
+                                            <div id="tour-step-2-2" className={`flex items-center gap-3 bg-white p-2 rounded-(--radius-btn) border border-transparent focus-within:border-black focus-within:shadow-subtle transition-all shadow-sm h-14 ${getSpotlightClass('2', 2, 'container')}`}>
                                                 {useColor && <input type="color" value={variantInput.colorHex} onChange={e => updateVariantInput('colorHex', e.target.value)} className="w-10 h-10 rounded-(--radius-badge) border-none cursor-pointer bg-transparent shrink-0" />}
                                                 <input type="text" placeholder={useColor ? "Ej: Negro, Dorado..." : "Ej: Licencia Pro..."} value={variantInput.colorName} onChange={e => updateVariantInput('colorName', e.target.value)} className="flex-1 bg-transparent border-none text-[16px] md:text-sm font-bold outline-none text-gray-900 min-w-0 px-2" />
                                             </div>
@@ -914,12 +988,12 @@ is_featured: product.is_featured || false,
                                     </div>
 
                                     <div className="flex flex-col md:flex-row gap-6 items-start">
-                                        <div className="flex-2 w-full min-w-0">
+                                       <div id="tour-step-2-3" className={`flex-2 w-full min-w-0 p-3 -m-3 rounded-2xl ${getSpotlightClass('2', 3, 'container')}`}>
                                             <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Atributo Secundario (Talla)</label>
                                                 <span className="text-[9px] font-medium text-gray-400 shrink-0">Separa con ( , )</span>
                                             </div>
-                                            <div className="w-full bg-white border border-transparent focus-within:border-black focus-within:shadow-subtle rounded-(--radius-btn) px-3 py-2.5 min-h-14 flex flex-wrap items-center gap-2 transition-all shadow-sm">
+                                            <div id="tour-step-2-3" className={`w-full bg-white border border-transparent focus-within:border-black focus-within:shadow-subtle rounded-(--radius-btn) px-3 py-2.5 min-h-14 flex flex-wrap items-center gap-2 transition-all shadow-sm ${getSpotlightClass('2', 3, 'container')}`}>
                                                 {sizeTags.map(tag => (<span key={tag} className="flex items-center gap-1.5 bg-black text-white px-2.5 py-1 rounded-(--radius-badge) text-xs font-bold animate-in fade-in">{tag}<button onClick={() => removeSizeTag(tag)} className="hover:text-red-400 transition-colors"><X size={12} /></button></span>))}
                                                 <div className="flex-1 min-w-20 flex items-center">
                                                     <input placeholder={sizeTags.length === 0 ? "Ej: S, 42, 50cm..." : ""} value={sizeInputValue} onChange={handleSizeInputChange} onKeyDown={handleSizeKeyDown} onBlur={handleSizeBlur} className="w-full min-w-0 bg-transparent outline-none text-[16px] md:text-sm font-bold text-gray-900 placeholder:text-gray-400 placeholder:font-medium" />
@@ -961,7 +1035,7 @@ is_featured: product.is_featured || false,
                                         </div>
                                     </div>
 
-                                    <button onClick={addVariantGroup} className="w-full bg-black text-white py-3.5 rounded-(--radius-btn) hover:bg-gray-800 active:scale-98 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-subtle border border-black">
+                                    <button id="tour-step-2-4" onClick={addVariantGroup} className={`w-full bg-black text-white py-3.5 rounded-(--radius-btn) hover:bg-gray-800 active:scale-98 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-subtle border border-black ${getSpotlightClass('2', 4, 'button')}`}>
                                         <Plus size={16} strokeWidth={3} /> Generar SKUs
                                     </button>
                                 </div>
@@ -1128,16 +1202,121 @@ is_featured: product.is_featured || false,
                 </div>
             </div>
 
+       {/* 🚀 MOTOR SPOTLIGHT MAESTRO */}
+            <MissionTour 
+                isActive={isMission1 || isMission2 || isMission3 || isMission4}
+                currentStep={tourStep}
+                totalSteps={isMission1 ? 4 : isMission2 ? 5 : isMission3 ? 4 : 3}
+                title={
+                    isMission1 ? (
+                        tourStep === 1 ? "1. Nombra tu Creación" : tourStep === 2 ? "2. La Primera Impresión" : tourStep === 3 ? "3. La Magia de Preziso" : "4. ¡Lanza tu Producto!"
+                    ) : isMission2 ? (
+                        tourStep === 1 ? "1. Activar Variantes" : tourStep === 2 ? "2. Define un Atributo" : tourStep === 3 ? "3. Añade las Tallas" : tourStep === 4 ? "4. ¡Crea la Magia!" : "5. Guarda tu Catálogo"
+                    ) : isMission3 ? (
+                        tourStep === 1 ? "1. El Efecto Oferta" :
+                        tourStep === 2 ? "2. Venta al Mayor" :
+                        tourStep === 3 ? "3. El Escaparate" :
+                        "4. Guarda la Estrategia"
+                    ) : (
+                        tourStep === 1 ? "1. El Margen de Protección" :
+                        tourStep === 2 ? "2. El Descuento Mágico" :
+                        "3. ¡Misión Cumplida!"
+                    )
+                
+                }
+                description={
+                    isMission1 ? (
+                        tourStep === 1 ? "Escribe un nombre corto y llamativo para tu primer producto. Ej: Franela Oversize." :
+                        tourStep === 2 ? "Sube la mejor foto que tengas. Una buena imagen es el 80% de la venta." :
+                        tourStep === 3 ? `¿Cuánto cuesta en ${isEur ? 'Euros' : 'Dólares'}? Escríbelo y mira cómo calculamos los Bolívares.` :
+                        "¡Todo listo! Haz clic en Guardar para publicar tu primer producto y completar la misión."
+                    ) : isMission2 ? (
+                        tourStep === 1 ? "Vamos a simular que vendes unos Zapatos (luego podrás borrarlos). Haz clic en 'Con Variantes' para abrir el organizador." :
+                        tourStep === 2 ? "Aquí defines el color (Ej: Rojo). Fíjate en el interruptor '¿Lleva Color?': si vendieras algo sin color (como un software), lo apagarías." :
+                        tourStep === 3 ? "Añade las tallas del zapato (Ej: 40, 42) y presiona Enter, o usa los botones rápidos de abajo." :
+                        tourStep === 4 ? "Preziso cruzará el Color con las Tallas para crear tu inventario ordenado. ¡Haz clic en 'Generar SKUs'!" :
+                        "Fíjate cómo se creó la lista abajo. Haz clic en 'Guardar Producto' para completar tu misión."
+                    ) : isMission3 ? (
+                        tourStep === 1 ? "¿Quieres hacer una oferta? Pon aquí un precio más alto (Ej: 60). Tus clientes lo verán tachado y sentirán que es una ganga." :
+                        tourStep === 2 ? "Enciende esto si quieres dar un descuento automático a los clientes que te compren muchas cantidades." :
+                        tourStep === 3 ? "Enciende la estrellita para que este producto aparezca de primero en tu tienda como 'Lo más vendido'." :
+                        "¡Estrategia lista! Haz clic en Guardar Producto para aplicar estos ganchos de venta."
+                    ) : (
+                        tourStep === 1 ? "Añade un margen extra (Ej: 10). Este monto se sumará al precio en Bolívares para protegerte de la inflación." :
+                        tourStep === 2 ? "Mira la tarjeta negra. Si el cliente te paga en Divisas, Preziso le descontará ese margen automáticamente como incentivo." :
+                        "¡Has dominado el secreto de las divisas! Guarda el producto para finalizar la Academia Preziso."
+                    )
+                }
+                onNext={() => {
+                    // VALIDACIONES MISIÓN 1
+                    if (isMission1) {
+                        if (tourStep === 1 && !formData.name) return Swal.fire('Falta el nombre', 'Escribe un nombre para continuar', 'info')
+                        if (tourStep === 2 && !formData.image_url) return Swal.fire('Falta la foto', 'Sube una foto para continuar', 'info')
+                        if (tourStep === 3 && Number(formData.price) <= 0) return Swal.fire('Falta el precio', 'Coloca un precio válido', 'info')
+                    }
+                    // VALIDACIONES MISIÓN 2
+                    if (isMission2) {
+                        if (tourStep === 1 && !hasVariants) return Swal.fire('Acción requerida', 'Haz clic en el botón "Con Variantes" resaltado.', 'info')
+                        if (tourStep === 2 && useColor && !variantInput.colorName) return Swal.fire('Acción requerida', 'Escribe el nombre del color.', 'info')
+                        if (tourStep === 3 && sizeTags.length === 0 && sizeInputValue.trim() === '') return Swal.fire('Acción requerida', 'Añade al menos una talla (ej: M).', 'info')
+                        if (tourStep === 4 && variants.length === 0) return Swal.fire('Acción requerida', 'Haz clic en el botón negro "Generar SKUs".', 'info')
+                    }
+                                    if (isMission3) {
+                        if (tourStep === 1 && Number(formData.compareAt) <= Number(formData.price)) return Swal.fire('Acción requerida', 'Pon un precio tachado mayor al precio base (45) para que sea una oferta real.', 'info')
+                        if (tourStep === 2 && !formData.wholesale_active) return Swal.fire('Acción requerida', 'Enciende el interruptor de Venta al Mayor.', 'info')
+                        if (tourStep === 3 && !formData.is_featured) return Swal.fire('Acción requerida', 'Enciende la estrella para destacar el producto.', 'info')
+                    }
+                 if (isMission4) {
+                        if (tourStep === 1 && Number(formData.penalty) <= 0) return Swal.fire('Acción requerida', 'Añade un margen mayor a 0 (Ej: 5 o 10) para ver la magia.', 'info')
+                    }
+                    
+                    const maxSteps = isMission1 ? 4 : isMission2 ? 5 : isMission3 ? 4 : 3;
+                    if (tourStep < maxSteps) {
+                        const nextStep = tourStep + 1
+                        setTourStep(nextStep)
+
+                    
+                  
+                        
+                        setTimeout(() => {
+                            if (isMission1) {
+                                if (nextStep === 2) document.getElementById('tour-step-2')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 3) document.getElementById('tour-step-3')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 4) window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }
+                            if (isMission2) {
+                                if (nextStep === 2) document.getElementById('tour-step-2-2')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 3) document.getElementById('tour-step-2-3')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 4) document.getElementById('tour-step-2-4')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 5) window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }
+                         if (isMission3) {
+                                if (nextStep === 2) document.getElementById('tour-step-3-2')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 3) document.getElementById('tour-step-3-3')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 4) window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }
+                      if (isMission4) {
+                                if (nextStep === 2) document.getElementById('tour-step-4-2')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                if (nextStep === 3) window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }
+                        }, 100)
+                    } else {
+                        handleSave()
+                    }
+                }}
+                onCancel={() => router.push('/admin')}
+            />
+                       
             {/* ZONA DE PELIGRO */}
             {productId && (
                 <div className="max-w-4xl mx-auto px-4 md:px-8 mb-10">
-                    <div className="border border-red-200 bg-red-50/30 rounded-(--radius-card) p-6 md:p-8 animate-in fade-in shadow-sm">
+                    <div className="border border-red-200 bg-red-50/30 rounded-(--radius-card) p-6 md:p-8 animate-in fade-in">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <h3 className="text-lg font-black text-red-600 flex items-center gap-2"><AlertTriangle size={20} /> Zona de Peligro</h3>
                                 <p className="text-sm font-medium text-red-900/70 mt-1 max-w-xl">Eliminar este producto lo removerá permanentemente de tu catálogo. Si ya tiene ventas, se ocultará como &quot;Borrador&quot; automáticamente.</p>
                             </div>
-                            <button onClick={(e) => { e.preventDefault(); handleDeleteProduct(); }} disabled={saving} className="shrink-0 px-6 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 font-bold text-sm rounded-(--radius-btn) transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"><Trash2 size={18} /> Eliminar Producto</button>
+                            <button onClick={(e) => { e.preventDefault(); handleDeleteProduct(); }} disabled={saving} className="shrink-0 px-6 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 font-bold text-sm rounded-(--radius-btn) transition-all active:scale-95 flex items-center justify-center gap-2 "><Trash2 size={18} /> Eliminar Producto</button>
                         </div>
                     </div>
                 </div>

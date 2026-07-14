@@ -1,214 +1,152 @@
 'use client'
 
-import { useState } from 'react'
-import confetti from 'canvas-confetti'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
-import { Store, Loader2, ArrowRight, Smartphone, Globe, CheckCircle2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Swal from 'sweetalert2'
+import { Coins, ArrowRight, Check, Globe, Smartphone, Store, Package, Image as ImageIcon, Loader2, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { uploadImageToSupabase } from '@/utils/supabaseStorage'
+import confetti from 'canvas-confetti'
+import { toast } from 'sonner'
+
+const PremiumInput = ({ label, prefix, suffix, value, onChange, placeholder, type = "text", hint }: any) => (
+  <div className="space-y-2 w-full">
+    <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider ml-1">{label}</label>
+    <div className="group relative flex items-center bg-white border border-neutral-200 rounded-xl px-4 py-3 transition-all duration-300 focus-within:border-neutral-900 focus-within:shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
+      {prefix && <span className="text-neutral-400 mr-2 font-medium">{prefix}</span>}
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-transparent outline-none text-sm font-medium text-neutral-900 placeholder:text-neutral-300" />
+      {suffix && <span className="text-neutral-400 ml-2 text-xs font-medium">{suffix}</span>}
+    </div>
+    {hint && <p className="text-[10px] text-neutral-400 ml-1 italic">{hint}</p>}
+  </div>
+)
 
 export default function OnboardingWizard() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [rates, setRates] = useState({ usd: 0, eur: 0 })
   
-  // Datos de la tienda
-  const [name, setName] = useState('')
+  // ESTADO MAESTRO
+  const [currency, setCurrency] = useState<'usd' | 'eur'>('usd')
+  const [storeName, setStoreName] = useState('')
   const [slug, setSlug] = useState('')
   const [phone, setPhone] = useState('')
-  const [currency, setCurrency] = useState<'usd' | 'eur'>('usd')
-
+  
+  
   const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-  // Generador inteligente de URLs
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setName(val)
-    // Limpia caracteres especiales y evita guiones duplicados
-    setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+  useEffect(() => {
+    async function fetchRates() {
+      const { data } = await supabase.from('app_config').select('usd_rate, eur_rate').single()
+      if (data) setRates({ usd: Number(data.usd_rate), eur: Number(data.eur_rate) })
+    }
+    fetchRates()
+  }, [])
+
+  const handleNameChange = (val: string) => {
+    setStoreName(val)
+    setSlug(val.toLowerCase().replace(/[^a-z0-9]/g, ''))
   }
 
-  const handleNext = () => {
-    if (step === 1 && name && slug) setStep(2)
-  }
+ 
 
-  const handleCreateStore = async () => {
+ // --- GUARDADO MAESTRO (VERSIÓN LIMPIA) ---
+  const handleFinalize = async () => {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return router.push('/login')
+      if (!user) throw new Error("No se encontró sesión de usuario. Por favor, inicia sesión de nuevo.")
 
-      // 1. Validar si el slug existe (para no chocar con otra tienda)
-      const { data: existing } = await supabase.from('stores').select('id').eq('slug', slug).maybeSingle()
-      if (existing) {
-        setLoading(false)
-        return Swal.fire({ icon: 'error', title: 'Oops...', text: 'Esa URL ya está ocupada por otro negocio. Prueba añadiendo tu ciudad.', confirmButtonColor: '#000' })
+      // 1. UPSERT DE LA TIENDA
+      const { error: storeErr } = await supabase.from('stores').upsert({
+        user_id: user.id,
+        name: storeName,
+        slug: slug,
+        phone: phone,
+        currency_type: currency,
+        subscription_status: 'trial'
+      }, { onConflict: 'user_id' })
+
+      if (storeErr) {
+        if (storeErr.code === '23505') throw new Error("Esa URL ya está ocupada por otro negocio. Prueba otra.")
+        throw storeErr
       }
 
-      // 2. Crear la tienda (Con 7 días de prueba - Modo de Alta Conversión)
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 7) // Reducido a 7 DÍAS EXACTOS
-
-      const { error } = await supabase.from('stores').insert([{
-          user_id: user.id,
-          name: name,
-          slug: slug,
-          phone: phone,
-          currency_type: currency,
-          subscription_status: 'trial',
-          trial_ends_at: trialEndDate.toISOString()
-      }])
-
-      if (error) throw error
-
-      // 3. Éxito: Animación de triunfo y al panel
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#000000', '#66cc00', '#741DF2'] // Tus colores de marca
-      })
-
-      Swal.fire({ 
-        title: '¡Imperio creado!', 
-        text: 'Preparando tu centro de comando...', 
-        icon: 'success',
-        showConfirmButton: false, 
-        timer: 2500,
-        buttonsStyling: false,
-        customClass: { popup: 'rounded-3xl border border-gray-200' }
-      })
-
+      // 2. ÉXITO Y REDIRECCIÓN
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#000', '#22c55e'] })
+      
       setTimeout(() => {
-          router.refresh()
-          router.push('/admin')
-      }, 2500)
+        router.refresh()
+        router.push('/admin?welcome=true') // 🚀 Bandera para disparar el Modal
+      }, 1500)
 
-    } catch (error: any) {
-      Swal.fire({ icon: 'error', title: 'Error fatal', text: error.message, confirmButtonColor: '#000' })
+    } catch (err: any) {
+      console.error("Error en Onboarding:", err)
+      toast.error(err.message || "Ocurrió un error inesperado")
       setLoading(false)
     }
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans overflow-hidden relative">
-      
-      {/* BACKGROUND DECORATION FLAT */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-gray-200/50 rounded-full blur-3xl -z-10"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-gray-200/50 rounded-full blur-3xl -z-10"></div>
+  
 
-      <div className="w-full max-w-md relative">
-        
-        {/* INDICADOR DE PASOS */}
-        <div className="flex justify-center gap-2 mb-8">
-            <div className={`h-1.5 w-8 rounded-full transition-colors ${step >= 1 ? 'bg-black' : 'bg-gray-200'}`}></div>
-            <div className={`h-1.5 w-8 rounded-full transition-colors ${step >= 2 ? 'bg-black' : 'bg-gray-200'}`}></div>
+  return (
+    <div className="min-h-screen bg-[#FBFBFB] flex items-center justify-center p-6 font-sans selection:bg-black selection:text-white">
+      <div className="w-full max-w-[440px] relative">
+        <div className="flex gap-1.5 mb-12 justify-center">
+          {[1, 2].map((i) => (
+            <div key={i} className={`h-[3px] rounded-full transition-all duration-500 ${step >= i ? 'w-8 bg-neutral-900' : 'w-4 bg-neutral-200'}`} />
+          ))}
         </div>
 
         <AnimatePresence mode="wait">
-          
-          {/* TARJETA 1: IDENTIDAD */}
           {step === 1 && (
-            <motion.div 
-              key="step1"
-              initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className="bg-white p-8 rounded-3xl border border-gray-200 flex flex-col gap-6"
-            >
-              <div className="text-center">
-                <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center mx-auto mb-4 border border-black">
-                  <Globe size={24} />
-                </div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Nombra tu Imperio</h1>
-                <p className="text-gray-500 text-sm mt-1 font-medium">¿Cómo se llamará tu tienda online?</p>
+            <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+              <div className="space-y-2 text-center">
+                <h1 className="text-[28px] font-semibold tracking-tight text-neutral-900">Base Financiera</h1>
+                <p className="text-neutral-500 text-sm">Selecciona la moneda base de tus precios.</p>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre Comercial</label>
-                  <input 
-                    type="text" value={name} onChange={handleNameChange} placeholder="Ej: Zapatos Caracas"
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition-all"
-                    autoFocus
-                  />
-                </div>
-                
-                {/* PREVIEW DE URL EN TIEMPO REAL */}
-                <div className={`transition-all duration-300 ${name ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Tu Enlace Público</label>
-                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden px-4 py-3.5">
-                    <span className="font-bold text-black text-sm truncate text-right w-fit max-w-[120px]">{slug || 'mitienda'}</span>
-                    <span className="text-gray-400 font-medium text-sm">.preziso.shop</span>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 gap-3">
+                {[{ id: 'usd', label: 'Dólares Americanos', rate: rates.usd }, { id: 'eur', label: 'Euros Europeos', rate: rates.eur }].map((opt) => (
+                  <button key={opt.id} onClick={() => setCurrency(opt.id as 'usd' | 'eur')} className={`group flex items-center justify-between p-5 rounded-2xl border transition-all ${currency === opt.id ? 'border-neutral-900 bg-white shadow-sm' : 'border-neutral-200 hover:border-neutral-300'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currency === opt.id ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-400'}`}><Coins size={20} /></div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-neutral-900">{opt.label}</p>
+                        <p className="text-xs font-mono text-neutral-400">Tasa: {opt.rate.toFixed(2)} Bs</p>
+                      </div>
+                    </div>
+                    {currency === opt.id && <Check size={18} strokeWidth={3} />}
+                  </button>
+                ))}
               </div>
-
-              <button 
-                onClick={handleNext} disabled={!name || !slug}
-                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 flex items-center justify-center gap-2 mt-2"
-              >
-                Continuar <ArrowRight size={18} />
-              </button>
+              <button onClick={() => setStep(2)} className="w-full h-12 bg-neutral-900 text-white rounded-xl font-medium text-sm hover:bg-neutral-800 transition-all flex items-center justify-center gap-2">Continuar <ArrowRight size={16} /></button>
             </motion.div>
           )}
 
-          {/* TARJETA 2: OPERACIONES */}
           {step === 2 && (
-            <motion.div 
-              key="step2"
-              initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-              className="bg-white p-8 rounded-3xl border border-gray-200 flex flex-col gap-6"
-            >
-              <div className="text-center">
-                <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center mx-auto mb-4 border border-black">
-                  <Smartphone size={24} />
-                </div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Casi listo</h1>
-                <p className="text-gray-500 text-sm mt-1 font-medium">¿Dónde recibirás tus ventas?</p>
+            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+              <div className="space-y-2 text-center">
+                <h1 className="text-[28px] font-semibold tracking-tight text-neutral-900">Tu Identidad</h1>
+                <p className="text-neutral-500 text-sm">Configura cómo te verán tus clientes.</p>
               </div>
-
               <div className="space-y-5">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">WhatsApp de Ventas</label>
-                  <input 
-                    type="tel" inputMode="numeric" pattern="[0-9]*" value={phone} 
-                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))} 
-                    placeholder="Ej: 584140000000"
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-mono font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition-all"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1.5 ml-1">Usa código internacional (Ej: 58 para Venezuela)</p>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Moneda Principal</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => setCurrency('usd')} className={`flex-1 py-3.5 rounded-xl text-sm font-bold border transition-all ${currency === 'usd' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-black'}`}>
-                      Dólares (USD)
-                    </button>
-                    <button onClick={() => setCurrency('eur')} className={`flex-1 py-3.5 rounded-xl text-sm font-bold border transition-all ${currency === 'eur' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-black'}`}>
-                      Euros (EUR)
-                    </button>
-                  </div>
-                </div>
+                <PremiumInput label="Nombre del Negocio" placeholder="Ej: Trazo Boutique" value={storeName} onChange={handleNameChange} prefix={<Store size={16} />} />
+                <PremiumInput label="Enlace de tu Tienda" placeholder="mitienda" value={slug} onChange={(v:any) => setSlug(v.toLowerCase().replace(/[^a-z0-9]/g, ''))} suffix=".preziso.shop" prefix={<Globe size={16} />} />
+                <PremiumInput label="WhatsApp" placeholder="584121234567" value={phone} onChange={(v:any) => setPhone(v.replace(/[^0-9]/g, ''))} prefix={<Smartphone size={16} />} />
               </div>
-
-              <div className="flex gap-3 mt-2">
-                <button onClick={() => setStep(1)} className="px-5 py-4 bg-gray-50 text-gray-600 font-bold rounded-xl border border-gray-200 hover:border-black transition-all active:scale-95">
-                  Atrás
-                </button>
+             <div className="flex gap-3">
+                <button onClick={() => setStep(1)} className="flex-1 h-12 border border-neutral-200 text-neutral-600 rounded-xl font-medium text-sm">Atrás</button>
                 <button 
-                  onClick={handleCreateStore} disabled={loading || !phone}
-                  className="flex-1 bg-green-600 text-white font-bold py-4 rounded-xl border border-green-600 hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={handleFinalize} 
+                  disabled={loading || !storeName || !slug || !phone} 
+                  className="flex-[2] h-12 bg-neutral-900 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-neutral-200 disabled:opacity-20 transition-all"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={18} /> : <>Lanzar Tienda <CheckCircle2 size={18} /></>}
+                  {loading ? <Loader2 className="animate-spin" size={18} /> : "Lanzar mi Imperio"}
                 </button>
               </div>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
     </div>

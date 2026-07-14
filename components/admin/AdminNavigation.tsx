@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { LayoutGrid, ShoppingBag, Package, Settings, Plus, LogOut, Store, Copy, Check, Tag, Headset, X, Wallet, Palette, Users, Calculator, FileText, User, Gift } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -499,6 +499,10 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
 const MobileBottomBar = ({ pathname }: { pathname: string }) => {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  
+  // 🚀 DETECTOR DE TOUR ACTIVO
+  const searchParams = useSearchParams()
+  const isTourActive = !!searchParams.get('mission')
 
   // 🚀 INTELIGENCIA DE DETECCIÓN PROFUNDA (Capture Phase)
   useEffect(() => {
@@ -547,10 +551,13 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     normalLinks[3]  // Ajustes
   ].filter(Boolean)
 
+// Si hay un tour activo, sobreescribimos la visibilidad de la barra
+  const shouldRenderBar = isVisible && !isTourActive;
+
   return (
     <div 
       className={`lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 pb-[env(safe-area-inset-bottom)] transform-gpu transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform z-30
-      ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120%] opacity-0'}`} 
+      ${shouldRenderBar ? 'translate-y-0 opacity-100' : 'translate-y-[120%] opacity-0 pointer-events-none'}`} 
     >
       <div className="flex justify-between items-end p-1 pt-0 max-w-md mx-auto">
         {bottomBarLinks.map((link: any) => {

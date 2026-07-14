@@ -39,7 +39,7 @@ export default function ProductWholesaleConfig({
   };
 
   return (
-    <div className="bg-white p-6 border border-gray-200 rounded-[var(--radius-card)] w-full">
+    <div className="bg-white p-6 border border-gray-200 mb-4 rounded-[var(--radius-card)] w-full">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h3 className="text-sm font-bold text-gray-900">Regla Mayorista Individual</h3>
