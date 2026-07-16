@@ -205,15 +205,16 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isDarkHero, setIsDarkHero] = useState(true)
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(12)
+  const [currentPage, setCurrentPage] = useState(1) // 🚀 NUEVO ESTADO DE PAGINACIÓN
+  const [isMobile, setIsMobile] = useState(true) // 🚀 NUEVO ESTADO RESPONSIVO
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
-  // 2. REFS DE CONTROL DEL DOM
+// 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
-  const observerTarget = useRef<HTMLDivElement>(null)
+  const catalogTopRef = useRef<HTMLDivElement>(null) // 🚀 NUEVA REFERENCIA DE ANCLAJE
 
   // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
@@ -510,16 +511,17 @@ export default function StoreInterface({ store, products, rates, promotions = []
     };
   }, [store?.hero_url]);
 
+  // 🚀 REINICIO DE PÁGINA AL BUSCAR O FILTRAR
   useEffect(() => {
-    setVisibleCount(12)
+    setCurrentPage(1)
   }, [debouncedSearch, selectedCategory])
 
+  // 🚀 DETECCIÓN ULTRA-LIGERA DEL DISPOSITIVO
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) setVisibleCount((prev) => prev + 12)
-    }, { threshold: 0.1 })
-    if (observerTarget.current) observer.observe(observerTarget.current)
-    return () => observer.disconnect()
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile() // Comprobación inicial
+    window.addEventListener('resize', checkMobile, { passive: true })
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   useEffect(() => {
@@ -626,9 +628,39 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
     }
   };
 
-  const dynamicMask = `linear-gradient(to right, ${isScrolledLeft ? 'transparent' : '#000'
-    } 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
+// 🚀 ESTA ES LA LÍNEA QUE SE HABÍA BORRADO:
+  const dynamicMask = `linear-gradient(to right, ${isScrolledLeft ? 'transparent' : '#000'} 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
 
+  // ==========================================
+  // 🚀 MOTOR MATEMÁTICO DE PAGINACIÓN INTELIGENTE
+  // ==========================================
+  const itemsPerPage = isMobile ? 12 : 24;
+  const totalPages = Math.ceil(standardProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = standardProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    if (catalogTopRef.current) {
+      // Calculamos la posición exacta restando 140px para no tapar el navbar sticky
+      const y = catalogTopRef.current.getBoundingClientRect().top + window.scrollY - 140;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  // Algoritmo que genera los números de página con elipsis "..." si hay más de 5 páginas
+  const getPaginationRange = () => {
+    const delta = 1;
+    const range = [];
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+    if (currentPage - delta > 2) range.unshift("...");
+    if (currentPage + delta < totalPages - 1) range.push("...");
+    range.unshift(1);
+    if (totalPages > 1) range.push(totalPages);
+    return range;
+  };
 
   // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
@@ -1055,9 +1087,12 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
             </section>
           )}
 
-          {/* 🚀 DEVOLVEMOS EL DIV NORMAL AL PADRE */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
-            {standardProducts.slice(0, visibleCount).map((product: any, index: number) => {
+          {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
+          <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
+
+          {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8 min-h-[40vh]">
+            {paginatedProducts.map((product: any, index: number) => {
               const pricing = getProductPricing(product)
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
                 ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
@@ -1070,17 +1105,56 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
                   pricing={pricing}
                   onOpen={handleOpenProduct}
                   isOutOfStock={isCompletelyOutOfStock}
-                  index={index} // 🚀 CRÍTICO: Pasar el index
+                  index={index}
                   isFavorite={favoriteIds.has(String(product.id))}
                 />
               )
             })}
           </div>
 
-          {/* Indicador de Carga / Scroll Infinito */}
-          {visibleCount < standardProducts.length && (
-            <div ref={observerTarget} className="w-full py-12 flex justify-center">
-              <div className="w-6 h-6 border-2 border-[var(--store-border)] border-t-[var(--store-text-main)] rounded-full animate-spin"></div>
+          {/* 🚀 CONTROLES DE PAGINACIÓN PREMIUM (Estilo Clean UI Cero Sombras) */}
+          {totalPages > 1 && (
+            <div className="mt-14 mb-4 flex items-center justify-center gap-1.5 md:gap-2">
+              {/* Botón Anterior */}
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} className="md:mr-1" />
+                <span className="hidden md:inline">Ant</span>
+              </button>
+
+              {/* Números de Página Inteligentes */}
+              <div className="flex items-center gap-1 md:gap-1.5">
+                {getPaginationRange().map((page, idx) => (
+                  page === "..." ? (
+                    <span key={`dots-${idx}`} className="w-6 md:w-8 flex justify-center text-[var(--store-surface-text)] text-xs font-bold tracking-widest select-none">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page as number)}
+                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${
+                        currentPage === page
+                          ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
+                          : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+
+              {/* Botón Siguiente */}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+              >
+                <span className="hidden md:inline">Sig</span>
+                <ChevronRight size={16} strokeWidth={2.5} className="md:ml-1" />
+              </button>
             </div>
           )}
         </>
@@ -1129,7 +1203,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
     }}
     className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] sm:max-w-none shadow-none"
   >
-    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Content Switching para evitar cortes) */}
+    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Optimizado para Conversión y Cero Layout Shifts) */}
     <div className="relative overflow-hidden flex items-center justify-center px-3 md:px-5 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-[var(--store-surface)]/30">
       <motion.div
         variants={{
@@ -1141,23 +1215,23 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
         className="absolute top-0 left-0 w-full flex flex-col justify-between"
         style={{ height: "200%" }}
       >
-        {/* Texto Original (Arriba) */}
+        {/* Texto Original - Reposo (Arriba) */}
         <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
-          <span className="sm:hidden">Impulsado por</span>
-          <span className="hidden sm:block">Experiencia de compra impulsada por</span>
+          <span className="sm:hidden">Crea tu tienda con</span>
+          <span className="hidden sm:block">Crea tu tienda online con</span>
         </span>
         
-        {/* Texto Contraste (Abajo - Rolling in) */}
+        {/* Texto Contraste - Beneficio en Movimiento (Abajo - Rolling in) */}
         <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
-          <span className="sm:hidden">Impulsado por</span>
-          <span className="hidden sm:block">Experiencia de compra impulsada por</span>
+          <span className="sm:hidden">Automatiza tu WhatsApp con</span>
+          <span className="hidden sm:block">Automatiza tus pedidos con</span>
         </span>
       </motion.div>
       
-      {/* Spacer estructural (Determina el ancho de la celda rígidamente) */}
-      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none">
-        <span className="sm:hidden">Impulsado por</span>
-        <span className="hidden sm:block">Experiencia de compra impulsada por</span>
+      {/* Spacer estructural rígido (Utiliza el texto más largo para asegurar que la celda no cambie de tamaño al girar) */}
+      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none px-3 md:px-5">
+        <span className="sm:hidden">Automatiza tu WhatsApp con</span>
+        <span className="hidden sm:block">Automatiza tus pedidos con</span>
       </span>
     </div>
 
