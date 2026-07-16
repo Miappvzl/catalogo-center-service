@@ -663,6 +663,60 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
   };
 
   // ==========================================
+  // 🚀 MOTOR DE EXPLORACIÓN DE CATEGORÍAS (CRO & Fallback Determinista)
+  // ==========================================
+  const explorableCategories = useMemo(() => {
+    // 1. Tomamos todas las categorías excepto 'Todos' y la que el usuario ya está viendo
+    const availableCats = categories.filter(c => c !== 'Todos' && c !== selectedCategory);
+
+    const computed = availableCats.map(catName => {
+      // 2. Buscamos todos los productos de esta categoría específica
+      const catProducts = products.filter(p => normalizeCategory(p.category) === catName);
+
+      // 3. (CRO Killer) Si la categoría está vacía, no la mostramos para evitar el rebote
+      if (catProducts.length === 0) return null;
+
+      let coverUrl = null;
+      let useSolidColor = false;
+
+      // Prioridad A: Imagen subida por el Admin (Tolerante a fallos si la columna no existe)
+      if (store?.category_images && store.category_images[catName]) {
+        coverUrl = store.category_images[catName];
+      } else {
+        // Prioridad B: Fallback Determinista (Primer producto con foto válido)
+        const sortedProducts = [...catProducts].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        const productWithImage = sortedProducts.find(p => p.image_url);
+
+        if (productWithImage) {
+          coverUrl = productWithImage.image_url;
+        } else {
+          // Prioridad C: No hay fotos en toda la categoría. Usamos el color de la marca.
+          useSolidColor = true;
+        }
+      }
+
+      return {
+        name: catName,
+        coverUrl,
+        useSolidColor,
+        count: catProducts.length
+      };
+    }).filter(Boolean); // Limpiamos los nulls de categorías vacías
+
+    return computed;
+  }, [categories, selectedCategory, products, store?.category_images]);
+
+  // Manejador de transición ultra-rápida al elegir una nueva categoría
+  const handleExploreCategory = (catName: string) => {
+    setSelectedCategory(catName);
+    setCurrentPage(1);
+    if (catalogTopRef.current) {
+      const y = catalogTopRef.current.getBoundingClientRect().top + window.scrollY - 140;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
   return (
@@ -1146,7 +1200,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
                 ))}
               </div>
 
-              {/* Botón Siguiente */}
+             {/* Botón Siguiente */}
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -1157,7 +1211,61 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
               </button>
             </div>
           )}
+
+          {/* ========================================== */}
+          {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Sin Salida Muerta) */}
+          {/* ========================================== */}
+          {explorableCategories.length > 0 && (
+            <div className="mt-8 md:mt-12 pt-8 border-t border-[var(--store-border)]/40 w-full animate-in fade-in duration-500">
+              <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
+                <h3 className="text-sm md:text-base font-black tracking-tight text-[var(--store-text-main)] uppercase">
+                  Explora más categorías
+                </h3>
+              </div>
+
+              {/* Carrusel Horizontal: 1:1 Ratio, Aceleración nativa de hardware */}
+              <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                {explorableCategories.map((cat: any) => (
+                  <button
+                    key={cat.name}
+                    onClick={() => handleExploreCategory(cat.name)}
+                    className="group relative shrink-0 w-[140px] h-[140px] md:w-[170px] md:h-[170px] rounded-[1.25rem] md:rounded-[1.5rem] overflow-hidden snap-start flex flex-col justify-end text-left active:scale-95 transition-transform duration-300 border border-[var(--store-border)]/30 shadow-sm"
+                    style={{ backgroundColor: cat.useSolidColor ? 'var(--store-primary)' : 'var(--store-surface)' }}
+                  >
+                    {/* Render de Imagen con Carga Diferida (Lazy) */}
+                    {!cat.useSolidColor && cat.coverUrl && (
+                      <Image
+                        src={getOptimizedUrl(cat.coverUrl)}
+                        alt={`Categoría ${cat.name}`}
+                        fill
+                        sizes="(max-width: 768px) 140px, 170px"
+                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                        loading="lazy"
+                      />
+                    )}
+
+                    {/* Degradado Negro para contraste perfecto (Solo si hay imagen) */}
+                    {!cat.useSolidColor && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
+                    )}
+
+                    {/* Meta-Datos Textuales */}
+                    <div className="relative z-10 p-3 md:p-4 w-full">
+                      <span className={`block font-black tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>
+                        {cat.name}
+                      </span>
+                      <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>
+                        {cat.count} {cat.count === 1 ? 'Producto' : 'Productos'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
         </>
+
 
         {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
         <AnimatePresence>
