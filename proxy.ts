@@ -1,22 +1,31 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
 
-  console.log("=== LEYENDO VARIABLES ===");
-  console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log("KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Existe" : "No Existe");
+  // ---------------------------------------------------------
+  // 🚀 INYECCIÓN: CAPTURA DE CÓDIGO DE AFILIADO (?ref=)
+  // ---------------------------------------------------------
+  const ref = request.nextUrl.searchParams.get('ref')
+  if (ref) {
+    response.cookies.set('preziso_ref', ref, {
+      maxAge: 60 * 60 * 24 * 60, // 60 días
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
+  }
 
-  // 🔥 EL BYPASS DE EMERGENCIA
-  // Reemplaza el string con la URL real de tu Worker de Cloudflare
+  // ---------------------------------------------------------
+  // 1. SUPABASE AUTH & CONEXIÓN VIA CLOUDFLARE WORKER
+  // ---------------------------------------------------------
   const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wandering-surf-2d0c.quanzosinc-179.workers.dev";
 
   const supabase = createServerClient(
-    proxyUrl, // Usamos nuestra nueva constante puente
+    proxyUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
@@ -25,6 +34,15 @@ export async function proxy(request: NextRequest) {
           request.cookies.set({ name, value, ...options })
           response = NextResponse.next({ request: { headers: request.headers } })
           response.cookies.set({ name, value, ...options })
+          
+          if (ref) {
+            response.cookies.set('preziso_ref', ref, {
+              maxAge: 60 * 60 * 24 * 60,
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            })
+          }
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
@@ -54,30 +72,33 @@ export async function proxy(request: NextRequest) {
   // ---------------------------------------------------------
   const hostname = request.headers.get('host') || ''
   
-  // Definimos cuál es el dominio base (Localhost para pruebas, preziso.shop para Producción)
   const currentEnvDomain = process.env.NODE_ENV === 'production' ? 'preziso.shop' : 'localhost:3000'
   
-  // Verificamos si la petición viene de un subdominio (Ej: zapatos.preziso.shop)
   const isSubdomain = hostname !== currentEnvDomain && 
                       hostname !== `www.${currentEnvDomain}` && 
                       hostname.endsWith(`.${currentEnvDomain}`)
 
   if (isSubdomain) {
-    // Extraemos el nombre de la tienda ('zapatos')
     const subdomain = hostname.replace(`.${currentEnvDomain}`, '')
     
-    // Evitamos interceptar archivos del sistema (Next.js assets, API, etc.)
     if (!pathname.startsWith('/_next') && !pathname.startsWith('/api') && !pathname.includes('.')) {
-        // MAGIA DE VERCEL: Reescribimos silenciosamente la ruta.
-        // Si entran a zapatos.preziso.shop/, internamente carga preziso.shop/zapatos (app/[slug]/page.tsx)
-        return NextResponse.rewrite(new URL(`/${subdomain}${pathname === '/' ? '' : pathname}`, request.url))
+        const rewriteResponse = NextResponse.rewrite(new URL(`/${subdomain}${pathname === '/' ? '' : pathname}`, request.url))
+        
+        if (ref) {
+          rewriteResponse.cookies.set('preziso_ref', ref, {
+            maxAge: 60 * 60 * 24 * 60,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+          })
+        }
+        return rewriteResponse
     }
   }
 
   return response
 }
 
-// Si tenías un config, déjalo así:
 export const config = {
     matcher: [
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
