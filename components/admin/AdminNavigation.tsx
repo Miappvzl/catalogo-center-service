@@ -20,8 +20,8 @@ const NAV_LINKS = [
   { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' }, // 🚀 RUTA DE CLIENTES INTEGRADA
 
   // 📌 Punto de Venta
-  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
-  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, isNew: true, category: 'Ventas' },
+  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator,  category: 'Ventas' },
+  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText,  category: 'Ventas' },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
 
   // 📌 Catálogo
@@ -32,6 +32,8 @@ const NAV_LINKS = [
   // 📌 Negocio
   { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio' },
   { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio' },
+  // 🚀 NUEVA PESTAÑA DE AFILIADOS PREZISO
+  { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, isNew: true, category: 'Negocio' },
   { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio' },
 ]
 
@@ -41,9 +43,11 @@ const NavAvatarIcon = ({ store }: { store: any }) => {
   const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR';
   const isTrial = store?.subscription_status === 'trial';
   
+
+
   return (
-    <div className={`w-[26px] h-[26px] rounded-full p-[2px] ${!isTrial ? 'bg-gradient-to-r from-[#4f37d3] to-[#e5e5e5]' : 'bg-black'}`}>
-       <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+    <div className={`w-[26px] h-[26px] rounded-full p-[2px] ${!isTrial ? ' bg-gradient-to-tr from-zinc-400 via-zinc-100 to-zinc-300 shadow-sm group-hover:from-zinc-500 group-hover:to-zinc-400' : 'bg-black'}`}>
+       <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden shadow-inner">
            <span className="text-[9px] font-black text-gray-900 tracking-tighter leading-none">{initials}</span>
        </div>
     </div>
@@ -190,14 +194,17 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
                         <link.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                       </div>
                       
-                      {/* Texto que aparece fluidamente */}
+                     {/* Texto que aparece fluidamente */}
                       <span className="ml-3 font-medium tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
                         {link.name}
                       </span>
 
+                      {/* 🚀 ETIQUETA "NUEVO" EN NEGRO */}
                       {link.isNew && (
-                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-[400ms] group-hover/sidebar:opacity-100 flex-shrink-0">
-                         
+                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-[400ms] group-hover/sidebar:opacity-100 flex-shrink-0 mb-1">
+                          <span className="bg-black text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5  rounded-md ">
+                            NUEVO
+                          </span>
                         </div>
                       )}
                     </GuardedLink>

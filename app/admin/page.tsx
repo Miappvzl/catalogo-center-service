@@ -30,6 +30,7 @@ import FeatureLaunchModal from "@/components/FeatureLauchModal";
 import MerchandisingIntroModal from "@/components/MerchandisingIntroModal";
 
 import FeatureLaunchPayPal from "@/components/FeatureLaunchPayPal";
+import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -567,8 +568,8 @@ export default async function AdminDashboard() {
                     </div>
                 </div>
             </main>
-
-            {/* Inyección del Modal One-Time */}
+{/* Inyección del Modal One-Time */}
+            <AffiliateLaunchModal />
         </div>
     );
 }

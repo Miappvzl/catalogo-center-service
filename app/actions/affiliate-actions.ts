@@ -89,3 +89,22 @@ export async function liquidateCommission(commissionId: string) {
   if (error) throw new Error('Error al registrar el pago')
   return { success: true }
 }
+
+// 4. (GOD MODE) Cambiar el porcentaje de descuento que ofrece un afiliado
+export async function updateAffiliateDiscount(affiliateId: string, discountPct: number) {
+  const supabase = await getSupabaseServerActionClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.email !== ADMIN_EMAIL) throw new Error('Acceso denegado')
+
+  if (discountPct < 0 || discountPct > 100) throw new Error('Descuento no válido')
+
+  const { error } = await supabase.from('saas_affiliates')
+    .update({ discount_pct: discountPct })
+    .eq('id', affiliateId)
+
+  if (error) throw new Error('Error al actualizar el descuento')
+  revalidatePath('/boss/affiliates')
+  revalidatePath('/admin/affiliates')
+  return { success: true }
+}

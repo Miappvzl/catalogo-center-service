@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
-import { ShieldAlert, Wallet, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
+import { ShieldAlert, Wallet, CheckCircle2, Loader2, AlertCircle, MessageSquare, Percent } from 'lucide-react'
 import Swal from 'sweetalert2'
-import { liquidateCommission } from '@/app/actions/affiliate-actions'
+import { liquidateCommission, updateAffiliateDiscount } from '@/app/actions/affiliate-actions'
 
 const ADMIN_EMAIL = 'quanzosinc@gmail.com'
 
@@ -19,21 +19,18 @@ export default function BossAffiliatesPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // 1. Obtener tasa BCV actual
       const { data: config } = await supabase.from('app_config').select('usd_rate').eq('id', 1).single()
       if (config) setBcvRate(config.usd_rate)
 
-      // 2. Obtener comisiones pendientes
       const { data: comms, error } = await supabase
         .from('saas_commissions')
         .select(`
-          id, amount_usd, created_at,
+          id, amount_usd, created_at, status,
           saas_affiliates (
-            user_id, referral_code, payment_details
+            id, user_id, referral_code, discount_pct, payment_details
           )
         `)
-        .eq('status', 'unpaid')
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
 
       if (error) {
         console.error('Error cargando comisiones en boss:', error)
@@ -55,6 +52,30 @@ export default function BossAffiliatesPage() {
     }
     verify()
   }, [])
+
+  // REQ #4: Cambiar el porcentaje de descuento del afiliado
+  const handleDiscountChange = async (affiliateId: string, currentDiscount: number) => {
+    const { value: newDiscount, isConfirmed } = await Swal.fire({
+      title: 'Asignar Descuento a Comunidad',
+      text: 'Define el % de descuento que otorgará el link de este afiliado:',
+      input: 'number',
+      inputValue: currentDiscount || 0,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar %',
+      confirmButtonColor: '#000',
+      customClass: { popup: 'rounded-3xl' }
+    })
+
+    if (isConfirmed && newDiscount !== null) {
+      try {
+        await updateAffiliateDiscount(affiliateId, Number(newDiscount))
+        Swal.fire({ icon: 'success', title: 'Descuento Actualizado', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+        fetchData()
+      } catch (err: any) {
+        Swal.fire('Error', err.message, 'error')
+      }
+    }
+  }
 
   const handlePay = async (commission: any) => {
     const affiliate = commission.saas_affiliates
@@ -98,13 +119,34 @@ export default function BossAffiliatesPage() {
       try {
         Swal.showLoading()
         await liquidateCommission(commission.id)
-        Swal.fire({ icon: 'success', title: 'Liquidado', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+        
+        // REQ #3: MENSAJE DE WHATSAPP ESTRUCTURADO Y AMIGABLE
+        const message = `¡Hola! 🎉 Tu pago de $${commission.amount_usd} USD (${amountBs} Bs) por tu comisión de Afiliados Preziso ha sido realizado con éxito a tus datos de Pago Móvil (${details.bank} - ${details.dni}). ¡Muchas gracias por seguir impulsando la comunidad de Preziso! 🚀`
+        const waUrl = `https://wa.me/${details.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Liquidado con éxito',
+          html: `
+            <p class="text-xs text-gray-500 mb-4">¿Deseas notificar al afiliado por WhatsApp?</p>
+            <a href="${waUrl}" target="_blank" class="bg-emerald-600 text-white font-bold text-xs uppercase px-5 py-3 rounded-xl inline-flex items-center gap-2 hover:bg-emerald-700">
+              Notificar por WhatsApp
+            </a>
+          `,
+          showConfirmButton: false,
+          showCancelButton: true,
+          cancelButtonText: 'Cerrar',
+          customClass: { popup: 'rounded-3xl' }
+        })
+
         fetchData()
       } catch (error: any) {
         Swal.fire('Error', error.message, 'error')
       }
     }
   }
+
+  const unpaidCommissions = commissions.filter(c => c.status === 'unpaid')
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-6 md:p-10 font-sans">
@@ -122,10 +164,10 @@ export default function BossAffiliatesPage() {
         <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
           {loading ? (
             <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300" size={32} /></div>
-          ) : commissions.length === 0 ? (
+          ) : unpaidCommissions.length === 0 ? (
             <div className="p-20 text-center text-gray-400 flex flex-col items-center">
               <CheckCircle2 size={40} className="mb-4 opacity-50" />
-              <p className="text-sm font-bold uppercase tracking-widest">Todo liquidado. No hay deudas.</p>
+              <p className="text-sm font-bold uppercase tracking-widest">Todo liquidado. No hay deudas pendientes.</p>
             </div>
           ) : (
             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -133,21 +175,31 @@ export default function BossAffiliatesPage() {
                 <tr>
                   <th className="px-8 py-6">Afiliado</th>
                   <th className="px-8 py-6">Monto USD</th>
+                  <th className="px-8 py-6">Desc. Comunidad</th>
                   <th className="px-8 py-6">Estatus Pago Móvil</th>
                   <th className="px-8 py-6 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {commissions.map(c => {
-                  const hasDetails = c.saas_affiliates?.payment_details?.bank
+                {unpaidCommissions.map(c => {
+                  const affiliate = c.saas_affiliates
+                  const hasDetails = affiliate?.payment_details?.bank
                   return (
                     <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-8 py-6">
-                        <p className="font-black text-black">{c.saas_affiliates?.referral_code || 'S/N'}</p>
+                        <p className="font-black text-black">{affiliate?.referral_code || 'S/N'}</p>
                         <p className="text-xs text-gray-500 font-medium">{new Date(c.created_at).toLocaleDateString()}</p>
                       </td>
                       <td className="px-8 py-6">
                         <p className="text-lg font-black text-black tabular-nums">${c.amount_usd}</p>
+                      </td>
+                      <td className="px-8 py-6">
+                        <button
+                          onClick={() => handleDiscountChange(affiliate.id, affiliate.discount_pct)}
+                          className="flex items-center gap-1.5 text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <Percent size={12} /> {affiliate?.discount_pct || 0}% desc.
+                        </button>
                       </td>
                       <td className="px-8 py-6">
                         {hasDetails ? (
