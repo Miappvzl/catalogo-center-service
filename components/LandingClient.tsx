@@ -1350,6 +1350,7 @@ const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
                           -{promoPercent}%
                         </div>
                       )}
+                      
                     </div>
 
                     {/* Content Container */}

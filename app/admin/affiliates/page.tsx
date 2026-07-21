@@ -119,6 +119,27 @@ export default async function AffiliateDashboard() {
         </div>
       </div>
 
+      {/* 🚀 REQ #1: CTA PARA CREADORES DE CONTENIDO Y COMUNIDADES */}
+      <div className="bg-gradient-to-r from-gray-900 via-black to-gray-800 text-white p-6 sm:p-8 rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.12)] flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1.5 text-center md:text-left">
+          <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-300">
+            <Sparkles size={12} className="text-amber-400" /> Beneficio de Comunidad
+          </div>
+          <h2 className="text-lg md:text-xl font-black tracking-tight">¿Tienes una comunidad en redes sociales?</h2>
+          <p className="text-xs text-gray-400 font-medium max-w-xl">
+            Solicita al equipo de Preziso un descuento especial de incentivo para que tu audiencia obtenga una rebaja en su <b>primer mes</b> al usar tu enlace.
+          </p>
+        </div>
+        <a
+          href={`https://wa.me/584145811936?text=${encodeURIComponent("Hola equipo Preziso, tengo una comunidad en mis redes sociales y me gustaría solicitar un descuento especial para mis referidos.")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-white text-black font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-gray-100 active:scale-95 transition-all shrink-0 shadow-sm"
+        >
+          Solicitar Descuento Especial
+        </a>
+      </div>
+
       {/* REQ #5: TABLA DE TRANSPARENCIA DE REFERIDOS */}
       <div className="bg-white p-6 md:p-8 rounded-(--radius-card) border-t border-gray-100">
         <h2 className="text-xs font-black text-black uppercase tracking-widest mb-6">Estado Transparente de Mis Referidos</h2>

@@ -3,21 +3,23 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Gift, ArrowRight, X, Sparkles } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function AffiliateLaunchModal() {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Verificamos si el usuario ya vio el anuncio
+    // 🚀 BLINDAJE COGNITIVO: Si el usuario está viendo el Modal de Bienvenida (?welcome=true), NO abrimos este modal.
+    const isWelcomeActive = searchParams.get('welcome') === 'true'
     const hasSeenModal = localStorage.getItem('preziso_affiliate_modal_seen')
-    if (!hasSeenModal) {
-      // Delay táctico de 800ms para una animación suave tras cargar el panel
-      const timer = setTimeout(() => setIsOpen(true), 800)
+
+    if (!hasSeenModal && !isWelcomeActive) {
+      const timer = setTimeout(() => setIsOpen(true), 1200)
       return () => clearTimeout(timer)
     }
-  }, [])
+  }, [searchParams])
 
   const handleClose = () => {
     localStorage.setItem('preziso_affiliate_modal_seen', 'true')
@@ -34,7 +36,6 @@ export default function AffiliateLaunchModal() {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Fondo Difuminado (Backdrop) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -43,7 +44,6 @@ export default function AffiliateLaunchModal() {
             className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity"
           />
 
-          {/* Contenedor del Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -51,7 +51,6 @@ export default function AffiliateLaunchModal() {
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="relative bg-white rounded-[2.5rem] p-6 sm:p-10 max-w-[460px] w-full shadow-[0_25px_70px_-15px_rgba(0,0,0,0.2)] z-10 overflow-hidden text-gray-900 font-sans border border-gray-100"
           >
-            {/* Cierre */}
             <button
               onClick={handleClose}
               className="absolute top-6 right-6 p-2 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-black transition-all active:scale-95 z-20"
@@ -59,13 +58,11 @@ export default function AffiliateLaunchModal() {
               <X size={18} />
             </button>
 
-            {/* Cabecera e Ícono */}
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-6">
                 <div className="w-16 h-16 bg-black text-white rounded-3xl flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.15)] relative z-10">
                   <Gift size={30} strokeWidth={1.8} />
                 </div>
-                {/* Badge Volador */}
                 <div className="absolute -top-2 -right-3 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 z-20 animate-bounce">
                   <Sparkles size={10} /> $5.00 USD
                 </div>
@@ -87,7 +84,6 @@ export default function AffiliateLaunchModal() {
               </p>
             </div>
 
-            {/* Explicación en 3 pasos ultrasimples */}
             <div className="space-y-3 bg-gray-50/80 p-4 sm:p-5 rounded-3xl mb-8 border border-gray-100/60">
               <div className="flex items-center gap-3.5">
                 <div className="w-8 h-8 rounded-xl bg-white text-black font-black text-xs flex items-center justify-center shrink-0 shadow-sm border border-gray-100">
@@ -120,7 +116,6 @@ export default function AffiliateLaunchModal() {
               </div>
             </div>
 
-            {/* Botones */}
             <div className="space-y-3">
               <button
                 onClick={handleGoToAffiliates}

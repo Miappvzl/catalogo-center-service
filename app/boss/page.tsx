@@ -23,14 +23,44 @@ export default function SuperAdminPage() {
     const [search, setSearch] = useState('')
     const [isAuthorized, setIsAuthorized] = useState(false)
 
-    const fetchStores = async () => {
+   const fetchStores = async () => {
         setLoading(true)
-        const { data } = await supabase
+        // 1. Cargar todas las tiendas
+        const { data: storesData } = await supabase
             .from('stores')
             .select('*')
             .order('created_at', { ascending: false })
 
-        if (data) setStores(data)
+        // 2. Cargar mapas de referidos para evitar errores de PostgREST
+        const { data: referralsData } = await supabase
+            .from('saas_referrals')
+            .select(`
+                referred_user_id,
+                saas_affiliates (
+                    user_id,
+                    referral_code
+                )
+            `)
+
+        // 3. Cruzar nombres de tiendas referentes
+        if (storesData) {
+            const userToStoreNameMap = new Map(storesData.map((s: any) => [s.user_id, s.name]))
+
+            const enrichedStores = storesData.map((st: any) => {
+                const ref = referralsData?.find((r: any) => r.referred_user_id === st.user_id)
+                let referrerName = null
+
+                if (ref?.saas_affiliates) {
+                    // @ts-ignore
+                    const affUserId = ref.saas_affiliates.user_id
+                    referrerName = userToStoreNameMap.get(affUserId) || ref.saas_affiliates.referral_code
+                }
+
+                return { ...st, referrerName }
+            })
+
+            setStores(enrichedStores)
+        }
         setLoading(false)
     }
 
@@ -366,8 +396,15 @@ export default function SuperAdminPage() {
                                                                 <Store size={20} className="text-gray-300" strokeWidth={1.5} />
                                                             )}
                                                         </div>
+                                                      
                                                         <div>
                                                             <p className="font-black text-gray-900 tracking-tight">{store.name}</p>
+                                                            {/* 🚀 ETIQUETA REQ #4: INDICA SI VIENE DE UN AFILIADO */}
+                                                            {store.referrerName && (
+                                                                <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider mt-1">
+                                                                    Referida por: {store.referrerName}
+                                                                </span>
+                                                            )}
                                                             <Link href={`/${store.slug}`} target="_blank" className="text-[10px] font-bold text-gray-400 hover:text-black flex items-center gap-1.5 mt-1 transition-colors">
                                                                 preziso.shop/{store.slug} <ExternalLink size={10} />
                                                             </Link>
@@ -377,9 +414,9 @@ export default function SuperAdminPage() {
                                                 <td className="px-8 py-6">
                                                     <div className="flex flex-col gap-2 items-start">
                                                         {isExpired ? (
-                                                            <span className="bg-red-50/50 border border-red-100 text-red-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm"><Ban size={10} strokeWidth={2.5} /> Pausada</span>
+                                                            <span className=" border border-red-100 text-red-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 "><Ban size={10} strokeWidth={2.5} /> Pausada</span>
                                                         ) : (
-                                                            <span className="bg-emerald-50/50 border border-emerald-100 text-emerald-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm"><Zap size={10} strokeWidth={2.5} /> Activa ({diffDays}d)</span>
+                                                            <span className=" border border-emerald-100 text-emerald-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 "><Zap size={10} strokeWidth={2.5} /> Activa ({diffDays}d)</span>
                                                         )}
                                                         <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1.5 uppercase tracking-widest"><Clock size={10} /> {endsAt.toLocaleDateString()}</span>
                                                     </div>
