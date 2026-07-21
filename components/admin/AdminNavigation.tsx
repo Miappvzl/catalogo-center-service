@@ -20,8 +20,8 @@ const NAV_LINKS = [
   { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' }, // 🚀 RUTA DE CLIENTES INTEGRADA
 
   // 📌 Punto de Venta
-  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator,  category: 'Ventas' },
-  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText,  category: 'Ventas' },
+  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true,  category: 'Ventas' },
+  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true,  category: 'Ventas' },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
 
   // 📌 Catálogo
