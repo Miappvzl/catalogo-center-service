@@ -87,6 +87,9 @@ export async function triggerCommission(userId: string) {
     }
   )
 
+  console.log('=== [DISPARADOR COMISIÓN DIAGNÓSTICO] ===')
+  console.log('1. Buscando referido pendiente para User ID:', userId)
+
   const { data: referral, error: refErr } = await supabase
     .from('saas_referrals')
     .select('id, affiliate_id, saas_affiliates(commission_amount)')
@@ -95,18 +98,28 @@ export async function triggerCommission(userId: string) {
     .single()
 
   if (refErr || !referral) {
-    console.log('No hay referidos pendientes para este usuario:', userId)
-    return { success: false }
+    console.log('❌ No se encontró referido pendiente o falló RLS:', refErr)
+    return { success: false, error: refErr }
   }
 
-  await supabase
+  console.log('2. Referido encontrado ID:', referral.id)
+
+  // Actualizamos el referido a 'converted'
+  const { error: updateErr } = await supabase
     .from('saas_referrals')
     .update({ status: 'converted' })
     .eq('id', referral.id)
 
+  if (updateErr) {
+    console.error('❌ Error al actualizar status a converted:', updateErr)
+    throw new Error(`Error actualizando referido: ${updateErr.message}`)
+  }
+
+  // Extract comisión
   // @ts-ignore
   const commissionAmount = referral.saas_affiliates?.commission_amount || 5.00
 
+  // Insertamos la comisión en saas_commissions
   const { error: commErr } = await supabase.from('saas_commissions').insert({
     affiliate_id: referral.affiliate_id,
     referral_id: referral.id,
@@ -115,9 +128,10 @@ export async function triggerCommission(userId: string) {
   })
 
   if (commErr) {
-    console.error('Error insertando comisión:', commErr)
-    throw new Error(`Error BD Comisión: ${commErr.message}`)
+    console.error('❌ Error creando comisión:', commErr)
+    throw new Error(`Error creando comisión: ${commErr.message}`)
   }
 
+  console.log('✅ ¡Comisión creada exitosamente para el afiliado!')
   return { success: true }
 }
