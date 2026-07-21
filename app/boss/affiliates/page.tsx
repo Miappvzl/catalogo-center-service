@@ -18,25 +18,33 @@ export default function BossAffiliatesPage() {
 
   const fetchData = async () => {
     setLoading(true)
-    // 1. Obtener tasa BCV actual
-    const { data: config } = await supabase.from('app_config').select('usd_rate').eq('id', 1).single()
-    if (config) setBcvRate(config.usd_rate)
+    try {
+      // 1. Obtener tasa BCV actual
+      const { data: config } = await supabase.from('app_config').select('usd_rate').eq('id', 1).single()
+      if (config) setBcvRate(config.usd_rate)
 
-    // 2. Obtener comisiones pendientes con datos del afiliado
-    const { data: comms } = await supabase
-      .from('saas_commissions')
-      .select(`
-        id, amount_usd, created_at,
-        saas_affiliates (
-          user_id, referral_code, payment_details,
-          users:user_id (email)
-        )
-      `)
-      .eq('status', 'unpaid')
-      .order('created_at', { ascending: true })
-    
-    if (comms) setCommissions(comms)
-    setLoading(false)
+      // 2. Obtener comisiones pendientes
+      const { data: comms, error } = await supabase
+        .from('saas_commissions')
+        .select(`
+          id, amount_usd, created_at,
+          saas_affiliates (
+            user_id, referral_code, payment_details
+          )
+        `)
+        .eq('status', 'unpaid')
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error cargando comisiones en boss:', error)
+      } else if (comms) {
+        setCommissions(comms)
+      }
+    } catch (e) {
+      console.error('Error imprevisto en fetchData:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -50,7 +58,7 @@ export default function BossAffiliatesPage() {
 
   const handlePay = async (commission: any) => {
     const affiliate = commission.saas_affiliates
-    const details = affiliate.payment_details
+    const details = affiliate?.payment_details
     const amountBs = (commission.amount_usd * bcvRate).toFixed(2)
 
     if (!details?.bank || !details?.phone || !details?.dni) {
@@ -131,11 +139,11 @@ export default function BossAffiliatesPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {commissions.map(c => {
-                  const hasDetails = c.saas_affiliates.payment_details?.bank
+                  const hasDetails = c.saas_affiliates?.payment_details?.bank
                   return (
                     <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-8 py-6">
-                        <p className="font-black text-black">{c.saas_affiliates.referral_code}</p>
+                        <p className="font-black text-black">{c.saas_affiliates?.referral_code || 'S/N'}</p>
                         <p className="text-xs text-gray-500 font-medium">{new Date(c.created_at).toLocaleDateString()}</p>
                       </td>
                       <td className="px-8 py-6">
