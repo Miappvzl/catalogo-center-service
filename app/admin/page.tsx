@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 
 import Link from "next/link";
 
-import FeatureAnnouncement from "@/components/FeatureAnnouncement";
 
 import {
     Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,
@@ -23,13 +22,9 @@ import AnalyticsChart from "@/components/admin/AnalyticsChart";
 
 import TopPerformers from "@/components/admin/TopPerformers";
 
-import FeatureOnboarding from "@/components/FeatureOnboarding";
 
-import FeatureLaunchModal from "@/components/FeatureLauchModal";
 
-import MerchandisingIntroModal from "@/components/MerchandisingIntroModal";
 
-import FeatureLaunchPayPal from "@/components/FeatureLaunchPayPal";
 import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 
 export default async function AdminDashboard() {
