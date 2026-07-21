@@ -30,7 +30,6 @@ import FeatureLaunchModal from "@/components/FeatureLauchModal";
 import MerchandisingIntroModal from "@/components/MerchandisingIntroModal";
 
 import FeatureLaunchPayPal from "@/components/FeatureLaunchPayPal";
-import WelcomeModal from "@/components/admin/WelcomeModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -199,21 +198,17 @@ export default async function AdminDashboard() {
     const daysSinceCreation = (now - storeCreatedAt) / (1000 * 60 * 60 * 24);
     const isEligibleForMissions = daysSinceCreation <= 7;
 
-const missions = store.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false };
-    const completedCount = [missions.mission_1, missions.mission_2, missions.mission_3, missions.mission_4].filter(Boolean).length;
-    const allMissionsCompleted = completedCount === 4;
+    const missions = store.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false };
+    const completedCount = [missions.mission_1, missions.mission_2, missions.mission_3].filter(Boolean).length;
+    const allMissionsCompleted = completedCount === 3;
     
+    // Solo mostramos el panel si tiene menos de 7 días y NO ha completado todo
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
-    
-  
     const storeUrl = `${store.slug}.preziso.shop`;
 
-   return (
+    return (
         <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
             <AdminHeader store={store} />
-            
-            {/* 🚀 INYECCIÓN DEL MODAL DE BIENVENIDA */}
-            <WelcomeModal storeName={store.name} />
 
             {/* --- MISSION CONTROL BANNER (PLG) --- */}
             {showMissionControl && (
@@ -231,7 +226,7 @@ const missions = store.onboarding_missions || { mission_1: false, mission_2: fal
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-neutral-200 ">
-                                <span className="text-xs font-bold text-gray-900">{completedCount}/4</span>
+                                <span className="text-xs font-bold text-gray-900">{completedCount}/3</span>
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Completadas</span>
                             </div>
                         </div>
@@ -279,7 +274,7 @@ const missions = store.onboarding_missions || { mission_1: false, mission_2: fal
                             {/* Misión 3 */}
                             <Link 
                                 href={missions.mission_3 ? "#" : "/admin/product/new?mission=3"}
-                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_3 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'} border-b border-neutral-100`}
+                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_3 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'}`}
                             >
                                 <div className="flex items-center gap-4">
                                     {missions.mission_3 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
@@ -289,25 +284,6 @@ const missions = store.onboarding_missions || { mission_1: false, mission_2: fal
                                     </div>
                                 </div>
                                 {!missions.mission_3 && (
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-black uppercase tracking-widest bg-neutral-100 px-3 py-1.5 rounded-full">
-                                        Iniciar <Play size={12} className="fill-black" />
-                                    </div>
-                                )}
-                            </Link>
-
-                            {/* Misión 4 */}
-                            <Link 
-                                href={missions.mission_4 ? "#" : "/admin/product/new?mission=4"}
-                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_4 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'}`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    {missions.mission_4 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
-                                    <div>
-                                        <h3 className={`text-sm font-bold ${missions.mission_4 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>4. El Secreto de las Divisas</h3>
-                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">Aprende a usar el Margen de Conversión para ganar más.</p>
-                                    </div>
-                                </div>
-                                {!missions.mission_4 && (
                                     <div className="flex items-center gap-2 text-[10px] font-bold text-black uppercase tracking-widest bg-neutral-100 px-3 py-1.5 rounded-full">
                                         Iniciar <Play size={12} className="fill-black" />
                                     </div>

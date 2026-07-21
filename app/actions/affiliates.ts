@@ -3,79 +3,121 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// 1. Vincula al usuario con el afiliado al momento de crear la tienda
 export async function processReferral(userId: string) {
   const cookieStore = await cookies()
-  const refCode = cookieStore.get('preziso_ref')?.value
+  const rawRefCode = cookieStore.get('preziso_ref')?.value
 
-  if (!refCode) return { success: false, reason: 'no_cookie' }
+  console.log('=== [AFILIADOS DIAGNÓSTICO] ===')
+  console.log('1. User ID:', userId)
+  console.log('2. Cookie preziso_ref encontrada:', rawRefCode)
+
+  if (!rawRefCode) {
+    console.log('❌ Proceso abortado: No existe la cookie preziso_ref')
+    return { success: false, reason: 'no_cookie' }
+  }
+
+  const refCode = rawRefCode.trim().toUpperCase()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() } } }
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => 
+              cookieStore.set(name, value, options)
+            )
+          } catch {}
+        },
+      },
+    }
   )
 
-  // Buscamos si el código de afiliado existe
-  const { data: affiliate } = await supabase
+  // Buscamos si el código de afiliado existe (insensible a mayúsculas)
+  const { data: affiliate, error: affError } = await supabase
     .from('saas_affiliates')
     .select('id')
-    .eq('referral_code', refCode)
+    .ilike('referral_code', refCode)
     .single()
 
-  if (!affiliate) return { success: false, reason: 'invalid_code' }
+  if (affError || !affiliate) {
+    console.log('❌ Proceso abortado: Código de afiliado no encontrado en BD:', refCode, affError)
+    return { success: false, reason: 'invalid_code' }
+  }
+
+  console.log('3. Afiliado encontrado ID:', affiliate.id)
 
   // Registramos el referido como pendiente
-  const { error } = await supabase.from('saas_referrals').insert({
+  const { error: insertError } = await supabase.from('saas_referrals').insert({
     affiliate_id: affiliate.id,
     referred_user_id: userId,
     status: 'pending'
   })
 
-  if (!error) {
-    // Limpiamos la cookie para no generar referidos duplicados en el futuro
-    cookieStore.delete('preziso_ref')
-    return { success: true }
+  if (insertError) {
+    console.error('❌ Error crítico insertando en saas_referrals:', insertError)
+    throw new Error(`Error BD Referidos: ${insertError.message}`)
   }
 
-  return { success: false, error }
+  console.log('✅ ¡Referido insertado con éxito en saas_referrals!')
+
+  // Limpiamos la cookie
+  cookieStore.delete('preziso_ref')
+  return { success: true }
 }
 
-// 2. Dispara la comisión cuando tú apruebas el primer pago en el God Mode
 export async function triggerCommission(userId: string) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() } } }
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => 
+              cookieStore.set(name, value, options)
+            )
+          } catch {}
+        },
+      },
+    }
   )
 
-  // Buscamos si este usuario era un referido pendiente
-  const { data: referral } = await supabase
+  const { data: referral, error: refErr } = await supabase
     .from('saas_referrals')
     .select('id, affiliate_id, saas_affiliates(commission_amount)')
     .eq('referred_user_id', userId)
     .eq('status', 'pending')
     .single()
 
-  if (!referral) return { success: false, reason: 'no_pending_referral' }
+  if (refErr || !referral) {
+    console.log('No hay referidos pendientes para este usuario:', userId)
+    return { success: false }
+  }
 
-  // 1. Marcamos al referido como convertido (ya pagó)
   await supabase
     .from('saas_referrals')
     .update({ status: 'converted' })
     .eq('id', referral.id)
 
-  // 2. Generamos la deuda a favor del afiliado
-  // @ts-ignore - Supabase tipa las relaciones anidadas como arrays u objetos dependiendo del esquema
-  const commissionAmount = referral.saas_affiliates?.commission_amount || 0
+  // @ts-ignore
+  const commissionAmount = referral.saas_affiliates?.commission_amount || 5.00
 
-  const { error } = await supabase.from('saas_commissions').insert({
+  const { error: commErr } = await supabase.from('saas_commissions').insert({
     affiliate_id: referral.affiliate_id,
     referral_id: referral.id,
     amount_usd: commissionAmount,
     status: 'unpaid'
   })
 
-  return { success: !error }
+  if (commErr) {
+    console.error('Error insertando comisión:', commErr)
+    throw new Error(`Error BD Comisión: ${commErr.message}`)
+  }
+
+  return { success: true }
 }

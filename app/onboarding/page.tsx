@@ -5,7 +5,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Coins, ArrowRight, Check, Globe, Smartphone, Store, Package, Image as ImageIcon, Loader2, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { uploadImageToSupabase } from '@/utils/supabaseStorage'
+// 1. Agrega esta importación en la parte superior, junto a las demás:
+import { processReferral } from '@/app/actions/affiliates'
 import confetti from 'canvas-confetti'
 import { toast } from 'sonner'
 
@@ -52,6 +53,7 @@ export default function OnboardingWizard() {
  
 
  // --- GUARDADO MAESTRO (VERSIÓN LIMPIA) ---
+    // --- GUARDADO MAESTRO (VERSIÓN LIMPIA) ---
   const handleFinalize = async () => {
     setLoading(true)
     try {
@@ -73,8 +75,11 @@ export default function OnboardingWizard() {
         throw storeErr
       }
 
+        // 🚀 INYECCIÓN: Procesamos el referido en segundo plano si existe la cookie
+      await processReferral(user.id).catch(console.error)
       // 2. ÉXITO Y REDIRECCIÓN
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#000', '#22c55e'] })
+
       
       setTimeout(() => {
         router.refresh()

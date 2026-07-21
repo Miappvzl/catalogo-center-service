@@ -8,6 +8,7 @@ import Swal from 'sweetalert2'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { triggerCommission } from '@/app/actions/affiliates'
 import { getOptimizedUrl } from '@/utils/cdn'
 
 // 🔒 SEGURIDAD EXTREMA: El único correo con acceso al God Mode
@@ -51,7 +52,7 @@ export default function SuperAdminPage() {
 
     // --- ACCIONES DE GOD MODE ---
 
-    const addCustomDays = async (store: any) => {
+     const addCustomDays = async (store: any) => {
         const { value: days, isConfirmed } = await Swal.fire({
             title: `Renovar ${store.name}`,
             text: "¿Cuántos días exactos deseas agregarle a esta tienda?",
@@ -82,7 +83,7 @@ export default function SuperAdminPage() {
         const newDate = new Date(baseDate);
         newDate.setDate(newDate.getDate() + daysToAdd);
 
-        // 3. Actualizamos 'subscription_ends_at' para que el Banner entienda que ya no es trial
+         // 3. Actualizamos 'subscription_ends_at' para que el Banner entienda que ya no es trial
         const { error } = await supabase.from('stores').update({
             subscription_status: 'active',
             subscription_ends_at: newDate.toISOString() 
@@ -91,6 +92,10 @@ export default function SuperAdminPage() {
         if (error) {
             Swal.fire('Error', 'No se pudo actualizar la suscripción.', 'error')
         } else {
+            // 🚀 INYECCIÓN: Disparamos la comisión si es su primer pago
+            // Esto solo hará efecto si el usuario estaba como "pending" en saas_referrals
+            await triggerCommission(store.user_id).catch(console.error)
+
             Swal.fire({ icon: 'success', title: `+${daysToAdd} Días Agregados`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)]' } })
             fetchStores()
         }
