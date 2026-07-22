@@ -24,7 +24,7 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
     if (isWelcome) {
       setIsOpen(true)
 
-      // 1. Confeti de bienvenida con física suave
+      // Confeti de bienvenida
       setTimeout(() => {
         confetti({
           particleCount: 110,
@@ -34,7 +34,7 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
         })
       }, 300)
 
-      // 2. Consultar si el nuevo usuario tiene un descuento asignado por su afiliado
+      // Consultar si el nuevo usuario tiene un descuento asignado por su afiliado
       const checkReferralDiscount = async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser()
@@ -74,7 +74,6 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
 
   const handleClose = () => {
     setIsOpen(false)
-    // Limpiamos el query param ?welcome=true silenciosamente
     router.replace('/admin', { scroll: false })
   }
 
@@ -82,7 +81,7 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Fondo Difuminado Cinematográfico */}
+          {/* Fondo Difuminado */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -92,7 +91,7 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
             onClick={handleClose}
           />
 
-          {/* Tarjeta Flotante con Dinámica de Muelle (Spring) */}
+          {/* Tarjeta Flotante */}
           <motion.div
             initial={{ opacity: 0, scale: 0.92, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -116,15 +115,16 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
                 <Sparkles size={28} />
               </motion.div>
 
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-2">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-3">
                 ¡Bienvenido a Preziso!
               </h2>
 
+              {/* 🚀 TEXTO DE ACADEMIA RESTAURADO */}
               <p className="text-xs sm:text-sm text-gray-500 font-medium leading-relaxed mb-6">
-                Es un placer recibir al equipo de <strong className="text-black font-extrabold">{storeName}</strong>. Tu tienda ya está lista para comenzar a vender.
+                Es un placer recibir al equipo de <strong className="text-black font-extrabold">{storeName}</strong> a bordo. Hemos preparado una academia interactiva para que domines tu catálogo y configures tu tienda en menos de 5 minutos.
               </p>
 
-              {/* 🚀 BANNER DE DESCUENTO EN 1ER MES (SI VIENE DE UN AFILIADO) */}
+              {/* 🎁 BANNER DE DESCUENTO EN 1ER MES (Solo se activa si el afiliado ofreció > 0%) */}
               {discountInfo && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -147,12 +147,12 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
                 </motion.div>
               )}
 
-              {/* Botón CTA */}
+              {/* 🚀 BOTÓN DE ACADEMIA RESTAURADO */}
               <button
                 onClick={handleClose}
                 className="w-full h-14 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(0,0,0,0.1)] group"
               >
-                Iniciar en la plataforma <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                Iniciar Academia <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </motion.div>
