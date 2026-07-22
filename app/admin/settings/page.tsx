@@ -1,7 +1,30 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Save, Loader2, Phone, Globe, Store, Upload, AlertTriangle, Percent, Receipt, LogOut, Users, FileText, CheckCircle, CheckCircle2, Zap, Edit2, ShoppingBag } from 'lucide-react'
+import { 
+    Save, 
+    Loader2, 
+    Phone, 
+    Globe, 
+    Store, 
+    Upload, 
+    AlertTriangle, 
+    Percent, 
+    Receipt, 
+    LogOut, 
+    Users, 
+    FileText, 
+    CheckCircle2, 
+    Zap, 
+    Edit2, 
+    ShoppingBag,
+    Image as ImageIcon,
+    Building2,
+    ShieldAlert,
+    ChevronRight,
+    MapPin,
+    AlertCircle
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
@@ -19,9 +42,14 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from '@/components/NumberInput'
 import PayPalSetupCard from '@/components/admin/PayPalSetupCard'
 
-const AnimatedSwitch = ({ active, activeColor = 'bg-black' }: { active: boolean, activeColor?: string }) => (
-    <div className={`w-11 h-6 rounded-full border flex items-center px-1 shrink-0 transition-colors duration-300 ${active ? `${activeColor} border-transparent justify-end shadow-subtle` : 'bg-white border-gray-200 justify-start shadow-sm'}`}>
-        <motion.div layout transition={{ type: "spring", stiffness: 500, damping: 30 }} className={`w-4 h-4 rounded-full ${active ? 'bg-white' : 'bg-gray-300'}`} />
+// Switch Premium con comportamiento elástico ultra-clean (tipo Stripe/Apple)
+const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
+    <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 cursor-pointer ${active ? `${activeColor} border-transparent justify-end` : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
+        <motion.div 
+            layout 
+            transition={{ type: "spring", stiffness: 600, damping: 30 }} 
+            className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" 
+        />
     </div>
 )
 
@@ -38,10 +66,10 @@ export default function SettingsPage() {
     const [wholesale, setWholesale] = useState({ active: false, min_items: 6, discount_percentage: 15 })
     const [receipt, setReceipt] = useState({ strict_mode: false })
 
-    // 🚀 NUEVO: Estado del Programa de Afiliados
+    // Estado del Programa de Afiliados
     const [affiliate, setAffiliate] = useState({ active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
-    // 🚀 NUEVO: Estado Fiscal
-    // 🚀 CORRECCIÓN TYPESCRIPT: Declaramos 'fiscal_profile' en el estado inicial
+    
+    // Estado Fiscal
     const [fiscal, setFiscal] = useState({
         legal_name: '',
         legal_id: '',
@@ -49,15 +77,15 @@ export default function SettingsPage() {
         default_tax_percentage: 16,
         fiscal_profile: 'informal'
     })
+    
     const [isDirty, setIsDirty] = useState(false)
     const [saving, setSaving] = useState(false)
     const [uploadingHero, setUploadingHero] = useState(false)
     const heroInputRef = useRef<HTMLInputElement>(null)
 
-    // 🚀 NUEVO: Mantenemos el backup de shipping_config para no sobreescribir métodos de envío
     const [shippingRaw, setShippingRaw] = useState<any>({})
 
-    // 🚀 NUEVO: Estado aislado para la UI de Servicios
+    // Estado aislado para la UI de Servicios
     const [serviceConfig, setServiceConfig] = useState({
         service_badge: '',
         service_title: '',
@@ -75,7 +103,6 @@ export default function SettingsPage() {
                 setIdentity({ phone: data.phone || '', name: data.name, hero_url: data.hero_url || '', logo_url: data.logo_url || '' })
                 setWholesale(data.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 })
                 setReceipt(data.receipt_config || { strict_mode: false })
-                // 🚀 NUEVO: Inicializamos el estado desde la BD
                 setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
                 setShippingRaw(data.shipping_config || {})
                 setServiceConfig({
@@ -84,12 +111,11 @@ export default function SettingsPage() {
                     service_desc: data.shipping_config?.service_desc || 'Los artículos de tu carrito corresponden a servicios. No requieren logística de envío.'
                 })
 
-                // 🚀 NUEVO: Cargar datos fiscales (Actualizado)
                 setFiscal({
                     legal_name: data.legal_name || '',
                     legal_id: data.legal_id || '',
                     fiscal_address: data.fiscal_address || '',
-                    fiscal_profile: data.fiscal_profile || 'informal', // 🚀 NUEVO
+                    fiscal_profile: data.fiscal_profile || 'informal', 
                     default_tax_percentage: data.default_tax_percentage ?? 16
                 })
             }
@@ -109,7 +135,6 @@ export default function SettingsPage() {
         setIsDirty(true)
     }
 
-    // 🚀 NUEVO: Manejador de cambios para Afiliados
     const handleAffiliateChange = (field: string, value: any) => {
         setAffiliate(prev => ({ ...prev, [field]: value }))
         setIsDirty(true)
@@ -135,8 +160,8 @@ export default function SettingsPage() {
             await supabase.from('stores').update({ logo_url: publicUrl }).eq('id', store.id)
             await revalidateStoreCache()
 
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
-            Toast.fire({ icon: 'success', title: 'Logotipo Oficial Actualizado' })
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold shadow-sm' } })
+            Toast.fire({ icon: 'success', title: 'Logo oficial actualizado' })
         } catch (error) {
             Swal.fire('Error', 'Falló la subida del logo', 'error')
         } finally {
@@ -151,37 +176,34 @@ export default function SettingsPage() {
         const file = e.target.files[0]
         if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'error')
 
-        // 🚀 ELITE GATEKEEPER: Validación estricta de dimensiones físicas en memoria
         try {
             const dimensions = await new Promise<{ width: number, height: number }>((resolve, reject) => {
                 const img = new window.Image();
                 img.onload = () => {
-                    URL.revokeObjectURL(img.src); // Limpiamos la memoria del navegador inmediatamente
+                    URL.revokeObjectURL(img.src);
                     resolve({ width: img.width, height: img.height });
                 };
                 img.onerror = () => reject('Error al leer la imagen');
                 img.src = URL.createObjectURL(file);
             });
 
-            // Validación innegociable de la regla de diseño
             if (dimensions.width !== 1920 || dimensions.height !== 600) {
-                if (heroInputRef.current) heroInputRef.current.value = ''; // Reseteamos el input para evitar bloqueos
+                if (heroInputRef.current) heroInputRef.current.value = '';
                 return Swal.fire({
-                    title: 'Arquitectura Comprometida',
-                    html: `El diseño de la tienda exige que el banner mida exactamente <b>1920x600 píxeles</b>.<br><br>Tu imagen mide <b style="color: #ef4444;">${dimensions.width}x${dimensions.height}</b>.`,
+                    title: 'Dimensiones incorrectas',
+                    html: `El diseño óptimo de la tienda requiere que el banner mida exactamente <b>1920x600 píxeles</b>.<br><br>Tu imagen mide <b class="text-rose-600">${dimensions.width}x${dimensions.height}</b>.`,
                     icon: 'warning',
-                    confirmButtonColor: '#000',
-                    confirmButtonText: 'Corregir diseño'
+                    confirmButtonColor: '#171717',
+                    confirmButtonText: 'Ajustar imagen',
+                    customClass: { popup: 'rounded-xl font-sans text-xs' }
                 });
             }
         } catch (error) {
-            return Swal.fire('Error', 'El archivo de imagen está corrupto o no se puede leer.', 'error');
+            return Swal.fire('Error', 'La imagen no se pudo leer correctamente.', 'error');
         }
 
-        // Si pasa el Gatekeeper, iniciamos la carga
         setUploadingHero(true)
         try {
-            // Se mantiene el compresor para optimizar el peso (KBs), aunque las dimensiones ya son correctas
             const compressedFile = await compressImage(file, 1920, 0.8)
             const fileName = `hero-${store.id}-${Date.now()}.jpg`
 
@@ -205,7 +227,6 @@ export default function SettingsPage() {
         if (!isDirty) return
         setSaving(true)
 
-        // 🚀 EMPAQUETADO SEGURO: Fusionamos lo visual con lo logístico sin destruir datos
         const updatedShippingConfig = {
             ...shippingRaw,
             service_badge: serviceConfig.service_badge,
@@ -226,7 +247,7 @@ export default function SettingsPage() {
                 fiscal_address: fiscal.fiscal_address,
                 fiscal_profile: fiscal.fiscal_profile,
                 default_tax_percentage: fiscal.default_tax_percentage,
-                shipping_config: updatedShippingConfig // 🚀 GUARDAMOS LA FUSIÓN
+                shipping_config: updatedShippingConfig
             })
             .eq('id', store.id)
 
@@ -239,13 +260,13 @@ export default function SettingsPage() {
             setIsDirty(false)
             const Toast = Swal.mixin({
                 toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
-                customClass: { popup: 'bg-black text-white rounded-xl text-sm font-bold' }
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold shadow-sm' }
             })
-            Toast.fire({ icon: 'success', title: 'Configuración Guardada' })
+            Toast.fire({ icon: 'success', title: 'Cambios guardados con éxito' })
         }
     }
 
-    if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" size={32} /></div>
+    if (loading) return <div className="h-screen flex items-center justify-center bg-[#FAFAFC]"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -253,203 +274,218 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="pb-32 font-sans text-gray-900 bg-[#F6F6F6] min-h-screen overflow-x-hidden w-full max-w-[100vw]">
+        // Se cambió max-w-5xl a max-w-6xl para acercar más los elementos a la pantalla
+        <div className="pb-32 font-sans text-neutral-900 bg-[#FAFAFC] min-h-screen overflow-x-hidden w-full max-w-[100vw] antialiased">
             <AdminHeader store={store} title="Configuración" />
 
-            <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8 mt-6 md:mt-8">
+            <div className="max-w-6xl mx-auto px-4 md:px-8 space-y-8 mt-6">
 
                 <div className="space-y-6">
-                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
-                        
-                        <div className="mb-6">
-                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Globe size={20} className="text-black" /> Identidad de Marca</h3>
-                            <p className="text-sm text-gray-500 mt-1">La información pública que verán tus clientes.</p>
+                    
+                    {/* BRAND IDENTITY */}
+                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-neutral-900">
+                              <Globe size={18} className="text-neutral-500" />
+                              <h2 className="text-base font-bold tracking-tight">Identidad de Marca</h2>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Defina el nombre oficial, logotipo y aspecto público de su comercio.</p>
                         </div>
 
-                        {/* 🚀 UPLOADER DE LOGOTIPO (Clean Look) */}
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-8 pb-8 border-b border-black/5">
+                        {/* LOGO UPLOADER */}
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-neutral-100">
                             <div className="relative group cursor-pointer shrink-0 active:scale-95 transition-transform" onClick={() => logoInputRef.current?.click()}>
                                 <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                                 
-                                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center overflow-hidden transition-all group-hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] relative">
+                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-neutral-50 border border-neutral-200/60 flex items-center justify-center overflow-hidden transition-all relative">
                                     {uploadingLogo ? (
-                                        <Loader2 className="animate-spin text-zinc-400" size={24} />
+                                        <Loader2 className="animate-spin text-neutral-400" size={18} />
                                     ) : identity.logo_url ? (
                                         <Image
                                             src={getOptimizedUrl(identity.logo_url)}
-                                            alt="Logo de la tienda"
+                                            alt="Logo oficial"
                                             fill
-                                            sizes="96px"
-                                            className="object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-500"
+                                            sizes="80px"
+                                            className="object-cover mix-blend-multiply transition-transform duration-500"
                                         />
                                     ) : (
-                                        <ShoppingBag size={28} className="text-zinc-300 group-hover:text-zinc-800 transition-colors" />
+                                        <ShoppingBag size={20} className="text-neutral-400" />
                                     )}
                                 </div>
-                                {/* Micro-badge de edición */}
-                                <div className="absolute bottom-0 right-0 bg-white border border-zinc-200 text-zinc-600 w-7 h-7 rounded-full flex items-center justify-center group-hover:bg-zinc-900 group-hover:text-white group-hover:border-zinc-900 transition-colors shadow-sm">
-                                    <Edit2 size={12} strokeWidth={2.5} />
+                                <div className="absolute -bottom-1 -right-1 bg-white border border-neutral-200 text-neutral-600 w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
+                                    <Edit2 size={10} strokeWidth={2.5} />
                                 </div>
                             </div>
-                            <div className="text-center sm:text-left mt-2 sm:mt-1">
-                                <h4 className="text-sm font-black text-zinc-900">Logotipo Oficial</h4>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1.5 mb-2">Máx 2MB. Formato Cuadrado (1:1)</p>
-                                <p className="text-xs text-zinc-500 max-w-sm leading-relaxed">Este es el isotipo que representará a tu marca en el header de tu tienda y en los recibos de los clientes.</p>
+                            <div className="text-center sm:text-left space-y-1">
+                                <h4 className="text-xs font-semibold text-neutral-800">Isotipo de marca</h4>
+                                <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-mono">Recomendado: 1:1 • Peso máx 2MB</p>
+                                <p className="text-xs text-neutral-400 max-w-sm leading-relaxed">Este gráfico se incrustará en el encabezado de su sitio web, correos transaccionales y recibos físicos de facturas.</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        {/* BRAND FIELDS */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-1"><Store size={12} /> Nombre de la Tienda</label>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                    <Store size={12} className="text-neutral-400" /> Nombre Comercial
+                                </label>
                                 <input
                                     value={identity.name}
                                     onChange={e => handleIdentityChange('name', e.target.value)}
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-1"><Phone size={12} /> WhatsApp Oficial</label>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                    <Phone size={12} className="text-neutral-400" /> WhatsApp de Atención
+                                </label>
                                 <input
                                     type="tel"
                                     inputMode="numeric"
                                     value={identity.phone}
                                     onChange={e => handleIdentityChange('phone', e.target.value.replace(/[^0-9]/g, ''))}
                                     placeholder="Ej: 584120000000"
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-medium text-gray-900 focus:bg-white focus:border-black focus:shadow-subtle outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                         </div>
 
-                        <div className="border-t border-gray-100 pt-6">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1"> Banner Principal (Hero)</label>
+                        {/* HERO BANNER UPLOADER */}
+                        <div className="pt-2">
+                            <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3 block flex items-center gap-1">
+                                <ImageIcon size={12} className="text-neutral-400" /> Banner Promocional Principal
+                            </label>
                             <input type="file" ref={heroInputRef} className="hidden" accept="image/*" onChange={handleHeroUpload} />
 
                             {identity.hero_url ? (
-                                <div className="relative w-full h-40 md:h-48 rounded-[var(--radius-card)] overflow-hidden group border border-transparent hover:border-black transition-colors cursor-pointer" onClick={() => heroInputRef.current?.click()}>
-                                    <Image src={getOptimizedUrl(identity.hero_url)} alt="Hero Banner" fill sizes="(max-width: 768px) 100vw, 896px" className="object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="bg-white text-black px-4 py-2.5 rounded-full text-xs font-bold shadow-subtle hover:scale-105 transition-all flex items-center gap-2">
-                                            {uploadingHero ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />} Cambiar Banner
+                                <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden group border border-neutral-200/80 cursor-pointer" onClick={() => heroInputRef.current?.click()}>
+                                    <Image src={getOptimizedUrl(identity.hero_url)} alt="Banner" fill sizes="(max-width: 768px) 100vw, 1200px" className="object-cover" />
+                                    <div className="absolute inset-0 bg-neutral-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button className="bg-white text-neutral-900 px-4 py-2 rounded-lg text-xs font-semibold shadow-sm hover:scale-102 transition-transform flex items-center gap-1.5">
+                                            {uploadingHero ? <Loader2 className="animate-spin" size={12} /> : <Upload size={12} />} Cambiar imagen
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div onClick={() => heroInputRef.current?.click()} className={`w-full h-32 rounded-[var(--radius-card)] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingHero ? 'border-gray-300 animate-pulse bg-gray-50' : 'border-gray-200 hover:border-black bg-gray-50 hover:bg-white'}`}>
-                                    {uploadingHero ? <Loader2 className="animate-spin text-gray-400 mb-2" size={24} /> : <Upload className="text-gray-400 mb-2" size={24} />}
-                                    <span className="text-xs font-bold text-gray-900">Subir un Banner (1920x1080px)</span>
+                                <div onClick={() => heroInputRef.current?.click()} className={`w-full h-32 rounded-lg border border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingHero ? 'border-neutral-300 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400 bg-neutral-50/40'}`}>
+                                    {uploadingHero ? <Loader2 className="animate-spin text-neutral-400 mb-1.5" size={20} /> : <Upload className="text-neutral-400 mb-1.5" size={20} />}
+                                    <span className="text-xs font-semibold text-neutral-700">Subir Banner Promocional (1920x600px)</span>
                                 </div>
                             )}
                         </div>
                     </section>
 
-                    {/* 🚀 NUEVA SECCIÓN: DATOS FISCALES */}
-                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
-                        <div className="mb-6">
-                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><FileText size={20} className="text-black" /> Datos Fiscales y Facturación</h3>
-                            <p className="text-sm text-gray-500 mt-1">Información legal que aparecerá en los encabezados de tus PDF (Facturas y Presupuestos).</p>
+                    {/* DATOS FISCALES (CON ACENTOS MUTED) */}
+                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-neutral-900">
+                              <Building2 size={18} className="text-neutral-500" />
+                              <h2 className="text-base font-bold tracking-tight">Datos Fiscales y Facturación</h2>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Ajuste la información jurídica aplicable a las facturas electrónicas y órdenes de presupuesto.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Razón Social Legal (Opcional)</label>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Razón Social Jurídica</label>
                                 <input
                                     value={fiscal.legal_name}
                                     onChange={e => { setFiscal({ ...fiscal, legal_name: e.target.value }); setIsDirty(true) }}
                                     placeholder="Ej: Inversiones Preziso C.A."
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">RIF / Documento Identidad</label>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Identificación Fiscal (RIF)</label>
                                 <input
                                     value={fiscal.legal_id}
                                     onChange={e => { setFiscal({ ...fiscal, legal_id: e.target.value.toUpperCase() }); setIsDirty(true) }}
                                     placeholder="Ej: J-123456789"
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-mono font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 block">Dirección Fiscal Exacta</label>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                    <MapPin size={12} className="text-neutral-400" /> Dirección de Domicilio Fiscal
+                                </label>
                                 <input
                                     value={fiscal.fiscal_address}
                                     onChange={e => { setFiscal({ ...fiscal, fiscal_address: e.target.value }); setIsDirty(true) }}
-                                    placeholder="Ej: Av. Principal, Edificio X, Local 4, Caracas"
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                    placeholder="Ej: Av. Francisco de Miranda, Torre Este, Local 2, Caracas"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                         </div>
-                        {/* 🚀 SELECTOR DE PERFIL FISCAL (Clean Look) */}
-                        <div className="mt-6 pt-6 border-t border-black/5">
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4 block">Perfil de Facturación (Providencia 0071)</label>
+
+                        {/* SELECTOR DE PERFIL FISCAL (REDISEÑADO CLEAN) */}
+                        <div className="pt-4 border-t border-neutral-100">
+                            <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3.5 block">Clasificación Contributiva (Providencia SENIAT)</label>
+                            
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 {[
-                                    { id: 'informal', title: 'No Formalizado', desc: '0% IVA. Órdenes de Pedido sin exigencia de RIF.' },
-                                    { id: 'ordinary', title: 'Ordinario', desc: 'Cobro de 16% obligatorio al comprador.' },
-                                    { id: 'special', title: 'Especial', desc: '16% obligatorio + Módulo de Retenciones.' }
+                                    { id: 'informal', title: 'Persona Natural / Informal', desc: 'Sujeto exento de IVA. Transacciones directas sin retenciones.' },
+                                    { id: 'ordinary', title: 'Contribuyente Ordinario', desc: 'Aplica alícuota fiscal obligatoria en todas sus transacciones.' },
+                                    { id: 'special', title: 'Contribuyente Especial', desc: 'Sujeto a alícuota base con módulo avanzado de retenciones.' }
                                 ].map(p => {
                                     const isSelected = fiscal.fiscal_profile === p.id;
                                     return (
                                         <div
                                             key={p.id}
                                             onClick={() => { setFiscal({ ...fiscal, fiscal_profile: p.id }); setIsDirty(true) }}
-                                            className={`cursor-pointer p-4 rounded-xl border transition-all active:scale-95 flex flex-col gap-1 ${isSelected ? 'bg-zinc-900 border-zinc-900 text-white' : 'bg-zinc-50 border-black/5 hover:bg-zinc-100 text-zinc-900'}`}
+                                            className={`cursor-pointer p-4 rounded-lg border transition-all flex flex-col justify-between min-h-[90px] ${isSelected ? 'bg-neutral-900 border-neutral-900 text-white shadow-xs' : 'bg-neutral-50/50 border-neutral-200 hover:bg-neutral-50 text-neutral-800'}`}
                                         >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h3 className={`font-black text-xs uppercase tracking-widest ${isSelected ? 'text-white' : 'text-zinc-900'}`}>{p.title}</h3>
-                                                {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                                            <div className="flex justify-between items-start w-full gap-2 mb-2">
+                                                <h3 className="font-bold text-[11px] uppercase tracking-wider leading-tight">{p.title}</h3>
+                                                {isSelected && <CheckCircle2 size={13} className="text-white shrink-0" />}
                                             </div>
-                                            <p className={`text-[10px] leading-relaxed ${isSelected ? 'text-zinc-400' : 'text-zinc-500'}`}>{p.desc}</p>
+                                            <p className={`text-[10px] leading-relaxed ${isSelected ? 'text-neutral-400' : 'text-neutral-400'}`}>{p.desc}</p>
                                         </div>
                                     )
                                 })}
                             </div>
 
-                            {/* El input del porcentaje solo se muestra si NO son informales (Garantía matemática) */}
+                            {/* Alícuota Input con bloqueo de rango */}
                             {fiscal.fiscal_profile !== 'informal' && (
-                                <div className="mt-4 p-4 bg-zinc-50 border border-black/5 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                                    <div>
-                                        <p className="text-xs font-bold text-zinc-900">Impuesto al Valor Agregado (IVA)</p>
-                                        <p className="text-[10px] text-zinc-500 mt-0.5">Tasa general obligatoria según el BCV.</p>
+                                <div className="mt-4 p-4 bg-neutral-50/60 border border-neutral-200 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-semibold text-neutral-800">Impuesto al Valor Agregado (IVA)</p>
+                                        <p className="text-[10px] text-neutral-400">Rango legal general de acuerdo al marco legal venezolano.</p>
                                     </div>
                                     <div className="relative w-24">
                                         <NumberInput
                                             value={fiscal.default_tax_percentage}
                                             onChangeValue={val => {
                                                 let num = Number(val);
-                                                // 🚀 BLINDAJE LEGAL SENIAT: No permitimos menos de 16% ni más de 16.5%
                                                 if (num < 16) num = 16;
                                                 if (num > 16.5) num = 16.5;
 
                                                 setFiscal({ ...fiscal, default_tax_percentage: num });
                                                 setIsDirty(true);
                                             }}
-                                            className="w-full bg-white border border-black/5 rounded-lg py-2 pl-3 pr-6 text-xs font-black text-zinc-900 text-center focus:border-zinc-300 outline-none transition-colors"
+                                            className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2 pr-7 text-xs font-bold text-neutral-900 text-center focus:border-neutral-400 outline-none transition-colors"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 font-black pointer-events-none">%</span>
+                                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-bold pointer-events-none">%</span>
                                     </div>
                                 </div>
                             )}
                         </div>
                     </section>
 
-                    {/* 🚀 NUEVA SECCIÓN: PERSONALIZACIÓN DE SERVICIOS */}
-                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
-                        <div className="mb-6">
-                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                                <Zap size={20} className="text-black" /> Textos de Servicios / Experiencias
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Personaliza cómo se le muestra al cliente los productos que no requieren logística de envío.
-                            </p>
+                    {/* PERSONALIZACIÓN DE SERVICIOS */}
+                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-neutral-900">
+                              <Zap size={18} className="text-neutral-500" />
+                              <h2 className="text-base font-bold tracking-tight">Servicios e Intangibles</h2>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Configure las descripciones y mensajes para productos que no exigen entrega física o logística tradicional.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
-                                    <span>Etiqueta en Carrito Mixto</span>
-                                    <span className={serviceConfig.service_badge.length >= 20 ? 'text-red-500' : ''}>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex justify-between">
+                                    <span>Etiqueta del carrito</span>
+                                    <span className={`text-[10px] font-mono ${serviceConfig.service_badge.length >= 20 ? 'text-rose-600' : 'text-neutral-300'}`}>
                                         {serviceConfig.service_badge.length}/20
                                     </span>
                                 </label>
@@ -458,13 +494,13 @@ export default function SettingsPage() {
                                     value={serviceConfig.service_badge}
                                     onChange={e => { setServiceConfig({ ...serviceConfig, service_badge: e.target.value }); setIsDirty(true) }}
                                     placeholder="Ej: Se consume en tienda"
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
-                                    <span>Título de Aviso en Checkout</span>
-                                    <span className={serviceConfig.service_title.length >= 30 ? 'text-red-500' : ''}>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex justify-between">
+                                    <span>Título de aviso en checkout</span>
+                                    <span className={`text-[10px] font-mono ${serviceConfig.service_title.length >= 30 ? 'text-rose-600' : 'text-neutral-300'}`}>
                                         {serviceConfig.service_title.length}/30
                                     </span>
                                 </label>
@@ -473,13 +509,13 @@ export default function SettingsPage() {
                                     value={serviceConfig.service_title}
                                     onChange={e => { setServiceConfig({ ...serviceConfig, service_title: e.target.value }); setIsDirty(true) }}
                                     placeholder="Ej: Taller en Vivo"
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all"
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1 flex justify-between">
-                                    <span>Descripción en Checkout</span>
-                                    <span className={serviceConfig.service_desc.length >= 120 ? 'text-red-500' : ''}>
+                                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex justify-between">
+                                    <span>Indicaciones del Servicio</span>
+                                    <span className={`text-[10px] font-mono ${serviceConfig.service_desc.length >= 120 ? 'text-rose-600' : 'text-neutral-300'}`}>
                                         {serviceConfig.service_desc.length}/120
                                     </span>
                                 </label>
@@ -488,125 +524,155 @@ export default function SettingsPage() {
                                     rows={2}
                                     value={serviceConfig.service_desc}
                                     onChange={e => { setServiceConfig({ ...serviceConfig, service_desc: e.target.value }); setIsDirty(true) }}
-                                    placeholder="Ej: Has reservado una experiencia. Te esperamos en nuestras instalaciones."
-                                    className="w-full bg-[#f6f6f6] border border-transparent rounded-[var(--radius-btn)] px-4 py-3 font-medium text-gray-900 focus:bg-white focus:border-black outline-none transition-all resize-none"
+                                    placeholder="Ej: El carrito contiene servicios. Una vez procesado el pago nos contactaremos para agendar."
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all resize-none"
                                 />
                             </div>
                         </div>
                     </section>
 
-                    <section className="bg-white p-4 md:p-8 rounded-[var(--radius-card)] card-interactive">
-                        <div className="mb-6">
-                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2"><Percent size={20} className="text-black" /> Reglas de Negocio</h3>
-                            <p className="text-sm text-gray-500 mt-1">Gamifica tus ventas y asegura tus pagos.</p>
+                    {/* REGLAS DE NEGOCIO (COLORES DIFERENCIADORES SUTILES) */}
+                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2 text-neutral-900">
+                              <Percent size={18} className="text-neutral-500" />
+                              <h2 className="text-base font-bold tracking-tight">Parámetros Operativos</h2>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Configure incentivos automáticos, mayoristas y restricciones de validez de compra.</p>
                         </div>
 
-                        {/* 🚀 NUEVO: PROGRAMA DE AFILIADOS */}
-                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] mb-6 border border-transparent">
+                        {/* AFILIADOS (COLOR ACENTO: MUTED INDIGO/LAVENDER) */}
+                        <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
                             <div
-                                className="flex items-center justify-between mb-4 cursor-pointer active:scale-[0.99] transition-transform"
+                                className="flex items-center justify-between cursor-pointer"
                                 onClick={() => handleAffiliateChange('active', !affiliate.active)}
                             >
-                                <div>
-                                    <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5"><Users size={16} className="text-gray-700" /> Red de Promotores</p>
-                                    <p className="text-xs text-gray-500 mt-0.5 pr-4">Permite que tus clientes ganen comisión por recomendar tus productos.</p>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-xs text-neutral-900 flex items-center gap-1.5">
+                                        <Users size={14} className="text-indigo-600" /> Red de Promotores (Afiliación)
+                                    </p>
+                                    <p className="text-xs text-neutral-400 pr-4">Habilite comisiones para terceros que recomienden formalmente su negocio.</p>
                                 </div>
-                                <AnimatedSwitch active={affiliate.active} activeColor="bg-black" />
+                                <AnimatedSwitch active={affiliate.active} activeColor="bg-indigo-600" />
                             </div>
 
                             {affiliate.active && (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-4 border-t border-gray-100">
+                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 pt-4 mt-4 border-t border-neutral-200/60">
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">% Que gana el Promotor</label>
-                                        <div className="relative">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Comisión del Promotor</label>
+                                        <div className="relative max-w-[150px]">
                                             <NumberInput
                                                 value={affiliate.global_commission_pct}
                                                 onChangeValue={(val) => handleAffiliateChange('global_commission_pct', val)}
-                                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-3 pr-8 py-2.5 font-bold outline-none transition-all"
+                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
                                             />
-                                            <Percent size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <Percent size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">% Descuento al Comprador</label>
-                                        <div className="relative">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Descuento al Comprador</label>
+                                        <div className="relative max-w-[150px]">
                                             <NumberInput
-
                                                 value={affiliate.buyer_discount_pct}
                                                 onChangeValue={(val) => handleAffiliateChange('buyer_discount_pct', val)}
-                                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-3 pr-8 py-2.5 font-bold outline-none transition-all"
+                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
                                             />
-                                            <Percent size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <Percent size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                                         </div>
                                     </div>
-                                    <div className="col-span-2 mt-1">
-                                        <p className="text-[10px] font-medium text-gray-500">
-                                            💡 <strong className="text-gray-700">Tip Estratégico:</strong> Dales un descuento a los compradores para forzarlos a usar el link del promotor en lugar de comprar directamente.
+                                    <div className="col-span-2 pt-1">
+                                        <p className="text-[11px] text-indigo-700/80 bg-indigo-50/50 p-2 rounded-md border border-indigo-100/40">
+                                            💡 <strong>Estrategia recomendada:</strong> Un descuento de cara al cliente final estimula el uso del código del promotor en lugar de una compra estándar directa.
                                         </p>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Mayorista Gamificado */}
-                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] mb-6 border border-transparent">
+                        {/* MAYORISTA (COLOR ACENTO: MUTED SAGE GREEN) */}
+                        <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
                             <div
-                                className="flex items-center justify-between mb-4 cursor-pointer active:scale-[0.99] transition-transform"
+                                className="flex items-center justify-between cursor-pointer"
                                 onClick={() => handleWholesaleChange('active', !wholesale.active)}
                             >
-                                <div>
-                                    <p className="font-bold text-gray-900 text-sm">Descuento Mayorista Automático</p>
-                                    <p className="text-xs text-gray-500 mt-0.5 pr-4">Aplica un descuento global a toda la orden si superan X piezas.</p>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-xs text-neutral-900 flex items-center gap-1.5">
+                                        <ShoppingBag size={14} className="text-emerald-600" /> Descuento Mayorista Automático
+                                    </p>
+                                    <p className="text-xs text-neutral-400 pr-4">Aplica reducciones globales inmediatas en el checkout según el volumen de compra.</p>
                                 </div>
-                                <AnimatedSwitch active={wholesale.active} />
+                                <AnimatedSwitch active={wholesale.active} activeColor="bg-emerald-600" />
                             </div>
 
                             {wholesale.active && (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 pt-4 border-t border-gray-100">
+                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 pt-4 mt-4 border-t border-neutral-200/60">
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Piezas Mínimas</label>
-                                        <NumberInput
-
-                                            value={wholesale.min_items}
-                                            onChangeValue={(val) => handleWholesaleChange('min_items', val)}
-                                            className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] px-3 py-2.5 font-bold outline-none transition-all"
-                                        />
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Cantidad Mínima</label>
+                                        <div className="max-w-[150px]">
+                                            <NumberInput
+                                                value={wholesale.min_items}
+                                                onChangeValue={(val) => handleWholesaleChange('min_items', val)}
+                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 px-2.5 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">% Descuento</label>
-                                        <NumberInput
-
-                                            value={wholesale.discount_percentage}
-                                            onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
-                                            className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] px-3 py-2.5 font-bold outline-none transition-all"
-                                        />
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Tasa de Descuento</label>
+                                        <div className="relative max-w-[150px]">
+                                            <NumberInput
+                                                value={wholesale.discount_percentage}
+                                                onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
+                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
+                                            />
+                                            <Percent size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Comprobantes Estrictos */}
-                        <div className="bg-[#f6f6f6] p-5 rounded-[var(--radius-card)] border border-transparent">
-                            <div className="flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform" onClick={() => { setReceipt({ strict_mode: !receipt.strict_mode }); setIsDirty(true) }}>
-                                <div className="pr-4">
-                                    <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5"><Receipt size={16} /> Comprobante Obligatorio</p>
-                                    <p className="text-xs text-gray-500 mt-1">El cliente NO podrá enviar el pedido a WhatsApp sin subir una captura del pago.</p>
+                        {/* COMPROBANTES (COLOR ACENTO: MUTED BLUE) */}
+                        <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
+                            <div 
+                                className="flex items-center justify-between cursor-pointer" 
+                                onClick={() => { setReceipt({ strict_mode: !receipt.strict_mode }); setIsDirty(true) }}
+                            >
+                                <div className="space-y-0.5 pr-4">
+                                    <p className="font-semibold text-xs text-neutral-900 flex items-center gap-1.5">
+                                        <Receipt size={14} className="text-blue-600" /> Comprobante de Pago Mandatario
+                                    </p>
+                                    <p className="text-xs text-neutral-400">Restringe el envío de solicitudes de orden en WhatsApp si no se carga el capture bancario correspondiente.</p>
                                 </div>
-                                <AnimatedSwitch active={receipt.strict_mode} />
+                                <AnimatedSwitch active={receipt.strict_mode} activeColor="bg-blue-600" />
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-5 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isDirty ? 'text-yellow-600' : 'text-gray-400'}`}>
-                                {isDirty ? <><AlertTriangle size={14} strokeWidth={2.5} /><span>Tienes cambios sin guardar aquí.</span></> : <span>Todo guardado correctamente.</span>}
+                        {/* GUARDADO DE CAMBIOS INTEGRADO (FLAT STYLE) */}
+                        <div className="mt-6 pt-5 border-t border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2 text-xs font-medium">
+                                {isDirty ? (
+                                    <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded">
+                                        <AlertCircle size={12} />
+                                        Modificaciones pendientes de confirmar
+                                    </span>
+                                ) : (
+                                    <span className="text-neutral-400">Alineación de datos en orden.</span>
+                                )}
                             </div>
-                            <button onClick={saveSettings} disabled={saving || !isDirty} className={`w-full sm:w-auto px-6 py-3 rounded-[var(--radius-btn)] text-sm font-bold flex items-center justify-center gap-2 transition-all ${isDirty ? 'bg-black text-white hover:bg-gray-800 shadow-subtle active:scale-95' : 'bg-gray-50 border border-transparent text-gray-400 cursor-not-allowed'}`}>
-                                {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Guardar Identidad y Reglas
+                            
+                            <button 
+                                onClick={saveSettings} 
+                                disabled={saving || !isDirty} 
+                                className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${isDirty ? 'bg-neutral-950 text-white hover:bg-black active:scale-[0.98]' : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'}`}
+                            >
+                                {saving ? <Loader2 className="animate-spin" size={13} /> : <Save size={13} />} 
+                                <span>Guardar Identidad y Reglas</span>
                             </button>
                         </div>
                     </section>
                 </div>
 
+                {/* COMPONENTES SECUNDARIOS */}
                 <PayPalSetupCard storeId={store.id} />
                 <PaymentSettings storeId={store.id} initialData={store.payment_config} />
                 <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
@@ -614,8 +680,13 @@ export default function SettingsPage() {
                 <PushNotificationManager storeId={store.id} />
                 <SecuritySettings />
 
-                <button onClick={handleLogout} className="flex items-center justify-center gap-3 px-4 py-3 rounded-[var(--radius-btn)] text-[0.9rem] font-bold bg-white active:bg-red-50 active:text-red-700 text-red-500 hover:bg-red-50 hover:text-red-700 transition-all w-full text-left">
-                    <LogOut size={18} /> Cerrar Sesión
+                {/* BOTÓN CERRAR SESIÓN */}
+                <button 
+                    onClick={handleLogout} 
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-semibold bg-white border border-neutral-200/60 text-rose-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition-colors w-full text-center"
+                >
+                    <LogOut size={13} /> 
+                    <span>Finalizar sesión actual</span>
                 </button>
             </div>
         </div>

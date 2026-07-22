@@ -1,16 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { 
-  Wallet, 
-  TrendingUp, 
-  Users, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Sparkles, 
-  Globe, 
-  ArrowUpRight, 
+import {
+  Wallet,
+  TrendingUp,
+  Users,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Sparkles,
+  Globe,
+  ArrowUpRight,
   ArrowRight,
   ShieldCheck,
   CreditCard
@@ -34,23 +34,23 @@ export default async function AffiliateDashboard() {
   if (!affiliate) {
     return (
       <div className="p-6 md:p-12 max-w-2xl mx-auto mt-16">
-        <div className="bg-white p-8 md:p-12 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] text-center flex flex-col items-center">
-          <div className="w-12 h-12 bg-neutral-950 text-white rounded-xl flex items-center justify-center mb-6">
-            <Users size={22} strokeWidth={1.8} />
+        <div className="bg-white p-10 md:p-14 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] text-center flex flex-col items-center">
+          <div className="w-14 h-14 bg-neutral-950 text-white rounded-xl flex items-center justify-center mb-6">
+            <Users size={26} strokeWidth={1.8} />
           </div>
-          
-          <span className="inline-flex items-center gap-1 bg-neutral-100 text-neutral-600 text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-3">
+
+          <span className="inline-flex items-center gap-1 bg-neutral-100 text-neutral-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-4">
             Programa exclusivo
           </span>
-          
-          <h1 className="text-xl font-bold text-neutral-950 tracking-tight mb-2">
+
+          <h1 className="text-2xl font-bold text-neutral-950 tracking-tight mb-3">
             Socios Preziso
           </h1>
-          
-          <p className="text-xs text-neutral-400 mb-8 max-w-sm leading-relaxed">
-            Comparte la plataforma con otros comercios y genera un beneficio recurrente de <strong className="text-neutral-900 font-semibold">$5.00</strong> por cada primer pago mensual consolidado.
+
+          <p className="text-sm text-neutral-400 mb-8 max-w-sm leading-relaxed">
+            Refiere la plataforma a otros comercios y genera un beneficio mensual recurrente de <strong className="text-neutral-950 font-semibold">$5.00</strong> por cada suscripción activa consolidada.
           </p>
-          
+
           <div className="w-full max-w-xs">
             <AffiliateClientControls action="activate" storeSlug={store?.slug || 'PRZ'} />
           </div>
@@ -78,7 +78,7 @@ export default async function AffiliateDashboard() {
 
   const pendingReferrals = referrals?.filter(r => r.status === 'pending').length || 0
   const convertedReferrals = referrals?.filter(r => r.status === 'converted').length || 0
-  
+
   const unpaidUsd = commissions?.filter(c => c.status === 'unpaid').reduce((acc, curr) => acc + Number(curr.amount_usd), 0) || 0
   const paidUsd = commissions?.filter(c => c.status === 'paid').reduce((acc, curr) => acc + Number(curr.amount_usd), 0) || 0
 
@@ -86,116 +86,117 @@ export default async function AffiliateDashboard() {
   const hasPaymentDetails = affiliate.payment_details?.bank && affiliate.payment_details?.phone
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 bg-[#FAFAFC] min-h-screen">
-      
-      {/* HEADER SECTION (CLEAN & MINIMAL) */}
+    // Se escaló el max-w-5xl a max-w-6xl para abarcar más espacio horizontal
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10 bg-[#f8f9fa] min-h-screen">
+
+      {/* HEADER SECTION - ESCALADO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-bold text-neutral-900 tracking-tight">Consola de Socios</h1>
-          <p className="text-xs text-neutral-400 mt-0.5">Programa de incentivos por volumen de comercios referidos</p>
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Consola de Socios</h1>
+          <p className="text-sm text-neutral-400 mt-0.5">Programa de incentivos por volumen de comercios referidos</p>
         </div>
-        
-        <div className="flex items-center gap-1.5 bg-neutral-100 text-neutral-600 text-[10px] font-medium px-2.5 py-1 rounded-md max-w-max">
-          <ShieldCheck size={12} className="text-neutral-500" />
+
+        <div className="flex items-center gap-1.5 bg-neutral-100 text-neutral-600 text-xs font-semibold px-3 py-1.5 rounded-lg max-w-max border border-neutral-200/20">
+          <ShieldCheck size={14} className="text-neutral-500" />
           <span>Socio Identificado: #{affiliate.referral_code}</span>
         </div>
       </div>
 
-      {/* METRIC CARD GRID (BORDERLESS HIGH ELEVATION) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
+      {/* METRIC CARD GRID - ESCALADO CON MAYOR PADDING INTERNO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
         {/* METRIC: UNPAID */}
-        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 text-neutral-400">
-            <span className="text-[11px] font-medium">Por Cobrar</span>
-            <div className="w-5 h-5 rounded bg-neutral-50 flex items-center justify-center">
-              <Wallet size={12} className="text-neutral-500" />
+        <div className="bg-white p-6 md:p-7 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.015)] flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4 text-neutral-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Por Cobrar</span>
+            <div className="w-6 h-6 rounded bg-neutral-50 flex items-center justify-center border border-neutral-100/50">
+              <Wallet size={13} className="text-neutral-500" />
             </div>
           </div>
           <div>
-            <p className="text-2xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">${unpaidUsd.toFixed(2)}</p>
-            <p className="text-[10px] text-neutral-400 mt-1">Disponible en el próximo ciclo</p>
+            <p className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">${unpaidUsd.toFixed(2)}</p>
+            <p className="text-xs text-neutral-400 mt-1.5">Disponible en el próximo ciclo de corte</p>
           </div>
         </div>
 
         {/* METRIC: PAID */}
-        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 text-neutral-400">
-            <span className="text-[11px] font-medium">Retiros Históricos</span>
-            <div className="w-5 h-5 rounded bg-neutral-50 flex items-center justify-center">
-              <TrendingUp size={12} className="text-neutral-500" />
+        <div className="bg-white p-6 md:p-7 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.015)] flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4 text-neutral-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Retiros Históricos</span>
+            <div className="w-6 h-6 rounded bg-neutral-50 flex items-center justify-center border border-neutral-100/50">
+              <TrendingUp size={13} className="text-neutral-500" />
             </div>
           </div>
           <div>
-            <p className="text-2xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">${paidUsd.toFixed(2)}</p>
-            <p className="text-[10px] text-neutral-400 mt-1">Transferido exitosamente</p>
+            <p className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">${paidUsd.toFixed(2)}</p>
+            <p className="text-xs text-neutral-400 mt-1.5">Transferido exitosamente a cuenta</p>
           </div>
         </div>
 
         {/* METRIC: CONVERTED */}
-        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3 text-neutral-400">
-            <span className="text-[11px] font-medium">Total Referidos</span>
-            <div className="w-5 h-5 rounded bg-neutral-50 flex items-center justify-center">
-              <Users size={12} className="text-neutral-500" />
+        <div className="bg-white p-6 md:p-7 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.015)] flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4 text-neutral-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Total Referidos</span>
+            <div className="w-6 h-6 rounded bg-neutral-50 flex items-center justify-center border border-neutral-100/50">
+              <Users size={13} className="text-neutral-500" />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">{convertedReferrals}</p>
-              <span className="text-[10px] font-medium text-neutral-400">activos</span>
+              <p className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900 font-mono tabular-nums">{convertedReferrals}</p>
+              <span className="text-xs font-semibold text-neutral-500">activos</span>
             </div>
-            <p className="text-[10px] text-neutral-400 mt-1">+{pendingReferrals} cuentas en fase de prueba</p>
+            <p className="text-xs text-neutral-400 mt-1.5">+{pendingReferrals} cuentas adicionales en fase de prueba</p>
           </div>
         </div>
       </div>
 
-      {/* SHARING & ACCOUNT SETTINGS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        
+      {/* SHARING & ACCOUNT SETTINGS - AMPLIADO */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
         {/* LINK SHARE PANEL */}
-        <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-4">
+        <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-5">
           <div>
-            <div className="flex items-center justify-between text-[11px] font-medium text-neutral-400 mb-2">
-              <span>TU ENLACE ÚNICO</span>
-              <span className="text-neutral-300">Preziso Partner Link</span>
+            <div className="flex items-center justify-between text-xs font-semibold text-neutral-400 mb-3 uppercase tracking-wider">
+              <span>Tu Enlace Único</span>
+              <span className="text-neutral-300 font-normal">Preziso Partner Link</span>
             </div>
-            
-            <div className="bg-neutral-50/50 p-3 rounded-lg flex items-center justify-between">
-              <p className="text-xs font-mono text-neutral-600 truncate mr-3">{referralLink}</p>
+
+            <div className="bg-neutral-50/50 p-4 rounded-lg flex items-center justify-between border border-neutral-100/50">
+              <p className="text-sm font-mono text-neutral-600 truncate mr-3">{referralLink}</p>
               <AffiliateClientControls action="copy" payload={referralLink} />
             </div>
           </div>
 
           <div>
             {affiliate.discount_pct > 0 ? (
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50/50 p-2.5 rounded-lg">
-                <Sparkles size={12} strokeWidth={2} />
+              <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100/30">
+                <Sparkles size={14} strokeWidth={2} />
                 <span>Tu código de afiliado activa un <strong>{affiliate.discount_pct}% de descuento</strong> a tu comunidad.</span>
               </div>
             ) : (
-              <p className="text-[10px] text-neutral-400">
-                Al usar tu enlace, los nuevos comercios obtienen automáticamente un período de prueba de 7 días sin costo.
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Al usar tu enlace, los nuevos comercios obtienen automáticamente un período de prueba extendido de 7 días sin costo.
               </p>
             )}
           </div>
         </div>
 
         {/* PAYMENT DETAILS PANEL */}
-        <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
+        <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-xs font-semibold text-neutral-900">Método de Liquidación</h2>
-              <p className="text-[10px] text-neutral-400 mt-0.5">Defina dónde transferir sus ingresos generados</p>
+              <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Método de Liquidación</h2>
+              <p className="text-xs text-neutral-400 mt-0.5">Especifique los datos donde procesar sus retiros</p>
             </div>
-            
+
             {!hasPaymentDetails ? (
-              <span className="flex items-center gap-1 text-[9px] font-semibold bg-rose-50 text-rose-600 px-2 py-0.5 rounded">
-                <AlertCircle size={10} /> Requiere atención
+              <span className="flex items-center gap-1.5 text-xs font-semibold bg-rose-50 text-rose-600 px-2.5 py-1 rounded">
+                <AlertCircle size={11} /> Requiere atención
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-[9px] font-semibold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">
-                <CreditCard size={10} /> Configurado
+              <span className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded">
+                <CreditCard size={11} /> Configurado
               </span>
             )}
           </div>
@@ -204,40 +205,40 @@ export default async function AffiliateDashboard() {
         </div>
       </div>
 
-      {/* CREATORS CTA CARD (MINIMAL DEEP THEME) */}
-      <div className="bg-neutral-950 text-white p-6 md:p-8 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-1 text-center md:text-left">
-          <span className="inline-flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded text-[9px] font-semibold tracking-wider text-neutral-300 uppercase">
-            <Sparkles size={10} className="text-neutral-200" /> Creadores de contenido
+      {/* CREATORS CTA CARD - MÁS GRANDE Y DIRECTO */}
+      <div className="bg-neutral-950 text-white p-8 md:p-10 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-2 text-center md:text-left">
+          <span className="inline-flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded text-xs font-semibold tracking-wider text-neutral-300 uppercase">
+            <Sparkles size={11} className="text-neutral-200" /> Beneficios para Comunidades
           </span>
-          <h2 className="text-base font-bold tracking-tight">¿Tienes un canal o comunidad activa?</h2>
-          <p className="text-xs text-neutral-400 max-w-lg leading-relaxed">
-            Podemos personalizar un beneficio único de descuento para tus referidos durante su primer mes. Contáctanos para habilitarlo.
+          <h2 className="text-lg md:text-xl font-bold tracking-tight">¿Tienes un canal de YouTube, TikTok o comunidad activa?</h2>
+          <p className="text-sm text-neutral-400 max-w-xl leading-relaxed">
+            Podemos estructurar un beneficio de descuento exclusivo para tu audiencia en su primer mes de uso. Hablemos para habilitarlo en tu cuenta.
           </p>
         </div>
-        
+
         <a
           href={`https://wa.me/584145811936?text=${encodeURIComponent("Hola equipo Preziso, tengo una comunidad en mis redes sociales y me gustaría solicitar un descuento especial para mis referidos.")}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 bg-white text-neutral-950 font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-neutral-100 transition-all shrink-0 active:scale-95"
+          className="inline-flex items-center gap-1.5 bg-white text-neutral-950 font-semibold text-xs px-5 py-3 rounded-lg hover:bg-neutral-100 transition-all shrink-0 active:scale-95 shadow-sm"
         >
           <span>Solicitar Incentivo</span>
-          <ArrowRight size={13} />
+          <ArrowRight size={14} />
         </a>
       </div>
 
-      {/* REFERRAL TRANSPARENCY LIST (BORDERLESS STYLE) */}
-      <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
+      {/* REFERRAL TRANSPARENCY LIST - MÁS AIREADO CON PADDING DE 16PX (p-4) */}
+      <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
         <div>
-          <h2 className="text-xs font-semibold text-neutral-900">Historial de Invitaciones</h2>
-          <p className="text-[10px] text-neutral-400 mt-0.5">Control de registros efectuados bajo tu enlace</p>
+          <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Historial de Invitaciones</h2>
+          <p className="text-xs text-neutral-400 mt-0.5">Estatus transparente en tiempo real de tus registros referidos</p>
         </div>
 
         {(!referrals || referrals.length === 0) ? (
-          <p className="text-xs text-neutral-400 italic py-4">Aún no has invitado a nadie. Comparte tu enlace para comenzar.</p>
+          <p className="text-xs text-neutral-400 italic py-4">Aún no tienes invitaciones registradas. Comparte tu enlace para comenzar.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {referrals.map((ref: any) => {
               const storeData = Array.isArray(ref.stores) ? ref.stores[0] : ref.stores
               const storeName = storeData?.name || 'Nuevo Comercio'
@@ -249,26 +250,26 @@ export default async function AffiliateDashboard() {
               const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 
               return (
-                <div key={ref.id} className="p-3 bg-neutral-50/50 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded bg-white flex items-center justify-center text-neutral-400">
-                      <Globe size={11} />
+                <div key={ref.id} className="p-4 bg-neutral-50/50 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded bg-white flex items-center justify-center text-neutral-400 border border-neutral-100/55 shadow-xs">
+                      <Globe size={12} />
                     </div>
                     <div>
-                      <p className="font-semibold text-xs text-neutral-900 leading-tight">{storeName}</p>
-                      <p className="text-[10px] text-neutral-400 mt-0.5 font-mono">
-                        Registro: {new Date(ref.created_at).toLocaleDateString()}
+                      <p className="font-semibold text-sm text-neutral-900 leading-tight">{storeName}</p>
+                      <p className="text-xs text-neutral-400 mt-0.5 font-mono">
+                        Fecha de registro: {new Date(ref.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <div>
                     {isConverted ? (
-                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-1 rounded">
-                        <CheckCircle2 size={11} /> Primer mes liquidado
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded">
+                        <CheckCircle2 size={12} /> Comisión Mensual Consolidada
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 bg-neutral-100 text-neutral-600 text-[10px] font-semibold px-2 py-1 rounded">
-                        <Clock size={11} /> {daysLeft}d de prueba restantes
+                      <span className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-600 text-xs font-medium px-2.5 py-1 rounded border border-neutral-200/20">
+                        <Clock size={12} /> {daysLeft}d de prueba restantes
                       </span>
                     )}
                   </div>
@@ -279,41 +280,41 @@ export default async function AffiliateDashboard() {
         )}
       </div>
 
-      {/* LIQUIDATIONS HISTORY (BORDERLESS STYLE) */}
-      <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
+      {/* LIQUIDATIONS HISTORY - MÁS ESPACIADO */}
+      <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
         <div>
-          <h2 className="text-xs font-semibold text-neutral-900">Historial de Comisiones</h2>
-          <p className="text-[10px] text-neutral-400 mt-0.5">Control de transacciones y estados de pago</p>
+          <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Historial de Comisiones</h2>
+          <p className="text-xs text-neutral-400 mt-0.5">Control de transacciones y estados de pago bancarios</p>
         </div>
 
         {(!commissions || commissions.length === 0) ? (
           <p className="text-xs text-neutral-400 italic py-4">No hay transacciones registradas hasta el momento.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {commissions.map((comm) => {
               const isPaid = comm.status === 'paid'
               return (
-                <div key={comm.id} className="p-3 bg-neutral-50/50 rounded-lg flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="font-bold text-neutral-900 text-sm font-mono tracking-tight">${comm.amount_usd} USD</p>
-                    <p className="text-[10px] text-neutral-400">
-                      Fecha: {new Date(comm.created_at).toLocaleDateString()}
+                <div key={comm.id} className="p-4 bg-neutral-50/50 rounded-lg flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="font-bold text-neutral-900 text-base font-mono tracking-tight">${comm.amount_usd} USD</p>
+                    <p className="text-xs text-neutral-400">
+                      ID de Transferencia • Generada el {new Date(comm.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
                     {isPaid ? (
                       <div className="text-right">
-                        <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 text-[10px] font-semibold px-2 py-0.5 rounded">
+                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 text-xs font-semibold px-2.5 py-1 rounded">
                           Pago completado
                         </span>
                         {comm.paid_at && (
-                          <p className="text-[9px] text-neutral-400 mt-1 font-mono">
-                            {new Date(comm.paid_at).toLocaleDateString()}
+                          <p className="text-xs text-neutral-400 mt-1 font-mono">
+                            Procesado: {new Date(comm.paid_at).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-neutral-500 bg-neutral-100 text-[10px] font-semibold px-2 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1.5 text-neutral-500 bg-neutral-100 text-xs font-semibold px-2.5 py-1 rounded">
                         Pendiente de cobro
                       </span>
                     )}

@@ -16,14 +16,22 @@ import {
     ArrowDownToLine,
     ArrowUpFromLine,
     CheckCircle,
+    CheckCircle2,
     AlertTriangle,
     FileText,
-    Copy, Clock, Sparkles, X, Download,
+    Copy, 
+    Clock, 
+    Sparkles, 
+    X, 
+    Download,
+    Eye,
+    EyeOff,
+    AlertCircle
 } from "lucide-react";
 import ExcelJS from 'exceljs';
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase-client";
-import { NumberInput } from "@/components/NumberInput"; // Ajusta la ruta según tu carpeta
+import { NumberInput } from "@/components/NumberInput"; 
 import { AnimatePresence, motion, Variants } from "framer-motion";
 import Swal from "sweetalert2";
 
@@ -39,22 +47,23 @@ export default function CashRegisterPage() {
         usdCash: 0,
         zelle: 0,
         bsTransfer: 0,
-        other: 0, // 🚀 NUEVO: Bucket para POS/Zinli/Otros
+        other: 0, 
         ordersCount: 0,
     });
     const [lastClosureDate, setLastClosureDate] = useState<string | null>(null);
     const [history, setHistory] = useState<any[]>([]);
-    // 🚀 NUEVO: Estado para el historial de ingresos/egresos
+    
+    // Historial de ingresos/egresos manuales
     const [movementHistory, setMovementHistory] = useState<any[]>([])
 
-    // Data para el Gráfico de Anillo y Estado Interactivo
+    // Data para el Gráfico de Anillo y Estado Interactivo (Colores Muted de Alta Gama)
     const [activeSegment, setActiveSegment] = useState<string | null>(null);
     const [orderStats, setOrderStats] = useState({
         pending: {
             count: 0,
             usd: 0,
             bs: 0,
-            color: "#F59E0B",
+            color: "#D97706", // Muted Amber
             label: "Pendientes",
             key: "pending",
         },
@@ -62,7 +71,7 @@ export default function CashRegisterPage() {
             count: 0,
             usd: 0,
             bs: 0,
-            color: "#10B981",
+            color: "#059669", // Muted Emerald
             label: "Pagados",
             key: "paid",
         },
@@ -70,7 +79,7 @@ export default function CashRegisterPage() {
             count: 0,
             usd: 0,
             bs: 0,
-            color: "#3B82F6",
+            color: "#2563EB", // Muted Blue
             label: "Enviados",
             key: "shipped",
         },
@@ -78,7 +87,7 @@ export default function CashRegisterPage() {
             count: 0,
             usd: 0,
             bs: 0,
-            color: "#EF4444",
+            color: "#DC2626", // Muted Rose
             label: "Cancelados",
             key: "cancelled",
         },
@@ -92,7 +101,7 @@ export default function CashRegisterPage() {
 
     const [movementData, setMovementData] = useState({
         type: "out",
-        amount: "" as number | "", // 🚀 MAGIA DE TYPESCRIPT AQUÍ
+        amount: "" as number | "", 
         currency: "usd",
         paymentMethod: "cash",
         description: "",
@@ -101,7 +110,7 @@ export default function CashRegisterPage() {
         cash: "",
         zelle: "",
         bs: "",
-        other: "", // 🚀 NUEVO
+        other: "", 
     });
     const [closureNotes, setClosureNotes] = useState("");
 
@@ -127,7 +136,7 @@ export default function CashRegisterPage() {
     const fetchHistoryAndContext = useCallback(async () => {
         if (!storeId) return
 
-        // 1. Obtener Historial de Cierres
+        // Obtener Historial de Cierres
         const { data: closures } = await supabase
             .from('cash_closures')
             .select('*')
@@ -140,13 +149,13 @@ export default function CashRegisterPage() {
             setLastClosureDate(closures[0].closed_at)
         }
 
-        // 2. 🚀 NUEVO: Obtener Historial de Ajustes (Ingresos/Egresos)
+        // Obtener Historial de Ajustes (Ingresos/Egresos)
         const { data: movements } = await supabase
             .from('cash_movements')
             .select('*')
             .eq('store_id', storeId)
             .order('created_at', { ascending: false })
-            .limit(15) // Traemos los últimos 15 movimientos
+            .limit(15)
 
         if (movements) {
             setMovementHistory(movements)
@@ -162,7 +171,7 @@ export default function CashRegisterPage() {
                     .select("status, total_usd, total_bs, split_payments, payment_method")
                     .eq("store_id", storeId)
                     .is("closure_id", null)
-                    .in("status", ["paid", "shipped", "completed"]), // 🚀 PROTECCIÓN: Ignora cotizaciones y cancelados
+                    .in("status", ["paid", "shipped", "completed"]), 
                 supabase
                     .from("cash_movements")
                     .select("type, amount, payment_method")
@@ -173,17 +182,15 @@ export default function CashRegisterPage() {
             const floatingOrders = ordersRes.data;
             const floatingMovements = movementsRes.data;
 
-           let tCash = 0, tZelle = 0, tBs = 0, tOther = 0;
+            let tCash = 0, tZelle = 0, tBs = 0, tOther = 0;
 
-            // 🚀 RESTAURACIÓN: El objeto que alimenta tu Gráfico de Anillo
             const stats = {
-                pending: { count: 0, usd: 0, bs: 0, color: "#F59E0B", label: "Pendientes", key: "pending" },
-                paid: { count: 0, usd: 0, bs: 0, color: "#10B981", label: "Pagados", key: "paid" },
-                shipped: { count: 0, usd: 0, bs: 0, color: "#3B82F6", label: "Enviados", key: "shipped" },
-                cancelled: { count: 0, usd: 0, bs: 0, color: "#EF4444", label: "Cancelados", key: "cancelled" },
+                pending: { count: 0, usd: 0, bs: 0, color: "#D97706", label: "Pendientes", key: "pending" },
+                paid: { count: 0, usd: 0, bs: 0, color: "#059669", label: "Pagados", key: "paid" },
+                shipped: { count: 0, usd: 0, bs: 0, color: "#2563EB", label: "Enviados", key: "shipped" },
+                cancelled: { count: 0, usd: 0, bs: 0, color: "#DC2626", label: "Cancelados", key: "cancelled" },
             };
 
-            // 🚀 MOTOR DE ENRUTAMIENTO OMNICANAL
             const routeFunds = (method: string, amountUsd: number, amountBs: number) => {
                 const m = (method || "").toLowerCase();
                 if (m.includes("efectivo") || m === "cash" || m === "usd") {
@@ -193,7 +200,7 @@ export default function CashRegisterPage() {
                 } else if (m.includes("pago móvil") || m.includes("pago movil") || m.includes("transferencia")) {
                     tBs += amountBs;
                 } else {
-                    tOther += amountUsd; // 🚀 CATCH-ALL: Punto de Venta, Zinli, Otros (Asume Dólares por defecto)
+                    tOther += amountUsd; 
                 }
             };
 
@@ -218,7 +225,7 @@ export default function CashRegisterPage() {
 
             floatingMovements?.forEach((mov: any) => {
                 const amt = Number(mov.amount) * (mov.type === "out" ? -1 : 1);
-                routeFunds(mov.payment_method, amt, amt); // En movimientos asume el valor como base
+                routeFunds(mov.payment_method, amt, amt); 
             });
 
             const ordersToClose = stats.paid.count + stats.shipped.count;
@@ -239,7 +246,6 @@ export default function CashRegisterPage() {
         }
     }, [calculateFloatingCash, fetchHistoryAndContext, storeId]);
 
-    // ... (Mantén aquí intactas tus funciones handleSubmitMovement, handleFinalClosure y handleCopyWhatsApp) ...
     const handleSubmitMovement = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!storeId) return;
@@ -248,8 +254,9 @@ export default function CashRegisterPage() {
             Swal.fire({
                 icon: "error",
                 title: "Monto Inválido",
-                text: "El monto debe ser mayor a 0",
-                customClass: { popup: "rounded-[var(--radius-card)]" },
+                text: "El monto a ajustar debe ser obligatoriamente mayor a 0.",
+                confirmButtonColor: "#171717",
+                customClass: { popup: "rounded-xl font-sans text-xs" },
             });
             return;
         }
@@ -274,7 +281,7 @@ export default function CashRegisterPage() {
                 showConfirmButton: false,
                 timer: 2000,
                 customClass: {
-                    popup: "rounded-xl text-xs font-bold bg-black text-white",
+                    popup: "bg-neutral-900 text-white rounded-lg text-xs font-semibold border border-neutral-800",
                 },
             });
             Toast.fire({ icon: "success", title: "Operación Registrada" });
@@ -290,9 +297,10 @@ export default function CashRegisterPage() {
         } catch (error) {
             Swal.fire({
                 icon: "error",
-                title: "Error",
-                text: "No se pudo guardar la operación.",
-                customClass: { popup: "rounded-[var(--radius-card)]" },
+                title: "Error de servidor",
+                text: "No se pudo consolidar el movimiento manual en la base de datos.",
+                confirmButtonColor: "#171717",
+                customClass: { popup: "rounded-xl font-sans text-xs" },
             });
         } finally {
             setIsSubmitting(false);
@@ -302,7 +310,6 @@ export default function CashRegisterPage() {
     const handleFinalClosure = async () => {
         if (!storeId || totals.ordersCount === 0) return;
         setIsSubmitting(true);
-        // Reemplaza los bloques 'expected', 'reported' y 'diffs' por estos:
         const expected = { cash: totals.usdCash, zelle: totals.zelle, bs: totals.bsTransfer, other: totals.other };
         const reported = { cash: Number(reportedTotals.cash), zelle: Number(reportedTotals.zelle), bs: Number(reportedTotals.bs), other: Number(reportedTotals.other) };
         const diffs = { cash: reported.cash - expected.cash, zelle: reported.zelle - expected.zelle, bs: reported.bs - expected.bs, other: reported.other - expected.other };
@@ -316,20 +323,26 @@ export default function CashRegisterPage() {
             });
             if (error) throw error;
             await Swal.fire({
-                title: "¡Cierre Exitoso!",
-                text: "La caja ha sido sellada y la jornada finalizada.",
+                title: "Arqueo Consolidado",
+                text: "La caja ha sido sellada y la jornada administrativa fue finalizada.",
                 icon: "success",
-                confirmButtonColor: "#000",
-                customClass: { popup: "rounded-[var(--radius-card)]" },
+                confirmButtonColor: "#171717",
+                customClass: { popup: "rounded-xl font-sans text-xs" },
             });
             setIsClosureDrawerOpen(false);
             setReportedTotals({ cash: "", zelle: "", bs: "", other: "" });
             setClosureNotes("");
             await calculateFloatingCash();
-            await fetchHistoryAndContext() // <--- 🚀 AÑADE ESTA LÍNEA AQUÍ
+            await fetchHistoryAndContext() 
             await fetchHistoryAndContext();
         } catch (e) {
-            Swal.fire("Error", "No se pudo completar el cierre.", "error");
+            Swal.fire({
+                title: "Error de Consolidación",
+                text: "No se pudo procesar el cierre contable.",
+                icon: "error",
+                confirmButtonColor: "#171717",
+                customClass: { popup: "rounded-xl font-sans text-xs" }
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -339,17 +352,17 @@ export default function CashRegisterPage() {
         const date = new Date(ticket.closed_at).toLocaleString("es-VE");
         const t = ticket.reported_totals;
         const d = ticket.differences;
-        // Actualiza el string de texto (Añade la línea de 'Otros'):
         let text = `*CIERRE DE CAJA - PREZISO*\nFecha: ${date}\n\n*ARQUEO FÍSICO (REPORTADO):*\n💵 Efectivo USD: *$${t.cash.toFixed(2)}*\n📱 Zelle: *$${t.zelle.toFixed(2)}*\n💳 Otros (POS/Digital): *$${t.other?.toFixed(2) || '0.00'}*\n🏦 Pago Móvil: *Bs ${t.bs.toLocaleString("es-VE")}*\n\n*DIFERENCIAS DETECTADAS:*\nEfectivo: ${d.cash === 0 ? "Exacto ✅" : d.cash > 0 ? `Sobra $${d.cash} ⚠️` : `Falta $${Math.abs(d.cash)} ❌`}\nZelle: ${d.zelle === 0 ? "Exacto ✅" : d.zelle > 0 ? `Sobra $${d.zelle} ⚠️` : `Falta $${Math.abs(d.zelle)} ❌`}\nOtros: ${d.other === 0 ? "Exacto ✅" : d.other > 0 ? `Sobra $${d.other} ⚠️` : `Falta $${Math.abs(d.other)} ❌`}\nPago Móvil: ${d.bs === 0 ? "Exacto ✅" : d.bs > 0 ? `Sobra Bs ${d.bs} ⚠️` : `Falta Bs ${Math.abs(d.bs)} ❌`}\n`;
         if (ticket.notes) text += `\n*NOTAS:*\n_${ticket.notes}_\n`;
         navigator.clipboard.writeText(text);
+        
         const Toast = Swal.mixin({
             toast: true,
             position: "top-end",
             showConfirmButton: false,
             timer: 2000,
             customClass: {
-                popup: "rounded-xl text-xs font-bold bg-black text-white",
+                popup: "bg-neutral-900 text-white rounded-lg text-xs font-semibold border border-neutral-800",
             },
         });
         Toast.fire({ icon: "success", title: "Copiado al portapapeles" });
@@ -358,7 +371,6 @@ export default function CashRegisterPage() {
     const handleDownloadExcel = async (ticket: any) => {
         if (!ticket) return;
 
-        // 1. Inicializar el Libro y la Hoja de Trabajo
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Preziso';
         const sheet = workbook.addWorksheet('Cierre de Caja');
@@ -368,11 +380,13 @@ export default function CashRegisterPage() {
         const reported = ticket.reported_totals;
         const diffs = ticket.differences;
 
-        // 2. Configurar Anchos de Columna Automáticos
-        // Cambia sheet.columns a:
-        sheet.columns = [{ key: 'concepto', width: 25 }, { key: 'esperado', width: 22 }, { key: 'reportado', width: 22 }, { key: 'diferencia', width: 20 }];
+        sheet.columns = [
+            { key: 'concepto', width: 25 }, 
+            { key: 'esperado', width: 22 }, 
+            { key: 'reportado', width: 22 }, 
+            { key: 'diferencia', width: 20 }
+        ];
 
-        // 3. Construir la Cabecera Visual (Celdas Combinadas)
         sheet.mergeCells('A1:D1');
         const titleCell = sheet.getCell('A1');
         titleCell.value = 'REPORTE DE CIERRE DE CAJA - PREZISO';
@@ -381,23 +395,18 @@ export default function CashRegisterPage() {
 
         sheet.addRow(['ID de Cierre', ticket.id.toUpperCase(), '', '']);
         sheet.addRow(['Fecha y Hora', date, '', '']);
-        sheet.addRow([]); // Fila vacía para respirar
+        sheet.addRow([]); 
 
-        // 4. Cabeceras de la Tabla de Datos
         const headerRow = sheet.addRow(['CONCEPTO', 'SISTEMA (ESPERADO)', 'ARQUEO (REPORTADO)', 'DIFERENCIA']);
         headerRow.font = { bold: true };
         headerRow.alignment = { horizontal: 'center' };
 
-        // Borde inferior para separar cabeceras
         headerRow.eachCell((cell) => {
             cell.border = { bottom: { style: 'thin' } };
         });
 
-        // 5. Inserción de Datos (Números Reales, NO Strings)
         const addFinancialRow = (concepto: string, exp: number, rep: number, diff: number, symbol: string) => {
             const row = sheet.addRow([concepto, exp, rep, diff]);
-
-            // Formateo nativo de Excel: Se adapta a la PC del usuario pero muestra el símbolo correcto
             const format = `"${symbol}" #,##0.00;[Red]-"${symbol}" #,##0.00`;
             row.getCell(2).numFmt = format;
             row.getCell(3).numFmt = format;
@@ -406,20 +415,18 @@ export default function CashRegisterPage() {
 
         addFinancialRow('Efectivo (USD)', expected.cash, reported.cash, diffs.cash, '$');
         addFinancialRow('Zelle / Digital (USD)', expected.zelle, reported.zelle, diffs.zelle, '$');
-        addFinancialRow('Otros (POS/Zinli/USD)', expected.other || 0, reported.other || 0, diffs.other || 0, '$'); // 🚀 NUEVO
+        addFinancialRow('Otros (POS/Zinli/USD)', expected.other || 0, reported.other || 0, diffs.other || 0, '$'); 
         addFinancialRow('Pago Móvil (Bs)', expected.bs, reported.bs, diffs.bs, 'Bs');
 
-        sheet.addRow([]); // Fila vacía
+        sheet.addRow([]); 
 
-        // 6. Notas del Cajero
         const notesLabel = sheet.addRow(['NOTAS DEL CAJERO']);
         notesLabel.font = { bold: true };
 
-        sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`); // Combinar celdas para el texto largo
+        sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`); 
         const notesContent = sheet.addRow([ticket.notes || 'Sin notas registradas']);
-        notesContent.alignment = { wrapText: true }; // Permitir salto de línea si es muy largo
+        notesContent.alignment = { wrapText: true }; 
 
-        // 7. Generar y Descargar el Archivo (Buffer)
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
@@ -433,12 +440,18 @@ export default function CashRegisterPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url); // Limpiar memoria
+        URL.revokeObjectURL(url); 
 
-        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl text-xs font-bold bg-black text-white' } });
+        const Toast = Swal.mixin({ 
+            toast: true, 
+            position: 'top-end', 
+            showConfirmButton: false, 
+            timer: 2000, 
+            customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+        });
         Toast.fire({ icon: 'success', title: 'Excel Contable Descargado' });
     };
-    // --- VARIANTES DE ANIMACIÓN ---
+
     const drawerVariants: Variants = {
         hidden: { x: "100%", opacity: 0.5 },
         visible: {
@@ -455,48 +468,43 @@ export default function CashRegisterPage() {
 
     if (IS_UNDER_CONSTRUCTION) {
         return (
-            <div className="min-h-screen bg-[#F6F6F6] pb-24 font-sans text-[#111] flex flex-col relative">
-                <header className="bg-[#F6F6F6]/80 backdrop-blur-xl sticky top-0 z-30 px-5 md:px-10 py-5 flex justify-between items-center transition-all">
-                    <div className="flex items-center gap-4">
+            <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col relative antialiased">
+                <header className="bg-[#FAFAFC]/95 backdrop-blur-md sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50">
+                    <div className="flex items-center gap-3">
                         <Link
                             href="/admin"
-                            className="p-2.5 bg-white rounded-full hover:scale-105 active:scale-95 transition-all group shrink-0 shadow-sm border border-black/5"
+                            className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs"
                         >
-                            <ArrowLeft
-                                size={18}
-                                className="text-gray-500 group-hover:text-black transition-colors"
-                            />
+                            <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
                         </Link>
                         <div>
-                            <h1 className="font-black text-2xl tracking-tight leading-none text-[#111]">
+                            <h1 className="font-bold text-base tracking-tight leading-none text-neutral-900">
                                 Finanzas
                             </h1>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                                Cierre de Caja
+                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">
+                                Auditoría de Caja
                             </p>
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 flex flex-col items-center justify-center p-6 text-center mt-20">
+                <main className="flex-1 flex flex-col items-center justify-center p-6 text-center mt-12">
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
+                        initial={{ scale: 0.98, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                        className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl shadow-black/5 border border-gray-100 mb-8"
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        className="w-16 h-16 bg-white rounded-xl flex items-center justify-center border border-neutral-200/50 shadow-xs mb-6 text-neutral-400"
                     >
-                        <Sparkles size={36} className="text-[#111]" />
+                        <Sparkles size={24} />
                     </motion.div>
-                    <h2 className="text-3xl font-black text-[#111] mb-4 tracking-tight">
-                        El control total de tu dinero, <br />
+                    <h2 className="text-xl font-bold text-neutral-950 mb-3 tracking-tight leading-snug">
+                        El control consolidado de sus finanzas, <br />
                         está en camino.
                     </h2>
-                    <p className="text-sm font-bold text-gray-400 max-w-md mx-auto mb-10 leading-relaxed">
-                        Estamos afinando un motor contable de grado bancario que te
-                        permitirá conciliar efectivo, Zelle y Pago Móvil sin tocar un solo
-                        Excel.
+                    <p className="text-xs font-medium text-neutral-400 max-w-sm mx-auto mb-8 leading-relaxed">
+                        Estamos desplegando un motor de auditoría automatizada que le permitirá conciliar efectivo, Zelle y Pago Móvil de forma transparente sin configuraciones complejas.
                     </p>
-                    <div className="bg-[#111] text-white px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/10 flex items-center gap-2">
-                        <ShieldCheck size={16} /> Próximamente en Preziso
+                    <div className="inline-flex items-center gap-1.5 bg-neutral-900 text-white px-3.5 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider shadow-xs">
+                        <ShieldCheck size={12} /> Próximamente en Preziso
                     </div>
                 </main>
             </div>
@@ -504,46 +512,47 @@ export default function CashRegisterPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#F6F6F6] pb-24 font-sans text-[#111] flex flex-col relative">
-            {/* HEADER */}
-            <header className="bg-[#F6F6F6]/80 backdrop-blur-xl sticky top-0 z-30 px-5 md:px-10 py-5 flex justify-between items-center transition-all">
-                <div className="flex items-center gap-4">
+        <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col relative antialiased selection:bg-neutral-950 selection:text-white">
+            
+            {/* HEADER PRINCIPAL */}
+            <header className="bg-[#FAFAFC]/95 backdrop-blur-md sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50">
+                <div className="flex items-center gap-3">
                     <Link
                         href="/admin"
-                        className="p-2.5 bg-white rounded-full hover:scale-105 active:scale-95 transition-all group shrink-0  border border-black/5"
+                        className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-all shrink-0 shadow-xs active:scale-[0.98]"
                     >
-                        <ArrowLeft
-                            size={18}
-                            className="text-gray-500 group-hover:text-black transition-colors"
-                        />
+                        <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
                     </Link>
                     <div>
-                        <h1 className="font-black text-2xl tracking-tight leading-none text-[#111]">
-                            Caja
+                        <h1 className="font-bold text-base tracking-tight leading-none text-neutral-900">
+                            Caja de Control
                         </h1>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                            Conciliación Diaria
+                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">
+                            Conciliación y Cierres Diarios
                         </p>
                     </div>
                 </div>
-                <div className="bg-emerald-100/50 text-emerald-800 px-4 py-2 rounded-full flex items-center gap-2 border border-emerald-200/50">
-                    <ShieldCheck size={16} className="shrink-0" />
-                    <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">
-                        Turno Abierto
+                
+                <div className="bg-emerald-50 text-emerald-700 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 border border-emerald-100/40 ">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">
+                        Turno Activo
                     </span>
                 </div>
             </header>
 
-            <main className="w-full max-w-[1200px] mx-auto px-5 md:px-10 py-8 space-y-12">
+            {/* SECCIÓN MÁXIMA ESCALADA (CLOSER TO SCREEN) */}
+            <main className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-8">
+                
                 {/* SECCIÓN 1: DINERO EN TRÁNSITO */}
-                <section>
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h2 className="text-sm font-black text-[#111] uppercase tracking-widest">
-                                Dinero en Tránsito
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                            <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                Flujo de Caja en Tránsito
                             </h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-1">
-                                <Clock size={10} /> Desde:{" "}
+                            <p className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                <Clock size={10} /> Apertura:{" "}
                                 {lastClosureDate
                                     ? new Date(lastClosureDate).toLocaleString("es-VE", {
                                         day: "2-digit",
@@ -551,104 +560,116 @@ export default function CashRegisterPage() {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                     })
-                                    : "Apertura"}
+                                    : "Inicio de turno"}
                             </p>
                         </div>
-                        <span className="text-[10px] font-black bg-white text-black px-3 py-1.5 rounded-full  border border-black/20">
-                            {totals.ordersCount} Órdenes a Sellar
+                        <span className="text-[10px] font-semibold bg-white text-neutral-700 px-2.5 py-1 rounded border border-neutral-200/50 shadow-xs font-mono">
+                            {totals.ordersCount} Órdenes por Archivar
                         </span>
                     </div>
 
                     {loading ? (
-                        <div className="flex justify-center py-20">
-                            <Loader2 className="animate-spin text-gray-300" size={32} />
+                        <div className="flex justify-center py-16">
+                            <Loader2 className="animate-spin text-neutral-300" size={20} />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-                            {/* Tarjetas de Efectivo... (Intactas) */}
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#00cd6133] after:rounded-full after:blur-2xl">
-                                <div className="flex justify-between items-start mb-4">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            {/* EFECTIVO */}
+                            <div className="bg-white p-5 rounded-xl border border-neutral-200/50 flex flex-col justify-between min-h-[130px] relative overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider leading-tight">
                                         Efectivo
                                         <br />
                                         Físico USD
                                     </p>
-                                    <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0">
-                                        <Banknote size={18} strokeWidth={2.5} />
+                                    <div className="w-7 h-7 bg-neutral-50 rounded-lg flex items-center justify-center text-neutral-400 shrink-0 border border-neutral-100">
+                                        <Banknote size={14} />
                                     </div>
                                 </div>
-                                <p
-                                    className={`text-4xl font-black tracking-tighter ${totals.usdCash < 0 ? "text-red-500" : "text-[#111]"}`}
-                                >
+                                <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${totals.usdCash < 0 ? "text-rose-600" : "text-neutral-900"}`}>
                                     ${totals.usdCash.toFixed(2)}
                                 </p>
                             </div>
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#8b44ff5e] after:rounded-full after:blur-2xl">
-                                <div className="flex justify-between items-start mb-4">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
-                                        Zelle /<br />
+
+                            {/* ZELLE */}
+                            <div className="bg-white p-5 rounded-xl border border-neutral-200/50 flex flex-col justify-between min-h-[130px] relative overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider leading-tight">
+                                        Zelle /
+                                        <br />
                                         Binance Pay
                                     </p>
-                                    <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0">
-                                        <DollarSign size={18} strokeWidth={2.5} />
+                                    <div className="w-7 h-7 bg-neutral-50 rounded-lg flex items-center justify-center text-neutral-400 shrink-0 border border-neutral-100">
+                                        <DollarSign size={14} />
                                     </div>
                                 </div>
-                                <p
-                                    className={`text-4xl font-black tracking-tighter ${totals.zelle < 0 ? "text-red-500" : "text-[#111]"}`}
-                                >
+                                <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${totals.zelle < 0 ? "text-rose-600" : "text-neutral-900"}`}>
                                     ${totals.zelle.toFixed(2)}
                                 </p>
                             </div>
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)]  flex flex-col justify-between min-h-[140px]  after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#44a2ff5e] after:rounded-full after:blur-2xl">
-                                <div className="flex justify-between items-start mb-4">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">
+
+                            {/* PAGO MÓVIL */}
+                            <div className="bg-white p-5 rounded-xl border border-neutral-200/50 flex flex-col justify-between min-h-[130px] relative overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider leading-tight">
                                         Transferencias
                                         <br />
                                         Pago Móvil Bs
                                     </p>
-                                    <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0">
-                                        <CreditCard size={18} strokeWidth={2.5} />
+                                    <div className="w-7 h-7 bg-neutral-50 rounded-lg flex items-center justify-center text-neutral-400 shrink-0 border border-neutral-100">
+                                        <CreditCard size={14} />
                                     </div>
                                 </div>
-                                <p
-                                    className={`text-4xl font-black tracking-tighter ${totals.bsTransfer < 0 ? "text-red-500" : "text-[#111]"}`}
-                                >
-                                    <span className="text-2xl mr-1">Bs</span>
+                                <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${totals.bsTransfer < 0 ? "text-rose-600" : "text-neutral-900"}`}>
+                                    <span className="text-base mr-0.5 font-sans font-semibold">Bs</span>
                                     {totals.bsTransfer.toLocaleString("es-VE", {
                                         maximumFractionDigits: 2,
                                     })}
                                 </p>
                             </div>
-                            <div className="relative overflow-hidden bg-white p-7 rounded-[var(--radius-card)] flex flex-col justify-between min-h-[140px] after:content-[''] after:absolute after:-top-4 after:-right-4 after:w-24 after:h-24 after:bg-[#f59e0b5e] after:rounded-full after:blur-2xl">
-                                <div className="flex justify-between items-start mb-4">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">Otros<br />POS / Digitales</p>
-                                    <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0"><CreditCard size={18} strokeWidth={2.5} /></div>
+
+                            {/* OTROS DIGITALES */}
+                            <div className="bg-white p-5 rounded-xl border border-neutral-200/50 flex flex-col justify-between min-h-[130px] relative overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider leading-tight">
+                                        Puntos de Venta
+                                        <br />
+                                        &amp; Otros USD
+                                    </p>
+                                    <div className="w-7 h-7 bg-neutral-50 rounded-lg flex items-center justify-center text-neutral-400 shrink-0 border border-neutral-100">
+                                        <CreditCard size={14} />
+                                    </div>
                                 </div>
-                                <p className={`text-4xl font-black tracking-tighter ${totals.other < 0 ? "text-red-500" : "text-[#111]"}`}>${totals.other.toFixed(2)}</p>
+                                <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${totals.other < 0 ? "text-rose-600" : "text-neutral-900"}`}>
+                                    ${totals.other.toFixed(2)}
+                                </p>
                             </div>
+
                         </div>
                     )}
                 </section>
 
-                {/* SECCIÓN 1.5: EL PULSO OPERATIVO (GRÁFICO DE ANILLO INTERACTIVO) */}
-                <section>
-                    <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
-                        Pulso general
+                {/* SECCIÓN 1.5: PULSO OPERATIVO (GRÁFICO DE ANILLO REDISEÑADO) */}
+                <section className="space-y-4">
+                    <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                        Pulso General del Turno
                     </h2>
-                    <div className="bg-white p-6 md:p-8 rounded-[var(--radius-card)] card-interactive flex flex-col md:flex-row items-center gap-8 md:gap-12 min-h-[220px]">
-                        {/* El SVG Vectorial Interactivo */}
+                    <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col lg:flex-row items-center gap-8 lg:gap-12 min-h-[220px]">
+                        
+                        {/* SVG Vectorial Interactivo */}
                         <div
-                            className="relative w-40 h-40 shrink-0 flex items-center justify-center cursor-pointer"
+                            className="relative w-36 h-40 shrink-0 flex items-center justify-center cursor-pointer"
                             onClick={() => setActiveSegment(null)}
                         >
-                            <svg viewBox="-2 0 40 36" className="w-full h-full -rotate-90 ">
+                            <svg viewBox="-2 0 40 36" className="w-full h-full -rotate-90">
                                 <circle
                                     cx="18"
                                     cy="18"
                                     r="15.9155"
                                     fill="transparent"
-                                    stroke="#F4F4F5"
-                                    strokeWidth="3"
+                                    stroke="#F5F5F7"
+                                    strokeWidth="2.5"
                                 />
                                 {(() => {
                                     const total = Object.values(orderStats).reduce(
@@ -676,11 +697,11 @@ export default function CashRegisterPage() {
                                                 r="15.9155"
                                                 fill="transparent"
                                                 stroke={stat.color}
-                                                strokeWidth="4"
+                                                strokeWidth="3.5"
                                                 strokeDasharray={strokeDasharray}
                                                 strokeDashoffset={strokeDashoffset}
                                                 strokeLinecap="round"
-                                                className={`transition-all duration-500 ease-out hover:stroke-[6px] ${isMuted ? "opacity-20" : "opacity-100"} cursor-pointer`}
+                                                className={`transition-all duration-300 ease-out hover:stroke-[5px] ${isMuted ? "opacity-20" : "opacity-100"} cursor-pointer`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setActiveSegment(
@@ -692,14 +713,15 @@ export default function CashRegisterPage() {
                                     });
                                 })()}
                             </svg>
+                            
                             {/* Centro del Anillo Dinámico */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-all duration-300">
                                 <span
-                                    className="text-2xl font-black text-[#111] leading-none"
+                                    className="text-2xl font-bold tracking-tight text-neutral-900 leading-none font-mono"
                                     style={{
                                         color: activeSegment
                                             ? (orderStats as any)[activeSegment].color
-                                            : "#111",
+                                            : "#171717",
                                     }}
                                 >
                                     {activeSegment
@@ -709,7 +731,7 @@ export default function CashRegisterPage() {
                                             0,
                                         )}
                                 </span>
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mt-1">
                                     {activeSegment
                                         ? (orderStats as any)[activeSegment].label
                                         : "Total"}
@@ -717,8 +739,8 @@ export default function CashRegisterPage() {
                             </div>
                         </div>
 
-                        {/* Leyenda y Datos (Solución Móvil sin Hover) */}
-                        <div className="flex-1 w-full grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Leyenda y Datos */}
+                        <div className="flex-1 w-full grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {Object.entries(orderStats).map(([key, stat]) => {
                                 const isActive = activeSegment === key;
                                 const isMuted = activeSegment && activeSegment !== key;
@@ -727,33 +749,29 @@ export default function CashRegisterPage() {
                                     <div
                                         key={key}
                                         onClick={() => setActiveSegment(isActive ? null : key)}
-                                        className={`p-4 rounded-2xl border transition-all cursor-pointer group 
-                                            ${isActive ? "bg-white shadow-md border-black/10 scale-[1.02]" : "bg-[#F9FAFB] border-transparent"} 
+                                        className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between min-h-[95px]
+                                            ${isActive ? "bg-white shadow-xs border-neutral-400 scale-[1.01]" : "bg-neutral-50/50 border-neutral-200/50"} 
                                             ${isMuted ? "opacity-40 grayscale" : "opacity-100"}
-                                            hover:bg-white hover:shadow-subtle hover:border-black/5
+                                            hover:bg-white hover:border-neutral-300
                                         `}
                                     >
-                                        <div className="flex items-center gap-2 mb-3">
+                                        <div className="flex items-center gap-2 mb-2">
                                             <div
-                                                className="w-2.5 h-2.5 rounded-full shadow-sm"
+                                                className="w-2 h-2 rounded-full"
                                                 style={{ backgroundColor: stat.color }}
                                             />
-                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest truncate">
+                                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider truncate">
                                                 {stat.label}
                                             </p>
                                         </div>
-                                        <p className="text-2xl font-black text-[#111] leading-none mb-1">
+                                        <p className="text-xl font-bold text-neutral-900 leading-none font-mono">
                                             {stat.count}
                                         </p>
-                                        {/* 🚀 SOLUCIÓN MÓVIL: Siempre visible en móvil, se oculta en desktop hasta que haces hover O haces click */}
-                                        <div
-                                            className={`mt-2 transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100"}`}
-                                        >
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase">
-                                                <span className="text-[#111]">
-                                                    ${stat.usd.toFixed(0)}
-                                                </span>{" "}
-                                                / Bs {stat.bs.toFixed(0)}
+                                        <div className="mt-1 transition-opacity duration-300">
+                                            <p className="text-[10px] font-mono text-neutral-400 font-semibold uppercase">
+                                                <span>${stat.usd.toFixed(0)}</span>
+                                                <span className="text-neutral-300 px-1">•</span>
+                                                <span>Bs {stat.bs.toFixed(0)}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -764,91 +782,89 @@ export default function CashRegisterPage() {
                 </section>
 
                 {/* SECCIÓN 2: ACCIONES OPERATIVAS */}
-                <section>
-                    <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
-                        Acciones Operativas
+                <section className="space-y-4">
+                    <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                        Operaciones de Caja
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        {/* AJUSTE DE CAJA */}
                         <button
                             onClick={() => setIsMovementDrawerOpen(true)}
-                            className="bg-white p-6 rounded-[var(--radius-card)] card-interactive flex items-center gap-5 text-left group"
+                            className="bg-white p-5 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:border-neutral-300 flex items-center justify-between gap-5 text-left group transition-all duration-150 active:scale-[0.99]"
                         >
-                            <div className="w-14 h-14 bg-[#F6F6F6] rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors duration-300 shrink-0">
-                                <Plus size={24} />
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-neutral-50 border border-neutral-200/50 rounded-lg flex items-center justify-center text-neutral-500 group-hover:bg-neutral-900 group-hover:text-white transition-colors duration-200 shrink-0">
+                                    <Plus size={18} />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <h3 className="font-semibold text-sm text-neutral-900">Ajuste de Caja Manual</h3>
+                                    <p className="text-[11px] font-medium text-neutral-400">Registrar retiros de caja o ingresos de base.</p>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-black text-lg text-[#111] truncate">
-                                    Ajuste de Caja
-                                </h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-1 truncate">
-                                    Registrar gastos o ingresos.
-                                </p>
-                            </div>
-                            <ArrowRight
-                                size={20}
-                                className="text-gray-300 group-hover:text-black group-hover:translate-x-1 transition-all shrink-0 hidden sm:block"
-                            />
+                            <ArrowRight size={14} className="text-neutral-300 group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all" />
                         </button>
 
+                        {/* CIERRE DIARIO */}
                         <button
                             onClick={() =>
                                 totals.ordersCount > 0
                                     ? setIsClosureDrawerOpen(true)
-                                    : Swal.fire(
-                                        "Caja Vacía",
-                                        "No hay órdenes pagadas para cerrar.",
-                                        "info",
-                                    )
+                                    : Swal.fire({
+                                        title: "Turno Vacío",
+                                        text: "No se registran órdenes facturadas listas para arqueo.",
+                                        icon: "info",
+                                        confirmButtonColor: "#171717",
+                                        customClass: { popup: "rounded-xl font-sans text-xs" }
+                                      })
                             }
-                            className="bg-[#111] p-6 rounded-[var(--radius-card)] shadow-xl shadow-black/10 hover:shadow-2xl hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 flex items-center gap-5 text-left group"
+                            className="bg-neutral-950 p-5 rounded-xl border border-transparent hover:bg-black flex items-center justify-between gap-5 text-left group transition-all duration-150 active:scale-[0.99] shadow-sm text-white"
                         >
-                            <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center text-white shrink-0">
-                                <Wallet size={24} />
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-white shrink-0">
+                                    <Wallet size={16} />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <h3 className="font-semibold text-sm">Cierre de Jornada</h3>
+                                    <p className="text-[11px] font-medium text-neutral-400">Sellar el arqueo fiscal de {totals.ordersCount} órdenes.</p>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-black text-lg text-white truncate">
-                                    Cierre Diario
-                                </h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-1 truncate">
-                                    Sellar caja y arquear {totals.ordersCount} órdenes.
-                                </p>
-                            </div>
-                            <ArrowRight
-                                size={20}
-                                className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0 hidden sm:block"
-                            />
+                            <ArrowRight size={14} className="text-neutral-400 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
                         </button>
+
                     </div>
                 </section>
 
-                {/* 🚀 SECCIÓN 2.5: HISTORIAL DE AJUSTES (NUEVA) */}
-                <section>
-                    <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">Últimos Ajustes de Caja</h2>
+                {/* SECCIÓN 2.5: ÚLTIMOS AJUSTES DE CAJA (INGRESO / RETIRO) */}
+                <section className="space-y-4">
+                    <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                        Ajustes del Turno Actual
+                    </h2>
                     {movementHistory.length === 0 ? (
-                        <div className="bg-white rounded-[var(--radius-card)] p-8 flex flex-col items-center justify-center text-center">
-                            <p className="text-xs font-bold text-gray-400">No hay movimientos manuales registrados aún.</p>
+                        <div className="bg-white rounded-xl border border-neutral-200/50 p-6 flex flex-col items-center justify-center text-center">
+                            <p className="text-xs font-semibold text-neutral-400">No se registran movimientos manuales de caja.</p>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-[var(--radius-card)] p-3 md:p-5">
+                        <div className="bg-white rounded-xl border border-neutral-200/50 overflow-hidden divide-y divide-neutral-100">
                             {movementHistory.map((mov) => {
                                 const isIn = mov.type === 'in';
                                 return (
-                                    <div key={mov.id} className="flex items-center justify-between p-4 hover:bg-[#F9FAFB] rounded-2xl transition-colors border-b border-gray-50 last:border-0 group">
+                                    <div key={mov.id} className="flex items-center justify-between p-4 hover:bg-neutral-50/30 transition-colors">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${isIn ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' : 'bg-red-50 text-red-600 group-hover:bg-red-100'}`}>
-                                                {isIn ? <ArrowDownToLine size={16} /> : <ArrowUpFromLine size={16} />}
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${isIn ? 'bg-emerald-50 border-emerald-100/40 text-emerald-700' : 'bg-rose-50 border-rose-100/40 text-rose-700'}`}>
+                                                {isIn ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}
                                             </div>
-                                            <div>
-                                                <p className="font-black text-[#111] text-sm leading-tight">{mov.description || (isIn ? 'Ingreso a Caja' : 'Retiro de Caja')}</p>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                                            <div className="space-y-0.5">
+                                                <p className="font-semibold text-xs text-neutral-900 leading-tight">{mov.description || (isIn ? 'Ingreso de Base' : 'Retiro por Gasto')}</p>
+                                                <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider font-mono flex items-center gap-1.5">
                                                     <span>{new Date(mov.created_at).toLocaleDateString('es-VE')}</span>
-                                                    <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                    <span>{mov.payment_method === 'cash' ? 'Efectivo USD' : mov.payment_method === 'zelle' ? 'Zelle/Digital' : 'Pago Móvil Bs'}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-neutral-200" />
+                                                    <span>{mov.payment_method === 'cash' ? 'Efectivo USD' : mov.payment_method === 'zelle' ? 'Zelle/Digital' : mov.payment_method === 'other' ? 'Otros POS' : 'Pago Móvil Bs'}</span>
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`font-black text-md tracking-tight ${isIn ? 'text-emerald-600' : 'text-[#111]'}`}>
+                                            <p className={`font-bold text-sm font-mono tracking-tight ${isIn ? 'text-emerald-700' : 'text-neutral-900'}`}>
                                                 {isIn ? '+' : '-'}{mov.currency === 'usd' ? '$' : 'Bs '}{Number(mov.amount).toFixed(2)}
                                             </p>
                                         </div>
@@ -859,25 +875,23 @@ export default function CashRegisterPage() {
                     )}
                 </section>
 
-                {/* SECCIÓN 3: HISTORIAL DE CIERRES (LA BÓVEDA) */}
-                <section>
-                    <h2 className="text-sm font-black text-[#111] uppercase tracking-widest mb-6">
-                        Historial de Cierres
+                {/* SECCIÓN 3: HISTORIAL DE CIERRES */}
+                <section className="space-y-4">
+                    <h2 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                        Historial de Cierres Consolidados (Libro Z)
                     </h2>
                     {history.length === 0 ? (
-                        <div className="bg-white rounded-[var(--radius-card)] p-10 flex flex-col items-center justify-center text-center">
-                            <div className="w-16 h-16 bg-[#F6F6F6] rounded-full flex items-center justify-center mb-4">
-                                <FileText size={24} className="text-gray-400" />
+                        <div className="bg-white rounded-xl border border-neutral-200/50 p-10 flex flex-col items-center justify-center text-center space-y-3">
+                            <div className="w-10 h-10 bg-neutral-50 border border-neutral-200/50 rounded-lg flex items-center justify-center text-neutral-400">
+                                <FileText size={18} />
                             </div>
-                            <h3 className="font-black text-gray-900 mb-1">
-                                No hay cierres aún
-                            </h3>
-                            <p className="text-xs font-bold text-gray-400">
-                                Tus tickets Z aparecerán aquí.
-                            </p>
+                            <div className="space-y-0.5">
+                                <h3 className="font-bold text-xs text-neutral-900">No se registran cierres anteriores</h3>
+                                <p className="text-xs text-neutral-400">Los tickets de arqueo consolidados se indexarán en esta sección.</p>
+                            </div>
                         </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {history.map((ticket) => {
                                 const diffTotal =
                                     Math.abs(ticket.differences.cash) +
@@ -889,21 +903,21 @@ export default function CashRegisterPage() {
                                     <button
                                         key={ticket.id}
                                         onClick={() => setSelectedTicket(ticket)}
-                                        className="w-full bg-white p-5 rounded-2xl card-interactive flex flex-col sm:flex-row sm:items-center justify-between gap-4 group text-left border border-transparent hover:border-black/5"
+                                        className="w-full bg-white p-4.5 rounded-xl border border-neutral-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:border-neutral-300/80 hover:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 group text-left transition-all active:scale-[0.99]"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-[#F6F6F6] rounded-full flex items-center justify-center text-gray-500 shrink-0 group-hover:bg-black group-hover:text-white transition-colors">
-                                                <FileText size={18} />
+                                        <div className="flex items-center gap-3.5">
+                                            <div className="w-8 h-8 bg-neutral-50 border border-neutral-200/50 rounded-lg flex items-center justify-center text-neutral-400 group-hover:bg-neutral-900 group-hover:text-white transition-colors shrink-0">
+                                                <FileText size={15} />
                                             </div>
                                             <div>
-                                                <p className="font-black text-[#111]">
+                                                <p className="font-bold text-xs text-neutral-900 leading-tight">
                                                     {new Date(ticket.closed_at).toLocaleDateString(
                                                         "es-VE",
                                                         { weekday: "long", day: "numeric", month: "long" },
                                                     )}
                                                 </p>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                                    {new Date(ticket.closed_at).toLocaleTimeString(
+                                                <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider font-mono mt-0.5">
+                                                    Arqueado: {new Date(ticket.closed_at).toLocaleTimeString(
                                                         "es-VE",
                                                         { hour: "2-digit", minute: "2-digit" },
                                                     )}
@@ -911,20 +925,20 @@ export default function CashRegisterPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4 pl-14 sm:pl-0">
+                                        <div className="flex items-center gap-3.5 pl-11 sm:pl-0 shrink-0">
                                             <div
-                                                className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${isPerfect ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
+                                                className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border ${isPerfect ? "bg-emerald-50 border-emerald-100/40 text-emerald-700" : "bg-rose-50 border-rose-100/40 text-rose-700"}`}
                                             >
                                                 {isPerfect ? (
-                                                    <CheckCircle size={12} />
+                                                    <CheckCircle2 size={11} />
                                                 ) : (
-                                                    <AlertTriangle size={12} />
+                                                    <AlertCircle size={11} />
                                                 )}
-                                                {isPerfect ? "Cuadre Perfecto" : "Diferencias"}
+                                                <span>{isPerfect ? "Arqueo Cuadrado" : "Diferencias Reportadas"}</span>
                                             </div>
                                             <ArrowRight
-                                                size={16}
-                                                className="text-gray-300 group-hover:text-black transition-colors hidden sm:block"
+                                                size={14}
+                                                className="text-neutral-300 group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all hidden sm:block"
                                             />
                                         </div>
                                     </button>
@@ -935,8 +949,8 @@ export default function CashRegisterPage() {
                 </section>
             </main>
 
-            {/* ========================================================= */}
-            {/* DRAWER 1: MOVIMIENTOS (Ajustes de Caja) */}
+           {/* ========================================================= */}
+            {/* DRAWER 1: MOVIMIENTOS (Ajustes de Caja Manuales) */}
             {/* ========================================================= */}
             <AnimatePresence>
                 {isMovementDrawerOpen && (
@@ -945,7 +959,7 @@ export default function CashRegisterPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
                             onClick={() => !isSubmitting && setIsMovementDrawerOpen(false)}
                         />
                         <motion.div
@@ -953,24 +967,22 @@ export default function CashRegisterPage() {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className="relative w-full max-w-[460px] bg-white h-full flex flex-col shadow-2xl"
+                            className="relative w-full max-w-[440px] bg-white h-full flex flex-col shadow-2xl border-l border-neutral-200/50"
                         >
                             <div className="p-6 md:p-8 flex justify-between items-start shrink-0">
                                 <div>
-                                    <h2 className="text-2xl font-black text-[#111] leading-tight">
-                                        Ajuste de Caja
+                                    <h2 className="text-lg font-bold text-neutral-900 tracking-tight leading-none">
+                                        Ajuste de Caja Manual
                                     </h2>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">
-                                        Registra un ingreso o gasto
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-2 font-mono">
+                                        Registro de ingresos o gastos
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() =>
-                                        !isSubmitting && setIsMovementDrawerOpen(false)
-                                    }
-                                    className="p-2.5 bg-[#F6F6F6] hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"
+                                    onClick={() => !isSubmitting && setIsMovementDrawerOpen(false)}
+                                    className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors shrink-0"
                                 >
-                                    <X size={20} strokeWidth={2} />
+                                    <X size={15} />
                                 </button>
                             </div>
 
@@ -978,111 +990,108 @@ export default function CashRegisterPage() {
                                 <form
                                     id="movement-form"
                                     onSubmit={handleSubmitMovement}
-                                    className="space-y-8 mt-2"
+                                    className="space-y-6 mt-1"
                                 >
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
-                                            Dirección de los Fondos
+                                    {/* Dirección de Fondos */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                                            Sentido del Ajuste
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setMovementData({ ...movementData, type: "out" })
-                                                }
-                                                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl font-black text-xs transition-all border ${movementData.type === "out" ? "bg-red-50/50 border-red-500 text-red-600 " : "bg-transparent border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}
+                                                onClick={() => setMovementData({ ...movementData, type: "out" })}
+                                                className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-xs font-bold transition-all border ${movementData.type === "out" ? "bg-rose-50 border-rose-200/50 text-rose-700" : "bg-neutral-50/50 border-neutral-200/50 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"}`}
                                             >
-                                                <ArrowUpFromLine size={20} /> Gasto / Retiro
+                                                <ArrowUpFromLine size={16} /> Gasto / Retiro
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setMovementData({ ...movementData, type: "in" })
-                                                }
-                                                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-2xl font-black text-xs transition-all border ${movementData.type === "in" ? "bg-emerald-50/50 border-emerald-500 text-emerald-600 " : "bg-transparent border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}
+                                                onClick={() => setMovementData({ ...movementData, type: "in" })}
+                                                className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-xs font-bold transition-all border ${movementData.type === "in" ? "bg-emerald-50 border-emerald-200/50 text-emerald-700" : "bg-neutral-50/50 border-neutral-200/50 text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"}`}
                                             >
-                                                <ArrowDownToLine size={20} /> Ingreso / Base
+                                                <ArrowDownToLine size={16} /> Ingreso / Base
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
+                                    {/* Monto y Caja Afectada */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                                                 Monto a Ajustar
                                             </label>
                                             <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-lg">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">
                                                     {movementData.currency === "usd" ? "$" : "Bs"}
                                                 </span>
                                                 <NumberInput
                                                     step="0.01"
                                                     required
                                                     value={movementData.amount}
-                                                    onChangeValue={(val) => setMovementData({ ...movementData, amount: val })} // 🚀 ADIÓS AL String()
-                                                    className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl pl-9 pr-4 py-3.5 text-base font-black outline-none transition-all shadow-none"
+                                                    onChangeValue={(val) => setMovementData({ ...movementData, amount: val })} 
+                                                    className="w-full bg-neutral-50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-8 pr-3 py-2 text-xs font-bold outline-none transition-all placeholder:text-neutral-300 font-mono text-center"
                                                     placeholder="0.00"
                                                 />
-
-
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
-                                                Caja Afectada
+                                        
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                                                Caja Destino
                                             </label>
-                                            <select
-                                                value={movementData.paymentMethod}
-                                                onChange={(e) => {
-                                                    const method = e.target.value;
-                                                    setMovementData({
-                                                        ...movementData,
-                                                        paymentMethod: method,
-                                                        currency: method === "transfer" ? "bs" : "usd",
-                                                    });
-                                                }}
-                                                className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl px-4 py-3.5 text-sm font-black text-[#111] outline-none transition-all appearance-none cursor-pointer"
-                                            >
-                                                <option value="cash">Efectivo USD</option>
-                                                <option value="zelle">Zelle / Binance</option>
-                                                <option value="other">Otros (POS/Zinli)</option>
-                                                <option value="transfer">Pago Móvil (Bs)</option>
-                                            </select>
+                                            <div className="relative">
+                                                <select
+                                                    value={movementData.paymentMethod}
+                                                    onChange={(e) => {
+                                                        const method = e.target.value;
+                                                        setMovementData({
+                                                            ...movementData,
+                                                            paymentMethod: method,
+                                                            currency: method === "transfer" ? "bs" : "usd",
+                                                        });
+                                                    }}
+                                                    className="w-full bg-neutral-50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg px-3 py-2 text-xs font-semibold text-neutral-900 outline-none transition-all cursor-pointer appearance-none"
+                                                >
+                                                    <option value="cash">Efectivo USD</option>
+                                                    <option value="zelle">Zelle / Binance</option>
+                                                    <option value="other">Otros POS</option>
+                                                    <option value="transfer">Pago Móvil (Bs)</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
-                                            Concepto / Razón
+                                    {/* Concepto */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                                            Concepto / Explicación
                                         </label>
                                         <input
                                             type="text"
                                             required
                                             maxLength={50}
                                             value={movementData.description}
-                                            onChange={(e) =>
-                                                setMovementData({
-                                                    ...movementData,
-                                                    description: e.target.value,
-                                                })
-                                            }
-                                            className="w-full bg-[#F4F4F5] border-2 border-transparent focus:bg-white focus:border-black rounded-2xl px-4 py-3.5 text-sm font-bold outline-none transition-all"
-                                            placeholder="Ej: Pago a motorizado, Base inicial..."
+                                            onChange={(e) => setMovementData({ ...movementData, description: e.target.value })}
+                                            className="w-full bg-neutral-50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg px-3 py-2 text-xs font-semibold outline-none transition-all placeholder:text-neutral-300"
+                                            placeholder="Ej: Pago a despachador, Sencillo inicial..."
                                         />
                                     </div>
-                                    <div className=" md:mb-0 mb-14 bg-white  border-t border-gray-100 shrink-0">
+
+                                    {/* Botón Guardar */}
+                                    <div className="pt-4 border-t border-neutral-100 flex items-center md:mb-0 mb-12">
                                         <button
                                             type="submit"
                                             form="movement-form"
                                             disabled={isSubmitting}
-                                            className="w-full  bg-[#111] text-white font-black text-sm uppercase tracking-widest py-4.5 rounded-[var(--radius-btn)] shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:scale-100"
+                                            className="w-full bg-neutral-950 hover:bg-black text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-lg flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
-                                                <Loader2 size={18} className="animate-spin" />
+                                                <Loader2 size={13} className="animate-spin" />
                                             ) : (
-                                                <Save size={18} />
+                                                <Save size={13} />
                                             )}
-                                            Registrar Operación
+                                            <span>Registrar Ajuste</span>
                                         </button>
                                     </div>
                                 </form>
@@ -1093,7 +1102,7 @@ export default function CashRegisterPage() {
             </AnimatePresence>
 
             {/* ========================================================= */}
-            {/* DRAWER 2: CIERRE DIARIO */}
+            {/* DRAWER 2: ARQUEO DE CAJA DIARIO */}
             {/* ========================================================= */}
             <AnimatePresence>
                 {isClosureDrawerOpen && (
@@ -1102,7 +1111,7 @@ export default function CashRegisterPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
                             onClick={() => !isSubmitting && setIsClosureDrawerOpen(false)}
                         />
                         <motion.div
@@ -1110,100 +1119,76 @@ export default function CashRegisterPage() {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className="relative w-full max-w-[500px] bg-white h-full flex flex-col shadow-2xl"
+                            className="relative w-full max-w-[460px] bg-white h-full flex flex-col shadow-2xl border-l border-neutral-200/50"
                         >
                             <div className="p-6 md:p-8 flex justify-between items-start shrink-0">
                                 <div>
-                                    <h2 className="text-2xl font-black text-[#111] leading-tight">
-                                        Arqueo de Caja
+                                    <h2 className="text-lg font-bold text-neutral-900 tracking-tight leading-none">
+                                        Arqueo Contable de Turno
                                     </h2>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">
-                                        Verifica tu dinero en físico
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-2 font-mono">
+                                        Introduzca el arqueo físico de caja
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setIsClosureDrawerOpen(false)}
-                                    className="p-2.5 bg-[#F6F6F6] hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"
+                                    className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors shrink-0"
                                 >
-                                    <X size={20} strokeWidth={2} />
+                                    <X size={15} />
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8 space-y-8 no-scrollbar">
-                                <div className="space-y-5 mt-2">
+                            <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8 space-y-6 no-scrollbar">
+                                <div className="space-y-4 mt-1">
                                     {[
-                                        {
-                                            label: "Efectivo USD",
-                                            key: "cash",
-                                            expected: totals.usdCash,
-                                            symbol: "$",
-                                        },
-                                        {
-                                            label: "Zelle / Binance",
-                                            key: "zelle",
-                                            expected: totals.zelle,
-                                            symbol: "$",
-                                        },
-                                        { label: "Otros (POS/Digital)", key: "other", expected: totals.other, symbol: "$" }, // 🚀 NUEVO INPUT
-                                        {
-                                            label: "Pago Móvil Bs",
-                                            key: "bs",
-                                            expected: totals.bsTransfer,
-                                            symbol: "Bs ",
-                                        },
-
+                                        { label: "Efectivo USD", key: "cash", expected: totals.usdCash, symbol: "$" },
+                                        { label: "Zelle / Binance", key: "zelle", expected: totals.zelle, symbol: "$" },
+                                        { label: "Otros (POS/Digital)", key: "other", expected: totals.other, symbol: "$" },
+                                        { label: "Pago Móvil Bs", key: "bs", expected: totals.bsTransfer, symbol: "Bs " },
                                     ].map((row) => {
-                                        const diff =
-                                            Number((reportedTotals as any)[row.key]) - row.expected;
+                                        const diff = Number((reportedTotals as any)[row.key]) - row.expected;
                                         const hasInput = (reportedTotals as any)[row.key] !== "";
+                                        
                                         return (
                                             <div
                                                 key={row.key}
-                                                className="bg-white p-5 rounded-2xl border border-gray-200/60 relative overflow-hidden group focus-within:border-black/10  transition-all"
+                                                className="bg-white p-4 rounded-xl border border-neutral-200/50 relative overflow-hidden group focus-within:border-neutral-300 transition-all shadow-xs"
                                             >
                                                 {hasInput && (
-                                                    <div
-                                                        className={`absolute top-0 bottom-0 left-0 w-1.5 ${diff === 0 ? "bg-emerald-500" : diff > 0 ? "bg-blue-500" : "bg-red-500"}`}
-                                                    />
+                                                    <div className={`absolute top-0 bottom-0 left-0 w-1 ${diff === 0 ? "bg-emerald-500" : diff > 0 ? "bg-blue-500" : "bg-rose-500"}`} />
                                                 )}
-                                                <div className="flex justify-between items-center mb-4 pl-2">
-                                                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                                                
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
                                                         {row.label}
                                                     </span>
-                                                    <span className="text-[11px] font-bold text-gray-500 bg-[#F6F6F6] px-2 py-1 rounded-full">
-                                                        Esperado:{" "}
-                                                        <span className="font-black text-[#111]">
-                                                            {row.symbol}
-                                                            {row.expected.toFixed(2)}
-                                                        </span>
+                                                    <span className="text-[10px] font-semibold text-neutral-400 bg-neutral-50 border border-neutral-200/50 px-2 py-0.5 rounded font-mono">
+                                                        Sistema: {row.symbol}{row.expected.toFixed(2)}
                                                     </span>
                                                 </div>
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-4 pl-2">
+                                                
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                                                     <div className="relative flex-1">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-black">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">
                                                             {row.symbol.trim()}
                                                         </span>
                                                         <NumberInput
                                                             step="0.01"
-                                                            placeholder="Monto Real..."
-                                                            className=" w-full bg-[#F4F4F5] border border-transparent focus:bg-white focus:border-black/40 focus:shadow-none rounded-xl pl-8 pr-4 py-3 font-black text-[#111] outline-none transition-all placeholder:font-bold"
+                                                            placeholder="Monto físico contado..."
+                                                            className="w-full bg-neutral-50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-all placeholder:text-neutral-300 font-mono"
                                                             value={(reportedTotals as any)[row.key]}
-                                                            onChangeValue={(val) =>
-                                                                setReportedTotals({
-                                                                    ...reportedTotals,
-                                                                    [row.key]: val,
-                                                                })
-                                                            }
+                                                            onChangeValue={(val) => setReportedTotals({ ...reportedTotals, [row.key]: val })}
                                                         />
                                                     </div>
+                                                    
                                                     {hasInput && (
                                                         <div
-                                                            className={`shrink-0 flex items-center justify-end sm:justify-start gap-1.5 font-black text-sm px-3 py-2 rounded-xl ${diff === 0 ? "bg-emerald-50 text-emerald-600" : diff > 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
+                                                            className={`shrink-0 flex items-center justify-end sm:justify-start gap-1 font-bold text-xs px-2.5 py-1.5 rounded border font-mono ${diff === 0 ? "bg-emerald-50 border-emerald-100 text-emerald-700" : diff > 0 ? "bg-blue-50 border-blue-100 text-blue-700" : "bg-rose-50 border-rose-100 text-rose-700"}`}
                                                         >
                                                             {diff === 0 ? (
-                                                                <CheckCircle size={16} />
+                                                                <CheckCircle size={12} />
                                                             ) : (
-                                                                <AlertTriangle size={16} />
+                                                                <AlertCircle size={12} />
                                                             )}
                                                             <span className="whitespace-nowrap">
                                                                 {diff > 0 ? "+" : ""}
@@ -1216,19 +1201,21 @@ export default function CashRegisterPage() {
                                         );
                                     })}
                                 </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
-                                        Notas Adicionales (Opcional)
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                                        Observaciones de Cierre (Opcional)
                                     </label>
                                     <textarea
-                                        placeholder="Ej: Faltaron 5 dólares que el cliente quedó debiendo..."
-                                        className="w-full bg-[#F4F4F5] rounded-2xl px-4 py-4 text-sm font-bold text-[#111] outline-none focus:bg-white border-2 border-transparent focus:border-black transition-all resize-none placeholder:font-medium"
+                                        placeholder="Ej: Faltantes debidos a vueltos pendientes..."
+                                        className="w-full bg-neutral-50 border border-neutral-200/50 rounded-lg px-3 py-2.5 text-xs font-semibold text-neutral-900 outline-none focus:bg-white focus:border-neutral-400 transition-all resize-none placeholder:text-neutral-300"
                                         rows={3}
                                         value={closureNotes}
                                         onChange={(e) => setClosureNotes(e.target.value)}
                                     />
                                 </div>
-                                <div className=" md:mb-10 mb-14  bg-white border-t border-gray-100 shrink-0">
+
+                                <div className="pt-4 border-t border-neutral-100 flex items-center md:mb-6 mb-12">
                                     <button
                                         onClick={handleFinalClosure}
                                         disabled={
@@ -1237,14 +1224,14 @@ export default function CashRegisterPage() {
                                             reportedTotals.zelle === "" ||
                                             reportedTotals.bs === ""
                                         }
-                                        className="w-full bg-[#111] text-white py-4.5 rounded-[var(--radius-btn)] font-black text-sm uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+                                        className="w-full bg-neutral-950 text-white py-3 rounded-lg font-semibold text-xs uppercase tracking-wider hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:scale-100 shadow-xs"
                                     >
                                         {isSubmitting ? (
-                                            <Loader2 className="animate-spin" size={18} />
+                                            <Loader2 className="animate-spin" size={13} />
                                         ) : (
-                                            <Save size={18} />
+                                            <Save size={13} />
                                         )}
-                                        Sellar Caja y Finalizar
+                                        <span>Cerrar Turno y Sellar</span>
                                     </button>
                                 </div>
                             </div>
@@ -1254,7 +1241,7 @@ export default function CashRegisterPage() {
             </AnimatePresence>
 
             {/* ========================================================= */}
-            {/* DRAWER 3: VISOR DE TICKET Z */}
+            {/* DRAWER 3: VISOR DE TICKET Z (RECIBO CONTABLE TÉRMICO) */}
             {/* ========================================================= */}
             <AnimatePresence>
                 {selectedTicket && (
@@ -1263,7 +1250,7 @@ export default function CashRegisterPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
                             onClick={() => setSelectedTicket(null)}
                         />
                         <motion.div
@@ -1271,140 +1258,120 @@ export default function CashRegisterPage() {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className="relative  w-full max-w-[400px] bg-[#F6F6F6] h-full flex flex-col shadow-2xl"
+                            className="relative w-full max-w-[380px] bg-neutral-50 h-full flex flex-col shadow-2xl border-l border-neutral-200/50"
                         >
-                            <div className="p-6 md:p-8 flex justify-between items-start shrink-0 bg-white border-b border-gray-100">
-                                <div>
-                                    <h2 className="text-2xl font-black text-[#111] leading-tight">
-                                        Ticket Z
+                            <div className="p-6 flex justify-between items-start shrink-0 bg-white border-b border-neutral-200/50">
+                                <div className="space-y-1">
+                                    <h2 className="text-base font-bold text-neutral-900 tracking-tight leading-none">
+                                        Resumen de Arqueo (Z)
                                     </h2>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2 flex items-center gap-1.5">
-                                        <Clock size={12} />{" "}
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider font-mono flex items-center gap-1">
+                                        <Clock size={11} />{" "}
                                         {new Date(selectedTicket.closed_at).toLocaleString("es-VE")}
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setSelectedTicket(null)}
-                                    className="p-2.5 bg-[#F6F6F6] hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"
+                                    className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors shrink-0"
                                 >
-                                    <X size={20} strokeWidth={2} />
+                                    <X size={15} />
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin no-scrollbar overflow-y-auto">
-                                <div className="bg-white p-6 rounded-2xl  border-transparent  space-y-6">
-                                    {/* CABECERA TICKET */}
-                                    <div className="text-center border-b border-dashed border-gray-200 pb-6">
-                                        <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <ShieldCheck size={20} />
+                            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin no-scrollbar">
+                                <div className="bg-white p-5 rounded-xl border border-neutral-200/50 space-y-5 shadow-xs">
+                                    
+                                    {/* CABECERA RECIBO TÉRMICO */}
+                                    <div className="text-center border-b border-dashed border-neutral-200/50 pb-5 space-y-2">
+                                        <div className="w-10 h-10 bg-neutral-950 text-white rounded-full flex items-center justify-center mx-auto border border-transparent shadow-xs">
+                                            <ShieldCheck size={18} />
                                         </div>
-                                        <h3 className="font-black text-lg text-[#111]">
-                                            Cierre de Jornada
-                                        </h3>
-                                        <p className="text-xs font-mono font-bold text-gray-400 mt-1">
-                                            ID: {selectedTicket.id.split("-")[0].toUpperCase()}
-                                        </p>
-                                    </div>
-
-                                    {/* DESGLOSE */}
-                                    <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                            Arqueo Declarado
-                                        </p>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="font-bold text-gray-500">
-                                                Efectivo USD
-                                            </span>
-                                            <span className="font-black font-mono text-[#111]">
-                                                ${selectedTicket.reported_totals.cash.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="font-bold text-gray-500">
-                                                Zelle / Digital
-                                            </span>
-                                            <span className="font-black font-mono text-[#111]">
-                                                ${selectedTicket.reported_totals.zelle.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm pb-4 border-b border-dashed border-gray-200">
-                                            <span className="font-bold text-gray-500">
-                                                Pago Móvil Bs
-                                            </span>
-                                            <span className="font-black font-mono text-[#111]">
-                                                Bs{" "}
-                                                {selectedTicket.reported_totals.bs.toLocaleString(
-                                                    "es-VE",
-                                                )}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="font-bold text-gray-500">Otros (Digital/POS)</span>
-                                            <span className="font-black font-mono text-[#111]">${(selectedTicket.reported_totals.other || 0).toFixed(2)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* DIFERENCIAS */}
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                            Diferencias (Faltantes/Sobrantes)
-                                        </p>
-                                        {["cash", "zelle", "other", "bs"].map((key) => {
-                                            // 🚀 ESCUDO ANTI-CRASH: Si el ticket es viejo y no tiene 'other', asume 0.
-                                            const diff = selectedTicket.differences[key] || 0; 
-                                            const isPerfect = diff === 0;
-                                            return (
-                                                <div
-                                                    key={key}
-                                                    className={`flex justify-between items-center text-xs font-bold p-2.5 rounded-lg ${isPerfect ? "bg-emerald-50 text-emerald-700" : diff > 0 ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700"}`}
-                                                >
-<span className="uppercase tracking-wide">
-                                                        {key === "cash"
-                                                            ? "EFECTIVO"
-                                                            : key === "zelle"
-                                                                ? "ZELLE"
-                                                                : key === "other"
-                                                                    ? "OTROS"
-                                                                    : "PM BS"}
-                                                    </span>
-                                                    <span className="font-black font-mono">
-                                                        {isPerfect
-                                                            ? "EXACTO"
-                                                            : diff > 0
-                                                                ? `+${diff.toFixed(2)}`
-                                                                : `${diff.toFixed(2)}`}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {selectedTicket.notes && (
-                                        <div className="pt-4 border-t border-dashed border-gray-200">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                                                Notas del Cajero
+                                        <div className="space-y-0.5">
+                                            <h3 className="font-bold text-sm text-neutral-900">Auditoría Fiscal</h3>
+                                            <p className="text-[10px] font-mono font-bold text-neutral-400">
+                                                ID: {selectedTicket.id.split("-")[0].toUpperCase()}
                                             </p>
-                                            <p className="text-xs font-bold text-gray-600 bg-[#F6F6F6] p-3 rounded-xl italic">
+                                        </div>
+                                    </div>
+
+                                    {/* DESGLOSE REPORTADO */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                                            Arqueo Contado Declarado
+                                        </p>
+                                        <div className="space-y-1.5 text-xs">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-medium text-neutral-400">Efectivo USD</span>
+                                                <span className="font-bold font-mono text-neutral-800">${selectedTicket.reported_totals.cash.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-medium text-neutral-400">Zelle / Digital</span>
+                                                <span className="font-bold font-mono text-neutral-800">${selectedTicket.reported_totals.zelle.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-medium text-neutral-400">Otros POS / Tarjetas</span>
+                                                <span className="font-bold font-mono text-neutral-800">${(selectedTicket.reported_totals.other || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2 border-t border-neutral-100/60">
+                                                <span className="font-medium text-neutral-400">Pago Móvil Bs</span>
+                                                <span className="font-bold font-mono text-neutral-800">Bs {selectedTicket.reported_totals.bs.toLocaleString("es-VE")}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* DIFERENCIAS REPORTADAS */}
+                                    <div className="space-y-2.5 pt-2 border-t border-dashed border-neutral-200/50">
+                                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                                            Balance de Diferencias
+                                        </p>
+                                        
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {["cash", "zelle", "other", "bs"].map((key) => {
+                                                const diff = selectedTicket.differences[key] || 0; 
+                                                const isPerfect = diff === 0;
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className={`flex justify-between items-center text-[10px] font-bold p-2 rounded border ${isPerfect ? "bg-emerald-50/50 border-emerald-100/40 text-emerald-700" : diff > 0 ? "bg-blue-50/50 border-blue-100/40 text-blue-700" : "bg-rose-50/50 border-rose-100/40 text-rose-700"}`}
+                                                    >
+                                                        <span className="font-semibold">{key === "cash" ? "EFECTIVO" : key === "zelle" ? "ZELLE" : key === "other" ? "OTROS" : "PM BS"}</span>
+                                                        <span className="font-mono">
+                                                            {isPerfect ? "EXACTO" : diff > 0 ? `+${diff.toFixed(1)}` : `${diff.toFixed(1)}`}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* NOTAS */}
+                                    {selectedTicket.notes && (
+                                        <div className="pt-4 border-t border-dashed border-neutral-200/50">
+                                            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                                                Observaciones del Turno
+                                            </p>
+                                            <p className="text-xs font-semibold text-neutral-500 bg-neutral-50 p-2.5 rounded-lg border border-neutral-200/50 italic">
                                                 "{selectedTicket.notes}"
                                             </p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="  mb-14 mt-5 shrink-0 flex gap-3">
+                                {/* ACCIONES DE EXPORTACIÓN */}
+                                <div className="mb-14 mt-4 flex gap-2">
                                     <button
                                         onClick={() => handleCopyWhatsApp(selectedTicket)}
-                                        className="flex-1 bg-[#25D366] text-white py-4.5 rounded-[var(--radius-btn)] font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg shadow-[#25D366]/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                        className="flex-1 bg-[#25D366] text-white py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-[#20ba59] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm"
                                     >
-                                        <Copy size={16} />
+                                        <Copy size={13} />
                                         WhatsApp
                                     </button>
                                     <button
                                         onClick={() => handleDownloadExcel(selectedTicket)}
-                                        className="flex-1 bg-[#111] text-white py-4.5 rounded-[var(--radius-btn)] font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                        className="flex-1 bg-neutral-950 text-white py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-xs"
                                     >
-                                        <Download size={16} />
-                                        CSV
+                                        <Download size={13} />
+                                        Excel Contable
                                     </button>
                                 </div>
                             </div>

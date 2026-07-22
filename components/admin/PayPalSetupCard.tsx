@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ExternalLink, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, ShieldCheck, X } from 'lucide-react';
+import { Zap, ExternalLink, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, ShieldCheck, X, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { Icon } from '@iconify/react';
 
 interface PayPalSetupCardProps {
     storeId: string;
-    // Si ya tiene PayPal activo, puedes pasar esto como true
     initialIsActive?: boolean; 
 }
 
@@ -24,10 +23,14 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
 
     const handleSave = async () => {
         if (!clientId || !secretKey) {
-            return Swal.fire('Campos vacíos', 'Debes pegar ambas credenciales para continuar.', 'warning');
+            return Swal.fire({
+                title: 'Campos vacíos', 
+                text: 'Debes rellenar ambas credenciales para continuar.', 
+                icon: 'warning',
+                confirmButtonColor: '#171717',
+                customClass: { popup: 'rounded-xl font-sans text-xs' }
+            });
         }
-        
-        
 
         setIsSaving(true);
         try {
@@ -38,7 +41,7 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
                     storeId, 
                     clientId, 
                     secretKey, 
-                    isActive: true // Al configurarlo, lo activamos por defecto
+                    isActive: true 
                 })
             });
 
@@ -50,14 +53,26 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
 
             setIsActive(true);
             setIsOpen(false);
-            setClientId(''); // Limpiamos memoria
+            setClientId(''); 
             setSecretKey('');
             
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, customClass: { popup: 'bg-black text-white rounded-xl' }});
+            const Toast = Swal.mixin({ 
+                toast: true, 
+                position: 'top-end', 
+                showConfirmButton: false, 
+                timer: 3000, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs border border-neutral-800 font-semibold' }
+            });
             Toast.fire({ icon: 'success', title: 'PayPal activado exitosamente' });
 
         } catch (error: any) {
-            Swal.fire('Error de Configuración', error.message, 'error');
+            Swal.fire({
+                title: 'Error de Configuración',
+                text: error.message,
+                icon: 'error',
+                confirmButtonColor: '#171717',
+                customClass: { popup: 'rounded-xl font-sans text-xs' }
+            });
         } finally {
             setIsSaving(false);
         }
@@ -74,144 +89,150 @@ export default function PayPalSetupCard({ storeId, initialIsActive = false }: Pa
 
     return (
         <>
-            {/* LA TARJETA EN EL PANEL DE MÉTODOS DE PAGO */}
-            <div className="bg-zinc-50 border border-zinc-200 p-5 rounded-[var(--radius-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:border-zinc-300 relative overflow-hidden">
-                {/* Decoración sutil Dark Tech */}
-                <div className="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full pointer-events-none"></div>
-
+            {/* TARJETA EN PANEL DE MÉTODOS DE PAGO */}
+            <div className="bg-white border border-neutral-200/50 p-6 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:border-neutral-300 transition-colors relative overflow-hidden">
                 <div className="flex items-center gap-4 relative z-10">
-                    <div className={`p-3 rounded-xl border ${isActive ? 'bg-black border-black text-white' : 'bg-white border-zinc-200 text-zinc-900 shadow-sm'}`}>
-                        <PayPalIcon size={20} />
+                    {/* El color del contenedor del icono cambia sutilmente al estar activo */}
+                    <div className={`w-11 h-11 rounded-lg flex items-center justify-center border transition-colors ${isActive ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-neutral-50 border-neutral-200/60 text-neutral-400'}`}>
+                        <PayPalIcon size={18} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <h3 className="font-black text-sm text-zinc-900 tracking-tight">Pasarela Automática: PayPal</h3>
-                            {isActive && <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">Activo</span>}
+                    <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-xs text-neutral-900 tracking-tight">Pasarela Automática: PayPal</h3>
+                            {isActive && (
+                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100/40 text-[10px] font-semibold px-2 py-0.5 rounded">
+                                    <CheckCircle2 size={10} />
+                                    Activo
+                                </span>
+                            )}
                         </div>
-                        <p className="text-xs font-medium text-zinc-500">Recibe pagos internacionales con confirmación instantánea.</p>
+                        <p className="text-xs text-neutral-400">Reciba pagos internacionales con confirmación de orden instantánea.</p>
                     </div>
                 </div>
 
                 <button 
                     onClick={() => setIsOpen(true)}
-                    className={`shrink-0 px-5 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold transition-all shadow-sm active:scale-95 ${isActive ? 'bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-100' : 'bg-black text-white hover:bg-zinc-800'}`}
+                    className={`shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs active:scale-[0.98] ${isActive ? 'bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50' : 'bg-neutral-950 text-white hover:bg-black'}`}
                 >
-                    {isActive ? 'Actualizar Credenciales' : 'Configurar'}
+                    {isActive ? 'Actualizar Credenciales' : 'Configurar Cuenta'}
                 </button>
             </div>
 
-            {/* EL MODAL "SLIDE-OVER" (GLASSMORPHISM & DARK TECH) */}
+            {/* MODAL "SLIDE-OVER" UNIFICADO MONOCROMÁTICO */}
             <AnimatePresence>
                 {isOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
                         <motion.div 
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
                             onClick={() => !isSaving && setIsOpen(false)}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
                         />
                         
                         <motion.div 
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+                            initial={{ scale: 0.98, opacity: 0, y: 10 }} 
                             animate={{ scale: 1, opacity: 1, y: 0 }} 
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="relative bg-white w-full max-w-4xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+                            exit={{ scale: 0.98, opacity: 0, y: 10 }}
+                            className="relative bg-white w-full max-w-4xl rounded-2xl overflow-hidden shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] flex flex-col md:flex-row max-h-[90vh] border border-neutral-200/60"
                         >
-                            {/* LADO IZQUIERDO: EL TUTORIAL EDITORIAL */}
-                            <div className="bg-zinc-900 w-full md:w-5/12 p-8 md:p-10 flex flex-col justify-between relative overflow-hidden shrink-0">
-                                {/* Decoración de fondo */}
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-3xl rounded-full pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
-                                
-                                <div className="relative z-10">
-                                    <div className="bg-white/10 w-fit p-2 rounded-xl mb-6 border border-white/5">
-                                        <ShieldCheck size={24} className="text-white" />
+                            {/* LADO IZQUIERDO: TUTORIAL EDITORIAL OFF-WHITE */}
+                            <div className="bg-neutral-50/80 w-full md:w-5/12 p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-neutral-200/60 shrink-0 relative">
+                                <div className="space-y-6">
+                                    <div className="bg-white border border-neutral-200 shadow-xs w-9 h-9 rounded-lg flex items-center justify-center text-neutral-700">
+                                        <ShieldCheck size={16} />
                                     </div>
-                                    <h2 className="text-2xl font-black text-white tracking-tight mb-2">Conecta tu cuenta</h2>
-                                    <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-8">
-                                        Para habilitar pagos automáticos sin intermediarios, vincularemos tu cuenta de PayPal Business directamente a tu tienda.
-                                    </p>
+                                    <div className="space-y-1.5">
+                                        <h2 className="text-base font-bold text-neutral-900 tracking-tight">Vincular cuenta PayPal</h2>
+                                        <p className="text-xs text-neutral-400 leading-relaxed font-medium">
+                                            Reciba pagos sin intermediarios. Los fondos se depositan de inmediato en su cuenta de PayPal Business.
+                                        </p>
+                                    </div>
 
-                                    <div className="space-y-6">
-                                        <div className="flex gap-4 items-start">
-                                            <div className="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-black shrink-0 mt-0.5">1</div>
-                                            <p className="text-xs text-zinc-300 leading-relaxed">
-                                                Abre el <a href="https://developer.paypal.com/dashboard/applications" target="_blank" rel="noreferrer" className="text-white font-bold underline decoration-zinc-600 hover:decoration-white transition-colors">Panel de Desarrollador de PayPal <ExternalLink size={10} className="inline mb-0.5"/></a> e inicia sesión.
+                                    {/* Pasos de configuración */}
+                                    <div className="space-y-5">
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-5 h-5 rounded-full bg-white border border-neutral-200 text-neutral-800 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</div>
+                                            <p className="text-xs text-neutral-500 leading-relaxed font-medium">
+                                                Inicie sesión en el <a href="https://developer.paypal.com/dashboard/applications" target="_blank" rel="noreferrer" className="text-neutral-800 font-semibold underline decoration-neutral-300 hover:decoration-neutral-800 transition-colors inline-flex items-center gap-0.5">Portal de desarrollador <ExternalLink size={10} /></a>.
                                             </p>
                                         </div>
-                                        <div className="flex gap-4 items-start">
-                                            <div className="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-black shrink-0 mt-0.5">2</div>
-                                            <p className="text-xs text-zinc-300 leading-relaxed">
-                                                Asegúrate de estar en la pestaña <strong className="text-white">Live</strong> (no Sandbox) y haz clic en "Create App".
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-5 h-5 rounded-full bg-white border border-neutral-200 text-neutral-800 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</div>
+                                            <p className="text-xs text-neutral-500 leading-relaxed font-medium">
+                                                Cambie el selector superior a la pestaña <strong className="text-neutral-800 font-semibold">Live</strong> (en producción) y presione "Create App".
                                             </p>
                                         </div>
-                                        <div className="flex gap-4 items-start">
-                                            <div className="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center text-xs font-black shrink-0 mt-0.5">3</div>
-                                            <p className="text-xs text-zinc-300 leading-relaxed">
-                                                Copia tu <strong className="text-white">Client ID</strong> y tu <strong className="text-white">Secret Key 1</strong> y pégalos aquí a la derecha.
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-5 h-5 rounded-full bg-white border border-neutral-200 text-neutral-800 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</div>
+                                            <p className="text-xs text-neutral-500 leading-relaxed font-medium">
+                                                Copie el <strong className="text-neutral-800 font-semibold">Client ID</strong> y su <strong className="text-neutral-800 font-semibold">Secret Key 1</strong> para completarlos en el formulario.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* LADO DERECHO: LA ACCIÓN */}
+                            {/* LADO DERECHO: FORMULARIO */}
                             <div className="flex-1 p-8 md:p-10 flex flex-col bg-white overflow-y-auto">
                                 <div className="flex justify-between items-center mb-8">
-                                    <h3 className="font-black text-lg text-zinc-900 tracking-tight">Credenciales API</h3>
-                                    <button onClick={() => !isSaving && setIsOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-900 bg-zinc-50 hover:bg-zinc-100 rounded-full transition-colors">
-                                        <X size={18} />
+                                    <h3 className="font-bold text-sm text-neutral-900 tracking-tight uppercase tracking-wider">Credenciales de Integración</h3>
+                                    <button onClick={() => !isSaving && setIsOpen(false)} className="p-1.5 text-neutral-400 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 rounded-full transition-colors">
+                                        <X size={15} />
                                     </button>
                                 </div>
 
                                 <div className="space-y-5 flex-1">
                                     <div>
-                                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block ml-1">Client ID (Público)</label>
+                                        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Client ID (Público)</label>
                                         <input 
                                             type="text" 
                                             value={clientId}
                                             onChange={(e) => setClientId(e.target.value)}
                                             placeholder="Ej: AW4x_R1..." 
-                                            className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl px-4 py-3.5 text-sm font-mono font-medium text-zinc-900 outline-none transition-all placeholder:text-zinc-300"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200 rounded-lg px-3.5 py-2.5 text-xs font-mono font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 block ml-1 flex items-center gap-1.5">
-                                            <KeyRound size={12} /> Secret Key (Privado)
+                                        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <KeyRound size={12} className="text-neutral-400" /> Secret Key (Privado)
                                         </label>
-                                        <div className="relative group">
+                                        <div className="relative">
                                             <input 
                                                 type={showSecret ? "text" : "password"} 
                                                 value={secretKey}
                                                 onChange={(e) => setSecretKey(e.target.value)}
-                                                placeholder="Pega tu clave secreta aquí" 
-                                                className="w-full bg-zinc-50 border border-zinc-200 focus:bg-white focus:border-black focus:ring-1 focus:ring-black rounded-xl pl-4 pr-12 py-3.5 text-sm font-mono font-medium text-zinc-900 outline-none transition-all placeholder:text-zinc-300"
+                                                placeholder="Pega tu clave secreta de producción aquí" 
+                                                className="w-full bg-neutral-50/50 border border-neutral-200 rounded-lg pl-3.5 pr-10 py-2.5 text-xs font-mono font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300"
                                             />
                                             <button 
                                                 onClick={() => setShowSecret(!showSecret)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 transition-colors p-1"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 transition-colors p-1"
                                             >
-                                                {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                                             </button>
                                         </div>
-                                        <p className="text-[10px] text-zinc-400 mt-2 ml-1 font-medium">Esta clave será encriptada con grado militar antes de guardarse. Ni siquiera nosotros podremos verla.</p>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 mt-2 font-medium">
+                                            <ShieldCheck size={12} className="text-neutral-400" />
+                                            <span>La credencial secreta se almacena bajo encriptación de grado militar en la base de datos.</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-8 pt-6 border-t border-zinc-100 flex justify-end gap-3">
+                                <div className="mt-8 pt-6 border-t border-neutral-100 flex justify-end gap-2.5">
                                     <button 
                                         onClick={() => setIsOpen(false)} 
                                         disabled={isSaving}
-                                        className="px-5 py-3 rounded-xl text-xs font-bold text-zinc-500 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                                        className="px-4 py-2 rounded-lg text-xs font-semibold text-neutral-500 hover:bg-neutral-50 transition-colors disabled:opacity-50"
                                     >
                                         Cancelar
                                     </button>
                                     <button 
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="bg-black text-white px-8 py-3 rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-black/10 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                        className="bg-neutral-950 text-white px-5 py-2 rounded-lg text-xs font-semibold hover:bg-black active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-70 disabled:cursor-not-allowed shadow-xs"
                                     >
-                                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                                        {isSaving ? 'Validando...' : 'Guardar y Activar'}
+                                        {isSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                        {isSaving ? 'Vinculando...' : 'Guardar e Integrar'}
                                     </button>
                                 </div>
                             </div>

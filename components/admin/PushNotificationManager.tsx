@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, BellRing, Loader2 } from 'lucide-react'
+import { Bell, BellRing, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import Swal from 'sweetalert2'
 
-// Función utilitaria obligatoria para decodificar la llave VAPID pública
+// Función utilitaria para decodificar la llave VAPID pública
 const urlBase64ToUint8Array = (base64String: string) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -22,7 +22,6 @@ export default function PushNotificationManager({ storeId }: { storeId: string }
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        // Verificamos si el navegador soporta Service Workers y Push API
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             setIsSupported(true);
             registerServiceWorker();
@@ -39,61 +38,80 @@ export default function PushNotificationManager({ storeId }: { storeId: string }
         }
     }
 
-   const subscribeToPush = async () => {
+    const subscribeToPush = async () => {
         setLoading(true);
         try {
             const registration = await navigator.serviceWorker.ready;
             const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
             
-            if (!publicVapidKey) throw new Error("Llave VAPID pública no encontrada en el .env.local");
+            if (!publicVapidKey) throw new Error("Llave VAPID pública no encontrada en el archivo de entorno");
 
-            // 1. Le pedimos permiso al OS y generamos el token
             const sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
             });
 
-            // 2. 🚀 Enviamos la suscripción a nuestra base de datos
             const response = await fetch('/api/web-push/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ subscription: sub, storeId })
             });
 
-            if (!response.ok) throw new Error('Falló el guardado en la base de datos');
+            if (!response.ok) throw new Error('Falló el guardado en el servidor');
 
             setSubscription(sub);
             
             Swal.fire({
-                title: '¡Notificaciones Activas!',
-                text: 'Recibirás alertas de nuevas ventas en este dispositivo.',
+                title: 'Alertas habilitadas',
+                text: 'Recibirás avisos de venta en tiempo real en este dispositivo.',
                 icon: 'success',
-                confirmButtonColor: '#000'
+                confirmButtonColor: '#171717',
+                customClass: { popup: 'rounded-xl font-sans text-xs' }
             });
 
         } catch (error: any) {
             console.error(error);
             if (Notification.permission === 'denied') {
-                Swal.fire('Permiso Denegado', 'Debes permitir las notificaciones en tu navegador.', 'warning');
+                Swal.fire({
+                    title: 'Permiso restringido',
+                    text: 'Debes conceder permisos de notificación en los ajustes de tu explorador.',
+                    icon: 'warning',
+                    confirmButtonColor: '#171717',
+                    customClass: { popup: 'rounded-xl font-sans text-xs' }
+                });
             } else {
-                Swal.fire('Error', 'No se pudo activar las notificaciones.', 'error');
+                Swal.fire({
+                    title: 'Error de activación',
+                    text: 'No se pudo dar de alta este dispositivo en el servicio de alertas.',
+                    icon: 'error',
+                    confirmButtonColor: '#171717',
+                    customClass: { popup: 'rounded-xl font-sans text-xs' }
+                });
             }
         } finally {
             setLoading(false);
         }
     }
+
     if (!isSupported) return null;
 
     return (
-        <div className="bg-[#f6f6f6] p-4 rounded-[var(--radius-card)] flex items-center justify-between border border-transparent hover:border-gray-200 transition-colors">
-            <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${subscription ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-500'}`}>
-                    {subscription ? <BellRing size={18} /> : <Bell size={18} />}
+        <div className="bg-white p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-neutral-200/50 hover:border-neutral-300/60 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+            <div className="flex items-center gap-3.5">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${subscription ? 'bg-emerald-50 border-emerald-100/40 text-emerald-700' : 'bg-neutral-50 border-neutral-200/50 text-neutral-400'}`}>
+                    {subscription ? <BellRing size={16} /> : <Bell size={16} />}
                 </div>
-                <div>
-                    <p className="font-bold text-sm text-gray-900">Alertas en Tiempo Real</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                        {subscription ? 'Este dispositivo está recibiendo alertas.' : 'Recibe una notificación al instante con cada venta.'}
+                <div className="space-y-0.5">
+                    <p className="font-bold text-xs text-neutral-900 tracking-tight flex items-center gap-1.5">
+                        Alertas en Tiempo Real
+                        {subscription && (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 text-[9px] font-semibold px-1.5 py-0.5 rounded border border-emerald-100/30">
+                                <CheckCircle2 size={9} /> Vinculado
+                            </span>
+                        )}
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                        {subscription ? 'Este navegador web está registrado para alertas instantáneas.' : 'Reciba una notificación al instante en su pantalla con cada venta procesada.'}
                     </p>
                 </div>
             </div>
@@ -102,9 +120,9 @@ export default function PushNotificationManager({ storeId }: { storeId: string }
                 <button 
                     onClick={subscribeToPush}
                     disabled={loading}
-                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-md hover:bg-gray-800 active:scale-95 transition-all shadow-subtle flex items-center gap-2"
+                    className="shrink-0 px-4 py-2 bg-neutral-950 hover:bg-black text-white text-xs font-semibold rounded-lg transition-all active:scale-[0.98] shadow-xs flex items-center justify-center gap-1.5"
                 >
-                    {loading ? <Loader2 size={14} className="animate-spin" /> : 'Activar Alertas'}
+                    {loading ? <Loader2 size={13} className="animate-spin" /> : 'Activar Alertas'}
                 </button>
             )}
         </div>
