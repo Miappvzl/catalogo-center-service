@@ -389,7 +389,7 @@ export default function SuperAdminPage() {
                 {/* GRID DE MÉTRICAS CON COLOR DIFERENCIADOR DE ALTA GAMA */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
                     {/* TOTAL */}
-                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                    <div className="bg-white p-4 rounded-xl  shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[11px] font-medium text-neutral-400">Tiendas Registradas</span>
                             <div className="w-5 h-5 rounded bg-neutral-50 border border-neutral-100 flex items-center justify-center text-neutral-500">
@@ -400,7 +400,7 @@ export default function SuperAdminPage() {
                     </div>
 
                     {/* SAGE GREEN (ACTIVE) */}
-                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                    <div className="bg-white p-4 rounded-xl  shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[11px] font-medium text-neutral-400">Licencias Activas</span>
                             <div className="w-5 h-5 rounded bg-emerald-50 border border-emerald-100/60 flex items-center justify-center text-emerald-700">
@@ -416,7 +416,7 @@ export default function SuperAdminPage() {
                     </div>
 
                     {/* DUSTY ROSE (SUSPENDED) */}
-                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                    <div className="bg-white p-4 rounded-xl  shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[11px] font-medium text-neutral-400">Licencias Suspendidas</span>
                             <div className="w-5 h-5 rounded bg-rose-50 border border-rose-100/60 flex items-center justify-center text-rose-700">
@@ -427,7 +427,7 @@ export default function SuperAdminPage() {
                     </div>
 
                     {/* SLATE BLUE (MRR) */}
-                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                    <div className="bg-white p-4 rounded-xl  shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[11px] font-medium text-neutral-400">Ingresos Estimados (MRR)</span>
                             <div className="w-5 h-5 rounded bg-blue-50 border border-blue-100/60 flex items-center justify-center text-blue-700">
@@ -449,7 +449,7 @@ export default function SuperAdminPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar por tienda, ID o slug..."
-                        className="w-full bg-white border border-neutral-200 rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-all"
+                        className="w-full bg-white border-b-2 border-neutral-100  shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-300 transition-all"
                     />
                     <Command size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-300" />
                 </section>
@@ -493,7 +493,7 @@ export default function SuperAdminPage() {
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-neutral-100 text-xs">
+                                    <tbody className="divide-y divide-[#fcfcfd] text-xs">
                                         {filteredStores.map(store => {
                                             const targetDateString = store.subscription_ends_at || store.trial_ends_at;
                                             const endsAt = targetDateString ? new Date(targetDateString) : new Date();
