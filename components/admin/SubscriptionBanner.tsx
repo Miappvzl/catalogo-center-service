@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { 
   Clock, Zap, ArrowRight, X, Wallet, ShieldCheck, 
-  MessageCircle, Copy, Check, AlertTriangle, Lock, Globe, Loader2 
+  MessageCircle, Copy, Check, AlertTriangle, Lock, Globe, Loader2, Tag 
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
@@ -25,8 +25,9 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
   const [bannerType, setBannerType] = useState<'hidden' | 'trial' | 'trial_expired' | 'active_expiring' | 'active_expired'>('hidden')
   const [showModal, setShowModal] = useState(false)
   
-  // Estados de Pago y Tasa
+  // Estados de Pago, Tasa y Descuento
   const [rate, setRate] = useState<number>(0)
+  const [discountPct, setDiscountPct] = useState<number>(0)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   
@@ -63,23 +64,42 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
     }
   }, [store])
 
-  // 2. Efecto para buscar la tasa BCV cuando se abre el modal
+  // 2. Efecto para buscar la tasa BCV y el Descuento de Afiliado (Solo al abrir el modal)
   useEffect(() => {
-    if (!showModal) return // Solo buscamos la tasa si el usuario abre el modal para ahorrar peticiones
+    if (!showModal) return
 
-    const fetchRate = async () => {
-      const { data } = await supabase
+    const fetchBillingData = async () => {
+      // A. Buscar Tasa BCV
+      const { data: configData } = await supabase
         .from('app_config')
         .select('usd_rate')
         .eq('id', 1)
         .single()
         
-      if (data?.usd_rate) {
-        setRate(data.usd_rate)
+      if (configData?.usd_rate) {
+        setRate(configData.usd_rate)
+      }
+
+      // B. Buscar Descuento de Referido (SOLO si es su primer pago)
+      const hasPaidBefore = !!store.subscription_ends_at
+      if (!hasPaidBefore) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: ref } = await supabase
+            .from('saas_referrals')
+            .select(`saas_affiliates(discount_pct)`)
+            .eq('referred_user_id', user.id)
+            .single()
+
+          if (ref?.saas_affiliates) {
+            // @ts-ignore
+            setDiscountPct(Number(ref.saas_affiliates.discount_pct || 0))
+          }
+        }
       }
     }
-    fetchRate()
-  }, [showModal, supabase])
+    fetchBillingData()
+  }, [showModal, supabase, store.subscription_ends_at])
 
   if (bannerType === 'hidden' || daysLeft === null) return null
 
@@ -116,8 +136,14 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
     : 'bg-black text-white hover:bg-gray-800'
   const buttonText = bannerType.includes('active') ? 'Renovar plan' : 'Asegurar suscripción'
 
-  // --- LÓGICA DE PAGO Y UX ---
-  const amountBs = (PREZISO_BILLING.priceUSD * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // --- LÓGICA DE PAGO Y MATEMÁTICA EXACTA ---
+  const basePriceUSD = PREZISO_BILLING.priceUSD
+  // Calculamos el precio final aplicando el descuento (si existe)
+  const finalPriceUSD = discountPct > 0 
+    ? Number((basePriceUSD * (1 - discountPct / 100)).toFixed(2)) 
+    : basePriceUSD
+
+  const amountBs = (finalPriceUSD * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -126,16 +152,14 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
   }
 
   const handleReportPayment = () => {
-    const reportMessage = PREZISO_BILLING.generateReportMessage(store.name || 'Tienda', store.id || 'ID-Pendiente', amountBs)
+    // 🚀 Pasamos el finalPriceUSD al generador de mensajes
+    const reportMessage = PREZISO_BILLING.generateReportMessage(store.name || 'Tienda', store.id || 'ID-Pendiente', amountBs, finalPriceUSD)
     const url = `https://wa.me/${PREZISO_BILLING.whatsappContact}?text=${encodeURIComponent(reportMessage)}`
     
-    // Mostramos el modal de éxito
     setShowSuccessModal(true)
     
-    // Salto automático a WhatsApp
     setTimeout(() => {
       window.open(url, '_blank')
-      // Opcional: Cerrar los modales después de redirigir
       setShowSuccessModal(false)
       setShowModal(false)
     }, 2000)
@@ -154,30 +178,27 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
           <p>{message}</p>
         </div>
       
-<div 
-  role="button"
-  tabIndex={0}
-  onClick={() => setShowModal(true)}
-  className={`flex items-center cursor-pointer gap-1.5 px-4 py-1.5 rounded-md font-bold transition-all active:scale-95 ${buttonClass}`}
->
-  <Zap size={14} /> {buttonText} <ArrowRight size={14} />
-</div>
+        <div 
+          role="button"
+          tabIndex={0}
+          onClick={() => setShowModal(true)}
+          className={`flex items-center cursor-pointer gap-1.5 px-4 py-1.5 rounded-md font-bold transition-all active:scale-95 ${buttonClass}`}
+        >
+          <Zap size={14} /> {buttonText} <ArrowRight size={14} />
+        </div>
       </div>
 
-      {/* MODAL PRINCIPAL DE FACTURACIÓN (Ultra-Compacto / Zero Scroll) */}
+      {/* MODAL PRINCIPAL DE FACTURACIÓN */}
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 font-sans selection:bg-black selection:text-white">
-            {/* Backdrop Blur */}
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowModal(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             
-            {/* Contenedor Clean (Compresión vertical máxima) */}
             <motion.div 
-           
               initial={{ opacity: 0, y: 20, scale: 0.95 }} 
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -185,12 +206,11 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
             >
               <div 
                 onClick={() => setShowModal(false)} 
-                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10"
+                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10 cursor-pointer"
               >
                 <X size={16} />
               </div>
 
-              {/* Header Minimalista (Más compacto) */}
               <div className="p-5 pb-4 text-center border-b border-gray-50 bg-gray-50/30">
                 <div className="inline-flex p-2 rounded-xl bg-black text-white mb-2">
                   <Lock size={16} strokeWidth={2.5} />
@@ -201,29 +221,40 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                 </p>
               </div>
 
-              {/* Body con la Data (Reducción drástica de gaps y paddings) */}
               <div className="p-4 md:p-5 space-y-4 md:space-y-5">
                 
-                {/* Precio Dual y Tasa BCV */}
+                {/* 🚀 PRECIO DUAL, DESCUENTO Y TASA BCV */}
                 <div className="text-center">
+                  {discountPct > 0 && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-full mb-3 border border-emerald-100">
+                      <Tag size={12} /> {discountPct}% Desc. Partner (1er Mes)
+                    </div>
+                  )}
+                  
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-black text-gray-900">${PREZISO_BILLING.priceUSD}</span>
+                    <span className="text-3xl font-black text-gray-900">${finalPriceUSD}</span>
                     <span className="text-gray-400 font-bold text-sm">/mes</span>
                   </div>
+
+                  {discountPct > 0 && (
+                    <p className="text-[10px] text-gray-400 font-medium mt-1 line-through">
+                      Precio regular: ${basePriceUSD}
+                    </p>
+                  )}
                   
                   <div className="mt-2 flex justify-center">
                     {rate > 0 ? (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100/50 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-all">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all">
                         <span>≈ Bs {amountBs} (BCV)</span>
-                        <div className="w-px h-3 bg-emerald-200 mx-0.5"></div>
+                        <div className="w-px h-3 bg-gray-200 mx-0.5"></div>
                         <div 
                           role="button"
                           tabIndex={0}
                           onClick={() => copyToClipboard(amountBs, 'monto')}
-                          className="text-emerald-600 hover:text-emerald-900 transition-colors flex items-center gap-1 active:scale-90"
+                          className="text-gray-400 hover:text-black transition-colors flex items-center gap-1 active:scale-90"
                           title="Copiar monto exacto"
                         >
-                          {copiedId === 'monto' ? <Check size={12} strokeWidth={3} /> : <Copy size={12} strokeWidth={2.5} />}
+                          {copiedId === 'monto' ? <Check size={12} strokeWidth={3} className="text-emerald-500" /> : <Copy size={12} strokeWidth={2.5} />}
                         </div>
                       </div>
                     ) : (
@@ -236,7 +267,6 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
 
                 {/* Métodos de Pago */}
                 <div className="space-y-3">
-                  {/* Pago Móvil */}
                   <div className="p-3 rounded-2xl bg-gray-50/50 border border-transparent">
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs">
@@ -262,7 +292,6 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                     </div>
                   </div>
 
-                  {/* Otros Métodos */}
                   <div className="p-3 rounded-2xl bg-gray-50/50">
                     <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs mb-2.5">
                       <Globe size={14} className="text-gray-400" />
@@ -273,7 +302,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                         role="button"
                         tabIndex={0}    
                         onClick={() => copyToClipboard(PREZISO_BILLING.wallets.binanceId, 'binance')}
-                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95"
+                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
                       >
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Binance ID</p>
                         <p className="text-[11px] font-black text-gray-900 mt-0.5">{copiedId === 'binance' ? '¡Copiado!' : PREZISO_BILLING.wallets.binanceId}</p>
@@ -282,7 +311,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                         role="button"
                         tabIndex={0}
                         onClick={() => copyToClipboard(PREZISO_BILLING.wallets.zinliEmail, 'zinli')}
-                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95"
+                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
                       >
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Zinli / Email</p>
                         <p className="text-[11px] font-black text-gray-900 mt-0.5 truncate px-1">{copiedId === 'zinli' ? '¡Copiado!' : PREZISO_BILLING.wallets.zinliEmail}</p>
@@ -296,7 +325,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
                   role="button"
                   tabIndex={0}
                   onClick={handleReportPayment}
-                  className="w-full bg-black text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98]"
+                  className="w-full bg-black text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98] cursor-pointer"
                 >
                   <MessageCircle size={16} /> Reportar Pago
                 </div>
@@ -306,7 +335,7 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE CONFIRMACIÓN DE ÉXITO (El Salto a WhatsApp) */}
+      {/* MODAL DE CONFIRMACIÓN DE ÉXITO */}
       <AnimatePresence>
         {showSuccessModal && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 font-sans">
@@ -341,7 +370,7 @@ function DataRow({ label, value, onCopy, isCopied }: { label: string, value: str
             role="button"
             tabIndex={0}
             onClick={onCopy}
-            className="text-gray-300 hover:text-black transition-colors"
+            className="text-gray-300 hover:text-black transition-colors cursor-pointer"
             aria-label={`Copiar ${label}`}
           >
             {isCopied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}

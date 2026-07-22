@@ -20,8 +20,8 @@ export const PREZISO_BILLING = {
     // Canal de Soporte y Facturación
     whatsappContact: "584145811936",
     
-    // Generador dinámico de mensajes para trazabilidad absoluta
-    generateReportMessage: (storeName: string, storeId: string, amountBs: string | number) => {
-        return `Hola, quiero activar/renovar la suscripción de mi tienda en Preziso.\n\n*Tienda:* ${storeName}\n*ID:* ${storeId}\n\nHe realizado el pago de la suscripción mensual ($18.99 / Bs ${amountBs}).\n\nAdjunto comprobante de pago:`
+    // 🚀 ACTUALIZADO: Ahora acepta el monto en USD dinámicamente para reflejar descuentos
+    generateReportMessage: (storeName: string, storeId: string, amountBs: string | number, amountUsd: number | string = 18.99) => {
+        return `Hola, quiero activar/renovar la suscripción de mi tienda en Preziso.\n\n*Tienda:* ${storeName}\n*ID:* ${storeId}\n\nHe realizado el pago de la suscripción mensual ($${amountUsd} / Bs ${amountBs}).\n\nAdjunto comprobante de pago:`
     }
 }

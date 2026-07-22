@@ -6,6 +6,12 @@ export async function proxy(request: NextRequest) {
     request: { headers: request.headers },
   })
 
+  const hostname = request.headers.get('host') || ''
+  const currentEnvDomain = process.env.NODE_ENV === 'production' ? 'preziso.shop' : 'localhost:3000'
+  
+  // 🚀 BLINDAJE DE SUBDOMINIOS: Guardar cookie a nivel global de .preziso.shop en producción
+  const cookieDomain = process.env.NODE_ENV === 'production' ? '.preziso.shop' : undefined
+
   // ---------------------------------------------------------
   // 🚀 INYECCIÓN: CAPTURA DE CÓDIGO DE AFILIADO (?ref=)
   // ---------------------------------------------------------
@@ -16,6 +22,7 @@ export async function proxy(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      domain: cookieDomain, // <-- ESTO es lo que amarra la cookie en todo Preziso
     })
   }
 
@@ -41,6 +48,7 @@ export async function proxy(request: NextRequest) {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
+              domain: cookieDomain,
             })
           }
         },
@@ -70,10 +78,6 @@ export async function proxy(request: NextRequest) {
   // ---------------------------------------------------------
   // 2. MOTOR DE SUBDOMINIOS (Wildcard Routing)
   // ---------------------------------------------------------
-  const hostname = request.headers.get('host') || ''
-  
-  const currentEnvDomain = process.env.NODE_ENV === 'production' ? 'preziso.shop' : 'localhost:3000'
-  
   const isSubdomain = hostname !== currentEnvDomain && 
                       hostname !== `www.${currentEnvDomain}` && 
                       hostname.endsWith(`.${currentEnvDomain}`)
@@ -90,6 +94,7 @@ export async function proxy(request: NextRequest) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
+            domain: cookieDomain,
           })
         }
         return rewriteResponse
