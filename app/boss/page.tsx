@@ -1,7 +1,29 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ShieldAlert, Store, Zap, Ban, Search, Edit3, Loader2, ExternalLink, TrendingUp, Clock, Trash2 } from 'lucide-react'
+import { 
+    ShieldAlert, 
+    Store, 
+    Search, 
+    Edit3, 
+    Loader2, 
+    ExternalLink, 
+    Clock, 
+    Trash2, 
+    ChevronDown, 
+    ChevronUp,
+    CornerDownRight,
+    Activity,
+    DollarSign,
+    Users,
+    CheckCircle2,
+    AlertCircle,
+    Command,
+    Globe,
+    Eye,
+    Lock,
+    ArrowUpRight
+} from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { PREZISO_BILLING } from '@/lib/config/billing'
 import Swal from 'sweetalert2'
@@ -11,7 +33,6 @@ import Image from 'next/image'
 import { triggerCommission } from '@/app/actions/affiliates'
 import { getOptimizedUrl } from '@/utils/cdn'
 
-// 🔒 SEGURIDAD EXTREMA: El único correo con acceso al God Mode
 const ADMIN_EMAIL = 'quanzosinc@gmail.com'
 
 export default function SuperAdminPage() {
@@ -22,16 +43,17 @@ export default function SuperAdminPage() {
     const [stores, setStores] = useState<any[]>([])
     const [search, setSearch] = useState('')
     const [isAuthorized, setIsAuthorized] = useState(false)
+    
+    // Estado de control para filas móviles colapsables
+    const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null)
 
-   const fetchStores = async () => {
+    const fetchStores = async () => {
         setLoading(true)
-        // 1. Cargar todas las tiendas
         const { data: storesData } = await supabase
             .from('stores')
             .select('*')
             .order('created_at', { ascending: false })
 
-        // 2. Cargar mapas de referidos para evitar errores de PostgREST
         const { data: referralsData } = await supabase
             .from('saas_referrals')
             .select(`
@@ -42,7 +64,6 @@ export default function SuperAdminPage() {
                 )
             `)
 
-        // 3. Cruzar nombres de tiendas referentes
         if (storesData) {
             const userToStoreNameMap = new Map(storesData.map((s: any) => [s.user_id, s.name]))
 
@@ -68,7 +89,6 @@ export default function SuperAdminPage() {
         const verifyAndFetch = async () => {
             const { data: { user } } = await supabase.auth.getUser()
 
-            // Redirección fantasma: Expulsamos a los intrusos sin mostrar alertas ni UI de fondo
             if (!user || user.email !== ADMIN_EMAIL) {
                 router.replace('/admin')
                 return
@@ -82,19 +102,25 @@ export default function SuperAdminPage() {
 
     // --- ACCIONES DE GOD MODE ---
 
-     const addCustomDays = async (store: any) => {
+    const addCustomDays = async (store: any) => {
         const { value: days, isConfirmed } = await Swal.fire({
             title: `Renovar ${store.name}`,
-            text: "¿Cuántos días exactos deseas agregarle a esta tienda?",
+            text: "Días a agregar a la suscripción actual:",
             input: 'number',
-            inputValue: 30, // Valor por defecto
+            inputValue: 30,
             showCancelButton: true,
-            confirmButtonText: 'Agregar Días',
-            confirmButtonColor: '#000',
+            confirmButtonText: 'Confirmar renovación',
+            confirmButtonColor: '#171717',
             cancelButtonText: 'Cancelar',
-            customClass: { popup: 'rounded-[2rem] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)]' },
+            customClass: { 
+                popup: 'rounded-xl bg-white border border-neutral-200/80 p-6 font-sans shadow-[0_4px_20px_rgba(0,0,0,0.03)]',
+                title: 'text-base font-semibold text-neutral-900 tracking-tight',
+                htmlContainer: 'text-xs text-neutral-400 font-medium',
+                confirmButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white transition-all',
+                cancelButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all'
+            },
             inputValidator: (value) => {
-                if (!value || Number(value) <= 0) return 'Ingresa un número válido mayor a 0'
+                if (!value || Number(value) <= 0) return 'Ingrese un valor válido mayor a 0'
             }
         })
 
@@ -103,71 +129,93 @@ export default function SuperAdminPage() {
         const daysToAdd = parseInt(days, 10)
         const now = new Date()
 
-        // LÓGICA FINANCIERA INTELIGENTE (CORREGIDA):
-        // 1. Identificamos cuál es la fecha real de vencimiento (priorizando si ya pagó antes)
         const targetDateString = store.subscription_ends_at ? store.subscription_ends_at : store.trial_ends_at;
         const currentEndDate = new Date(targetDateString);
         
-        // 2. Si la tienda ya expiró, sumamos desde HOY. Si no, desde su FECHA DE CORTE.
         const baseDate = currentEndDate > now ? currentEndDate : now;
         const newDate = new Date(baseDate);
         newDate.setDate(newDate.getDate() + daysToAdd);
 
-         // 3. Actualizamos 'subscription_ends_at' para que el Banner entienda que ya no es trial
         const { error } = await supabase.from('stores').update({
             subscription_status: 'active',
             subscription_ends_at: newDate.toISOString() 
         }).eq('id', store.id)
 
         if (error) {
-            Swal.fire('Error', 'No se pudo actualizar la suscripción.', 'error')
+            Swal.fire('Error', 'No se pudo actualizar.', 'error')
         } else {
-            // 🚀 INYECCIÓN: Disparamos la comisión si es su primer pago
-            // Esto solo hará efecto si el usuario estaba como "pending" en saas_referrals
             await triggerCommission(store.user_id).catch(console.error)
 
-            Swal.fire({ icon: 'success', title: `+${daysToAdd} Días Agregados`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)]' } })
+            Swal.fire({ 
+                icon: 'success', 
+                title: `+${daysToAdd} Días`, 
+                toast: true, 
+                position: 'top-end', 
+                showConfirmButton: false, 
+                timer: 1500, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-lg text-xs font-medium border border-neutral-800 shadow-[0_4px_15px_rgba(0,0,0,0.05)]' } 
+            })
             fetchStores()
         }
     }
 
     const pauseStore = async (store: any) => {
         const confirm = await Swal.fire({
-            title: `¿Pausar ${store.name}?`,
-            text: "La tienda será bloqueada inmediatamente por falta de pago.",
+            title: `¿Suspender ${store.name}?`,
+            text: "Se bloqueará el acceso al panel inmediatamente por falta de pago.",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Pausar',
-            confirmButtonColor: '#e3342f',
+            confirmButtonText: 'Confirmar Suspensión',
+            confirmButtonColor: '#171717',
             cancelButtonText: 'Cancelar',
-            customClass: { popup: 'rounded-[2rem] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)]' }
+            customClass: { 
+                popup: 'rounded-xl bg-white border border-neutral-200/80 p-6 font-sans shadow-[0_4px_20px_rgba(0,0,0,0.03)]',
+                title: 'text-base font-semibold text-neutral-900 tracking-tight',
+                htmlContainer: 'text-xs text-neutral-400 font-medium',
+                confirmButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white transition-all',
+                cancelButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all'
+            }
         })
 
         if (!confirm.isConfirmed) return
 
-       const pastDate = new Date('2000-01-01').toISOString()
+        const pastDate = new Date('2000-01-01').toISOString()
         const { error } = await supabase.from('stores').update({
-            subscription_status: 'expired', // <-- AHORA ES EXPIRED
-            subscription_ends_at: pastDate, // <-- CORTAMOS LA FECHA DE SUSCRIPCIÓN
+            subscription_status: 'expired',
+            subscription_ends_at: pastDate,
             trial_ends_at: pastDate
         }).eq('id', store.id)
 
         if (!error) {
-            Swal.fire({ icon: 'success', title: 'Tienda Bloqueada', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.05)]' } })
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Licencia Pausada', 
+                toast: true, 
+                position: 'top-end', 
+                showConfirmButton: false, 
+                timer: 1500, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-lg text-xs font-medium border border-neutral-800 shadow-[0_4px_15px_rgba(0,0,0,0.05)]' } 
+            })
             fetchStores()
         }
     }
 
     const deleteStore = async (store: any) => {
         const confirm = await Swal.fire({
-            title: `¿DESTRUIR ${store.name}?`,
-            text: "Esta acción es irreversible. Se borrará toda su base de datos.",
-            icon: 'error',
+            title: `¿Remover ${store.name}?`,
+            text: "Esta acción es definitiva y eliminará toda la información relacionada.",
+            icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Destruir',
-            confirmButtonColor: '#000',
+            confirmButtonText: 'Eliminar definitivamente',
+            confirmButtonColor: '#171717',
             cancelButtonText: 'Cancelar',
-            customClass: { popup: 'rounded-[2rem] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)]' }
+            customClass: { 
+                popup: 'rounded-xl bg-white border border-neutral-200/80 p-6 font-sans shadow-[0_4px_20px_rgba(0,0,0,0.03)]',
+                title: 'text-base font-semibold text-neutral-900 tracking-tight',
+                htmlContainer: 'text-xs text-neutral-400 font-medium',
+                confirmButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white transition-all',
+                cancelButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all'
+            }
         })
 
         if (!confirm.isConfirmed) return
@@ -175,36 +223,49 @@ export default function SuperAdminPage() {
         const { error } = await supabase.from('stores').delete().eq('id', store.id)
 
         if (error) {
-            Swal.fire({ title: 'Error', text: 'Debes borrar primero los productos de esta tienda.', icon: 'error', customClass: { popup: 'rounded-[2rem]' }})
+            Swal.fire({ title: 'Aviso', text: 'Por seguridad, remueva los productos asociados antes de eliminar la tienda.', icon: 'info', customClass: { popup: 'rounded-xl font-sans text-xs' }})
         } else {
-            Swal.fire({ icon: 'success', title: 'Destruida', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.05)]' } })
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Eliminado', 
+                toast: true, 
+                position: 'top-end', 
+                showConfirmButton: false, 
+                timer: 1500, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-lg text-xs font-medium border border-neutral-800 shadow-[0_4px_15px_rgba(0,0,0,0.05)]' } 
+            })
             fetchStores()
         }
     }
 
     const impersonateStore = async (store: any) => {
         const confirm = await Swal.fire({
-            title: `¿Infiltrarse en ${store.name}?`,
-            text: "Se generará un ticket criptográfico de sesión para esta tienda.",
-            icon: 'warning',
+            title: `Sesión de Soporte: ${store.name}`,
+            text: "Se generará un ticket criptográfico temporal de acceso administrativo.",
+            icon: 'info',
             showCancelButton: true,
-            confirmButtonText: 'Generar Acceso',
-            confirmButtonColor: '#000',
+            confirmButtonText: 'Generar Enlace',
+            confirmButtonColor: '#171717',
             cancelButtonText: 'Cancelar',
-            customClass: { popup: 'rounded-[2rem] bg-white/90 backdrop-blur-xl border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)]' }
+            customClass: { 
+                popup: 'rounded-xl bg-white border border-neutral-200/80 p-6 font-sans shadow-[0_4px_20px_rgba(0,0,0,0.03)]',
+                title: 'text-base font-semibold text-neutral-900 tracking-tight',
+                htmlContainer: 'text-xs text-neutral-400 font-medium',
+                confirmButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white transition-all',
+                cancelButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all'
+            }
         })
 
         if (!confirm.isConfirmed) return
 
         Swal.fire({
-            title: 'Forzando cerradura...',
+            title: 'Validando ticket...',
             allowOutsideClick: false,
-            customClass: { popup: 'rounded-[2rem] bg-white/90 backdrop-blur-xl border border-gray-100' },
+            customClass: { popup: 'rounded-xl bg-white border border-neutral-200 p-6 font-sans' },
             didOpen: () => Swal.showLoading()
         })
 
         try {
-            // 1. OBTENEMOS EL LINK DESDE LA API
             const res = await fetch('/api/admin/impersonate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -215,28 +276,29 @@ export default function SuperAdminPage() {
 
             if (!res.ok) throw new Error(data.error)
 
-            // 2. MOSTRAMOS EL ENLACE PARA INCÓGNITO Y LA OPCIÓN DE ENTRAR DIRECTO
             Swal.fire({
-                title: 'Acceso Generado',
-                icon: 'success',
+                title: 'Llave de Acceso Generada',
                 html: `
                     <div class="text-left mt-2">
-                        <p class="text-sm text-gray-500 mb-5 font-medium leading-relaxed">
-                            <b>Advertencia:</b> Si abres este enlace aquí, tu sesión actual de God Mode se cerrará.
+                        <p class="text-xs text-neutral-400 mb-4 leading-relaxed font-sans">
+                            La sesión actual de administración finalizará si utiliza el acceso directo en este navegador.
                         </p>
-                        <button id="direct-access-btn" class="w-full bg-black text-white px-5 py-4 rounded-2xl text-xs font-bold block text-center mb-4 hover:bg-gray-900 active:scale-95 transition-all shadow-[0_8px_20px_-8px_rgba(0,0,0,0.3)]">
-                            Entrar Directamente
+                        <button id="direct-access-btn" class="w-full bg-neutral-900 text-white px-4 py-2.5 rounded-lg text-xs font-semibold block text-center mb-4 hover:bg-neutral-800 transition-all shadow-sm">
+                            Iniciar sesión directa
                         </button>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 pl-1">Enlace para Incógnito (Recomendado):</p>
+                        <p class="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 font-mono">Enlace para incógnito:</p>
                         <input type="text" id="magic-link-input" value="${data.url}" readonly 
-                            class="w-full p-4 border border-gray-100 rounded-2xl text-xs font-medium bg-gray-50/50 text-gray-600 focus:outline-none focus:ring-2 focus:ring-black/5 cursor-pointer transition-all" 
+                            class="w-full p-2.5 border border-neutral-200 rounded-lg text-xs font-mono bg-neutral-50 text-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-400 cursor-pointer transition-all" 
                         />
                     </div>
                 `,
                 showConfirmButton: false,
                 showCancelButton: true,
-                cancelButtonText: 'Cerrar',
-                customClass: { popup: 'rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-gray-100 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.1)]' },
+                cancelButtonText: 'Cerrar ventana',
+                customClass: { 
+                    popup: 'rounded-xl bg-white border border-neutral-200 p-6 font-sans shadow-sm',
+                    cancelButton: 'rounded-lg text-xs font-semibold px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all w-full mt-2'
+                },
                 didOpen: () => {
                     const input = document.getElementById('magic-link-input') as HTMLInputElement;
                     const directBtn = document.getElementById('direct-access-btn') as HTMLButtonElement;
@@ -245,18 +307,17 @@ export default function SuperAdminPage() {
                         input.addEventListener('click', () => {
                             input.select();
                             navigator.clipboard.writeText(input.value).then(() => {
-                                Swal.showValidationMessage('¡Enlace copiado al portapapeles!');
+                                Swal.showValidationMessage('Copiado al portapapeles');
                             }).catch(() => {
-                                Swal.showValidationMessage('Error al copiar el enlace.');
+                                Swal.showValidationMessage('No se pudo copiar.');
                             });
                         });
                     }
 
                     if (directBtn) {
                         directBtn.addEventListener('click', async () => {
-                            directBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Abriendo brecha...</span>';
+                            directBtn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redirigiendo...</span>';
                             directBtn.disabled = true;
-                            // 3. CERRAR SESIÓN DE ADMIN ANTES DE REDIRIGIR PARA EVITAR COLISIÓN
                             await supabase.auth.signOut();
                             window.location.href = data.url;
                         });
@@ -264,23 +325,17 @@ export default function SuperAdminPage() {
                 }
             })
         } catch (error: any) {
-            Swal.fire({ title: 'Error de Acceso', text: error.message, icon: 'error', customClass: { popup: 'rounded-[2rem]' } })
+            Swal.fire({ title: 'Error de Acceso', text: error.message, icon: 'error', customClass: { popup: 'rounded-xl font-sans' } })
         }
     }
 
-    // --- KPIs FINANCIEROS (Conectados a la Fuente de la Verdad) ---
     const kpis = useMemo(() => {
         const now = new Date()
-        
-        // Filtramos usando EXACTAMENTE la misma regla blindada de la tabla
         const active = stores.filter(store => {
             const targetDateString = store.subscription_ends_at || store.trial_ends_at;
             const endsAt = targetDateString ? new Date(targetDateString) : new Date();
-            
-            // Es expirada si el tiempo ya pasó O si su estatus oficial es 'expired'
             const isExpired = endsAt < now || store.subscription_status === 'expired';
-            
-            return !isExpired; // Si no ha expirado, la contamos como activa para el MRR
+            return !isExpired;
         }).length;
 
         const expired = stores.length - active;
@@ -289,179 +344,384 @@ export default function SuperAdminPage() {
             total: stores.length,
             active,
             expired,
-            // Cálculo dinámico de MRR basado en tu configuración ($18.99)
             mrr: (active * PREZISO_BILLING.priceUSD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         }
     }, [stores])
 
     const filteredStores = stores.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.slug.toLowerCase().includes(search.toLowerCase()))
 
-    // Pantalla en blanco de seguridad mientras verifica
-    if (!isAuthorized) return <div className="min-h-screen bg-[#FDFDFD]" />
+    const toggleMobileStore = (id: string) => {
+        setExpandedStoreId(prev => prev === id ? null : id)
+    }
+
+    if (!isAuthorized) return <div className="min-h-screen bg-[#FBFBFC]" />
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-[#FDFDFD] font-sans text-gray-900 pb-24 selection:bg-black selection:text-white">
-
-            {/* EFECTOS LIQUID TITANIUM / BACKGROUND GLOWS DISCRETOS */}
-            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-gray-200/40 rounded-full blur-[120px] pointer-events-none -z-10 mix-blend-multiply" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-gray-100/60 rounded-full blur-[140px] pointer-events-none -z-10" />
-
-            {/* HEADER ULTRA CLEAN */}
-            <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-2xl border-b border-white/80 px-6 py-5 flex justify-between items-center shadow-[0_4px_30px_-10px_rgba(0,0,0,0.02)]">
-                <div className="flex items-center gap-4">
-                    <div className="bg-gradient-to-b from-gray-50 to-gray-100 p-2.5 rounded-[1rem] border border-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_10px_-2px_rgba(0,0,0,0.03)]">
-                        <ShieldAlert size={20} className="text-gray-800" strokeWidth={1.5} />
+        <div className="min-h-screen bg-[#FBFBFC] font-sans text-neutral-900 antialiased selection:bg-neutral-950 selection:text-white">
+            
+            {/* STICKY CLEAN HEADER */}
+            <header className="sticky top-0 z-40 bg-[#FBFBFC]/95 backdrop-blur-sm border-b border-neutral-200/40 px-4 md:px-8 py-3.5">
+                <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-md bg-neutral-950 flex items-center justify-center text-white">
+                            <ShieldAlert size={14} strokeWidth={2} />
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <h1 className="text-xs font-semibold tracking-tight text-neutral-900">Consola Central</h1>
+                            <span className="text-[10px] font-mono text-neutral-400">v3.4.1</span>
+                        </div>
                     </div>
+
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black tracking-tighter text-gray-900 leading-none">God Mode</h1>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Nervio Central</p>
+                        <Link 
+                            href="/admin" 
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 hover:text-neutral-900 border border-neutral-200 bg-white px-2.5 py-1.5 rounded-lg transition-all"
+                        >
+                            <span>Salir del modo dios</span>
+                            <ArrowUpRight size={12} className="text-neutral-400" />
+                        </Link>
                     </div>
                 </div>
-                <Link href="/admin" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-black hover:bg-gray-50 px-4 py-2.5 rounded-full transition-all duration-300">
-                    Volver al Panel
-                </Link>
             </header>
 
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-10 space-y-12">
+            <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-6">
+                
+                {/* GRID DE MÉTRICAS CON COLOR DIFERENCIADOR DE ALTA GAMA */}
+                <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
+                    {/* TOTAL */}
+                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-medium text-neutral-400">Tiendas Registradas</span>
+                            <div className="w-5 h-5 rounded bg-neutral-50 border border-neutral-100 flex items-center justify-center text-neutral-500">
+                                <Store size={12} />
+                            </div>
+                        </div>
+                        <span className="text-xl md:text-2xl font-semibold tracking-tight text-neutral-900 font-mono tabular-nums">{kpis.total}</span>
+                    </div>
 
-                {/* KPI DASHBOARD (Liquid Cards) */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-2"><Store size={14} strokeWidth={1.5} /> Total Tiendas</p>
-                        <p className="text-4xl font-black tabular-nums tracking-tighter text-gray-900">{kpis.total}</p>
+                    {/* SAGE GREEN (ACTIVE) */}
+                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-medium text-neutral-400">Licencias Activas</span>
+                            <div className="w-5 h-5 rounded bg-emerald-50 border border-emerald-100/60 flex items-center justify-center text-emerald-700">
+                                <CheckCircle2 size={12} />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline justify-between">
+                            <span className="text-xl md:text-2xl font-semibold tracking-tight text-emerald-800 font-mono tabular-nums">{kpis.active}</span>
+                            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/40 font-mono">
+                                {kpis.total > 0 ? `${Math.round((kpis.active / kpis.total) * 100)}%` : '0%'}
+                            </span>
+                        </div>
                     </div>
-                    <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]">
-                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mb-2.5 flex items-center gap-2"><Zap size={14} strokeWidth={1.5} /> Activas</p>
-                        <p className="text-4xl font-black tabular-nums tracking-tighter text-gray-900">{kpis.active}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]">
-                        <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-2.5 flex items-center gap-2"><Ban size={14} strokeWidth={1.5} /> Vencidas</p>
-                        <p className="text-4xl font-black tabular-nums tracking-tighter text-gray-900">{kpis.expired}</p>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]">
-                        <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest mb-2.5 flex items-center gap-2"><TrendingUp size={14} strokeWidth={1.5} /> MRR</p>
-                        <p className="text-4xl font-black tabular-nums tracking-tighter text-gray-900">${kpis.mrr}</p>
-                    </div>
-                </div>
 
-                {/* CONTROLES DE BÚSQUEDA */}
-                <div className="relative group max-w-2xl mx-auto">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-black transition-colors duration-300" size={18} strokeWidth={2} />
+                    {/* DUSTY ROSE (SUSPENDED) */}
+                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-medium text-neutral-400">Licencias Suspendidas</span>
+                            <div className="w-5 h-5 rounded bg-rose-50 border border-rose-100/60 flex items-center justify-center text-rose-700">
+                                <AlertCircle size={12} />
+                            </div>
+                        </div>
+                        <span className="text-xl md:text-2xl font-semibold tracking-tight text-rose-800 font-mono tabular-nums">{kpis.expired}</span>
+                    </div>
+
+                    {/* SLATE BLUE (MRR) */}
+                    <div className="bg-white p-4 rounded-xl border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-medium text-neutral-400">Ingresos Estimados (MRR)</span>
+                            <div className="w-5 h-5 rounded bg-blue-50 border border-blue-100/60 flex items-center justify-center text-blue-700">
+                                <DollarSign size={12} />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline justify-between">
+                            <span className="text-xl md:text-2xl font-semibold tracking-tight text-blue-900 font-mono tabular-nums">${kpis.mrr}</span>
+                            <span className="text-[9px] text-neutral-400 uppercase font-mono">USD</span>
+                        </div>
+                    </div>
+                </section>
+
+                {/* SEARCH INPUT */}
+                <section className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={14} />
                     <input
+                        type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar por tienda, ID o slug..."
-                        className="w-full bg-white/70 backdrop-blur-xl border border-white shadow-[0_15px_35px_-10px_rgba(0,0,0,0.03)] focus:shadow-[0_20px_45px_-10px_rgba(0,0,0,0.06)] rounded-[2rem] pl-14 pr-6 py-5 text-sm font-semibold focus:border-white outline-none transition-all duration-500 placeholder:text-gray-400 placeholder:font-medium"
+                        className="w-full bg-white border border-neutral-200 rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-all"
                     />
-                </div>
+                    <Command size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-300" />
+                </section>
 
-                {/* LISTA DE TIENDAS - STRUCTURAL LIST */}
-                <div className="bg-white/70 backdrop-blur-3xl rounded-[2rem] border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.03)] overflow-hidden">
+                {/* STORES LISTINGS */}
+                <section className="bg-white rounded-xl border border-neutral-200/50 overflow-hidden">
                     {loading ? (
-                        <div className="p-32 flex justify-center"><Loader2 className="animate-spin text-gray-200" size={32} /></div>
+                        <div className="py-20 flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="animate-spin text-neutral-300" size={20} />
+                            <p className="text-[11px] text-neutral-400 font-medium">Sincronizando información...</p>
+                        </div>
+                    ) : filteredStores.length === 0 ? (
+                        <div className="py-16 text-center space-y-1">
+                            <p className="text-xs font-medium text-neutral-600">No se encontraron resultados</p>
+                            <p className="text-[11px] text-neutral-400">Modifique los términos de búsqueda.</p>
+                        </div>
                     ) : (
-                        <div className="overflow-x-auto w-full no-scrollbar">
-                            <table className="w-full text-left text-sm whitespace-nowrap">
-                                <thead className="bg-transparent border-b border-gray-100 text-[9px] uppercase tracking-[0.2em] text-gray-400 font-bold">
-                                    <tr>
-                                        <th className="px-8 py-6 font-bold">Entidad</th>
-                                        <th className="px-8 py-6 font-bold">Diagnóstico</th>
-                                        <th className="px-8 py-6 text-right font-bold">Terminal de Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100/50">
-                                    {filteredStores.map(store => {
-                                        const targetDateString = store.subscription_ends_at || store.trial_ends_at;
-                                        const endsAt = targetDateString ? new Date(targetDateString) : new Date();
-                                        const now = new Date();
-                                        const isExpired = endsAt < now || store.subscription_status === 'expired';
-                                        
-                                        // Días restantes o vencidos
-                                        const diffDays = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                        <>
+                            {/* TABLE VIEW (DESKTOP) */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-neutral-100 bg-neutral-50/40 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                            <th className="py-3 px-6">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <Store size={11} className="text-neutral-400" />
+                                                    Entidad
+                                                </span>
+                                            </th>
+                                            <th className="py-3 px-6">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <Activity size={11} className="text-neutral-400" />
+                                                    Estado del Sistema
+                                                </span>
+                                            </th>
+                                            <th className="py-3 px-6 text-right">
+                                                <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                                                    <Command size={11} className="text-neutral-400" />
+                                                    Controles
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-neutral-100 text-xs">
+                                        {filteredStores.map(store => {
+                                            const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+                                            const endsAt = targetDateString ? new Date(targetDateString) : new Date();
+                                            const now = new Date();
+                                            const isExpired = endsAt < now || store.subscription_status === 'expired';
+                                            const diffDays = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-                                        return (
-                                            <tr key={store.id} className="hover:bg-white/60 transition-colors duration-300 group">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-gray-50 to-gray-100 border border-white shadow-[inset_0_1px_0_rgba(255,255,255,1),0_2px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden flex items-center justify-center shrink-0">
-                                                            {store.logo_url ? (
-                                                                <Image
-                                                                    src={getOptimizedUrl(store.logo_url)}
-                                                                    alt={`Logo ${store.name}`}
-                                                                    width={48}
-                                                                    height={48}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            ) : (
-                                                                <Store size={20} className="text-gray-300" strokeWidth={1.5} />
-                                                            )}
+                                            return (
+                                                <tr key={store.id} className="hover:bg-neutral-50/20 transition-colors">
+                                                    
+                                                    {/* STORE LOGO & NAMES */}
+                                                    <td className="py-3.5 px-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-md bg-neutral-50 border border-neutral-100 overflow-hidden flex items-center justify-center shrink-0">
+                                                                {store.logo_url ? (
+                                                                    <Image
+                                                                        src={getOptimizedUrl(store.logo_url)}
+                                                                        alt={store.name}
+                                                                        width={32}
+                                                                        height={32}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <Store size={14} className="text-neutral-400" />
+                                                                )}
+                                                            </div>
+                                                          
+                                                            <div className="space-y-0.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-semibold text-neutral-900 tracking-tight">{store.name}</span>
+                                                                    {store.referrerName && (
+                                                                        <span className="inline-flex items-center gap-1 bg-indigo-50/50 text-indigo-700 text-[10px] px-1.5 py-0.5 rounded border border-indigo-100/40">
+                                                                            <Users size={10} />
+                                                                            Vía: {store.referrerName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <Link 
+                                                                    href={`/${store.slug}`} 
+                                                                    target="_blank" 
+                                                                    className="inline-flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-900 transition-colors"
+                                                                >
+                                                                    <Globe size={10} className="opacity-60" />
+                                                                    preziso.shop/{store.slug}
+                                                                    <ExternalLink size={9} className="opacity-50" />
+                                                                </Link>
+                                                            </div>
                                                         </div>
-                                                      
-                                                        <div>
-                                                            <p className="font-black text-gray-900 tracking-tight">{store.name}</p>
-                                                            {/* 🚀 ETIQUETA REQ #4: INDICA SI VIENE DE UN AFILIADO */}
-                                                            {store.referrerName && (
-                                                                <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider mt-1">
-                                                                    Referida por: {store.referrerName}
+                                                    </td>
+
+                                                    {/* STATUS & EXPIRY */}
+                                                    <td className="py-3.5 px-6">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                                                <span className={`font-semibold text-[11px] ${isExpired ? 'text-rose-700 bg-rose-50/60 border border-rose-100/40 px-1.5 py-0.5 rounded' : 'text-emerald-700 bg-emerald-50/60 border border-emerald-100/40 px-1.5 py-0.5 rounded'}`}>
+                                                                    {isExpired ? 'Suspendida' : `Activa (${diffDays}d)`}
                                                                 </span>
-                                                            )}
-                                                            <Link href={`/${store.slug}`} target="_blank" className="text-[10px] font-bold text-gray-400 hover:text-black flex items-center gap-1.5 mt-1 transition-colors">
-                                                                preziso.shop/{store.slug} <ExternalLink size={10} />
+                                                            </div>
+                                                            <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                                                <Clock size={10} />
+                                                                <span>Corte: {endsAt.toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* ACTIONS */}
+                                                    <td className="py-3.5 px-6 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                onClick={() => addCustomDays(store)}
+                                                                className="bg-neutral-900 hover:bg-neutral-800 text-white px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1"
+                                                            >
+                                                                <Clock size={11} />
+                                                                Renovar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => impersonateStore(store)}
+                                                                className="bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1"
+                                                            >
+                                                                <Eye size={11} />
+                                                                Infiltrarse
+                                                            </button>
+                                                            <button
+                                                                onClick={() => pauseStore(store)}
+                                                                className="bg-white border border-neutral-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 text-neutral-500 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1"
+                                                            >
+                                                                <Lock size={11} />
+                                                                Pausar
+                                                            </button>
+                                                            <div className="w-px h-4 bg-neutral-200 mx-1" />
+                                                            <button
+                                                                onClick={() => deleteStore(store)}
+                                                                className="p-1.5 text-neutral-400 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* MOBILE ACCORDION (COMPACT & SPACE-EFFICIENT UX) */}
+                            <div className="block md:hidden divide-y divide-neutral-100">
+                                {filteredStores.map(store => {
+                                    const targetDateString = store.subscription_ends_at || store.trial_ends_at;
+                                    const endsAt = targetDateString ? new Date(targetDateString) : new Date();
+                                    const now = new Date();
+                                    const isExpired = endsAt < now || store.subscription_status === 'expired';
+                                    const diffDays = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                    const isExpanded = expandedStoreId === store.id;
+
+                                    return (
+                                        <div key={store.id} className="transition-all">
+                                            
+                                            {/* HEADER FILA (Solo 56px de alto, muy ordenado) */}
+                                            <div 
+                                                onClick={() => toggleMobileStore(store.id)}
+                                                className="h-14 px-4 flex items-center justify-between cursor-pointer active:bg-neutral-50 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="w-7 h-7 rounded-md bg-neutral-50 border border-neutral-100 overflow-hidden flex items-center justify-center shrink-0">
+                                                        {store.logo_url ? (
+                                                            <Image
+                                                                src={getOptimizedUrl(store.logo_url)}
+                                                                alt=""
+                                                                width={28}
+                                                                height={28}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <Store size={12} className="text-neutral-400" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-neutral-900 text-xs truncate leading-tight">{store.name}</p>
+                                                        <p className="text-[10px] text-neutral-400 font-mono truncate leading-tight">/{store.slug}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                                    {isExpanded ? (
+                                                        <ChevronUp size={14} className="text-neutral-400" />
+                                                    ) : (
+                                                        <ChevronDown size={14} className="text-neutral-400" />
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* SECCIÓN DESPLEGABLE */}
+                                            {isExpanded && (
+                                                <div className="bg-neutral-50/40 px-4 pb-4 pt-2.5 space-y-3 border-t border-neutral-100">
+                                                    <div className="space-y-1.5 text-[11px] text-neutral-500 font-medium">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="flex items-center gap-1"><Activity size={11} /> Estado:</span>
+                                                            <span className={`font-semibold ${isExpired ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                                {isExpired ? 'Suspendida' : `Activa (${diffDays} días)`}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="flex items-center gap-1"><Clock size={11} /> Corte:</span>
+                                                            <span className="font-mono text-neutral-700">{endsAt.toLocaleDateString()}</span>
+                                                        </div>
+                                                        {store.referrerName && (
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="flex items-center gap-1"><Users size={11} /> Afiliado:</span>
+                                                                <span className="bg-indigo-50 text-indigo-700 border border-indigo-100/40 px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                                                                    {store.referrerName}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <div className="pt-1 flex items-center gap-1.5">
+                                                            <CornerDownRight size={10} className="text-neutral-400" />
+                                                            <Link 
+                                                                href={`/${store.slug}`} 
+                                                                target="_blank" 
+                                                                className="text-neutral-400 hover:text-neutral-900 underline transition-colors flex items-center gap-1"
+                                                            >
+                                                                <Globe size={11} /> Ver tienda <ExternalLink size={9} />
                                                             </Link>
                                                         </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex flex-col gap-2 items-start">
-                                                        {isExpired ? (
-                                                            <span className=" border border-red-100 text-red-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 "><Ban size={10} strokeWidth={2.5} /> Pausada</span>
-                                                        ) : (
-                                                            <span className=" border border-emerald-100 text-emerald-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 "><Zap size={10} strokeWidth={2.5} /> Activa ({diffDays}d)</span>
-                                                        )}
-                                                        <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1.5 uppercase tracking-widest"><Clock size={10} /> {endsAt.toLocaleDateString()}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2.5">
+
+                                                    {/* BOTONERA MÓVIL */}
+                                                    <div className="grid grid-cols-4 gap-1.5 pt-1">
                                                         <button
                                                             onClick={() => addCustomDays(store)}
-                                                            className="bg-black text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96] hover:bg-gray-900 hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.3)]"
+                                                            className="bg-neutral-900 text-white text-[11px] font-medium py-2 rounded-md hover:bg-neutral-800 transition-colors flex flex-col items-center justify-center gap-0.5"
                                                         >
-                                                            <Edit3 size={14} /> Renovar
-                                                        </button>
-                                                        <button
-                                                            onClick={() => pauseStore(store)}
-                                                            className="bg-gradient-to-b from-white to-gray-50 border border-gray-100 text-gray-500 hover:text-red-500 hover:border-red-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96] hover:shadow-[0_4px_15px_-4px_rgba(255,0,0,0.1)]"
-                                                            title="Bloquear Tienda"
-                                                        >
-                                                            Bloquear
+                                                            <Clock size={12} />
+                                                            <span>Renovar</span>
                                                         </button>
                                                         <button
                                                             onClick={() => impersonateStore(store)}
-                                                            className="bg-gradient-to-b from-white to-gray-50 border border-gray-100 text-gray-500 hover:text-blue-600 hover:border-blue-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.96] hover:shadow-[0_4px_15px_-4px_rgba(0,0,255,0.05)]"
-                                                            title="Iniciar sesión como este usuario"
+                                                            className="bg-white border border-neutral-200 text-neutral-700 text-[11px] font-medium py-2 rounded-md hover:bg-neutral-50 transition-colors flex flex-col items-center justify-center gap-0.5"
                                                         >
-                                                            Infiltrarse
+                                                            <Eye size={12} />
+                                                            <span>Infiltrar</span>
                                                         </button>
-                                                        <div className="w-px h-6 bg-gray-100 mx-1"></div>
+                                                        <button
+                                                            onClick={() => pauseStore(store)}
+                                                            className="bg-white border border-neutral-200 text-rose-600 text-[11px] font-medium py-2 rounded-md hover:bg-rose-50 transition-colors flex flex-col items-center justify-center gap-0.5"
+                                                        >
+                                                            <Lock size={12} />
+                                                            <span>Pausar</span>
+                                                        </button>
                                                         <button
                                                             onClick={() => deleteStore(store)}
-                                                            className="p-2.5 text-gray-300 hover:text-red-500 transition-all duration-300 rounded-xl hover:bg-red-50 active:scale-95"
-                                                            title="Eliminar Base de Datos"
+                                                            className="bg-white border border-rose-100 text-neutral-400 hover:text-rose-700 py-2 rounded-md flex items-center justify-center transition-colors hover:bg-rose-50/50"
                                                         >
-                                                            <Trash2 size={16} strokeWidth={2} />
+                                                            <Trash2 size={13} />
                                                         </button>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </>
                     )}
-                </div>
-            </div>
+                </section>
+            </main>
         </div>
     )
 }
