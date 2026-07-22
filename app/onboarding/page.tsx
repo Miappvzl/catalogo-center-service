@@ -52,22 +52,24 @@ export default function OnboardingWizard() {
 
  
 
- // --- GUARDADO MAESTRO (VERSIÓN LIMPIA) ---
-    // --- GUARDADO MAESTRO (VERSIÓN LIMPIA) ---
+// --- GUARDADO MAESTRO (VERSIÓN BLINDADA) ---
   const handleFinalize = async () => {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No se encontró sesión de usuario. Por favor, inicia sesión de nuevo.")
 
-      // 1. UPSERT DE LA TIENDA
+      // 1. UPSERT DE LA TIENDA (Con términos aceptados por defecto)
       const { error: storeErr } = await supabase.from('stores').upsert({
         user_id: user.id,
         name: storeName,
         slug: slug,
         phone: phone,
         currency_type: currency,
-        subscription_status: 'trial'
+        subscription_status: 'trial',
+        // 🚀 FIX CRÍTICO: Previene el bloqueo del FiscalGatekeeper en el primer login
+        terms_accepted: true,
+        fiscal_profile: 'informal'
       }, { onConflict: 'user_id' })
 
       if (storeErr) {
@@ -75,15 +77,15 @@ export default function OnboardingWizard() {
         throw storeErr
       }
 
-        // 🚀 INYECCIÓN: Procesamos el referido en segundo plano si existe la cookie
+      // 🚀 Procesamos el referido en segundo plano si existe la cookie
       await processReferral(user.id).catch(console.error)
+
       // 2. ÉXITO Y REDIRECCIÓN
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#000', '#22c55e'] })
-
       
       setTimeout(() => {
         router.refresh()
-        router.push('/admin?welcome=true') // 🚀 Bandera para disparar el Modal
+        router.push('/admin?welcome=true') // 🚀 Dispara el Modal de Bienvenida limpio
       }, 1500)
 
     } catch (err: any) {
