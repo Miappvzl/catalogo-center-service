@@ -26,6 +26,7 @@ import TopPerformers from "@/components/admin/TopPerformers";
 
 
 import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
+import WelcomeModal from "@/components/admin/WelcomeModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -562,8 +563,14 @@ export default async function AdminDashboard() {
                         </div>
                     </div>
                 </div>
+     
+
             </main>
-{/* Inyección del Modal One-Time */}
+
+            {/* 🚀 INYECCIÓN DEL MODAL DE BIENVENIDA */}
+            <WelcomeModal storeName={store.name} />
+
+            {/* Modal de Lanzamiento de Afiliados */}
             <AffiliateLaunchModal />
         </div>
     );
