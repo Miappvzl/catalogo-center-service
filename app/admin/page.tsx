@@ -21,6 +21,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AnalyticsChart from "@/components/admin/AnalyticsChart";
 
 import TopPerformers from "@/components/admin/TopPerformers";
+import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrapper"; // <-- NUEVA IMPORTACIÓN
 
 
 
@@ -399,57 +400,12 @@ export default async function AdminDashboard() {
                         </div>
                     </Link>
 
-                    {/* 4. ALERTAS DE INVENTARIO */}
-                    <Link
-                        href="/admin/inventory"
-                        className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out active:scale-[0.98] active:bg-[#fafafa] hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[160px]"
-                    >
-                        <div className="flex justify-between items-start relative z-10">
-                            {/* Habitáculo Matemático y Polaridad Condicional */}
-                            <div
-                                className={`w-11 h-11 rounded-[var(--radius-btn)] flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${lowStockCount > 0
-                                        ? "bg-red-50/50 text-red-800 group-hover:bg-[#450a0a] group-hover:text-white" // Rojo editorial hiper-oscuro en hover
-                                        : "bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white"
-                                    }`}
-                            >
-                                {lowStockCount > 0 ? (
-                                    <AlertTriangle
-                                        size={18}
-                                        strokeWidth={2.2}
-                                        className="group-hover:scale-110 transition-transform duration-500 ease-out"
-                                    />
-                                ) : (
-                                    <Box
-                                        size={18}
-                                        strokeWidth={2.2}
-                                        className="group-hover:scale-110 transition-transform duration-500 ease-out"
-                                    />
-                                )}
-                            </div>
-
-                            {/* Status Dot Semántico: Comunica urgencia sin saturar la pantalla */}
-                            {lowStockCount > 0 && (
-                                <div className="flex items-center gap-1.5 bg-[#fef2f2]  px-2.5 py-1 rounded-[var(--radius-badge)]">
-                                    <span className="w-1 h-1 rounded-full bg-red-600 shadow-[0_0_4px_rgba(220,38,38,0.5)] animate-pulse"></span>
-                                    <span className="text-[9px] font-bold text-red-800 uppercase tracking-widest mt-[1px]">
-                                        Atención
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="relative z-10 mt-2">
-                            {/* Jerarquía intacta: El número principal se mantiene anclado a la paleta Titanium */}
-                            <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
-                                {lowStockCount > 0 ? lowStockCount : totalProducts}
-                            </p>
-
-                            {/* Etiqueta dinámica con micro-interacción de foco */}
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2.5 group-hover:text-gray-900 transition-colors duration-500 ease-out">
-                                {lowStockCount > 0 ? "Stock Crítico" : "Productos Activos"}
-                            </p>
-                        </div>
-                    </Link>
+                  {/* 4. ALERTAS DE INVENTARIO (INTELIGENTES) */}
+                    <CriticalStockCardWrapper
+                        lowStockCount={lowStockCount}
+                        totalProducts={totalProducts}
+                        storeId={store.id}
+                    />
 
                     {/* --- FILA 2: GRÁFICO GIGANTE --- */}
 
