@@ -50,7 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Pasamos la tienda y el estado de expiración a la navegación */}
      <AdminNavigation store={store} />
       
-      <div className="flex-1 lg:pl-[80px] relative z-10 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 lg:pl-[70px] relative z-10 flex flex-col h-screen overflow-hidden">
         
        
 
