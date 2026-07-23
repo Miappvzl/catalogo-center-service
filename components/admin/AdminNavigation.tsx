@@ -585,7 +585,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
                 {isActive && (
                   <motion.div
                     layoutId="mobile-nav-indicator"
-                    className="absolute inset-0 bg-neutral-100 border border-neutral-200/50 rounded-full -z-10"
+                    className="absolute inset-0 bg-[#f0f0f0]  rounded-full -z-10"
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
@@ -593,7 +593,7 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
                   <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
               </div>
-              <span className="text-[9px] font-bold tracking-wide uppercase">
+              <span className="text-[9px] font-bold tracking-wide">
                 {link.name}
               </span>
             </GuardedLink>
