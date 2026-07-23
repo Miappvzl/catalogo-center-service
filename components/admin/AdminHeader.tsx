@@ -21,7 +21,15 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
     const file = e.target.files[0]
-    if (file.size > 2 * 1024 * 1024) return Swal.fire('Error', 'Máximo 2MB', 'warning')
+    if (file.size > 2 * 1024 * 1024) {
+        return Swal.fire({
+            title: 'Archivo muy pesado', 
+            text: 'El logotipo no debe superar los 2MB.', 
+            icon: 'warning',
+            confirmButtonColor: '#171717',
+            customClass: { popup: 'rounded-xl font-sans text-xs' }
+        })
+    }
 
     setUploading(true)
     try {
@@ -37,22 +45,32 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
       router.refresh()
 
       Swal.fire({
-        icon: 'success', title: 'Logo Actualizado', toast: true, position: 'top-end',
-        showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl' }
+        icon: 'success', 
+        title: 'Logotipo actualizado', 
+        toast: true, 
+        position: 'top-end',
+        showConfirmButton: false, 
+        timer: 2000, 
+        customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
       })
     } catch (error) {
-      Swal.fire('Error', 'No se pudo subir', 'error')
+      Swal.fire({
+          title: 'Error', 
+          text: 'No se pudo subir el archivo.', 
+          icon: 'error',
+          confirmButtonColor: '#171717',
+          customClass: { popup: 'rounded-xl font-sans text-xs' }
+      })
     } finally {
       setUploading(false)
     }
   }
 
-  // 🚀 AQUI VAN LOS HOOKS DEL SMART HEADER (ANTES DEL IF)
   // 1. Estados del Smart Header
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const lastScrollY = useRef(0);
-  const [userEmail, setUserEmail] = useState<string>(''); // 🚀 NUEVO ESTADO
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -65,7 +83,6 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
   // Lógica de identidad global
   const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR';
   const isTrial = store?.subscription_status === 'trial';
-
 
   // 2. Motor de Scroll
   useEffect(() => {
@@ -92,119 +109,113 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
     <>
       {store && <SubscriptionBanner store={store} />}
 
-      {/* 🚀 HEADER BLINDADO (Sin bordes, shadow ultra-suave y blur agresivo) */}
-      <header className={`bg-white/70 backdrop-blur-2xl sticky top-0 z-40 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform shadow-[0_10px_40px_rgba(0,0,0,0.02)] ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+      {/* HEADER BLINDADO (Cleanlook: border sutil y fondo translúcido) */}
+      <header className={`bg-white/85 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 py-2 md:py-2 flex justify-between items-center transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform border-b border-neutral-200/50 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         
        {/* TITULO DE PÁGINA O PORTAL DE TIENDA */}
         <div>
           {title ? (
-            /* 🚀 MODO SECCIÓN: Título estático inerte para pantallas como "Configuración" */
+            /* MODO SECCIÓN: Título estático */
             <div className="flex items-center gap-2.5">
-              <span className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900">
+              <span className="text-lg md:text-xl font-bold tracking-tight text-neutral-900">
                 {title}
               </span>
             </div>
           ) : (
-            /* 🚀 MODO DASHBOARD: Portal interactivo hacia el Storefront público */
-            <a href={`/${store.slug}`} target="_blank" className="group flex items-center gap-2.5 outline-none active:scale-95 transition-transform origin-left" title="Ver mi tienda">
-              <span className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900 group-hover:text-zinc-600 transition-colors">
+            /* MODO DASHBOARD: Portal interactivo hacia el Storefront público */
+            <a href={`/${store.slug}`} target="_blank" className="group flex items-center gap-2.5 outline-none active:scale-[0.98] transition-all origin-left" title="Ver catálogo público">
+              <span className="text-lg md:text-xl font-bold tracking-tight text-neutral-900 group-hover:text-neutral-600 transition-colors">
                 {store?.name || 'Cargando...'}
               </span>
-              <div className="w-6 h-6 rounded-full bg-zinc-100/80 flex items-center justify-center group-hover:bg-zinc-200 group-hover:scale-110 transition-all duration-300">
-                <ArrowUpRight size={13} className="text-zinc-500 group-hover:text-zinc-900" strokeWidth={2.5} />
+              <div className="w-6 h-6 rounded-md bg-neutral-50 border border-neutral-200/50 flex items-center justify-center group-hover:bg-white group-hover:border-neutral-300 transition-all duration-200 shadow-xs">
+                <ArrowUpRight size={13} className="text-neutral-400 group-hover:text-neutral-900" strokeWidth={2.5} />
               </div>
             </a>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
 
           {/* CENTRO DE NOTIFICACIONES */}
           {store?.id && <NotificationBell storeId={store.id} />}
 
-          
-
-          {/* AVATAR & DROPDOWN (Estética Dark Tech pura) */}
+          {/* AVATAR & DROPDOWN (Estética Cleanlook) */}
           <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="active:scale-95 transition-transform outline-none group"
             >
-             <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full p-[2px] transition-all duration-500 ${!isTrial ? 'bg-gradient-to-tr from-zinc-400 via-zinc-100 to-zinc-300 shadow-sm group-hover:from-zinc-500 group-hover:to-zinc-400' : 'bg-gradient-to-tr from-yellow-400 via-yellow-300 to-yellow-500 shadow-yellow-300/30 group-hover:from-yellow-500 group-hover:to-yellow-400'}`}>
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden shadow-inner">
-                  <span className="text-[11px] font-black text-zinc-900 tracking-widest uppercase">{initials}</span>
-                </div>
+              <div className={`w-10 h-10 rounded-full p-[1.5px] transition-colors duration-200 ${!isTrial ? 'bg-neutral-200/80 group-hover:bg-neutral-300' : 'bg-neutral-950'}`}>
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden border border-neutral-100">
+                <span className="text-xs font-bold text-neutral-800 tracking-tight leading-none">{initials}</span>
+                 </div>
               </div>
             </button>
 
             <AnimatePresence>
               {isProfileOpen && (
                 <>
-                  {/* FONDO PROTECTOR (Zinc oscuro con desenfoque) */}
+                  {/* FONDO PROTECTOR (Descarte) */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed top-0 left-0 w-screen h-screen z-40 bg-zinc-900/10 backdrop-blur-[2px] md:bg-transparent md:backdrop-blur-none"
+                    className="fixed top-0 left-0 w-screen h-screen z-40 bg-neutral-900/10 backdrop-blur-xs md:bg-transparent md:backdrop-blur-none"
                     onClick={() => setIsProfileOpen(false)}
                   />
 
-                  {/* EL MODAL (Cero líneas divisorias, jerarquía por espacios) */}
+                  {/* EL MODAL (Bordes finos, jerarquía limpia) */}
                   <motion.div
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    className="fixed top-[15vh] left-0 right-0 mx-auto h-fit w-[85%] max-w-[300px] md:absolute md:inset-auto md:right-0 md:top-14 md:mx-0 md:w-64 bg-white/95 backdrop-blur-xl rounded-[1.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] py-2 z-50 flex flex-col overflow-hidden ring-1 ring-black/5"
+                    className="fixed top-[12vh] left-4 right-4 mx-auto h-fit max-w-[320px] md:absolute md:inset-auto md:right-0 md:top-14 md:mx-0 md:w-64 bg-white rounded-xl border border-neutral-200/50 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] py-1.5 z-50 flex flex-col overflow-hidden"
                   >
                     {/* HEADER DEL MODAL */}
-                    <div className="px-5 pt-6 pb-4 flex flex-col items-center text-center">
-                      <div className={`w-14 h-14 rounded-full p-[2px] mb-4 ${!isTrial ? 'bg-gradient-to-tr from-zinc-400 via-zinc-100 to-zinc-300 shadow-sm' : 'bg-gradient-to-tr from-yellow-400 via-yellow-300 to-yellow-500 shadow-yellow-300/30'}`}>
-                        <div className="w-full h-full bg-white rounded-full flex items-center justify-center shadow-inner">
-                          <span className="text-sm font-black text-zinc-900 tracking-widest uppercase">{initials}</span>
-                        </div>
+                    <div className="px-5 pt-5 pb-4 flex flex-col items-center text-center border-b border-neutral-100">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center border mb-3 ${isTrial ? 'bg-amber-50 border-amber-200/60 text-amber-700' : 'bg-neutral-50 border-neutral-200/60 text-neutral-600'}`}>
+                        <span className="text-sm font-bold tracking-tight uppercase">{initials}</span>
                       </div>
-                      <p className="text-sm font-black text-zinc-900 tracking-tight leading-none mb-1.5">{store?.name || 'Administrador'}</p>
-                      <p className="text-[10px] font-bold text-zinc-400 tracking-widest mb-6">{userEmail || 'Cargando correo...'}</p>
+                      <p className="text-sm font-bold text-neutral-900 tracking-tight leading-none mb-1.5">{store?.name || 'Administrador'}</p>
+                      <p className="text-[10px] font-medium text-neutral-400 font-mono mb-5">{userEmail || 'Cargando correo...'}</p>
 
                       <button
                         onClick={() => {
                           setIsProfileOpen(false);
                           router.push('/admin/profile');
                         }}
-                        className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center"
+                        className="w-full py-2 bg-white border border-neutral-200/50 hover:bg-neutral-50 text-neutral-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center shadow-xs"
                       >
                         Ver Perfil
                       </button>
                     </div>
 
-                    <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-100 to-transparent my-1" />
-
                     {/* ENLACES SECUNDARIOS */}
-                    <div className="p-2 flex flex-col gap-1">
+                    <div className="p-1.5 flex flex-col gap-0.5">
                       <button
                         onClick={() => {
                           setIsProfileOpen(false);
                           router.push('/admin/profile#billing');
                         }}
-                        className="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 rounded-xl transition-colors w-full text-left"
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors w-full text-left"
                       >
-                        <Zap size={14} className="text-zinc-400" /> Suscripción y Plan
+                        <Zap size={14} className="text-neutral-400" /> Suscripción y Plan
                       </button>
                     </div>
 
-                    <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-100 to-transparent my-1" />
+                    <div className="w-full h-px bg-neutral-100 my-0.5" />
 
                     {/* ZONA DE PELIGRO */}
-                    <div className="p-2">
+                    <div className="p-1.5">
                       <button
                         onClick={async () => {
                           await supabase.auth.signOut();
                           router.push('/login');
                         }}
-                        className="flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors w-full"
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors w-full"
                       >
-                        <LogOut size={12} strokeWidth={2.5} /> Cerrar Sesión
+                        <LogOut size={14} /> Cerrar Sesión
                       </button>
                     </div>
                   </motion.div>
@@ -216,10 +227,10 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
           {/* BOTÓN HAMBURGUESA (Móvil) */}
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('toggleMobileAdminSidebar'))}
-            className="lg:hidden w-10 h-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-600 active:scale-95 transition-transform"
+            className="lg:hidden w-9 h-9 rounded-lg bg-white border border-neutral-200/50 flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all shadow-xs"
             aria-label="Abrir menú"
           >
-            <Menu size={18} strokeWidth={2} />
+            <Menu size={16} strokeWidth={2} />
           </button>
 
         </div>
