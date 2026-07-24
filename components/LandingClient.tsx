@@ -27,7 +27,12 @@ import {
   Settings2,
   LayoutDashboard,
   Database,
-  Lock
+  Lock,
+  DollarSign,
+  AlertTriangle,
+  User,
+  Gift,
+  Users
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -228,53 +233,61 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
 
 const NodeZeroHero = () => {
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // 🚀 DETECTOR DE DISPOSITIVO MÓVIL (Bypass de hidratación seguro contra SSR)
+  const [isMobile, setIsMobile] = useState(true)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"]
   })
 
-  // Transformaciones para el efecto de "Emerge del Vacío"
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
 
-
   return (
     <section
       ref={containerRef}
-      className="relative h-[110vh] w-full bg-white flex flex-col items-center justify-start overflow-hidden"
+      // 🚀 REDUCCIÓN DE ESPACIO MUERTO: De h-screen a h-[85vh] en móvil para un flujo de scroll inmediato
+      className="relative h-[85vh] md:h-screen w-full bg-white flex flex-col items-center justify-start overflow-hidden border-b border-neutral-200/50"
     >
-
       <motion.div
-        style={{ y, opacity, scale }}
-        className="sticky top-0 h-screen w-full flex flex-col items-center justify-center px-6"
+        // 🚀 BYPASS DE RENDIMIENTO: Si es móvil, descartamos los cálculos de scroll y desactivamos el sticky
+        style={isMobile ? {} : { y, opacity, scale }}
+        className="relative md:sticky md:top-0 h-full md:h-screen w-full flex flex-col items-center justify-center px-6 z-10"
       >
-
         <div className="max-w-7xl w-full text-center flex flex-col items-center">
 
-          {/* 1. EL NÚCLEO SEO INVISIBLE (Neuromarketing para Google) 
-              La clase 'sr-only' oculta el texto de la interfaz pero lo deja 100% visible para los bots de SEO y lectores de pantalla. */}
+          {/* SEO Invisible */}
           <h1 className="sr-only">
             Preziso Commerce: Plataforma SaaS de E-commerce y Punto de Venta (POS) multimoneda sincronizada con el BCV en Venezuela.
           </h1>
 
-          {/* Inyección del ADN Visual (Logo Animado GPU-Accelerated) */}
+          {/* ADN Visual Centrado */}
           <HeroAnimatedLogo className="text-zinc-900 drop-shadow-sm" />
 
-          {/* 2. TENSIÓN VISUAL AJUSTADA 
-              Cambiamos 'mt-12' por un margen negativo '-mt-8' o 'mt-0' para absorber el espacio muerto del SVG y juntar el texto de manera precisa. */}
+          {/* Propuesta de Valor y CTA */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 1 }}
-            className="-mt-3 md:-mt-8 flex flex-col items-center gap-8 relative z-10"
+            transition={{ delay: 0.8, duration: 1 }}
+            className="-mt-3 md:-mt-8 flex flex-col items-center gap-6 md:gap-8 relative z-10"
           >
             <p className="text-slate-500 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] max-w-lg leading-relaxed">
               Tu tienda. Multimoneda. Sincronizada al BCV. Domina el caos de vender en Venezuela con un ecosistema de punto de venta y e-commerce. <br />
             </p>
 
-            {/* NUEVO BOTÓN CTA PRINCIPAL (Diseño Flat / Sin Sombras) */}
-            <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="mt-2 flex flex-col items-center gap-4">
               <Link
                 href="/admin"
                 className="group flex items-center gap-3 bg-white border border-black px-8 md:px-10 py-4 rounded-full text-black font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-black hover:text-white active:scale-95"
@@ -283,11 +296,10 @@ const NodeZeroHero = () => {
                 <ArrowUpRight
                   size={18}
                   strokeWidth={2.5}
-                  className="text-black  group-hover:text-white transition-all duration-300 group-hover:translate-x-1"
+                  className="text-black group-hover:text-white transition-all duration-300 group-hover:translate-x-1"
                 />
               </Link>
 
-              {/* Micro-texto de confianza para acompañar el botón */}
               <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
                 No requiere tarjeta de crédito
               </span>
@@ -296,7 +308,7 @@ const NodeZeroHero = () => {
         </div>
       </motion.div>
 
-      {/* Grid de Fondo Dinámico (Ruido de Fondo) */}
+      {/* Grid de Fondo Dinámico */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
       </div>
@@ -304,6 +316,87 @@ const NodeZeroHero = () => {
   )
 }
 
+const NodeZeroShowcase = () => {
+  return (
+    <section className="relative py-24 md:py-32 bg-[#FAFAFC] overflow-hidden border-b border-neutral-200/50 flex flex-col items-center justify-center">
+
+      {/* 🚀 INYECCIÓN DE ESTILOS DE COMPOSICIÓN GPU DIRECTA (Fluidez 60FPS garantizada en Alcatel 1v) */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes inlineCompositorMarquee {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .gpu-kinetic-marquee {
+          display: flex;
+          gap: 1.5rem; /* Gap en móvil */
+          width: max-content;
+          animation: inlineCompositorMarquee 32s linear infinite;
+          will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+          perspective: 1000px;
+        }
+        @media (min-width: 768px) {
+          .gpu-kinetic-marquee {
+            gap: 3.5rem; /* Gap en desktop */
+            animation-duration: 38s; /* Desplazamiento más sutil en pantallas grandes */
+          }
+        }
+      `}} />
+
+      {/* Sombra de transición superior */}
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
+
+      {/* Copit de Contexto */}
+      <div className="max-w-7xl mx-auto px-6 text-center mb-16 relative z-10">
+        <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.4em] mb-4 block">Experiencia de Usuario Real</span>
+        <h2 className="text-3xl md:text-5xl font-black text-neutral-900 tracking-tight leading-none uppercase">
+          Interfaces que enamoran <br />
+          <span className="text-neutral-500 font-medium">a primera vista.</span>
+        </h2>
+      </div>
+
+      {/* THE GIANT KINETIC SHOWCASE CONTAINER */}
+      <div className="relative w-full h-[460px] md:h-[630px] overflow-hidden select-none pointer-events-none">
+
+        {/* Marquee con aceleración por hardware pura */}
+        <div className="gpu-kinetic-marquee items-start">
+          {[...Array(2)].map((_, listIdx) => (
+            <React.Fragment key={listIdx}>
+              {[
+                { src: '/mockup-iphone-1.webp', offset: 'translate-y-0 md:translate-y-6' },
+                { src: '/mockup-iphone-2.webp', offset: 'translate-y-8 md:translate-y-24' },
+                { src: '/mockup-iphone-3.webp', offset: 'translate-y-3 md:translate-y-12' },
+                { src: '/mockup-iphone-4.webp', offset: 'translate-y-12 md:translate-y-32' },
+                { src: '/mockup-iphone-5.webp', offset: 'translate-y-6 md:translate-y-18' },
+              ].map((item, idx) => (
+                <div
+                  key={`${listIdx}-${idx}`}
+                  // Se escalaron los iPhones: w-210px en móvil, w-320px en desktop (Closer to screen)
+                  className={`relative w-[210px] md:w-[320px] shrink-0 ${item.offset} transition-transform duration-300 drop-shadow-[0_20px_45px_rgba(0,0,0,0.04)]`}
+                >
+                  <img
+                    src={item.src}
+                    alt={`Mockup Tienda Preziso ${idx + 1}`}
+                    className="w-full h-auto object-contain pointer-events-none"
+                    decoding="async"
+                    loading="eager"
+                  />
+                </div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* MÁSCARAS DE DIFUMINACIÓN LATERAL Y DE BASE (Efecto cristal de alta fidelidad) */}
+        <div className="absolute inset-y-0 left-0 w-24 md:w-56 bg-gradient-to-r from-[#FAFAFC] via-[#FAFAFC]/70 to-transparent z-20 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-24 md:w-56 bg-gradient-to-l from-[#FAFAFC] via-[#FAFAFC]/70 to-transparent z-20 pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#FAFAFC] via-[#FAFAFC]/80 to-transparent z-20 pointer-events-none" />
+      </div>
+    </section>
+  )
+}
 // =========================================
 // NODO 0.5: ECOSISTEMA Y SOCIAL PROOF (EL IMPACTO DE CONFIANZA)
 // =========================================
@@ -433,8 +526,8 @@ const NodeTrustEcosystem = () => {
           </motion.div>
         </motion.div>
 
-      {/* COLUMNA DERECHA: Autoridad Técnica (Pagos Globales) */}
-        <motion.div 
+        {/* COLUMNA DERECHA: Autoridad Técnica (Pagos Globales) */}
+        <motion.div
           initial={{ opacity: 0, x: 50 }}
           whileInView={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
@@ -444,10 +537,10 @@ const NodeTrustEcosystem = () => {
           <p className="text-slate-500 text-sm leading-relaxed mb-8 font-light max-w-[280px]">
             Olvida los cuadernos, el Excel y los descuadres de caja. Preziso unifica tus ventas físicas y digitales, automatizando el caos multimoneda para que te enfoques en escalar.
           </p>
-          
+
           {/* Tarjeta Dark Luxury - PayPal Nativo (Cero bordes, cero líneas) */}
           <div className="flex flex-col items-start p-7 bg-[#050505] rounded-[1.5rem] w-full max-w-[280px] group transition-all duration-500 hover:bg-[#0a0a0a] shadow-[0_20px_60px_rgba(0,0,0,0.05)]">
-            
+
             {/* Header Técnico */}
             <div className="flex items-center gap-2.5 mb-6">
               <div className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
@@ -457,19 +550,19 @@ const NodeTrustEcosystem = () => {
                 Pasarela Nativa
               </span>
             </div>
-            
+
             {/* Logo Typográfico (Sustituye por el SVG oficial de PayPal si lo deseas) */}
             <div className="mb-4">
               <span className="text-3xl font-black italic text-white tracking-tighter opacity-90 group-hover:opacity-100 transition-opacity">
                 PayPal
               </span>
             </div>
-            
+
             {/* Titular de Conversión */}
             <span className="text-xl font-black text-white leading-tight tracking-tighter mb-4 uppercase">
               Pagos Globales.<br />Cero Fricción.
             </span>
-            
+
             {/* Copy de Valor (Con espacio negativo en lugar de líneas divisorias) */}
             <span className="text-xs font-mono text-zinc-500 leading-relaxed text-left mt-2">
               Procesa pagos internacionales en piloto automático. Liquidez directa a tu cuenta, sin intermediarios.
@@ -480,81 +573,130 @@ const NodeTrustEcosystem = () => {
     </section>
   )
 }
-// =========================================
-// NODO 1: LA FRICCIÓN (EL TERROR DEL CIERRE DE CAJA)
-// =========================================
+// =========================================================
+// NODO 1: LA CONCILIACIÓN DE CAJA (ALTA CONVERSIÓN SAAS)
+// =========================================================
 
-const NodeOneFriction = () => {
-  const targetRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start end", "end start"]
-  })
+const NodeOneReconciliation = () => {
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const chaosScale = useTransform(scrollYProgress, [0, 0.4, 0.6], [0.8, 1.2, 0.9])
-  const chaosRotate = useTransform(scrollYProgress, [0, 1], [-10, 10])
-  const blurValue = useTransform(scrollYProgress, [0, 0.2, 0.5], ["0px", "4px", "0px"])
-
-  const StressFragment = ({ icon: Icon, label, pos, rotStart, rotEnd }: { icon: any, label: string, pos: string, rotStart: number, rotEnd: number }) => (
-    <motion.div
-      style={{ rotate: useTransform(scrollYProgress, [0, 1], [rotStart, rotEnd]) }}
-      className={cn("absolute p-4 bg-slate-100/50 border border-red-500/30 backdrop-blur-sm rounded-lg flex items-center gap-3 z-20 shadow-xl", pos)}
-    >
-      <Icon size={18} className="text-red-500 animate-pulse" />
-      <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">{label}</span>
-    </motion.div>
-  )
+  // Datos simulados de un Arqueo Perfecto para el Mockup de Conversión
+  const bcvSimulado = 36.50;
+  const expectedTotals = { cash: 120.00, zelle: 85.00, bs: 1460.00, other: 50.00 };
+  const reportedTotals = { cash: 120.00, zelle: 85.00, bs: 1460.00, other: 50.00 };
 
   return (
-    <section id="pos" ref={targetRef} className="relative min-h-[200vh] w-full bg-white py-40 flex flex-col items-center border-t border-slate-200">
-      <div className="sticky top-1/2 -translate-y-1/2 z-10 text-center max-w-4xl px-6">
-        <motion.span
-          style={{ opacity: useTransform(scrollYProgress, [0, 0.2], [0, 1]) }}
-          className="text-black font-mono text-[10px] tracking-[0.5em] uppercase mb-6 block"
-        >
-          El Mostrador y el WhatsApp están desconectados
-        </motion.span>
+    <section id="pos" ref={containerRef} className="relative py-24 md:py-32 bg-[#FAFAFC] border-t border-neutral-200/50 overflow-hidden flex flex-col items-center">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(244,244,245,0.8)_0%,#FAFAFC_70%)] pointer-events-none" />
 
-        <motion.h2
-          style={{ scale: chaosScale, filter: `blur(${blurValue})` }}
-          className="text-5xl md:text-8xl font-medium tracking-tighter text-zinc-900 leading-[0.9] uppercase"
-        >
-          EL TERROR DEL <br />
-          <span className="text-zinc-700 italic">CIERRE DE CAJA.</span>
-        </motion.h2>
+      <div className="max-w-6xl mx-auto px-4 md:px-8 relative z-10 w-full flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16">
 
-        <motion.div
-          style={{ opacity: useTransform(scrollYProgress, [0.3, 0.5], [0, 1]) }}
-          className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left border-t border-slate-200 pt-12"
-        >
-          <div className="space-y-4">
-            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <Calculator size={14} className="text-black" /> Descuadre Multimoneda
-            </h4>
-            <p className="text-slate-500 text-sm leading-relaxed font-light">
-              Cobras en efectivo, das vuelto en bolívares, anotas en un cuaderno y al final del día la caja no cuadra. Cada minuto sumando billetes es tiempo que pierdes de hacer crecer tu negocio.
+        {/* COLUMNA IZQUIERDA: COPY EMPÁTICO (El dolor de Venezuela resuelto) */}
+        <div className="w-full lg:w-[40%] flex flex-col items-start text-left space-y-5">
+          <span className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-600 border border-neutral-200/50 text-[10px] font-mono font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+            <Wallet size={12} className="text-neutral-500" /> Conciliación Multimoneda
+          </span>
+
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 leading-tight uppercase">
+            El fin del caos en <br />
+            <span className="text-neutral-500">sus cierres de caja.</span>
+          </h2>
+
+          <div className="space-y-4 text-neutral-500 text-xs md:text-sm leading-relaxed font-medium">
+            <p>
+              Vender en Venezuela implica un rompecabezas contable diario: billetes arrugados de dólares, transferencias en Zelle y un flujo constante de Pago Móvil en Bolívares que fluctúa según la tasa oficial.
+            </p>
+            <p>
+              Preziso unifica su Punto de Venta (POS) y su tienda en línea en una sola base de datos, sumando cada divisa en su respectivo canal y calculando de forma matemática el vuelto exacto.
+            </p>
+            <p className="font-semibold text-neutral-800">
+              Presione un botón, selle la caja al final de la jornada y genere su Libro Z contable listo para auditar.
             </p>
           </div>
-          <div className="space-y-4">
-            <h4 className="text-zinc-900 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-              <ShoppingBag size={14} className="text-black" /> Inventario Fantasma
-            </h4>
-            <p className="text-slate-500 text-sm leading-relaxed font-light">
-              Vendes la última franela en tu mostrador físico, pero alguien te la compra por Instagram 5 minutos después. Preziso sincroniza tu Punto de Venta (POS) y tu E-commerce en el mismo segundo.
-            </p>
+
+          <div className="pt-2">
+            <Link href="/admin" className="inline-flex items-center gap-1.5 bg-neutral-950 hover:bg-black text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] shadow-xs">
+              <span>Probar demo de caja</span>
+              <ArrowUpRight size={13} />
+            </Link>
           </div>
-        </motion.div>
+        </div>
+
+        {/* COLUMNA DERECHA: EL MOCKUP DEL ARQUEO Y EL TICKET Z */}
+        <div className="w-full lg:w-[55%] flex flex-col sm:flex-row items-stretch gap-4 relative">
+
+          {/* Tarjeta 1: El panel de Arqueo Físico */}
+          <div className="flex-1 bg-white p-5 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.015)] flex flex-col justify-between space-y-5">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Sello de Jornada</span>
+              <h3 className="font-bold text-xs text-neutral-900">Arqueo en Sistema</h3>
+            </div>
+
+            {/* Listado de Cuentas */}
+            <div className="space-y-2.5">
+              {[
+                { label: "Efectivo USD", expected: expectedTotals.cash, symbol: "$", theme: "text-emerald-700 bg-emerald-50 border border-emerald-100/40" },
+                { label: "Zelle / Digital", expected: expectedTotals.zelle, symbol: "$", theme: "text-purple-700 bg-purple-50 border border-purple-100/40" },
+                { label: "Otros POS USD", expected: expectedTotals.other, symbol: "$", theme: "text-blue-700 bg-blue-50 border border-blue-100/40" },
+                { label: "Pago Móvil Bs", expected: expectedTotals.bs, symbol: "Bs ", isBs: true },
+              ].map((row) => (
+                <div key={row.label} className="p-3 bg-neutral-50/50 rounded-lg border border-neutral-200/50 flex justify-between items-center">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">{row.label}</span>
+                    <span className="text-[10px] text-neutral-500 font-mono">
+                      Esperado: {row.symbol}{row.expected.toLocaleString("es-VE")}
+                    </span>
+                  </div>
+                  <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${row.theme || 'text-neutral-700 bg-white border border-neutral-200/50'}`}>
+                    {row.symbol}{row.expected.toLocaleString("es-VE")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tarjeta 2: Representación del Ticket Z (Estética de recibo térmico contable) */}
+          <div className="w-full sm:w-[220px] bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.015)] p-5 flex flex-col justify-between relative overflow-hidden shrink-0">
+
+            {/* Indicador de Cuadre Perfecto */}
+            <div className="absolute -top-3 -right-3 w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-xs">
+              <CheckCircle2 size={16} />
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-center border-b border-dashed border-neutral-200/50 pb-4">
+                <span className="text-[9px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-100/40 px-2 py-0.5 rounded">CUADRADO</span>
+                <p className="text-xs font-bold text-neutral-900 mt-2">TICKET DE JORNADA</p>
+                <p className="text-[9px] font-mono text-neutral-400 mt-0.5">ID: Z-9024</p>
+              </div>
+
+              {/* Impresión de Líneas del Recibo */}
+              <div className="space-y-2 font-mono text-[10px] text-neutral-500">
+                <div className="flex justify-between"><span>Efectivo:</span> <span>$120.00</span></div>
+                <div className="flex justify-between"><span>Zelle:</span> <span>$85.00</span></div>
+                <div className="flex justify-between"><span>Otros:</span> <span>$50.00</span></div>
+                <div className="flex justify-between text-neutral-900 font-semibold border-t border-dashed border-neutral-100/80 pt-1.5">
+                  <span>Pago Móvil:</span>
+                  <span>Bs 1.460</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones de exportación rápidas simuladas */}
+            <div className="grid grid-cols-2 gap-1.5 pt-4 border-t border-dashed border-neutral-200/50 mt-4">
+              <div className="bg-neutral-50 text-[9px] text-neutral-600 font-bold uppercase tracking-wider py-1.5 rounded text-center border border-neutral-200/50 cursor-default">
+                WhatsApp
+              </div>
+              <div className="bg-neutral-900 text-white text-[9px] font-bold uppercase tracking-wider py-1.5 rounded text-center cursor-default">
+                Excel
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
-
-      <StressFragment icon={AlertCircle} label="Descuadre de $15 en caja" pos="top-[10%] left-[5%] md:left-[15%]" rotStart={15} rotEnd={-10} />
-      <StressFragment icon={XCircle} label="Vendiste algo que ya no tienes" pos="top-[30%] right-[5%] md:right-[20%]" rotStart={-12} rotEnd={18} />
-      <StressFragment icon={MessageSquare} label="Cliente se fue por esperar la tasa" pos="bottom-[40%] left-[10%] md:left-[25%]" rotStart={8} rotEnd={-15} />
-      <StressFragment icon={Calculator} label="Tasa BCV cambió a las 2PM" pos="bottom-[15%] right-[10%] md:right-[15%]" rotStart={-20} rotEnd={5} />
-
-      <motion.div
-        style={{ opacity: useTransform(scrollYProgress, [0, 0.5, 1], [0, 0.4, 0]), rotate: chaosRotate }}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-black/10 rounded-full blur-[120px] pointer-events-none"
-      />
     </section>
   )
 }
@@ -677,157 +819,328 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
   )
 }
 // =========================================
-// NODO 3: EL CENTRO DE COMANDO (DUAL-ARCH)
+// NODO 3: EL CENTRO DE COMANDO (ADAPTATIVE SHOWCASE & DEEP ZOOM)
 // =========================================
 
-const NodeThreeCommandCenter = () => {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Capturamos el progreso global de la sección
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  })
+// 🚀 1. AÑADIMOS LA PROP 'bcvRate' A LA FUNCIÓN
+const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
+  const [activeTab, setActiveTab] = useState(0)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null)
 
   const features = [
     {
-      title: "Visión de Rayos X",
-      desc: "Controla tu flujo de caja en USD y Bs, monitorea pedidos por despachar y visualiza ingresos netos en tiempo real. Cero cuadernos, cero errores.",
+      id: 'control',
+      title: "Control Financiero Absoluto",
+      desc: "Conoce tu ingreso neto, el dinero en tránsito y el stock crítico en un solo vistazo. Cero fugas de capital.",
       icon: LayoutDashboard,
-      color: "#000000",
-      image: "/image_948a1a.webp" // Dashboard Administrativo
+      image: "/image_948a1a.webp",
+      widget: {
+        icon: DollarSign,
+        label: "INGRESO NETO",
+        value: "$3,644.89",
+        accentLine: "bg-emerald-500",
+        iconColor: "text-emerald-600",
+        positionDesktop: "-bottom-6 -left-6",
+        positionMobile: "bottom-4 left-4"
+      }
     },
     {
-      title: "Precios Inteligentes",
-      desc: "Fija precios base y márgenes. Preziso reescribe tus etiquetas en Bs al vuelo siguiendo el BCV. Sincronización total en menos de 400ms.",
-      icon: Settings2,
-      color: "#000000",
-      image: "/image_9486b6.webp" // Gestión de Precios
+      id: 'bcv',
+      title: "Motor BCV Automatizado",
+      desc: "Fija tu precio en dólares una vez. Preziso actualiza toda tu tienda en Bolívares al instante según la tasa oficial. Adiós a remarcar precios.",
+      icon: Zap,
+      image: "/image_9486b6.webp",
+      widget: {
+        icon: ArrowRightLeft,
+        label: "TASA BCV SINC.",
+        // 🚀 2. INYECTAMOS LA VARIABLE DINÁMICA CON 2 DECIMALES
+        value: `${bcvRate.toFixed(2)} Bs`, 
+        accentLine: "bg-blue-500",
+        iconColor: "text-blue-600",
+        positionDesktop: "-top-6 -right-6",
+        positionMobile: "top-4 right-4"
+      }
     },
+    // ... (el resto de features queda exactamente igual)
     {
-      title: "Stock Milimétrico",
-      desc: "Gestión avanzada de variantes. Recibe alertas de stock crítico y controla cada talla y color con una interfaz diseñada para la velocidad.",
+      id: 'omni',
+      title: "Inventario Omnicanal",
+      desc: "Vende en tu local físico y en Instagram al mismo tiempo. Si se acaba en el mostrador, se agota en la web en milisegundos.",
       icon: PackageSearch,
-      color: "#000000",
-      image: "/image_9482ba.webp" // Control de Inventario
+      image: "/image_9482ba.webp",
+      widget: {
+        icon: AlertTriangle,
+        label: "STOCK CRÍTICO",
+        value: "02 Unidades",
+        accentLine: "bg-rose-500",
+        iconColor: "text-rose-600",
+        positionDesktop: "-bottom-6 -right-6",
+        positionMobile: "bottom-4 right-4"
+      }
     },
     {
-      title: "Ecosistema B2B",
-      desc: "Gestiona tu red de promotores y presupuestos. Liquida comisiones y convierte cotizaciones en ventas con un solo clic.",
-      icon: ClipboardCheck,
-      color: "#000000",
-      image: "/image_942cbe.webp" // Gestión de Presupuestos
+      id: 'b2b',
+      title: "Red de Promotores",
+      desc: "Convierte a tus mejores clientes en vendedores. Asígnales un código, dales comisión y haz que tu marca se viralice sola.",
+      icon: Users,
+      image: "/image_942cbe.webp",
+      widget: {
+        icon: Gift,
+        label: "COMISIÓN PENDIENTE",
+        value: "+$5.00 USD",
+        accentLine: "bg-purple-500",
+        iconColor: "text-purple-600",
+        positionDesktop: "-top-6 -left-6",
+        positionMobile: "top-4 left-4"
+      }
     }
   ]
 
-  // Mapeo de opacidades para sincronizar imágenes y textos
-  const opacities = features.map((_, i) => {
-    const start = i / features.length
-    const end = (i + 1) / features.length
-    return useTransform(scrollYProgress, [start, start + 0.1, end - 0.1, end], [0, 1, 1, 0])
-  })
+  // Auto-Play Logic (Solo para Desktop)
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    const interval = setInterval(() => {
+      setActiveTab((prev) => (prev + 1) % features.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, features.length]);
+
+  const handleTabClick = (index: number) => {
+    setActiveTab(index);
+    setIsAutoPlaying(false);
+  }
+
+  const ActiveWidgetIcon = features[activeTab].widget.icon;
 
   return (
-    <section id="adn" ref={containerRef} className="relative min-h-[400vh] bg-white border-t border-slate-200">
+    <section id="adn" className="relative py-24 md:py-32 bg-white border-t border-neutral-200/50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        
+        {/* Encabezado de la Sección */}
+        <div className="text-center md:text-left mb-16 md:mb-20">
+          <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 uppercase leading-none">
+            El cerebro detrás <br className="hidden md:block" />
+            <span className="text-neutral-500 font-medium">de tu operación.</span>
+          </h2>
+        </div>
 
-      {/* EL CONTENEDOR STICKY: Mantiene la UI visible mientras se recorren los 400vh */}
-      <div className="sticky top-0 h-screen w-full flex items-center overflow-hidden">
-
-        <div className="max-w-7xl mx-auto w-full px-6 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-32">
-
-          {/* COLUMNA IZQUIERDA: TEXTOS (Desktop: Separado / Mobile: Overlay) */}
-          <div className="relative z-20 w-full lg:w-5/12 h-[250px] lg:h-[450px]">
-
-            {/* Capa de textos superpuestos (Mantiene la experiencia Mobile que te gustó) */}
-            <div className="relative w-full h-full">
-              {features.map((f, i) => (
-                <motion.div
-                  key={i}
-                  style={{ opacity: opacities[i] }}
-                  className="absolute inset-0 flex flex-col justify-center"
+        {/* ========================================= */}
+        {/* VERSIÓN ESCRITORIO (TABS INTERACTIVAS) */}
+        {/* ========================================= */}
+        <div className="hidden lg:grid grid-cols-12 gap-20 items-center">
+          
+          {/* Pestañas (Izquierda) */}
+          <div className="col-span-5 flex flex-col gap-4">
+            {features.map((feature, idx) => {
+              const isActive = activeTab === idx;
+              return (
+                <button
+                  key={feature.id}
+                  onClick={() => handleTabClick(idx)}
+                  className={`relative flex flex-col items-start p-6 rounded-2xl text-left transition-all duration-300 border ${
+                    isActive 
+                      ? 'bg-white border-neutral-200/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] ring-1 ring-black/5 scale-[1.02]' 
+                      : 'bg-transparent border-transparent hover:bg-neutral-50/50'
+                  }`}
                 >
-                  <div className="flex flex-col gap-6 lg:gap-8">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
-                      style={{ backgroundColor: `${f.color}20`, border: `1px solid ${f.color}40` }}
-                    >
-                      <f.icon style={{ color: f.color }} size={24} />
+                  {isActive && isAutoPlaying && (
+                    <motion.div 
+                      initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }}
+                      className="absolute top-0 left-0 h-1 bg-neutral-900 rounded-t-2xl"
+                    />
+                  )}
+
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300 ${isActive ? 'bg-neutral-900 text-white shadow-md' : 'bg-neutral-100 text-neutral-500'}`}>
+                      <feature.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                     </div>
-                    <div>
-                      <h3 className="text-4xl lg:text-6xl font-black tracking-tighter text-zinc-900 uppercase leading-[0.85] mb-6">
-                        {f.title}
-                      </h3>
-                      <p className="text-slate-500 text-sm lg:text-xl leading-relaxed max-w-md font-light">
-                        {f.desc}
-                      </p>
+                    <h3 className={`text-lg font-bold tracking-tight transition-colors duration-300 ${isActive ? 'text-neutral-900' : 'text-neutral-500'}`}>
+                      {feature.title}
+                    </h3>
+                  </div>
+                  
+                  <AnimatePresence initial={false}>
+                    {isActive && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden"
+                      >
+                        <p className="text-sm text-neutral-500 leading-relaxed font-medium pt-1">
+                          {feature.desc}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Escaparate Visual (Derecha) */}
+          <div className="col-span-7 relative">
+            <div 
+              onClick={() => setZoomedImage(features[activeTab].image)}
+              className="relative aspect-[16/10] w-full rounded-[2rem] bg-neutral-100/50 border border-neutral-200/50 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in group"
+            >
+              {/* Barra macOS */}
+              <div className="absolute top-0 left-0 right-0 h-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-4 gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+              </div>
+
+              {/* Imagen con Hover Hint */}
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={activeTab}
+                  src={features[activeTab].image}
+                  initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }}
+                  transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                  className="absolute top-10 left-0 w-full h-[calc(100%-40px)] object-cover object-left-top group-hover:scale-105 transition-transform duration-700"
+                  alt={features[activeTab].title}
+                />
+              </AnimatePresence>
+
+              {/* Overlay de Lupa */}
+              <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center pointer-events-none">
+                <span className="bg-white/95 text-neutral-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                  <Search size={14} /> Ampliar Interfaz
+                </span>
+              </div>
+            </div>
+
+            {/* MICRO-WIDGETS FLOTANTES DESKTOP (DISEÑO TELEMETRÍA PUNTIAGUDO) */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`widget-${activeTab}`}
+                initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                className={`absolute z-30 ${features[activeTab].widget.positionDesktop}`}
+              >
+                <motion.div 
+                  animate={{ y: [0, -6, 0] }} 
+                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                  className="flex items-stretch bg-white/90 backdrop-blur-md border border-neutral-200/50 shadow-[0_15px_35px_rgba(0,0,0,0.1)] rounded-none overflow-hidden"
+                >
+                  {/* Línea de Acento Técnica */}
+                  <div className={`w-1 shrink-0 ${features[activeTab].widget.accentLine}`} />
+                  
+                  <div className="px-4 py-3 flex items-center gap-3.5">
+                    <ActiveWidgetIcon size={16} strokeWidth={2.5} className={features[activeTab].widget.iconColor} />
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1.5">
+                        {features[activeTab].widget.label}
+                      </span>
+                      <span className="text-sm font-bold tracking-tight font-mono text-neutral-900 leading-none">
+                        {features[activeTab].widget.value}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-
-            {/* BARRA DE PROGRESO LATERAL (Solo Desktop - Ajustada con -left-16 para dar aire) */}
-            <div className="hidden lg:flex absolute -left-16 top-0 bottom-0 flex-col justify-center gap-6">
-              {features.map((_, i) => {
-                const height = useTransform(
-                  scrollYProgress,
-                  [i / features.length, (i + 1) / features.length],
-                  ["20px", "60px"]
-                )
-                const color = useTransform(scrollYProgress, [i / features.length, (i + 1) / features.length], ["#e2e8f0", "#000000"]
-                )
-                return (
-                  <motion.div
-                    key={i}
-                    style={{ height, backgroundColor: color }}
-                    className="w-1.5 rounded-full transition-all duration-300"
-                  />
-                )
-              })}
-            </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
-
-          {/* COLUMNA DERECHA: MOCKUP DE PANEL ADMINISTRATIVO */}
-          <div className="relative z-10 w-full lg:w-7/12 flex justify-center lg:justify-end">
-            <div className="relative aspect-[16/10] w-full max-w-[700px] rounded-2xl lg:rounded-[2.5rem] overflow-hidden border border-slate-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-
-              {/* Reflejo de cristal superior */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/5 z-10 pointer-events-none" />
-
-              {/* Renderizado de Capturas (Stack) */}
-              {features.map((f, i) => (
-                <motion.img
-                  key={i}
-                  src={f.image}
-                  style={{ opacity: opacities[i] }}
-                  className="absolute inset-0 w-full h-full object-cover will-change-opacity"
-                  alt={f.title}
-                />
-              ))}
-
-              {/* Glow Dinámico que reacciona al módulo activo */}
-              {features.map((f, i) => (
-                <motion.div
-                  key={`glow-${i}`}
-                  style={{ opacity: useTransform(opacities[i], [0, 1], [0, 0.15]) }}
-                  className="absolute -inset-20 blur-[150px] -z-10 pointer-events-none transition-colors duration-700"
-                  animate={{ backgroundColor: f.color }}
-                />
-              ))}
-            </div>
-
-            {/* Indicador de Navegación Mobile */}
-            <div className="lg:hidden absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-4">
-              {features.map((_, i) => {
-                const scale = useTransform(opacities[i], [0, 1], [0.8, 1.3])
-                const bg = useTransform(opacities[i], [0, 1], ["#cbd5e1", "#000000"])
-                return <motion.div key={i} style={{ scale, backgroundColor: bg }} className="w-2.5 h-2.5 rounded-full" />
-              })}
-            </div>
-          </div>
-
         </div>
+
+        {/* ========================================= */}
+        {/* VERSIÓN MÓVIL (STACK VERTICAL) */}
+        {/* ========================================= */}
+        <div className="lg:hidden flex flex-col gap-20">
+          {features.map((feature) => {
+            const MobileWidgetIcon = feature.widget.icon;
+            return (
+              <div key={feature.id} className="flex flex-col gap-6">
+                
+                {/* Contenedor de Imagen Móvil */}
+                <div 
+                  onClick={() => setZoomedImage(feature.image)}
+                  className="relative aspect-[4/3] w-full rounded-2xl bg-neutral-100/50 border border-neutral-200/50 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-8 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-3 gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                  </div>
+                  
+                  <img src={feature.image} alt={feature.title} className="absolute top-8 left-0 w-full h-[calc(100%-32px)] object-cover object-left-top" />
+                  
+                  {/* MICRO-WIDGET MÓVIL (DISEÑO TELEMETRÍA PUNTIAGUDO) */}
+                  <div className={`absolute z-30 ${feature.widget.positionMobile}`}>
+                    <div className="flex items-stretch bg-white/95 backdrop-blur-md border border-neutral-200/50 shadow-lg rounded-none overflow-hidden">
+                      <div className={`w-1 shrink-0 ${feature.widget.accentLine}`} />
+                      <div className="px-3 py-2.5 flex items-center gap-2.5">
+                        <MobileWidgetIcon size={14} strokeWidth={2.5} className={feature.widget.iconColor} />
+                        <div className="flex flex-col">
+                          <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">
+                            {feature.widget.label}
+                          </span>
+                          <span className="text-xs font-bold tracking-tight font-mono text-neutral-900 leading-none">
+                            {feature.widget.value}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Textos Móvil */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-neutral-900 text-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                      <feature.icon size={18} strokeWidth={2} />
+                    </div>
+                    <h3 className="text-xl font-bold text-neutral-900 leading-tight">
+                      {feature.title}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-neutral-500 leading-relaxed font-medium">
+                    {feature.desc}
+                  </p>
+                </div>
+
+              </div>
+            )
+          })}
+        </div>
+
       </div>
+
+      {/* ========================================= */}
+      {/* LIGHTBOX DE ZOOM (DEEP INSPECTION) */}
+      {/* ========================================= */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => setZoomedImage(null)}
+              className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm cursor-zoom-out"
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative w-full max-w-5xl bg-white rounded-2xl border border-neutral-200/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
+            >
+              <div className="p-4 flex justify-between items-center border-b border-neutral-200/50 bg-neutral-50/50 shrink-0">
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Inspección de Interfaz</span>
+                <button onClick={() => setZoomedImage(null)} className="p-1.5 text-neutral-400 hover:text-neutral-900 bg-white border border-neutral-200/50 hover:bg-neutral-50 rounded-full transition-colors shadow-xs">
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto bg-neutral-100/50 p-0 md:p-8 flex items-start justify-center">
+                <img src={zoomedImage} alt="Zoomed Interface" className="w-full h-auto object-contain rounded-none md:rounded-xl shadow-none md:shadow-lg border-0 md:border border-neutral-200/50" />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </section>
   )
 }
@@ -1350,7 +1663,7 @@ const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
                           -{promoPercent}%
                         </div>
                       )}
-                      
+
                     </div>
 
                     {/* Content Container */}
@@ -1667,11 +1980,10 @@ interface LandingProps {
   liveRate: number;
 }
 
-// 🚀 2. INYECTAMOS EL TIPO EN EL COMPONENTE
+// 🚀 ENSAMBLAJE MAESTRO CON INTEGRACIÓN ARMÓNICA
 export default function DeepCaptureLanding({ liveRate }: LandingProps) {
   return (
     <div className="bg-white selection:bg-slate-200 selection:text-black">
-      {/* Inyección de Estilos de Capa Inferior */}
       <style jsx global>{`
         .text-outline-black {
          -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
@@ -1687,11 +1999,12 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
       <FloatingNavbar bcvRate={liveRate} />
 
       <NodeZeroHero />
+      <NodeZeroShowcase /> {/* 🚀 NUEVO NODO DE REVELACIÓN DE PRODUCTO */}
       <NodeTrustEcosystem />
-      <NodeOneFriction />
+      <NodeOneReconciliation /> {/* 🚀 REEMPLAZO: Cambiamos "Friction" por la solución real */}
 
       <NodeTwoSingularity bcvRate={liveRate} />
-      <NodeThreeCommandCenter />
+      <NodeThreeCommandCenter bcvRate={liveRate} />
 
       <NodeFourNeural bcvRate={liveRate} />
       <NodeFiveExtraction bcvRate={liveRate} />
