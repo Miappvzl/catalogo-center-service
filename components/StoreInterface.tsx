@@ -210,7 +210,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
-// 2. REFS DE CONTROL DEL DOM
+  // 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
@@ -590,7 +590,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
 
 
-const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
+  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
 
   // 🚀 DETECCIÓN INFALIBLE V2: Superposición de estados (Base de Datos + Motor de Luminancia)
   const isStoreDark = useMemo(() => {
@@ -600,19 +600,19 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
     // 2. Si no la hay, analizamos matemáticamente el color hexadecimal inyectado
     try {
       const rawBg = activeTheme.colors?.background || '#ffffff';
-      
+
       // Control de errores por si el usuario guardó palabras en lugar de HEX
       if (rawBg.toLowerCase() === 'black' || rawBg.includes('0, 0, 0')) return true;
 
       const bgHex = rawBg.replace('#', '');
-      const r = parseInt(bgHex.length === 3 ? bgHex[0]+bgHex[0] : bgHex.substring(0, 2), 16);
-      const g = parseInt(bgHex.length === 3 ? bgHex[1]+bgHex[1] : bgHex.substring(2, 4), 16);
-      const b = parseInt(bgHex.length === 3 ? bgHex[2]+bgHex[2] : bgHex.substring(4, 6), 16);
-      
+      const r = parseInt(bgHex.length === 3 ? bgHex[0] + bgHex[0] : bgHex.substring(0, 2), 16);
+      const g = parseInt(bgHex.length === 3 ? bgHex[1] + bgHex[1] : bgHex.substring(2, 4), 16);
+      const b = parseInt(bgHex.length === 3 ? bgHex[2] + bgHex[2] : bgHex.substring(4, 6), 16);
+
       if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
         return (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Menor a 128 = Fondo oscuro
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return false; // Por defecto es claro
   }, [store, activeTheme]);
@@ -628,7 +628,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
     }
   };
 
-// 🚀 ESTA ES LA LÍNEA QUE SE HABÍA BORRADO:
+  // 🚀 ESTA ES LA LÍNEA QUE SE HABÍA BORRADO:
   const dynamicMask = `linear-gradient(to right, ${isScrolledLeft ? 'transparent' : '#000'} 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
 
   // ==========================================
@@ -765,8 +765,8 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
           </div>
         </div>
 
-     {/* Tasa Oficial Minimalista (Interactiva, Estática y Pixel Perfect) */}
-        <button 
+        {/* Tasa Oficial Minimalista (Interactiva, Estática y Pixel Perfect) */}
+        <button
           onClick={() => setIsRateModalOpen(true)}
           className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-lg active:scale-95 transition-all"
           aria-label="Ver detalles de la tasa"
@@ -779,12 +779,12 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
               {isEur ? 'EUR' : 'BCV'}
             </span>
           </div>
-          
+
           <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
-          
+
           {/* Monto de Tasa (100% Alineado y Seguro en todo navegador) */}
           <div className="flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
-            
+
             {/* Conservamos la respiración sutil en el Bs. */}
             <motion.span
               animate={{ opacity: [0.4, 1, 0.4] }}
@@ -793,7 +793,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
             >
               Bs.
             </motion.span>
-            
+
             {/* Renderizado nativo formateado con comas venezolanas (es-VE) */}
             <span className="tabular-nums">
               {Intl.NumberFormat("es-VE", {
@@ -801,7 +801,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
                 maximumFractionDigits: 2,
               }).format(activeRate)}
             </span>
-            
+
           </div>
         </button>
 
@@ -1188,11 +1188,10 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
                     <button
                       key={page}
                       onClick={() => handlePageChange(page as number)}
-                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${
-                        currentPage === page
+                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
                           ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
                           : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -1200,7 +1199,7 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
                 ))}
               </div>
 
-             {/* Botón Siguiente */}
+              {/* Botón Siguiente */}
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -1295,124 +1294,122 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
         </AnimatePresence>
 
       </main>
-{/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Mobile & Theme Fixed) */}
-<div className="mt-16 pb-24 pt-8 w-full flex justify-center relative z-20 border-t border-[var(--store-border)]/40">
-  <motion.a
-    href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=success_screen&utm_campaign=viral_loop"
-    target="_blank"
-    rel="noopener noreferrer"
-    initial="rest"
-    whileHover="hover"
-    whileTap="tap"
-    variants={{
-      rest: { scale: 1 },
-      hover: { scale: 1 },
-      tap: { scale: 0.96 }
-    }}
-    className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] sm:max-w-none shadow-none"
-  >
-    {/* Celda 1: Copy con Sistema Mecánico de Rodillo (Optimizado para Conversión y Cero Layout Shifts) */}
-    <div className="relative overflow-hidden flex items-center justify-center px-3 md:px-5 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-[var(--store-surface)]/30">
-      <motion.div
-        variants={{
-          rest: { y: 0 },
-          hover: { y: "-50%" },
-          tap: { y: "-50%" }
-        }}
-        transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
-        className="absolute top-0 left-0 w-full flex flex-col justify-between"
-        style={{ height: "200%" }}
-      >
-        {/* Texto Original - Reposo (Arriba) */}
-        <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
-          <span className="sm:hidden">Crea tu tienda con</span>
-          <span className="hidden sm:block">Crea tu tienda online con</span>
-        </span>
-        
-        {/* Texto Contraste - Beneficio en Movimiento (Abajo - Rolling in) */}
-        <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
-          <span className="sm:hidden">Automatiza tu WhatsApp con</span>
-          <span className="hidden sm:block">Automatiza tus pedidos con</span>
-        </span>
-      </motion.div>
-      
-      {/* Spacer estructural rígido (Utiliza el texto más largo para asegurar que la celda no cambie de tamaño al girar) */}
-      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none px-3 md:px-5">
-        <span className="sm:hidden">Automatiza tu WhatsApp con</span>
-        <span className="hidden sm:block">Automatiza tus pedidos con</span>
-      </span>
-    </div>
 
-   {/* Celda 2: Logo (Lógica reactiva conectada matemáticamente a la luminancia) */}
-    <div className="relative flex items-center justify-center px-4 md:px-6 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-transparent overflow-hidden">
-      <motion.div
-        variants={{
-          rest: { scaleY: 0, originY: 1 },
-          hover: { scaleY: 1, originY: 1 },
-          tap: { scaleY: 1, originY: 1 }
-        }}
-        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
-        className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
-      />
-      <div className="relative z-10 h-[25px] md:h-[30px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
-        
-        {/* 🚀 El logo ahora obedece al Memo infalible */}
-        <img
-          src={isStoreDark ? "/pezisologow.png" : "/pezisologo.png"}
-          alt="Preziso"
-          className="h-full w-auto object-contain transition-opacity duration-300"
-          loading="lazy"
-        />
-        
+      {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Auto-Ticker Mobile & UTM Optimized) */}
+      <div className="mt-16 pb-24 pt-8 w-full flex justify-center relative z-20 border-t border-[var(--store-border)]/40">
+        <motion.a
+          /* ⚡ UTM optimizado para atribución exacta en Footer Global */
+          href="https://preziso.shop?utm_source=tienda_cliente&utm_medium=store_footer&utm_campaign=viral_loop"
+          target="_blank"
+          rel="noopener noreferrer"
+          initial="rest"
+          whileHover="hover"
+          whileTap="tap"
+          variants={{
+            rest: { scale: 1 },
+            hover: { scale: 1 },
+            tap: { scale: 0.96 }
+          }}
+          className="group relative inline-grid grid-cols-[auto_auto_auto] items-stretch border border-[var(--store-border)] bg-transparent overflow-hidden max-w-[95vw] sm:max-w-none shadow-none"
+        >
+          {/* Celda 1: Copy con Sistema Mecánico de Rodillo Automático (Funciona en Mobile sin Hover + Zero Layout Shift) */}
+          <div className="relative overflow-hidden flex items-center justify-center px-3 md:px-5 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-[var(--store-surface)]/30">
+            <motion.div
+              /* ⚡ Ticker automático de baja fricción: Cambia cada 2.5s automáticamente para impactar tráfico de IG Mobile */
+              animate={{ y: ["0%", "0%", "-50%", "-50%", "0%"] }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: [0.76, 0, 0.24, 1],
+                times: [0, 0.4, 0.5, 0.9, 1]
+              }}
+              className="absolute top-0 left-0 w-full flex flex-col justify-between pointer-events-none"
+              style={{ height: "200%" }}
+            >
+              {/* Texto Original - Reposo (Arriba) | Micro-copy Filtro de Ego */}
+              <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
+                <span className="sm:hidden">¿Tienes una marca? Usa</span>
+                <span className="hidden sm:block">Crea tu catálogo web con</span>
+              </span>
+
+              {/* Texto Contraste - Beneficio (Abajo) | Micro-copy Gatillo de Dolor */}
+              <span className="h-1/2 flex items-center justify-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--store-text-main)] whitespace-nowrap px-3 md:px-5">
+                <span className="sm:hidden">Tasa BCV y pedidos por</span>
+                <span className="hidden sm:block">Automatiza tus pedidos con</span>
+              </span>
+            </motion.div>
+
+            {/* Spacer estructural rígido (Contiene el texto más largo para evitar Layout Shifts) */}
+            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-0 whitespace-nowrap pointer-events-none px-3 md:px-5">
+              <span className="sm:hidden">¿Tienes una marca? Usa</span>
+              <span className="hidden sm:block">Automatiza tus pedidos con</span>
+            </span>
+          </div>
+
+          {/* Celda 2: Logo Reactivo (Adaptación automática de Luminancia/Tema) */}
+          <div className="relative flex items-center justify-center px-4 md:px-6 py-2.5 md:py-3 border-r border-[var(--store-border)] bg-transparent overflow-hidden">
+            <motion.div
+              variants={{
+                rest: { scaleY: 0, originY: 1 },
+                hover: { scaleY: 1, originY: 1 },
+                tap: { scaleY: 1, originY: 1 }
+              }}
+              transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
+              className="absolute inset-0 bg-[var(--store-text-main)]/[0.04]"
+            />
+            <div className="relative z-10 h-[25px] md:h-[30px] w-auto flex items-center justify-center shrink-0 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-active:scale-[1.03]">
+              <img
+                src={isStoreDark ? "/pezisologow.png" : "/pezisologo.png"}
+                alt="Preziso"
+                className="h-full w-auto object-contain transition-opacity duration-300"
+                loading="lazy"
+              />
+            </div>
+          </div>
+
+          {/* Celda 3: Gatillo de Escape (Física Diagonal Hardware) */}
+          <div className="relative flex items-center justify-center w-11 md:w-14 h-full bg-transparent overflow-hidden text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-active:text-[var(--store-text-main)] transition-colors duration-300">
+            <motion.div
+              variants={{
+                rest: { x: 0, y: 0 },
+                hover: { x: 24, y: -24 },
+                tap: { x: 24, y: -24 }
+              }}
+              transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
+              className="absolute"
+            >
+              <ArrowUpRight size={16} strokeWidth={1.5} />
+            </motion.div>
+
+            <motion.div
+              variants={{
+                rest: { x: -24, y: 24 },
+                hover: { x: 0, y: 0 },
+                tap: { x: 0, y: 0 }
+              }}
+              transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1], delay: 0.04 }}
+              className="absolute"
+            >
+              <ArrowUpRight size={16} strokeWidth={2.5} />
+            </motion.div>
+          </div>
+        </motion.a>
       </div>
-    </div>
 
-    {/* Celda 3: Gatillo de Escape (Física de Hardware Diagonal) */}
-    <div className="relative flex items-center justify-center w-11 md:w-14 h-full bg-transparent overflow-hidden text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] group-active:text-[var(--store-text-main)] transition-colors duration-300">
-      
-      <motion.div
-        variants={{
-          rest: { x: 0, y: 0 },
-          hover: { x: 24, y: -24 },
-          tap: { x: 24, y: -24 }
-        }}
-        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
-        className="absolute"
-      >
-        <ArrowUpRight size={16} strokeWidth={1.5} />
-      </motion.div>
-      
-      <motion.div
-        variants={{
-          rest: { x: -24, y: 24 },
-          hover: { x: 0, y: 0 },
-          tap: { x: 0, y: 0 }
-        }}
-        transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1], delay: 0.04 }}
-        className="absolute"
-      >
-        <ArrowUpRight size={16} strokeWidth={2.5} />
-      </motion.div>
-
-    </div>
-  </motion.a>
-</div>
-     
-     
-{/* 🚀 MODAL MINIMALISTA DE TASA DE CAMBIO */}
+      {/* 🚀 MODAL MINIMALISTA DE TASA DE CAMBIO */}
       <AnimatePresence>
         {isRateModalOpen && (
           <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             {/* Backdrop desenfocado */}
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
-              onClick={() => setIsRateModalOpen(false)} 
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+              onClick={() => setIsRateModalOpen(false)}
             />
-            
+
             {/* Tarjeta Modal Estilo Apple/Brutalista */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -1421,8 +1418,8 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
               className="relative bg-[var(--store-bg)] border border-[var(--store-border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[1.5rem] w-full max-w-[280px] p-6 flex flex-col items-center text-center overflow-hidden"
             >
-              <button 
-                onClick={() => setIsRateModalOpen(false)} 
+              <button
+                onClick={() => setIsRateModalOpen(false)}
                 className="absolute top-4 right-4 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-90"
               >
                 <X size={16} strokeWidth={2.5} />
@@ -1430,13 +1427,13 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
 
               {/* Icono Grande en el Modal */}
               <div className="w-14 h-14 flex items-center justify-center rounded-full bg-[var(--store-surface)] border border-[var(--store-border)]/50 text-[var(--store-text-main)] mb-4 shadow-sm">
-                 <BCVLogo className="w-7 h-auto" />
+                <BCVLogo className="w-7 h-auto" />
               </div>
-              
+
               <h4 className="text-sm font-black text-[var(--store-text-main)] tracking-tight mb-1.5 uppercase">
                 Tasa Oficial BCV
               </h4>
-              
+
               <p className="text-xs text-[var(--store-surface-text)] leading-relaxed px-2 font-medium">
                 Esta tienda cotiza sus precios basándose en la tasa oficial <strong className="text-[var(--store-text-main)] font-black uppercase">{isEur ? 'EUR' : 'USD'}</strong> del Banco Central de Venezuela.
               </p>
@@ -1554,13 +1551,13 @@ const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#
       </AnimatePresence>
 
 
-     <CartHUDIndicator />
+      <CartHUDIndicator />
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      
+
     </div>
   )
 }
