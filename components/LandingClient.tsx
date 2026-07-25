@@ -834,7 +834,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       title: "Control Financiero Absoluto",
       desc: "Conoce tu ingreso neto, el dinero en tránsito y el stock crítico en un solo vistazo. Cero fugas de capital.",
       icon: LayoutDashboard,
-      image: "/image_948a1a.webp",
+      image: "/ingresoneto.webp",
       widget: {
         icon: DollarSign,
         label: "INGRESO NETO",
@@ -850,12 +850,12 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       title: "Motor BCV Automatizado",
       desc: "Fija tu precio en dólares una vez. Preziso actualiza toda tu tienda en Bolívares al instante según la tasa oficial. Adiós a remarcar precios.",
       icon: Zap,
-      image: "/image_9486b6.webp",
+      image: "/motorbcvautomatizado.webp",
       widget: {
         icon: ArrowRightLeft,
         label: "TASA BCV SINC.",
         // 🚀 2. INYECTAMOS LA VARIABLE DINÁMICA CON 2 DECIMALES
-        value: `${bcvRate.toFixed(2)} Bs`, 
+        value: `${bcvRate.toFixed(2)} Bs`,
         accentLine: "bg-blue-500",
         iconColor: "text-blue-600",
         positionDesktop: "-top-6 -right-6",
@@ -868,7 +868,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       title: "Inventario Omnicanal",
       desc: "Vende en tu local físico y en Instagram al mismo tiempo. Si se acaba en el mostrador, se agota en la web en milisegundos.",
       icon: PackageSearch,
-      image: "/image_9482ba.webp",
+      image: "/inventarioomnicanal.webp",
       widget: {
         icon: AlertTriangle,
         label: "STOCK CRÍTICO",
@@ -916,7 +916,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
   return (
     <section id="adn" className="relative py-24 md:py-32 bg-white border-t border-neutral-200/50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        
+
         {/* Encabezado de la Sección */}
         <div className="text-center md:text-left mb-16 md:mb-20">
           <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
@@ -930,7 +930,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
         {/* VERSIÓN ESCRITORIO (TABS INTERACTIVAS) */}
         {/* ========================================= */}
         <div className="hidden lg:grid grid-cols-12 gap-20 items-center">
-          
+
           {/* Pestañas (Izquierda) */}
           <div className="col-span-5 flex flex-col gap-4">
             {features.map((feature, idx) => {
@@ -939,14 +939,13 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
                 <button
                   key={feature.id}
                   onClick={() => handleTabClick(idx)}
-                  className={`relative flex flex-col items-start p-6 rounded-2xl text-left transition-all duration-300 border ${
-                    isActive 
-                      ? 'bg-white border-neutral-200/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] ring-1 ring-black/5 scale-[1.02]' 
+                  className={`relative flex flex-col items-start p-6 rounded-2xl text-left transition-all duration-300 border ${isActive
+                      ? 'bg-white border-neutral-300/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] ring-0.5 ring-black/50 scale-[1.02]'
                       : 'bg-transparent border-transparent hover:bg-neutral-50/50'
-                  }`}
+                    }`}
                 >
                   {isActive && isAutoPlaying && (
-                    <motion.div 
+                    <motion.div
                       initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }}
                       className="absolute top-0 left-0 h-1 bg-neutral-900 rounded-t-2xl"
                     />
@@ -960,7 +959,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
                       {feature.title}
                     </h3>
                   </div>
-                  
+
                   <AnimatePresence initial={false}>
                     {isActive && (
                       <motion.div
@@ -979,56 +978,79 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
           </div>
 
           {/* Escaparate Visual (Derecha) */}
-          <div className="col-span-7 relative">
+          <div className="lg:col-span-7 relative order-1 lg:order-2">
             <div 
               onClick={() => setZoomedImage(features[activeTab].image)}
-              className="relative aspect-[16/10] w-full rounded-[2rem] bg-neutral-100/50 border border-neutral-200/50 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in group"
+              className="relative aspect-[4/3] md:aspect-[16/10] w-full rounded-[2rem] bg-neutral-100/50 shadow-inner flex items-center justify-center cursor-zoom-in group"
             >
-              {/* Barra macOS */}
-              <div className="absolute top-0 left-0 right-0 h-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-4 gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
-                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
-                <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+              {/* 🚀 BORDE ANIMADO PREMIUM (Movimiento lento y estela asimétrica) */}
+              <div 
+                className="absolute inset-0 z-30 pointer-events-none rounded-[2rem] p-[1px]" 
+                style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
+              >
+                <div 
+                  className="absolute inset-[-100%] animate-[spin_12s_linear_infinite]" 
+                  style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 5) 98%, #ffffff 100%)' }} 
+                />
+              </div>
+              
+              {/* 🚀 RESPLANDOR VOLUMÉTRICO (Soft Glow) */}
+              <div 
+                className="absolute inset-0 z-20 pointer-events-none rounded-[2rem] p-[1px]" 
+                style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
+              >
+                <div 
+                  className="absolute inset-[-100%] animate-[spin_12s_linear_infinite] blur-[12px] opacity-40" 
+                  style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 5) 98%, #ffffff 100%)' }} 
+                />
               </div>
 
-              {/* Imagen con Hover Hint */}
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={activeTab}
-                  src={features[activeTab].image}
-                  initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }}
-                  transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute top-10 left-0 w-full h-[calc(100%-40px)] object-cover object-left-top group-hover:scale-105 transition-transform duration-700"
-                  alt={features[activeTab].title}
-                />
-              </AnimatePresence>
+              {/* CONTENIDO INTERNO (Aislado para no desbordar el borde) */}
+              <div className="absolute inset-[1px] rounded-[calc(2rem-1px)] overflow-hidden">
+                {/* Barra macOS */}
+                <div className="absolute top-0 left-0 right-0 h-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-4 gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
+                </div>
+
+                {/* Imagen con Hover Hint */}
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={activeTab}
+                    src={features[activeTab].image}
+                    initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }}
+                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                    className="absolute top-10 left-0 w-full h-[calc(100%-40px)] object-cover object-left-top group-hover:scale-105 transition-transform duration-700"
+                    alt={features[activeTab].title}
+                  />
+                </AnimatePresence>
+              </div>
 
               {/* Overlay de Lupa */}
-              <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity z-40 flex items-center justify-center pointer-events-none rounded-[2rem]">
                 <span className="bg-white/95 text-neutral-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
                   <Search size={14} /> Ampliar Interfaz
                 </span>
               </div>
             </div>
 
-            {/* MICRO-WIDGETS FLOTANTES DESKTOP (DISEÑO TELEMETRÍA PUNTIAGUDO) */}
+            {/* MICRO-WIDGETS FLOTANTES DESKTOP */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={`widget-${activeTab}`}
                 initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }}
                 transition={{ duration: 0.5, delay: 0.2, ease: [0.32, 0.72, 0, 1] }}
-                className={`absolute z-30 ${features[activeTab].widget.positionDesktop}`}
+                className={`absolute z-50 ${features[activeTab].widget.positionDesktop}`}
               >
-                <motion.div 
-                  animate={{ y: [0, -6, 0] }} 
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                   className="flex items-stretch bg-white/90 backdrop-blur-md border border-neutral-200/50 shadow-[0_15px_35px_rgba(0,0,0,0.1)] rounded-none overflow-hidden"
                 >
-                  {/* Línea de Acento Técnica */}
                   <div className={`w-1 shrink-0 ${features[activeTab].widget.accentLine}`} />
-                  
                   <div className="px-4 py-3 flex items-center gap-3.5">
                     <ActiveWidgetIcon size={16} strokeWidth={2.5} className={features[activeTab].widget.iconColor} />
                     <div className="flex flex-col">
@@ -1054,22 +1076,47 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
             const MobileWidgetIcon = feature.widget.icon;
             return (
               <div key={feature.id} className="flex flex-col gap-6">
-                
-                {/* Contenedor de Imagen Móvil */}
+
+               {/* Contenedor de Imagen Móvil */}
                 <div 
                   onClick={() => setZoomedImage(feature.image)}
-                  className="relative aspect-[4/3] w-full rounded-2xl bg-neutral-100/50 border border-neutral-200/50 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in"
+                  className="relative aspect-[4/3] w-full rounded-2xl bg-neutral-100/50 shadow-inner flex items-center justify-center cursor-zoom-in"
                 >
-                  <div className="absolute top-0 left-0 right-0 h-8 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-3 gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
-                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
-                    <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                  {/* 🚀 BORDE ANIMADO PREMIUM MÓVIL */}
+                  <div 
+                    className="absolute inset-0 z-30 pointer-events-none rounded-2xl p-[1px]" 
+                    style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
+                  >
+                    <div 
+                      className="absolute inset-[-100%] animate-[spin_12s_linear_infinite]" 
+                      style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 0.8) 98%, #ffffff 100%)' }} 
+                    />
                   </div>
                   
-                  <img src={feature.image} alt={feature.title} className="absolute top-8 left-0 w-full h-[calc(100%-32px)] object-cover object-left-top" />
-                  
-                  {/* MICRO-WIDGET MÓVIL (DISEÑO TELEMETRÍA PUNTIAGUDO) */}
-                  <div className={`absolute z-30 ${feature.widget.positionMobile}`}>
+                  {/* 🚀 RESPLANDOR VOLUMÉTRICO MÓVIL */}
+                  <div 
+                    className="absolute inset-0 z-20 pointer-events-none rounded-2xl p-[1px]" 
+                    style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
+                  >
+                    <div 
+                      className="absolute inset-[-100%] animate-[spin_12s_linear_infinite] blur-[10px] opacity-40" 
+                      style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 0.8) 98%, #ffffff 100%)' }} 
+                    />
+                  </div>
+
+                  {/* CONTENIDO INTERNO ENMASCARADO */}
+                  <div className="absolute inset-[1px] rounded-[calc(1rem-1px)] overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-3 gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                    </div>
+                    
+                    <img src={feature.image} alt={feature.title} className="absolute top-8 left-0 w-full h-[calc(100%-32px)] object-cover object-left-top" />
+                  </div>
+
+                  {/* MICRO-WIDGET MÓVIL */}
+                  <div className={`absolute z-50 ${feature.widget.positionMobile}`}>
                     <div className="flex items-stretch bg-white/95 backdrop-blur-md border border-neutral-200/50 shadow-lg rounded-none overflow-hidden">
                       <div className={`w-1 shrink-0 ${feature.widget.accentLine}`} />
                       <div className="px-3 py-2.5 flex items-center gap-2.5">
@@ -1115,13 +1162,13 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       <AnimatePresence>
         {zoomedImage && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setZoomedImage(null)}
               className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm cursor-zoom-out"
             />
-            
-            <motion.div 
+
+            <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               className="relative w-full max-w-5xl bg-white rounded-2xl border border-neutral-200/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
@@ -1132,7 +1179,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
                   <X size={16} />
                 </button>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto bg-neutral-100/50 p-0 md:p-8 flex items-start justify-center">
                 <img src={zoomedImage} alt="Zoomed Interface" className="w-full h-auto object-contain rounded-none md:rounded-xl shadow-none md:shadow-lg border-0 md:border border-neutral-200/50" />
               </div>
