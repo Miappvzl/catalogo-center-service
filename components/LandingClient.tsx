@@ -828,7 +828,7 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
 
-  const features = [
+const features = [
     {
       id: 'control',
       title: "Control Financiero Absoluto",
@@ -837,11 +837,10 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       image: "/ingresoneto.webp",
       widget: {
         icon: DollarSign,
-        label: "INGRESO NETO",
+        label: "NETO",
         value: "$3,644.89",
-        accentLine: "bg-emerald-500",
-        iconColor: "text-emerald-600",
-        positionDesktop: "-bottom-6 -left-6",
+        dotColor: "bg-emerald-400 text-emerald-400",
+        positionDesktop: "-bottom-5 -left-8",
         positionMobile: "bottom-4 left-4"
       }
     },
@@ -853,16 +852,13 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       image: "/motorbcvautomatizado.webp",
       widget: {
         icon: ArrowRightLeft,
-        label: "TASA BCV SINC.",
-        // 🚀 2. INYECTAMOS LA VARIABLE DINÁMICA CON 2 DECIMALES
+        label: "TASA BCV",
         value: `${bcvRate.toFixed(2)} Bs`,
-        accentLine: "bg-blue-500",
-        iconColor: "text-blue-600",
-        positionDesktop: "-top-6 -right-6",
+        dotColor: "bg-blue-400 text-blue-400",
+        positionDesktop: "-top-5 -right-8",
         positionMobile: "top-4 right-4"
       }
     },
-    // ... (el resto de features queda exactamente igual)
     {
       id: 'omni',
       title: "Inventario Omnicanal",
@@ -871,11 +867,10 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       image: "/inventarioomnicanal.webp",
       widget: {
         icon: AlertTriangle,
-        label: "STOCK CRÍTICO",
-        value: "02 Unidades",
-        accentLine: "bg-rose-500",
-        iconColor: "text-rose-600",
-        positionDesktop: "-bottom-6 -right-6",
+        label: "CRÍTICO",
+        value: "02 Unds",
+        dotColor: "bg-rose-400 text-rose-400",
+        positionDesktop: "-bottom-5 -right-8",
         positionMobile: "bottom-4 right-4"
       }
     },
@@ -884,14 +879,13 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
       title: "Red de Promotores",
       desc: "Convierte a tus mejores clientes en vendedores. Asígnales un código, dales comisión y haz que tu marca se viralice sola.",
       icon: Users,
-      image: "/image_942cbe.webp",
+      image: "/reddepromotores.webp",
       widget: {
         icon: Gift,
-        label: "COMISIÓN PENDIENTE",
-        value: "+$5.00 USD",
-        accentLine: "bg-purple-500",
-        iconColor: "text-purple-600",
-        positionDesktop: "-top-6 -left-6",
+        label: "COMISIÓN",
+        value: "+$5.00",
+        dotColor: "bg-purple-400 text-purple-400",
+        positionDesktop: "-top-5 -left-8",
         positionMobile: "top-4 left-4"
       }
     }
@@ -1037,30 +1031,36 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
               </div>
             </div>
 
-            {/* MICRO-WIDGETS FLOTANTES DESKTOP */}
+           {/* MICRO-WIDGETS FLOTANTES DESKTOP (Onyx Data Pill) */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={`widget-${activeTab}`}
-                initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                initial={{ opacity: 0, y: 15, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -15, scale: 0.95 }}
                 transition={{ duration: 0.5, delay: 0.2, ease: [0.32, 0.72, 0, 1] }}
                 className={`absolute z-50 ${features[activeTab].widget.positionDesktop}`}
               >
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
+                <motion.div 
+                  animate={{ y: [0, -6, 0] }} 
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                  className="flex items-stretch bg-white/90 backdrop-blur-md border border-neutral-200/50 shadow-[0_15px_35px_rgba(0,0,0,0.1)] rounded-none overflow-hidden"
+                  className="flex items-center gap-3 p-1.5 pr-5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.25)] rounded-full"
                 >
-                  <div className={`w-1 shrink-0 ${features[activeTab].widget.accentLine}`} />
-                  <div className="px-4 py-3 flex items-center gap-3.5">
-                    <ActiveWidgetIcon size={16} strokeWidth={2.5} className={features[activeTab].widget.iconColor} />
-                    <div className="flex flex-col">
-                      <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1.5">
+                  {/* Icono en contenedor de cristal oscuro */}
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
+                    <ActiveWidgetIcon size={14} className="text-white" strokeWidth={2.5} />
+                  </div>
+                  
+                  {/* Datos tipográficos */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${features[activeTab].widget.dotColor} shadow-[0_0_8px_currentColor]`} />
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
                         {features[activeTab].widget.label}
                       </span>
-                      <span className="text-sm font-bold tracking-tight font-mono text-neutral-900 leading-none">
-                        {features[activeTab].widget.value}
-                      </span>
                     </div>
+                    <div className="w-px h-3 bg-neutral-700" />
+                    <span className="text-xs font-bold tracking-tight font-mono text-white leading-none mt-px">
+                      {features[activeTab].widget.value}
+                    </span>
                   </div>
                 </motion.div>
               </motion.div>
@@ -1115,20 +1115,24 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
                     <img src={feature.image} alt={feature.title} className="absolute top-8 left-0 w-full h-[calc(100%-32px)] object-cover object-left-top" />
                   </div>
 
-                  {/* MICRO-WIDGET MÓVIL */}
+                 {/* MICRO-WIDGET MÓVIL (Onyx Data Pill) */}
                   <div className={`absolute z-50 ${feature.widget.positionMobile}`}>
-                    <div className="flex items-stretch bg-white/95 backdrop-blur-md border border-neutral-200/50 shadow-lg rounded-none overflow-hidden">
-                      <div className={`w-1 shrink-0 ${feature.widget.accentLine}`} />
-                      <div className="px-3 py-2.5 flex items-center gap-2.5">
-                        <MobileWidgetIcon size={14} strokeWidth={2.5} className={feature.widget.iconColor} />
-                        <div className="flex flex-col">
-                          <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">
+                    <div className="flex items-center gap-2.5 p-1 pr-3.5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.2)] rounded-full">
+                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
+                        <MobileWidgetIcon size={12} className="text-white" strokeWidth={2.5} />
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1 h-1 rounded-full ${feature.widget.dotColor} shadow-[0_0_6px_currentColor]`} />
+                          <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
                             {feature.widget.label}
                           </span>
-                          <span className="text-xs font-bold tracking-tight font-mono text-neutral-900 leading-none">
-                            {feature.widget.value}
-                          </span>
                         </div>
+                        <div className="w-px h-2.5 bg-neutral-700" />
+                        <span className="text-[10px] font-bold tracking-tight font-mono text-white leading-none mt-px">
+                          {feature.widget.value}
+                        </span>
                       </div>
                     </div>
                   </div>
