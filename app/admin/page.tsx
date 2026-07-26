@@ -9,7 +9,8 @@ import {
     Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,
     Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
     SquareArrowOutUpRight, ChartNoAxesColumnIncreasing, LineChart,
-    Sparkles, ExternalLink, CheckCircle2, Circle, Play, Trophy // Nuevos iconos
+    Sparkles, ExternalLink, CheckCircle2, Circle, Play, Trophy, // Nuevos iconos
+     MapPin, Users as UsersIcon // 👈 AÑADE ESTOS ICONOS
 } from 'lucide-react'
 
 // COMPONENTES IMPORTADOS
@@ -28,6 +29,7 @@ import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrappe
 
 import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 import WelcomeModal from "@/components/admin/WelcomeModal";
+import AnalyticsLaunchModal from "@/components/admin/AnalyticsLauchModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -87,7 +89,7 @@ export default async function AdminDashboard() {
         }
     };
 
-    const {
+       const {
         data: { user },
     } = await supabase.auth.getUser();
 
@@ -99,6 +101,12 @@ export default async function AdminDashboard() {
         .eq("user_id", user?.id)
         .single();
 
+    // 2. Define la fecha límite de analíticas (Últimos 30 días)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const fallbackDateString = thirtyDaysAgo.toISOString();
+
+    // 3. Añade la consulta paralela "eventsRes" dentro de tu Promise.all existente:
     const [
         productsRes,
         variantsRes,
@@ -106,6 +114,7 @@ export default async function AdminDashboard() {
         todayOrdersRes,
         configRes,
         recentOrdersRes,
+        eventsRes, // 👈 INYECTA ESTO
     ] = await Promise.all([
         supabase
             .from("products")
@@ -143,6 +152,14 @@ export default async function AdminDashboard() {
             .eq("store_id", store.id)
             .order("created_at", { ascending: false })
             .limit(5),
+
+        // 👈 INYECTA ESTA CONSULTA PARALELA:
+        supabase
+            .from("analytics_raw_events")
+            .select("session_id, event_type, location_state, created_at")
+            .eq("store_id", store.id)
+            .gte("created_at", fallbackDateString)
+            .limit(10000) // Salvaguarda de memoria
     ]);
 
     const totalProducts = productsRes.count || 0;
@@ -187,8 +204,76 @@ export default async function AdminDashboard() {
 // Detectar si la tienda es nueva (menos de 24 horas) para mostrar el banner de éxito
     const isNewStore = new Date().getTime() - new Date(store.created_at).getTime() < 24 * 60 * 60 * 1000;
     
+  // --- LÓGICA DE ANALÍTICAS ENRIQUECIDA PARA EL BENTO GRID ---
+    const rawEvents = eventsRes.data || [];
+    const uniqueSessions = new Set<string>();
+    const locations: Record<string, number> = {};
+    const hourlyTraffic = Array(24).fill(0);
 
-   
+    // Array para el histograma real de los últimos 7 días
+    const currentDate = new Date(); // 👈 Renombrado de 'now' a 'currentDate' para evitar colisiones
+    const last7DaysSessions = Array.from({ length: 7 }, () => new Set<string>());
+
+    rawEvents.forEach((e: any) => {
+        if (!uniqueSessions.has(e.session_id)) {
+            uniqueSessions.add(e.session_id);
+            
+            // Ubicaciones
+            const loc = e.location_state || 'Desconocido';
+            locations[loc] = (locations[loc] || 0) + 1;
+
+            // Horario Caracas (UTC-4)
+            const eventDate = new Date(e.created_at);
+            const caracasDate = new Date(eventDate.getTime() - (4 * 60 * 60 * 1000));
+            const caracasHour = caracasDate.getUTCHours();
+            hourlyTraffic[caracasHour]++;
+
+            // Histograma de 7 días (0: hace 6 días, 6: hoy)
+            const diffDays = Math.floor((currentDate.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0 && diffDays < 7) {
+                last7DaysSessions[6 - diffDays].add(e.session_id);
+            }
+        }
+    });
+
+    const visitsCount = uniqueSessions.size;
+
+    // 1. Datos para Histograma de 7 días
+    const dailyTrafficCounts = last7DaysSessions.map(s => s.size);
+    const maxDailyTraffic = Math.max(...dailyTrafficCounts, 1);
+
+    // 2. Datos para Top Estados (Top 2 Desglosado)
+    const stateMap: Record<string, string> = {
+        'A': 'Distrito Capital', 'M': 'Miranda', 'B': 'Anzoátegui', 'C': 'Apure', 'D': 'Aragua', 
+        'E': 'Barinas', 'F': 'Bolívar', 'G': 'Carabobo', 'H': 'Cojedes', 'I': 'Falcón', 
+        'J': 'Guárico', 'K': 'Lara', 'L': 'Mérida', 'N': 'Monagas', 'O': 'Nueva Esparta', 
+        'P': 'Portuguesa', 'R': 'Sucre', 'S': 'Táchira', 'T': 'Trujillo', 'U': 'Yaracuy', 
+        'V': 'Zulia', 'X': 'La Guaira', 'Y': 'Delta Amacuro', 'Z': 'Amazonas', 'W': 'Dependencias Federales'
+    };
+
+    const sortedLocations = Object.entries(locations).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const topLocationsList = sortedLocations.map(([code, count]) => {
+        const cleanCode = code.replace('VE-', '');
+        let name = stateMap[cleanCode] || cleanCode || 'Desconocido';
+        if (name === 'Desconocido') name = 'No detectado';
+        const pct = visitsCount > 0 ? Math.round((count / visitsCount) * 100) : 0;
+        return { name, pct };
+    });
+
+    // 3. Datos para Fases del Día (Porcentajes Expuestos)
+    const madrugada = hourlyTraffic.slice(0, 6).reduce((a, b) => a + b, 0);
+    const manana = hourlyTraffic.slice(6, 12).reduce((a, b) => a + b, 0);
+    const tarde = hourlyTraffic.slice(12, 18).reduce((a, b) => a + b, 0);
+    const noche = hourlyTraffic.slice(18, 24).reduce((a, b) => a + b, 0);
+
+    const totalHours = (manana + tarde + noche + madrugada) || 1;
+    const blockStats = [
+        { name: 'Mañana', pct: Math.round((manana / totalHours) * 100) },
+        { name: 'Tarde', pct: Math.round((tarde / totalHours) * 100) },
+        { name: 'Noche', pct: Math.round((noche / totalHours) * 100) },
+        { name: 'Madrugada', pct: Math.round((madrugada / totalHours) * 100) },
+    ];
+    const topBlock = [...blockStats].sort((a, b) => b.pct - a.pct)[0];
 
 // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
     const storeCreatedAt = new Date(store.created_at).getTime();
@@ -203,6 +288,9 @@ export default async function AdminDashboard() {
     // Solo mostramos el panel si tiene menos de 7 días y NO ha completado todo
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
     const storeUrl = `${store.slug}.preziso.shop`;
+
+
+    
 
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
@@ -407,17 +495,170 @@ export default async function AdminDashboard() {
                         storeId={store.id}
                     />
 
-                    {/* --- FILA 2: GRÁFICO GIGANTE --- */}
+                   
 
+
+                    {/* --- FILA 2: GRÁFICO GIGANTE --- */}
                     <div className="col-span-1 md:col-span-2 lg:col-span-4 min-h-[350px]">
                         {store?.id ? <AnalyticsChart storeId={store.id} /> : null}
                     </div>
 
-                    {/* --- FILA 3: INTELIGENCIA Y ACTIVIDAD --- */}
+                    {/* 🚀 NUEVA FILA 3 REDISEÑADA: MICRO-ANALÍTICAS CON GRÁFICOS REALES */}
+                    {store?.id && (
+                        <div className="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                            
+                            {/* Tarjeta 1: Visitantes con Histograma Real de 7 Días */}
+                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative overflow-hidden">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
+                                        <UsersIcon size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                                    </div>
+                                    
+                                    {/* Botón CTA Superior */}
+                                    <Link 
+                                        href="/admin/analytics" 
+                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
+                                    >
+                                        <span>Ver todo</span>
+                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                    </Link>
+                                </div>
 
+                                <div className="flex items-end justify-between mt-auto">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 group-hover:text-gray-900 transition-colors duration-500">
+                                            Visitantes Únicos (30d)
+                                        </p>
+                                        <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
+                                            {visitsCount.toLocaleString()}
+                                        </p>
+                                    </div>
+
+                                    {/* Histograma real de los últimos 7 días */}
+                                    <div className="flex items-end gap-1 h-8 px-1">
+                                        {dailyTrafficCounts.map((count, i) => {
+                                            const heightPct = (count / maxDailyTraffic) * 100;
+                                            return (
+                                                <div 
+                                                    key={i} 
+                                                    className="w-1.5 bg-neutral-200 group-hover:bg-neutral-950 rounded-t-xs transition-all duration-500" 
+                                                    style={{ height: `${Math.max(15, heightPct)}%` }}
+                                                    title={`Día ${i + 1}: ${count} visitas`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tarjeta 2: Foco Geográfico con Desglose Top 2 */}
+                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
+                                        <MapPin size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                                    </div>
+
+                                    {/* Botón CTA Superior */}
+                                    <Link 
+                                        href="/admin/analytics" 
+                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
+                                    >
+                                        <span>Ver mapa</span>
+                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                    </Link>
+                                </div>
+
+                                <div className="mt-auto space-y-3">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500">
+                                        Top Regiones
+                                    </p>
+                                    
+                                    {topLocationsList.length === 0 ? (
+                                        <p className="font-bold text-lg text-gray-900">Sin datos geográficos</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {topLocationsList.map((loc, idx) => (
+                                                <div key={loc.name} className="space-y-1">
+                                                    <div className="flex justify-between text-xs font-bold text-gray-900">
+                                                        <span className="truncate max-w-[140px]">{loc.name}</span>
+                                                        <span className="font-mono tabular-nums text-neutral-500">{loc.pct}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={`h-full transition-all duration-500 ${idx === 0 ? 'bg-neutral-950' : 'bg-neutral-400'}`} 
+                                                            style={{ width: `${loc.pct}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tarjeta 3: Horario Activo con Desglose de Fases del Día */}
+                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
+                                        <Clock size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                                    </div>
+
+                                    {/* Botón CTA Superior */}
+                                    <Link 
+                                        href="/admin/analytics" 
+                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
+                                    >
+                                        <span>Ver horas</span>
+                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                    </Link>
+                                </div>
+
+                                <div className="mt-auto space-y-3">
+                                    <div className="flex justify-between items-baseline">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500">
+                                            Afluencia por Bloques
+                                        </p>
+                                        {topBlock && topBlock.pct > 0 && (
+                                            <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">
+                                                Pico: {topBlock.name}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Barra horizontal segmentada con etiquetas claras */}
+                                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                                        {blockStats.map((block) => {
+                                            const isPeak = block.name === topBlock?.name && block.pct > 0;
+                                            return (
+                                                <div key={block.name} className="flex flex-col items-center gap-1">
+                                                    <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={`h-full transition-all duration-500 ${isPeak ? 'bg-neutral-950' : 'bg-neutral-300'}`} 
+                                                            style={{ width: `${Math.max(10, block.pct)}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className={`text-[9px] font-bold uppercase ${isPeak ? 'text-gray-900' : 'text-gray-400'}`}>
+                                                        {block.name.substring(0, 3)}
+                                                    </span>
+                                                    <span className="text-[9px] font-mono tabular-nums text-gray-500">
+                                                        {block.pct}%
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    )}
+
+                    {/* --- FILA 4: INTELIGENCIA Y ACTIVIDAD (Antes era la fila 3) --- */}
                     <div className="col-span-1 md:col-span-2 lg:col-span-2">
                         {store?.id ? <TopPerformers storeId={store.id} /> : null}
                     </div>
+
+                   
 
                     {/* ÚLTIMOS PEDIDOS */}
                     <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-[var(--radius-card)] flex flex-col overflow-hidden relative">
@@ -528,6 +769,9 @@ export default async function AdminDashboard() {
 
             {/* Modal de Lanzamiento de Afiliados */}
             <AffiliateLaunchModal />
+
+             {/* Modal de Lanzamiento de Inteligencia de Tienda (NUEVO) */}
+            <AnalyticsLaunchModal /> {/* 👈 INYECTA ESTA LÍNEA */}
         </div>
     );
 }

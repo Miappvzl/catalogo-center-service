@@ -22,7 +22,8 @@ import {
   Calculator,
   FileText,
   User,
-  Gift
+  Gift,
+  LineChart
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -35,6 +36,7 @@ import VueltoPromoModal from '@/components/admin/VueltoPromoModal';
 const NAV_LINKS = [
   // 📌 General
   { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General' },
+  { name: 'Inteligencia', href: '/admin/analytics', icon: LineChart, isNew: true, category: 'General' }, // 👈 ACTUALIZA ESTA LÍNEA
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General' },
   { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' },
 
@@ -412,21 +414,25 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
                 if (link.isAction) return null
                 const isActive = pathname === link.href
 
-                return (
-                  <GuardedLink
-                    key={link.href}
-                    href={link.href}
-                    className={`relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold transition-all duration-150 ${isActive ? 'text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900'
-                      }`}
-                  >
-
-
-                    <div className="relative z-10 flex items-center gap-3 w-full">
-                      <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
-                      <span>{link.name}</span>
-                    </div>
-                  </GuardedLink>
-                )
+                  return (
+    <GuardedLink
+      key={link.href}
+      href={link.href}
+      className={`relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold transition-all duration-150 ${isActive ? 'text-neutral-900' : 'text-neutral-400'}`}
+    >
+      <div className="relative z-10 flex items-center gap-3 w-full">
+        <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
+        <span>{link.name}</span>
+        
+        {/* 👈 INYECTA ESTA MICROETIQUETA MÓVIL SÉCTICA */}
+        {link.isNew && (
+          <span className="ml-auto bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0">
+            NUEVO
+          </span>
+        )}
+      </div>
+    </GuardedLink>
+  )
               })}
 
               {/* Botón Promocional: Vuelto Inteligente Móvil (Carbón Mate) */}
@@ -502,14 +508,72 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
   )
 }
 
-// --- MOBILE BOTTOM BAR ---
+// --- MOBILE BOTTOM BAR (CON DETECCIÓN INTELIGENTE DE MODALES) ---
 const MobileBottomBar = ({ pathname }: { pathname: string }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const [isModalActive, setIsModalActive] = useState(false); // 🚀 NUEVO: Estado del modal
   const lastScrollY = useRef(0);
 
   const searchParams = useSearchParams()
   const isTourActive = !!searchParams.get('mission')
 
+// 🚀 NUEVO: MutationObserver Inteligente capaz de detectar montajes de modales flotantes
+  useEffect(() => {
+    const checkForActiveModals = () => {
+      if (typeof document === 'undefined') return;
+
+      // 1. Caso Estándar: Scroll bloqueado en el body [2]
+      const isScrollLocked = 
+        document.body.style.overflow === 'hidden' || 
+        document.body.classList.contains('overflow-hidden') ||
+        document.body.style.getPropertyValue('overflow') === 'hidden';
+
+      // 2. Caso Avanzado: Elementos con Z-Index de modal presentes en el árbol
+      // Preziso usa z-[60] (ProductModal), z-[70] (MobileSidebar), z-[80] (LaunchModals)
+      const hasFloatingModals = !!document.querySelector(
+        '[class*="z-[60]"], [class*="z-[70]"], [class*="z-[80]"], [class*="z-60"], [class*="z-70"], [class*="z-80"]'
+      );
+
+      // Si se cumple cualquiera, ocultamos la barra
+      setIsModalActive(isScrollLocked || hasFloatingModals);
+    };
+
+    // Evaluación inicial
+    checkForActiveModals();
+
+    // Configurar observador de alta fidelidad que vigila cambios en estilos,
+    // clases y también el montaje/desmontaje de nuevos elementos (subárbol completo) [2].
+    const observer = new MutationObserver((mutations) => {
+      let shouldCheck = false;
+      
+      for (const mutation of mutations) {
+        // Si se agregó/quitó un nodo o cambiaron clases, forzamos evaluación [2]
+        if (
+          mutation.type === 'childList' || 
+          mutation.attributeName === 'style' || 
+          mutation.attributeName === 'class'
+        ) {
+          shouldCheck = true;
+          break;
+        }
+      }
+
+      if (shouldCheck) {
+        checkForActiveModals();
+      }
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+      childList: true, // 👈 Detecta montajes/desmontajes de nodos en el DOM [2]
+      subtree: true,    // 👈 Detecta cambios en todo el subárbol del body [2]
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Manejador del scroll para ocultar la barra al deslizar hacia abajo
   useEffect(() => {
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
@@ -551,7 +615,8 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     normalLinks[3]
   ].filter(Boolean)
 
-  const shouldRenderBar = isVisible && !isTourActive;
+  // 🚀 MEJORA: La barra se oculta si la pantalla se desplaza hacia abajo, si hay un tour activo, o si hay un modal abierto.
+  const shouldRenderBar = isVisible && !isTourActive && !isModalActive;
 
   return (
     <div

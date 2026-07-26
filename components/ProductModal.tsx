@@ -43,6 +43,57 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [isShippingOpen, setIsShippingOpen] = useState(false)
 
+    // 🚀 MOTOR DE ANALÍTICAS: Captura de vistas y tiempo de permanencia en Modal
+    useEffect(() => {
+        if (!isOpen || !product || !storeConfig?.id) return;
+
+        const startTime = Date.now();
+        const storeId = storeConfig.id;
+        const productId = product.id;
+        const currentUrl = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '';
+
+        const sendEvent = (dwellTime: number) => {
+            const payload = {
+                store_id: storeId,
+                event_type: 'product_view',
+                product_id: productId,
+                url: currentUrl,
+                referrer: typeof document !== 'undefined' ? document.referrer : '',
+                dwell_time: dwellTime,
+            };
+
+            fetch('/api/analytics/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true, // Garantiza el envío si cierran la pestaña abruptamente
+            }).catch(() => {});
+        };
+
+        // 1. Registrar vista de producto inicial (dwell_time = 0)
+        sendEvent(0);
+
+        // 2. Escuchar si cierran la pestaña del navegador estando el modal abierto
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                const dwellTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+                if (dwellTimeSeconds > 2) {
+                    sendEvent(dwellTimeSeconds);
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // 3. Capturar el cierre del modal (Cuando 'isOpen' pasa a ser false o cambian de producto)
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            const dwellTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+            if (dwellTimeSeconds > 2) {
+                sendEvent(dwellTimeSeconds);
+            }
+        };
+    }, [isOpen, product?.id, storeConfig?.id]);
+
 
     const isEur = currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd

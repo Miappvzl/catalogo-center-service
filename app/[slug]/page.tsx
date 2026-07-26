@@ -3,6 +3,7 @@
 // app/[slug]/page.tsx
 import { createClient } from '@/utils/supabaseServer'
 import StoreInterface from '@/components/StoreInterface'
+import StoreTracker from '@/components/StoreTracker'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import StoreLoadingSkeleton from './StoreLoadingSkeleton' // 👈 Moveremos tu esqueleto aquí
@@ -157,14 +158,18 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     '--store-primary': dbPrimary,
   } as React.CSSProperties
 
+// 2. Modifica el return principal agregando el Tracker sin productId:
   return (
     <div 
       style={{
         ...themeVariables,
-        backgroundColor: 'var(--store-background)', // Fuerza el color de fondo exacto (#0d0d0d) desde el primer frame
+        backgroundColor: 'var(--store-background)', 
       }} 
       className={`min-h-screen font-sans antialiased ${isDark ? 'dark text-neutral-50' : 'text-neutral-900'}`}
     >
+      {/* Tracker de Visita General */}
+      <StoreTracker storeId={store.id} />
+      
       <Suspense fallback={<StoreLoadingSkeleton />}>
         <DeferredStoreContent supabase={supabase} store={store} />
       </Suspense>
