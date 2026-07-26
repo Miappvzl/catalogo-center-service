@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+
 // Inicializamos cliente con Service Role para saltar RLS y manejar Auth Admin de forma segura en servidor
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -677,7 +677,7 @@ export default function SettingsPage() {
                 <PaymentSettings storeId={store.id} initialData={store.payment_config} />
                 <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
                 <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
-                <PushNotificationManager storeId={store.id} />
+                <PushNotificationManager storeId={store.id} mode="settings" />
                 <SecuritySettings />
 
                 {/* BOTÓN CERRAR SESIÓN */}

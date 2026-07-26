@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/utils/supabaseAdmin'
-import crypto from 'crypto'
+import { NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/utils/supabaseAdmin';
+import crypto from 'crypto';
+import webpush from 'web-push';
 
 export async function POST(req: Request) {
   try {
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
       .digest('hex')
 
     // 5. Inserción con Service Role
+    
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from('analytics_raw_events').insert({
       store_id,
@@ -52,6 +54,86 @@ export async function POST(req: Request) {
 
     if (error) throw error
 
+    // 🚀 NUEVA LÓGICA: DETECTAR HITO DE 20 VISITAS EN TIEMPO REAL
+    if (event_type === 'page_view') {
+      // Corremos este proceso de fondo de manera asíncrona sin bloquear la respuesta de la API al cliente
+      const handleMilestoneCheck = async () => {
+        try {
+          const todayDate = new Date().toISOString().split('T')[0];
+
+          // A. ¿Ya se notificó este hito hoy? (Evitamos spam en la tabla de notificaciones)
+          const { count: alreadyNotified } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', store_id)
+            .eq('title', '¡Hito de Tráfico Alcanzado! 🚀')
+            .gte('created_at', `${todayDate}T00:00:00Z`);
+
+          if (alreadyNotified && alreadyNotified > 0) return; // Ya se celebró hoy
+
+          // B. Contar las visitas únicas reales de hoy
+          const { data: todayEvents } = await supabase
+            .from('analytics_raw_events')
+            .select('session_id')
+            .eq('store_id', store_id)
+            .eq('event_type', 'page_view')
+            .gte('created_at', `${todayDate}T00:00:00Z`);
+
+          const uniqueVisitsToday = new Set(todayEvents?.map(e => e.session_id)).size;
+
+          // C. Si llegamos exactamente al hito de 20 (o más, en caso de concurrencia), disparamos la celebración
+          if (uniqueVisitsToday >= 20) {
+            const title = '¡Hito de Tráfico Alcanzado! 🚀';
+            const message = `¡Tu tienda acaba de recibir su visitante número ${uniqueVisitsToday} de hoy! El catálogo está ganando tracción.`;
+
+            // 1. Registrar notificación in-app (Campanita)
+            await supabase.from('notifications').insert({
+              store_id,
+              title,
+              message,
+              type: 'alert',
+              link: '/admin/analytics'
+            });
+
+            // 2. Disparar Push a los dispositivos móviles
+            const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('store_id', store_id);
+            if (subs && subs.length > 0) {
+              webpush.setVapidDetails(
+                'mailto:quanzosinc@gmail.com',
+                process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+                process.env.VAPID_PRIVATE_KEY!
+              );
+
+              const payload = JSON.stringify({
+                title,
+                body: message,
+                url: '/admin/analytics',
+                icon: '/favicon-light.png'
+              });
+
+              const pushPromises = subs.map(sub => {
+                return webpush.sendNotification({
+                  endpoint: sub.endpoint,
+                  keys: { p256dh: sub.p256dh, auth: sub.auth }
+                }, payload).catch(async (err) => {
+                  if (err.statusCode === 410 || err.statusCode === 404) {
+                    await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+                  }
+                });
+              });
+              await Promise.all(pushPromises);
+            }
+          }
+        } catch (err) {
+          console.error('Error evaluando hito de tráfico:', err);
+        }
+      };
+
+      // Disparar en segundo plano de inmediato
+      handleMilestoneCheck();
+    }
+
+  
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Analytics Track Error:', error)

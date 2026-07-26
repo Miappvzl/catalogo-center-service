@@ -6,7 +6,7 @@ import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
-import { revalidateStoreCache } from '@/app/admin/actions'
+import { revalidateStoreCache, checkAndTriggerStockAlert } from '@/app/admin/actions' // 👈 ACTUALIZA ESTA LÍNEA
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { Zain } from 'next/font/google'
@@ -34,6 +34,9 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
+    
+    // 2. INYECTA ESTE NUEVO ESTADO PARA ALMACENAR EL ID DE LA TIENDA DE FORMA LOCAL:
+    const [storeId, setStoreId] = useState<string | null>(null)
     // 🚀 ESTADOS DEL MODO MERCHANDISING
     const [isReordering, setIsReordering] = useState(false)
     const [reorderList, setReorderList] = useState<any[]>([])
@@ -124,6 +127,8 @@ export default function InventoryPage() {
                 // 🚀 ACTUALIZACIÓN: Traemos el fiscal_profile de la tienda
                 const { data: store } = await supabase.from('stores').select('id, fiscal_profile').eq('user_id', user.id).single()
                 if (!store) return
+
+                   setStoreId(store.id) // 👈 INYECTA ESTA LÍNEA AQUÍ
                 setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
                 const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
 
@@ -189,7 +194,7 @@ export default function InventoryPage() {
         setPendingChanges(prev => ({ ...prev, [id]: val }))
     }
 
-    const saveStock = async (row: InventoryItem) => {
+  const saveStock = async (row: InventoryItem) => {
         const pendingVal = pendingChanges[row.rowId]
         if (pendingVal === undefined) return
         const newStock = pendingVal === '' ? 0 : pendingVal
@@ -202,8 +207,23 @@ export default function InventoryPage() {
                 const { error } = await supabase.from('products').update({ stock: newStock }).eq('id', row.productId)
                 if (error) throw error
             }
+            
+            // Actualizamos la UI local
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
             await revalidateStoreCache()
+            
+            // 🚀 DISPARO INTELIGENTE Y SEGURO (Server-side)
+            if (newStock <= 3 && storeId) {
+                // Ejecutamos la Server Action en segundo plano sin ralentizar la respuesta de la UI
+                checkAndTriggerStockAlert({
+                    storeId,
+                    productId: Number(row.productId),
+                    productName: row.name,
+                    newStock,
+                    variantName: row.variantId ? `${row.color} / Talla ${row.size}` : null
+                }).catch(err => console.error("Error al disparar alerta de stock:", err));
+            }
+
             const remaining = { ...pendingChanges }
             delete remaining[row.rowId]
             setPendingChanges(remaining)

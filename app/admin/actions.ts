@@ -1,5 +1,6 @@
 'use server'
-
+// 1. Asegúrate de tener esta importación al inicio de app/admin/actions.ts:
+import { triggerCriticalStockAlert } from '@/utils/notificationTriggers';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -68,6 +69,23 @@ export async function updateStoreCurrency(prevState: ActionState, formData: Form
   } catch (error) {
     return { success: false, message: 'Error al actualizar preferencia' }
   }
+}
+
+// 2. Añade esta Server Action al final del archivo:
+export async function checkAndTriggerStockAlert(data: {
+    storeId: string;
+    productId: number;
+    productName: string;
+    newStock: number;
+    variantName?: string | null;
+}) {
+    await triggerCriticalStockAlert({
+        storeId: data.storeId,
+        productId: data.productId,
+        productName: data.productName,
+        newStock: data.newStock,
+        variantName: data.variantName
+    });
 }
 
 // 🚀 NUEVO CACHE BUSTER GENÉRICO

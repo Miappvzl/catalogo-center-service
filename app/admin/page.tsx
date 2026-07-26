@@ -30,6 +30,7 @@ import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrappe
 import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 import WelcomeModal from "@/components/admin/WelcomeModal";
 import AnalyticsLaunchModal from "@/components/admin/AnalyticsLauchModal";
+import PushNotificationManager from "@/components/admin/PushNotificationManager";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -383,8 +384,12 @@ export default async function AdminDashboard() {
             
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
-                {/* --- BENTO GRID SYSTEM 2.0 (BORDERLESS) --- */}
 
+                  {/* 🚀 INYECTA EL BANNER DE NOTIFICACIONES EN LA PARTE SUPERIOR DEL MAIN */}
+                <PushNotificationManager storeId={store.id} />
+
+
+                {/* --- BENTO GRID SYSTEM 2.0 (BORDERLESS) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {/* 1. RATE WIDGET */}
 
