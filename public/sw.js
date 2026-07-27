@@ -9,6 +9,7 @@ self.addEventListener('activate', function (event) {
     event.waitUntil(clients.claim());
 });
 
+
 // 🚀 2. TU LÓGICA DE PUSH INTACTA (Con manejo de errores extra)
 self.addEventListener('push', function (event) {
     if (!event.data) return;
@@ -19,8 +20,8 @@ self.addEventListener('push', function (event) {
         // Configuración visual de la notificación
         const options = {
             body: data.body,
-            icon: data.icon || '/favicon-light.png',
-            badge: '/favicon-light.png', // El icono monocromático para Android
+            icon: data.icon || '/favicon-circle.png', // 👈 Fallback al ícono circular sólido
+            badge: data.badge || '/badge.png', // 👈 Fallback al ícono monocromático de sistema
             vibrate: [200, 100, 200], // Patrón de vibración
             data: {
                 dateOfArrival: Date.now(),

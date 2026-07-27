@@ -23,7 +23,10 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" }, // 👈 Barra blanca en modo claro
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0d" }    // 👈 Barra negra profunda en modo oscuro
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

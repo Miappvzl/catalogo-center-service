@@ -30,14 +30,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'No hay dispositivos suscritos' }, { status: 200 });
         }
 
+        
         // 4. El "paquete" de información que verá el administrador en su pantalla de bloqueo
         const payload = JSON.stringify({
             title: `¡Nuevo Pedido #${orderNumber}! 💸`,
             body: `${customerName} ha pagado $${totalUsd}.`,
-            url: '/admin', // Al tocar la notificación, lo llevará a su panel
-            icon: '/favicon-light.png'
+            url: '/admin', 
+            icon: '/favicon-circle.png', // 👈 Ícono circular de alto contraste (visible en cualquier fondo)
+            badge: '/badge.png' // 👈 Silueta blanca transparente para que el sistema operativo la tiña automáticamente
         });
 
+
+     
         // 5. Disparamos a todos los dispositivos en paralelo
         const notifications = subscriptions.map(sub => {
             const pushSubscription = {
