@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue } from 'framer-motion'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionValueEvent } from 'framer-motion'
 import {
   AlertCircle,
   MessageSquare,
@@ -819,16 +819,15 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
   )
 }
 // =========================================
-// NODO 3: EL CENTRO DE COMANDO (ADAPTATIVE SHOWCASE & DEEP ZOOM)
+// NODO 3: EL CENTRO DE COMANDO (GPU-ACCELERATED KINETIC STACK)
 // =========================================
 
-// 🚀 1. AÑADIMOS LA PROP 'bcvRate' A LA FUNCIÓN
 const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
-  const [activeTab, setActiveTab] = useState(0)
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null)
+  const containerRef = useRef<HTMLElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-const features = [
+  const features = useMemo(() => [
     {
       id: 'control',
       title: "Control Financiero Absoluto",
@@ -840,8 +839,7 @@ const features = [
         label: "NETO",
         value: "$3,644.89",
         dotColor: "bg-emerald-400 text-emerald-400",
-        positionDesktop: "-bottom-5 -left-8",
-        positionMobile: "bottom-4 left-4"
+        position: "bottom-4 left-4 md:-bottom-5 md:-left-8"
       }
     },
     {
@@ -855,8 +853,7 @@ const features = [
         label: "TASA BCV",
         value: `${bcvRate.toFixed(2)} Bs`,
         dotColor: "bg-blue-400 text-blue-400",
-        positionDesktop: "-top-5 -right-8",
-        positionMobile: "top-4 right-4"
+        position: "top-4 right-4 md:-top-5 md:-right-8"
       }
     },
     {
@@ -870,8 +867,7 @@ const features = [
         label: "CRÍTICO",
         value: "02 Unds",
         dotColor: "bg-rose-400 text-rose-400",
-        positionDesktop: "-bottom-5 -right-8",
-        positionMobile: "bottom-4 right-4"
+        position: "bottom-4 right-4 md:-bottom-5 md:-right-8"
       }
     },
     {
@@ -885,294 +881,210 @@ const features = [
         label: "COMISIÓN",
         value: "+$5.00",
         dotColor: "bg-purple-400 text-purple-400",
-        positionDesktop: "-top-5 -left-8",
-        positionMobile: "top-4 left-4"
+        position: "top-4 left-4 md:-top-5 md:-left-8"
       }
     }
-  ]
+  ], [bcvRate]);
+// 🚀 LÓGICA DE SCROLL NATIVA ACELERADA POR GPU
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
 
-  // Auto-Play Logic (Solo para Desktop)
-  useEffect(() => {
-    if (!isAutoPlaying) return;
-    const interval = setInterval(() => {
-      setActiveTab((prev) => (prev + 1) % features.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isAutoPlaying, features.length]);
+  // 🚀 SISTEMA DE MESETAS (PLATEAUS) PARA CONTROL ABSOLUTO DE SENSIBILIDAD
+  // Mapeamos el scroll para crear "zonas de descanso" largas. 
+  // El usuario debe scrollear obligatoriamente a través del porcentaje estático antes de que la tarjeta se mueva.
+  const rawIndex = useTransform(
+    scrollYProgress, 
+    [
+      0, 0.15,   // De 0% a 15%: Tarjeta 1 totalmente quieta (Requiere varios scrolls)
+      0.25,      // De 15% a 25%: Transición a Tarjeta 2
+      0.40,      // De 25% a 40%: Tarjeta 2 totalmente quieta
+      0.50,      // De 40% a 50%: Transición a Tarjeta 3
+      0.65,      // De 50% a 65%: Tarjeta 3 totalmente quieta
+      0.75,      // De 65% a 75%: Transición a Tarjeta 4
+      1          // De 75% a 100%: Tarjeta 4 totalmente quieta hasta salir de la sección
+    ], 
+    [
+      0, 0,      // Mantiene índice 0
+      1,         // Sube a índice 1
+      1,         // Mantiene índice 1
+      2,         // Sube a índice 2
+      2,         // Mantiene índice 2
+      3,         // Sube a índice 3
+      3          // Mantiene índice 3
+    ]
+  );
+  
+  // Físicas de resorte ajustadas para suavizar los "saltos" entre las mesetas
+  const smoothIndex = useSpring(rawIndex, { stiffness: 200, damping: 40, mass: 1 });
 
-  const handleTabClick = (index: number) => {
-    setActiveTab(index);
-    setIsAutoPlaying(false);
-  }
+  useMotionValueEvent(rawIndex, "change", (latest) => {
+    const index = Math.round(latest);
+    if (index !== activeIndex) setActiveIndex(index);
+  });
 
-  const ActiveWidgetIcon = features[activeTab].widget.icon;
+  const currentFeature = features[activeIndex] || features[0];
 
   return (
-    <section id="adn" className="relative py-24 md:py-32 bg-white border-t border-neutral-200/50 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6">
+    // 🚀 Aumentamos a h-[600vh]. Al dividir 600vh entre 4 tarjetas, cada una tiene 150vh de espacio físico.
+    // 150vh garantiza matemáticamente que el usuario deba hacer al menos 2 swipes largos en móvil para avanzar.
+    <section ref={containerRef} id="adn" className="relative h-[600vh] bg-white border-t border-neutral-200/50">
+      <div className="sticky top-0 h-[100dvh] w-full flex flex-col justify-center overflow-hidden">
+        {/* Barra de Progreso Superior */}
+        <motion.div 
+          className="absolute top-0 left-0 h-1 bg-neutral-900 z-50 origin-left"
+          style={{ scaleX: scrollYProgress }}
+        />
 
-        {/* Encabezado de la Sección */}
-        <div className="text-center md:text-left mb-16 md:mb-20">
-          <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 uppercase leading-none">
-            El cerebro detrás <br className="hidden md:block" />
-            <span className="text-neutral-500 font-medium">de tu operación.</span>
-          </h2>
-        </div>
-
-        {/* ========================================= */}
-        {/* VERSIÓN ESCRITORIO (TABS INTERACTIVAS) */}
-        {/* ========================================= */}
-        <div className="hidden lg:grid grid-cols-12 gap-20 items-center">
-
-          {/* Pestañas (Izquierda) */}
-          <div className="col-span-5 flex flex-col gap-4">
-            {features.map((feature, idx) => {
-              const isActive = activeTab === idx;
-              return (
-                <button
-                  key={feature.id}
-                  onClick={() => handleTabClick(idx)}
-                  className={`relative flex flex-col items-start p-6 rounded-2xl text-left transition-all duration-300 border ${isActive
-                      ? 'bg-white border-neutral-300/50 shadow-[0_20px_50px_rgba(0,0,0,0.05)] ring-0.5 ring-black/50 scale-[1.02]'
-                      : 'bg-transparent border-transparent hover:bg-neutral-50/50'
-                    }`}
-                >
-                  {isActive && isAutoPlaying && (
-                    <motion.div
-                      initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }}
-                      className="absolute top-0 left-0 h-1 bg-neutral-900 rounded-t-2xl"
-                    />
-                  )}
-
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300 ${isActive ? 'bg-neutral-900 text-white shadow-md' : 'bg-neutral-100 text-neutral-500'}`}>
-                      <feature.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                    </div>
-                    <h3 className={`text-lg font-bold tracking-tight transition-colors duration-300 ${isActive ? 'text-neutral-900' : 'text-neutral-500'}`}>
-                      {feature.title}
-                    </h3>
-                  </div>
-
-                  <AnimatePresence initial={false}>
-                    {isActive && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden"
-                      >
-                        <p className="text-sm text-neutral-500 leading-relaxed font-medium pt-1">
-                          {feature.desc}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-              )
-            })}
+        <div className="max-w-7xl mx-auto px-6 w-full">
+          
+          {/* Encabezado */}
+          <div className="text-center md:text-left mb-10 md:mb-16">
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 uppercase leading-none">
+              El cerebro detrás <br className="hidden md:block" />
+              <span className="text-neutral-500 font-medium">de tu operación.</span>
+            </h2>
           </div>
 
-          {/* Escaparate Visual (Derecha) */}
-          <div className="lg:col-span-7 relative order-1 lg:order-2">
-            <div 
-              onClick={() => setZoomedImage(features[activeTab].image)}
-              className="relative aspect-[4/3] md:aspect-[16/10] w-full rounded-[2rem] bg-neutral-100/50 shadow-inner flex items-center justify-center cursor-zoom-in group"
-            >
-              {/* 🚀 BORDE ANIMADO PREMIUM (Movimiento lento y estela asimétrica) */}
-              <div 
-                className="absolute inset-0 z-30 pointer-events-none rounded-[2rem] p-[1px]" 
-                style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
-              >
-                <div 
-                  className="absolute inset-[-100%] animate-[spin_12s_linear_infinite]" 
-                  style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 5) 98%, #ffffff 100%)' }} 
-                />
-              </div>
-              
-              {/* 🚀 RESPLANDOR VOLUMÉTRICO (Soft Glow) */}
-              <div 
-                className="absolute inset-0 z-20 pointer-events-none rounded-[2rem] p-[1px]" 
-                style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
-              >
-                <div 
-                  className="absolute inset-[-100%] animate-[spin_12s_linear_infinite] blur-[12px] opacity-40" 
-                  style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 5) 98%, #ffffff 100%)' }} 
-                />
-              </div>
-
-              {/* CONTENIDO INTERNO (Aislado para no desbordar el borde) */}
-              <div className="absolute inset-[1px] rounded-[calc(2rem-1px)] overflow-hidden">
-                {/* Barra macOS */}
-                <div className="absolute top-0 left-0 right-0 h-10 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-4 gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-neutral-300" />
-                </div>
-
-                {/* Imagen con Hover Hint */}
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={activeTab}
-                    src={features[activeTab].image}
-                    initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }}
-                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                    className="absolute top-10 left-0 w-full h-[calc(100%-40px)] object-cover object-left-top group-hover:scale-105 transition-transform duration-700"
-                    alt={features[activeTab].title}
-                  />
-                </AnimatePresence>
-              </div>
-
-              {/* Overlay de Lupa */}
-              <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity z-40 flex items-center justify-center pointer-events-none rounded-[2rem]">
-                <span className="bg-white/95 text-neutral-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                  <Search size={14} /> Ampliar Interfaz
-                </span>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-20 items-center">
+            
+            {/* COLUMNA IZQUIERDA: COPY DINÁMICO */}
+            <div className="lg:col-span-5 flex flex-col justify-center h-[180px] md:h-[300px] relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentFeature.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="absolute inset-0 flex flex-col justify-center"
+                >
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neutral-900 text-white flex items-center justify-center shadow-md mb-4 md:mb-6">
+                    <currentFeature.icon size={20} strokeWidth={2} />
+                  </div>
+                  <h3 className="text-xl md:text-4xl font-bold tracking-tight text-neutral-900 mb-3 md:mb-4 leading-tight">
+                    {currentFeature.title}
+                  </h3>
+                  <p className="text-xs md:text-base text-neutral-500 leading-relaxed font-medium max-w-md">
+                    {currentFeature.desc}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
-           {/* MICRO-WIDGETS FLOTANTES DESKTOP (Onyx Data Pill) */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`widget-${activeTab}`}
-                initial={{ opacity: 0, y: 15, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                transition={{ duration: 0.5, delay: 0.2, ease: [0.32, 0.72, 0, 1] }}
-                className={`absolute z-50 ${features[activeTab].widget.positionDesktop}`}
-              >
-                <motion.div 
-                  animate={{ y: [0, -6, 0] }} 
-                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                  className="flex items-center gap-3 p-1.5 pr-5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.25)] rounded-full"
-                >
-                  {/* Icono en contenedor de cristal oscuro */}
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
-                    <ActiveWidgetIcon size={14} className="text-white" strokeWidth={2.5} />
-                  </div>
-                  
-                  {/* Datos tipográficos */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${features[activeTab].widget.dotColor} shadow-[0_0_8px_currentColor]`} />
-                      <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
-                        {features[activeTab].widget.label}
-                      </span>
-                    </div>
-                    <div className="w-px h-3 bg-neutral-700" />
-                    <span className="text-xs font-bold tracking-tight font-mono text-white leading-none mt-px">
-                      {features[activeTab].widget.value}
-                    </span>
-                  </div>
-                </motion.div>
-              </motion.div>
-            </AnimatePresence>
+            {/* COLUMNA DERECHA: KINETIC STACK (GPU DRIVEN) */}
+            <div className="lg:col-span-7 relative h-[350px] md:h-[550px] w-full flex items-center justify-center perspective-[1200px]">
+              <div className="relative w-full max-w-[280px] md:max-w-[450px] aspect-[4/3] flex items-center justify-center">
+                
+                {features.map((item, i) => {
+                  const y = useTransform(smoothIndex, (v) => {
+                    const offset = i - v;
+                    if (offset < 0) return Math.abs(offset) * 600; 
+                    return -offset * 25; 
+                  });
+
+                  const scale = useTransform(smoothIndex, (v) => {
+                    const offset = i - v;
+                    if (offset < 0) return 1 + Math.abs(offset) * 0.1; 
+                    return 1 - offset * 0.05;
+                  });
+
+                  const shadowOpacity = useTransform(smoothIndex, (v) => {
+                    const offset = i - v;
+                    if (offset < 0) return 0;
+                    return offset * 0.12;
+                  });
+
+                  const widgetOpacity = useTransform(smoothIndex, (v) => {
+                    const offset = Math.abs(i - v);
+                    return offset < 0.4 ? 1 : 0; 
+                  });
+
+                  const widgetScale = useTransform(smoothIndex, (v) => {
+                    const offset = Math.abs(i - v);
+                    return offset < 0.4 ? 1 : 0.9;
+                  });
+
+                  const zIndex = features.length - i;
+                  const WidgetIcon = item.widget.icon;
+
+                  return (
+                    <motion.div
+                      key={item.id}
+                      // 🚀 DESACOPLAMIENTO: Quitamos el overflow-hidden de aquí para liberar al widget
+                      className="absolute flex w-full h-full origin-bottom flex-col cursor-zoom-in will-change-transform"
+                      style={{ 
+                        y, 
+                        scale, 
+                        zIndex,
+                        filter: 'blur(0px)' 
+                      }}
+                    >
+                      {/* 🚀 CONTENEDOR VISUAL DE LA CARTA (Aquí sí recortamos la imagen) */}
+                      <div 
+                        className="absolute inset-0 rounded-2xl md:rounded-[2rem] overflow-hidden border border-neutral-200/80 bg-white shadow-[0_15px_40px_rgba(0,0,0,0.1)]"
+                        onClick={() => setZoomedImage(item.image)}
+                      >
+                        {/* Barra macOS */}
+                        <div className="absolute top-0 left-0 right-0 h-8 md:h-10 bg-white border-b border-neutral-200/80 z-20 flex items-center px-4 gap-2">
+                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
+                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
+                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
+                        </div>
+                        
+                        <img src={item.image} alt={item.title} className="absolute top-8 md:top-10 left-0 w-full h-[calc(100%-32px)] md:h-[calc(100%-40px)] object-cover object-left-top" />
+                        
+                        {/* Capa de sombra dinámica */}
+                        <motion.div 
+                          className="absolute inset-0 bg-black pointer-events-none z-30 will-change-opacity"
+                          style={{ opacity: shadowOpacity }}
+                        />
+                      </div>
+
+                      {/* 🚀 MICRO-WIDGET FLOTANTE (Ahora es libre de salir de los bordes) */}
+                      <motion.div
+                        style={{ opacity: widgetOpacity, scale: widgetScale }}
+                        className={`absolute z-50 ${item.widget.position} pointer-events-none`}
+                      >
+                        <div className="flex items-center gap-2.5 md:gap-3 p-1.5 pr-4 md:pr-5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.25)] rounded-full">
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
+                            <WidgetIcon size={14} className="text-white" strokeWidth={2.5} />
+                          </div>
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full ${item.widget.dotColor} shadow-[0_0_8px_currentColor]`} />
+                              <span className="text-[8px] md:text-[9px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
+                                {item.widget.label}
+                              </span>
+                            </div>
+                            <div className="w-px h-2.5 md:h-3 bg-neutral-700" />
+                            <span className="text-[10px] md:text-xs font-bold tracking-tight font-mono text-white leading-none mt-px">
+                              {item.widget.value}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* ========================================= */}
-        {/* VERSIÓN MÓVIL (STACK VERTICAL) */}
-        {/* ========================================= */}
-        <div className="lg:hidden flex flex-col gap-20">
-          {features.map((feature) => {
-            const MobileWidgetIcon = feature.widget.icon;
-            return (
-              <div key={feature.id} className="flex flex-col gap-6">
-
-               {/* Contenedor de Imagen Móvil */}
-                <div 
-                  onClick={() => setZoomedImage(feature.image)}
-                  className="relative aspect-[4/3] w-full rounded-2xl bg-neutral-100/50 shadow-inner flex items-center justify-center cursor-zoom-in"
-                >
-                  {/* 🚀 BORDE ANIMADO PREMIUM MÓVIL */}
-                  <div 
-                    className="absolute inset-0 z-30 pointer-events-none rounded-2xl p-[1px]" 
-                    style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
-                  >
-                    <div 
-                      className="absolute inset-[-100%] animate-[spin_12s_linear_infinite]" 
-                      style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 0.8) 98%, #ffffff 100%)' }} 
-                    />
-                  </div>
-                  
-                  {/* 🚀 RESPLANDOR VOLUMÉTRICO MÓVIL */}
-                  <div 
-                    className="absolute inset-0 z-20 pointer-events-none rounded-2xl p-[1px]" 
-                    style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}
-                  >
-                    <div 
-                      className="absolute inset-[-100%] animate-[spin_12s_linear_infinite] blur-[10px] opacity-40" 
-                      style={{ background: 'conic-gradient(from 0deg, transparent 60%, rgba(156, 163, 175, 0.1) 80%, rgba(23, 23, 23, 0.8) 98%, #ffffff 100%)' }} 
-                    />
-                  </div>
-
-                  {/* CONTENIDO INTERNO ENMASCARADO */}
-                  <div className="absolute inset-[1px] rounded-[calc(1rem-1px)] overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-white/80 backdrop-blur-md border-b border-neutral-200/50 z-20 flex items-center px-3 gap-1.5">
-                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
-                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
-                      <div className="w-2 h-2 rounded-full bg-neutral-300" />
-                    </div>
-                    
-                    <img src={feature.image} alt={feature.title} className="absolute top-8 left-0 w-full h-[calc(100%-32px)] object-cover object-left-top" />
-                  </div>
-
-                 {/* MICRO-WIDGET MÓVIL (Onyx Data Pill) */}
-                  <div className={`absolute z-50 ${feature.widget.positionMobile}`}>
-                    <div className="flex items-center gap-2.5 p-1 pr-3.5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.2)] rounded-full">
-                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
-                        <MobileWidgetIcon size={12} className="text-white" strokeWidth={2.5} />
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-1 h-1 rounded-full ${feature.widget.dotColor} shadow-[0_0_6px_currentColor]`} />
-                          <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
-                            {feature.widget.label}
-                          </span>
-                        </div>
-                        <div className="w-px h-2.5 bg-neutral-700" />
-                        <span className="text-[10px] font-bold tracking-tight font-mono text-white leading-none mt-px">
-                          {feature.widget.value}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Textos Móvil */}
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-neutral-900 text-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                      <feature.icon size={18} strokeWidth={2} />
-                    </div>
-                    <h3 className="text-xl font-bold text-neutral-900 leading-tight">
-                      {feature.title}
-                    </h3>
-                  </div>
-                  <p className="text-sm text-neutral-500 leading-relaxed font-medium">
-                    {feature.desc}
-                  </p>
-                </div>
-
-              </div>
-            )
-          })}
-        </div>
-
       </div>
 
-      {/* ========================================= */}
-      {/* LIGHTBOX DE ZOOM (DEEP INSPECTION) */}
-      {/* ========================================= */}
+      {/* LIGHTBOX DE ZOOM */}
       <AnimatePresence>
         {zoomedImage && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10">
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
               onClick={() => setZoomedImage(null)}
               className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm cursor-zoom-out"
             />
-
-            <motion.div
+            <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               className="relative w-full max-w-5xl bg-white rounded-2xl border border-neutral-200/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
@@ -1183,7 +1095,6 @@ const features = [
                   <X size={16} />
                 </button>
               </div>
-
               <div className="flex-1 overflow-y-auto bg-neutral-100/50 p-0 md:p-8 flex items-start justify-center">
                 <img src={zoomedImage} alt="Zoomed Interface" className="w-full h-auto object-contain rounded-none md:rounded-xl shadow-none md:shadow-lg border-0 md:border border-neutral-200/50" />
               </div>
@@ -1191,9 +1102,8 @@ const features = [
           </div>
         )}
       </AnimatePresence>
-
     </section>
-  )
+  );
 }
 
 // IMPORTACIONES ADICIONALES NECESARIAS (Asegúrate de tenerlas arriba)
