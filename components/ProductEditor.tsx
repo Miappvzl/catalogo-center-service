@@ -827,13 +827,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-2.5 block">Ejemplo en Catálogo</span>
                     
                     {/* Contenedor de la imagen */}
-                    <div className="relative w-full aspect-[4/3] rounded bg-white border border-neutral-200/50 overflow-hidden flex items-center justify-center">
+                    <div className="relative w-full aspect-[4/4] rounded bg-white border border-neutral-200/50 overflow-hidden flex items-center justify-center">
                         <Image 
                             src="/shipping-badge-preview.webp" 
                             alt="Vista previa del mensaje de envío en la app"
                             fill
                             sizes="(max-width: 1024px) 100vw, 250px"
-                            className="object-contain p-1 group-hover:scale-102 transition-transform duration-300"
+                            className="object-contain p-0 group-hover:scale-106 transition-transform duration-300"
                             priority
                         />
                         {/* Micro-overlay de hover para indicar que se puede ampliar */}
