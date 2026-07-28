@@ -208,38 +208,29 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
     }, [product, activeRate, selectedColor, selectedSize, variants, bestPromo])
 
-    useEffect(() => {
+  useEffect(() => {
         if (isOpen && product) {
             setLoading(true)
-            const fetchData = async () => {
-                const { data: vars } = await supabase
-                    .from('product_variants')
-                    .select('*')
-                    .eq('product_id', product.id)
+            
+            // 🚀 OPTIMIZACIÓN: Extraemos las variantes directamente de la memoria (Cero latencia)
+            const vars = product.product_variants || []
 
-                const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean)
+            const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean)
+            setCurrentGallery(defaultGallery)
+            setGalleryIndex(0)
+            setQuantity(1)
+            
+            if (vars && vars.length > 0) {
+                setVariants(vars)
+                setSelectedColor(null)
+                setSelectedSize(null)
                 setCurrentGallery(defaultGallery)
-                setGalleryIndex(0)
-                setQuantity(1)
-                if (vars && vars.length > 0) {
-                    setVariants(vars)
-
-                    // 🚀 SOLUCIÓN UX: "Fricción Intencional" (Forced Choice)
-                    // Eliminamos la auto-selección. Obligamos al usuario a tomar una decisión 
-                    // consciente para reducir la tasa de pedidos erróneos (ODR).
-                    setSelectedColor(null)
-                    setSelectedSize(null)
-
-                    // Al no tener variante seleccionada, mostramos la galería base del producto
-                    setCurrentGallery(defaultGallery)
-                } else {
-                    setVariants([])
-                    setSelectedColor(null)
-                    setSelectedSize(null)
-                }
-                setLoading(false)
+            } else {
+                setVariants([])
+                setSelectedColor(null)
+                setSelectedSize(null)
             }
-            fetchData()
+            setLoading(false)
         } else {
             setFullProduct(null)
             setVariants([])
@@ -249,7 +240,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
             setGalleryIndex(0)
             setQuantity(1)
         }
-    }, [isOpen, product, supabase])
+    }, [isOpen, product]) // 🚀 Eliminamos 'supabase' de las dependencias
 
     useEffect(() => {
         if (!selectedColor || variants.length === 0) return

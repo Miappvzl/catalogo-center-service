@@ -1,12 +1,14 @@
 
 
 // app/[slug]/page.tsx
-import { createClient } from '@/utils/supabaseServer'
+// 1. Importa la nueva función
+import { createClient, createPublicCachedClient } from '@/utils/supabaseServer'
 import StoreInterface from '@/components/StoreInterface'
 import StoreTracker from '@/components/StoreTracker'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import StoreLoadingSkeleton from './StoreLoadingSkeleton' // 👈 Moveremos tu esqueleto aquí
+import StoreLoadingSkeleton from './StoreLoadingSkeleton' // 👈 Moveremos tu esqueleto aquí\
+
 import { Metadata } from 'next'
 import { Rocket, Sparkle } from 'lucide-react'
 
@@ -19,7 +21,7 @@ export const dynamic = 'force-dynamic'
 // ------------------------------------------------------------------
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicCachedClient() // 🚀 Usamos el cliente cacheado (sin await)
 
   // Solo pedimos lo estrictamente necesario para el SEO (Súper rápido)
   const { data: store } = await supabase
@@ -72,11 +74,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 // ------------------------------------------------------------------
 
-
 export default async function StorePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const supabase = await createClient()
-
+  const supabase = createPublicCachedClient() // 🚀 Usamos el cliente cacheado (sin await)
   // ------------------------------------------------------------------
   // ⚡ FASE 1: OBTENER IDENTIDAD DE LA TIENDA (Ultra Rápido)
   // ------------------------------------------------------------------
@@ -177,13 +177,17 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   )
 }
 
+
 // ------------------------------------------------------------------
 // 🛡️ COMPONENTE ASÍNCRONO DIFERIDO (Carga pesada en segundo plano)
 // ------------------------------------------------------------------
 async function DeferredStoreContent({ supabase, store }: { supabase: any, store: any }) {
-  // Disparamos la carga pesada en paralelo en el servidor mientras el cliente ya ve el esqueleto inteligente
+  // 🚀 Instanciamos el cliente cacheado específicamente para estas consultas pesadas
+  const supabaseCached = createPublicCachedClient()
+
+  // Disparamos la carga pesada en paralelo en el servidor
   const [productsResponse, ratesResponse, promotionsResponse] = await Promise.all([
-    supabase
+    supabaseCached
       .from('products')
       .select('*, product_variants(*)')
       .eq('user_id', store.user_id)
@@ -191,13 +195,13 @@ async function DeferredStoreContent({ supabase, store }: { supabase: any, store:
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false }),
 
-    supabase
+    supabaseCached
       .from('app_config')
       .select('*')
       .limit(1)
       .single(),
 
-    supabase
+    supabaseCached
       .from('promotions')
       .select('*')
       .eq('store_id', store.id)
