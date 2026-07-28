@@ -4,7 +4,6 @@ import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Flame, Heart } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion' 
 
 interface ProductCardProps {
   product: any;
@@ -12,11 +11,11 @@ interface ProductCardProps {
   onOpen: (product: any) => void;
   isOutOfStock?: boolean;
   index?: number;
-  isFavorite?: boolean; // 🚀 NUEVO
+  isFavorite?: boolean;
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, index, isFavorite = false }: ProductCardProps) {
-  const [isImageLoaded, setIsImageLoaded] = useState(false); // 🚀 Control del Blur-to-Clear
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, isFavorite = false }: ProductCardProps) {
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const penalty = Number(product.usd_penalty || 0);
   const cashPrice = Number(product.usd_cash_price || 0);
@@ -43,19 +42,10 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
   }, [product.product_variants]);
 
   return (
-    
-    <motion.div 
-      // 🚀 AUTONOMÍA CON STAGGER MATEMÁTICO (Soporta Scroll Infinito)
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "50px" }}
-      transition={{ 
-        type: "tween", 
-        ease: [0.25, 1, 0.5, 1], 
-        duration: 0.4, 
-        delay: (index! % 12) * 0.05 // 🚀 Simula cascada en lotes de 12
-      }}
-      className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+    <div 
+      // 🚀 NATIVO: Usamos animaciones nativas por hardware sin registrar IntersectionObservers de Framer Motion
+      className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 opacity-0 animate-fade-in-up ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+      style={{ transform: 'translate3d(0, 0, 0)' }}
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
     >
       {/* IMAGE CONTAINER */}
@@ -66,8 +56,8 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            onLoad={() => setIsImageLoaded(true)} // 🚀 Disparador del Fade In
-            className={`object-cover transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 will-change-transform ${isImageLoaded ? 'blur-0 opacity-100' : 'blur-md opacity-0 scale-110'}`}
+            onLoad={() => setIsImageLoaded(true)}
+            className={`object-cover transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 ${isImageLoaded ? 'blur-0 opacity-100' : 'blur-md opacity-0 scale-105'}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] bg-[var(--store-bg)]">
@@ -87,8 +77,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
             </div>
         )}
         
-        {/* 🚀 BOTÓN DE FAVORITO (INTENCIÓN DE COMPRA) */}
-        
         <button 
           onClick={(e) => {
             e.stopPropagation();
@@ -103,7 +91,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         >
           <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
         </button>
-        
 
         {uniqueColors.length > 1 && (
             <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">
@@ -164,6 +151,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -26,7 +26,10 @@ interface CheckoutProps {
 }
 
 export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set() }: CheckoutProps) {
-    const { items, removeItem, updateQuantity, addOrderToHistory } = useCart()
+   const items = useCart(state => state.items)
+const removeItem = useCart(state => state.removeItem)
+const updateQuantity = useCart(state => state.updateQuantity)
+const addOrderToHistory = useCart(state => state.addOrderToHistory)
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState(1)
@@ -46,30 +49,24 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             return newStep;
         });
     };
-
-    // 🚀 FÍSICAS DE SUPERPOSICIÓN (Parallax Apple Style - ZERO BUGS)
+// Reemplaza estas variantes:
     const walletVariants: Variants = {
         initial: (direction: number) => ({
-            // Si avanza, viene de abajo (100%). Si retrocede, la bolsa nace un poco más arriba (-8%).
             y: direction > 0 ? "100%" : "-8%",
-            filter: direction > 0 ? "brightness(1)" : "brightness(0.6)",
             zIndex: direction > 0 ? 50 : 10,
-            opacity: 1
+            opacity: direction > 0 ? 1 : 0.8 // Opacidad en lugar de brightness()
         }),
         animate: {
             y: "0%",
-            filter: "brightness(1)",
             zIndex: 30,
             opacity: 1,
-            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } // Reducido a 0.4s para más reactividad
         },
         exit: (direction: number) => ({
-            // Si retrocede, cae (100%). Si avanza, la bolsa se esconde hacia arriba (-8%).
             y: direction < 0 ? "100%" : "-8%",
-            filter: direction < 0 ? "brightness(1)" : "brightness(0.6)",
             zIndex: direction < 0 ? 50 : 10,
-            opacity: 1,
-            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
+            opacity: direction < 0 ? 1 : 0,
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 }
         })
     };
 

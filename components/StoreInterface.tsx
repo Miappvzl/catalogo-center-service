@@ -218,7 +218,9 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
   // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
-  const { items, orderHistory } = useCart()
+// 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
+const items = useCart(state => state.items)
+const orderHistory = useCart(state => state.orderHistory)
   const cartControls = useAnimation()
   const badgeControls = useAnimation()
 
