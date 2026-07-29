@@ -503,7 +503,7 @@ const SpiderAnomaly = () => {
                 rel="noopener noreferrer"
                 className="w-full bg-white text-neutral-950 font-bold text-xs uppercase tracking-widest py-3.5 rounded-xl flex justify-center items-center gap-1.5 hover:bg-neutral-100/90 active:scale-[0.98] transition-all shadow-sm border border-white/20 relative z-10 font-sans"
               >
-                <span>Reclamar Descuento por WhatsApp</span> 
+                <span>Ir al descuento</span> 
                 <ArrowUpRight size={15} strokeWidth={2.5} />
               </a>
             </div>
