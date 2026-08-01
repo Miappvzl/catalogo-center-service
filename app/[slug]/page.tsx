@@ -19,11 +19,20 @@ export const dynamic = 'force-dynamic'
 // ------------------------------------------------------------------
 // 🚀 GENERADOR DINÁMICO DE OPENGRAPH Y METADATOS (SEO)
 // ------------------------------------------------------------------
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+// 1. Busca la función generateMetadata y REEMPLÁZALA por esta versión que captura el searchParams:
+export async function generateMetadata({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ slug: string }>, 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}): Promise<Metadata> {
   const { slug } = await params
-  const supabase = createPublicCachedClient() // 🚀 Usamos el cliente cacheado (sin await)
+  const resolvedSearchParams = await searchParams
+  const pasilloQuery = resolvedSearchParams?.pasillo as string | undefined
 
-  // Solo pedimos lo estrictamente necesario para el SEO (Súper rápido)
+  const supabase = createPublicCachedClient()
+
   const { data: store } = await supabase
     .from('stores')
     .select('name, logo_url, hero_url')
@@ -31,45 +40,41 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .single()
 
   if (!store) {
-    return {
-      title: 'Tienda no encontrada | Preziso',
-      description: 'Esta tienda no existe o no está disponible.',
-    }
+    return { title: 'Tienda no encontrada | Preziso', description: 'Esta tienda no existe.' }
   }
 
-  // Prioridad de imagen: 1. Banner (Hero) -> 2. Logo -> 3. Imagen por defecto de Preziso
   const ogImage = store.hero_url || store.logo_url || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1200&auto=format&fit=crop'
 
-  return {
+  // 🚀 LÓGICA MUTANTE: Si hay pasillo, adaptamos el SEO y el Copywriter
+  let metaTitle = `${store.name} | Catálogo Oficial`
+  let metaDescription = `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida, segura y sin fricciones.`
 
-    
-    title: `${store.name} | Catálogo Oficial`,
-    description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida, segura y sin fricciones.`,
+  if (pasilloQuery) {
+    // Formateamos el nombre del pasillo (ej: "trajes-de-bano" -> "Trajes de bano")
+    const pasilloName = pasilloQuery.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    metaTitle = `✨ Colección: ${pasilloName} | ${store.name}`
+    metaDescription = `Pasillo virtual exclusivo. Explora nuestra colección de ${pasilloName} en ${store.name} y haz tu pedido directo al WhatsApp.`
+  }
+
+  return {
+    title: metaTitle,
+    description: metaDescription,
     openGraph: {
-      title: `${store.name} | Catálogo Oficial`,
-      description: `Explora el catálogo de ${store.name}. Haz tu pedido en línea de forma rápida y segura.`,
-      url: `https://${slug}.preziso.shop`, // <-- SEO de Élite con el subdominio
+      title: metaTitle,
+      description: metaDescription,
+      url: `https://${slug}.preziso.shop${pasilloQuery ? `?pasillo=${pasilloQuery}` : ''}`,
       siteName: store.name,
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-          alt: `Catálogo de ${store.name}`,
-        },
-      ],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: metaTitle }],
       locale: 'es_VE',
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${store.name} | Catálogo Oficial`,
-      description: `Explora el catálogo oficial de ${store.name}.`,
+      title: metaTitle,
+      description: metaDescription,
       images: [ogImage],
     },
-    icons: {
-      icon: store.logo_url || '/favicon.ico',
-    }
+    icons: { icon: store.logo_url || '/favicon.ico' }
   }
 }
 // ------------------------------------------------------------------

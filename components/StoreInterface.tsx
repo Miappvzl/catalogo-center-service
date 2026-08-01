@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
@@ -11,11 +11,11 @@ import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import CustomerAuth from '@/components/passport/CustomerAuth'
 import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRADA
 import BCVLogo from '@/components/icons/BCVLogo' // 🚀 Importación del logo modular
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 
 
 
@@ -185,8 +185,12 @@ interface Props { store: any; products: any[]; rates: any; promotions?: any[] } 
 export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
+ // LÓGICA BOUTIQUE
+  const pasilloQuery = searchParams?.get('pasillo')
+  const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
 
-  // 1. TODOS LOS HOOKS DE ESTADO JUNTOS (INCONDICIONALES)
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
@@ -197,7 +201,12 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('Todos')
+  // 🚀 El selectedCategory arranca en el pasillo (si existe) o en 'Todos'
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    return pasilloQuery ? (pasilloQuery.charAt(0).toUpperCase() + pasilloQuery.slice(1).toLowerCase()) : 'Todos'
+  })
+
+
   const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
@@ -218,9 +227,9 @@ export default function StoreInterface({ store, products, rates, promotions = []
 
   // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
-// 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
-const items = useCart(state => state.items)
-const orderHistory = useCart(state => state.orderHistory)
+  // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
+  const items = useCart(state => state.items)
+  const orderHistory = useCart(state => state.orderHistory)
   const cartControls = useAnimation()
   const badgeControls = useAnimation()
 
@@ -229,6 +238,15 @@ const orderHistory = useCart(state => state.orderHistory)
   const hasItems = items.length > 0
   const isEur = store?.currency_type === 'eur'
   const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
+
+   // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
+  const exitBoutiqueMode = () => {
+    // Reemplazamos la URL usando el pathname actual, eliminando el query param de forma segura
+    router.replace(pathname, { scroll: false }) 
+    setIsBoutiqueMode(false)
+    setSelectedCategory('Todos')
+    setSearch('')
+  }
 
   // 5. MÉTODOS DE AYUDA Y AUXILIARES
   const checkFeaturedScrollStatus = () => {
@@ -885,48 +903,61 @@ const orderHistory = useCart(state => state.orderHistory)
               )}
             </div>
 
-            {/* --- CONTENEDOR DE CATEGORÍAS (Con Máscara Alfa Anti-Líneas) --- */}
+          {/* --- CONTENEDOR DE CATEGORÍAS O CABECERA BOUTIQUE --- */}
             <div className="w-full md:flex-1 min-w-0 relative group flex items-center">
-
-              {/* Flecha Izquierda: Ahora es un contenedor limpio, sin degradados de fondo */}
-              <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button
+              
+              {isBoutiqueMode ? (
+                // 🚀 CABECERA MODO BOUTIQUE (Aislamiento de Catálogo)
+                <div className="w-full flex items-center justify-between py-1 px-1 animate-in fade-in duration-500">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-[var(--store-primary)]/10 px-2.5 py-1 rounded-lg border border-[var(--store-primary)]/20">
+                       <Sparkles size={12} className="text-[var(--store-primary)]" />
+                       <span className="text-[10px] font-black uppercase tracking-widest text-[var(--store-primary)] hidden sm:inline">
+                         Pasillo VIP
+                       </span>
+                    </div>
+                    <h2 className="text-sm md:text-base font-black text-[var(--store-text-main)] truncate max-w-[150px] md:max-w-none">
+                       {selectedCategory}
+                    </h2>
+                  </div>
+                  <button
+                    onClick={exitBoutiqueMode}
+                    className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-95 bg-[var(--store-surface)] px-3 py-1.5 rounded-full border border-[var(--store-border)]/50 shrink-0"
+                  >
+                    Ver Todo <ArrowRight size={12} />
+                  </button>
+                </div>
+              ) : (
+                // 🚀 CARRUSEL NORMAL DE CATEGORÍAS
+                <>
+                  <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                     <button
                   onClick={() => scrollCategories('left')}
                   className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
                   aria-label="Desplazar izquierda"
                 >
                   <ChevronLeft size={14} strokeWidth={2.5} />
                 </button>
-              </div>
+          </div>
+                 
 
-              {/* 🚀 EL CAMBIO CLAVE: 
-    Se aplican propiedades de máscara CSS para desvanecer los píxeles directamente.
-    Esto hace que cualquier texto o pastilla se disuelva en la nada de forma fluida.
-  */}
-              {/* 🚀 EL CAMBIO CLAVE: Máscara reactiva vinculada al estado del scroll */}
-              <div
-                ref={categoryScrollRef}
-                onScroll={handleCategoryScroll}
-                className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
-                style={{
-                  WebkitMaskImage: dynamicMask,
-                  maskImage: dynamicMask,
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }}
-              >
-                {categories.map((category) => (
-                  <CategoryPill
-                    key={category}
-                    label={category}
-                    active={selectedCategory === category}
-                    onClick={() => setSelectedCategory(category)}
-                  />
-                ))}
-              </div>
+                  <div
+                    ref={categoryScrollRef}
+                    onScroll={handleCategoryScroll}
+                    className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
+                    style={{ WebkitMaskImage: dynamicMask, maskImage: dynamicMask, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {categories.map((category) => (
+                      <CategoryPill
+                        key={category}
+                        label={category}
+                        active={selectedCategory === category}
+                        onClick={() => setSelectedCategory(category)}
+                      />
+                    ))}
+                  </div>
 
-              {/* Flecha Derecha: Contenedor limpio, sin degradados de fondo */}
-              <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+               <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   onClick={() => scrollCategories('right')}
                   className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
@@ -934,10 +965,10 @@ const orderHistory = useCart(state => state.orderHistory)
                 >
                   <ChevronRight size={14} strokeWidth={2.5} />
                 </button>
-              </div>
-
+          </div>
+                </>
+              )}
             </div>
-
             {/* 🚀 GATILLO DE PERFIL (DESKTOP)  */}
             <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
               <button
@@ -1081,7 +1112,7 @@ const orderHistory = useCart(state => state.orderHistory)
 
         <>
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
-          {featuredProducts.length > 0 && !debouncedSearch && (
+          {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
             <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
                 <div>
@@ -1191,8 +1222,8 @@ const orderHistory = useCart(state => state.orderHistory)
                       key={page}
                       onClick={() => handlePageChange(page as number)}
                       className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
-                          ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
-                          : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
+                        ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
+                        : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
                         }`}
                     >
                       {page}
