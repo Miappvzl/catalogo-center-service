@@ -267,7 +267,7 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
             : `https://${storeSlug}.preziso.shop`;
 
         const url = `${baseUrl}?pasillo=${encodeURIComponent(categoryName.toLowerCase())}`;
-        const text = `¡Hola! 👋 Preparé este pasillo virtual exclusivo con todas nuestras opciones de *${categoryName}*. Míralos y haz tu pedido directamente aquí:\n\n${url} ✨`;
+        const text = `Te preparé este pasillo virtual exclusivo con todas nuestras opciones de *${categoryName}*. Puedes explorarlo y hacer tu pedido directamente aquí si lo deseas:\n\n${url} ✨`;
         
         navigator.clipboard.writeText(text);
         
