@@ -38,7 +38,6 @@ export async function POST(req: Request) {
       .digest('hex')
 
     // 5. Inserción con Service Role
-    
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from('analytics_raw_events').insert({
       store_id,
@@ -54,40 +53,43 @@ export async function POST(req: Request) {
 
     if (error) throw error
 
-    // 🚀 NUEVA LÓGICA: DETECTAR HITO DE 20 VISITAS EN TIEMPO REAL
+    // 🚀 NUEVA LÓGICA: DETECTAR HITO DE 20 VISITAS EN TIEMPO REAL CON PRECISIÓN GEOGRÁFICA
     if (event_type === 'page_view') {
-      // Corremos este proceso de fondo de manera asíncrona sin bloquear la respuesta de la API al cliente
       const handleMilestoneCheck = async () => {
         try {
-          const todayDate = new Date().toISOString().split('T')[0];
+          // A. CALIBRACIÓN DE TIEMPO SENSORIAL (Venezuela UTC-4)
+          const caracasTime = new Date(Date.now() - (4 * 60 * 60 * 1000));
+          const todayDateCaracas = caracasTime.toISOString().split('T')[0];
+          // Definimos el inicio exacto del día bajo la hora de Venezuela (UTC-4)
+          const localDayStart = `${todayDateCaracas}T00:00:00-04:00`;
 
-          // A. ¿Ya se notificó este hito hoy? (Evitamos spam en la tabla de notificaciones)
+          // B. ¿Ya se notificó este hito hoy? (Evitamos consultas innecesarias si ya se celebró)
           const { count: alreadyNotified } = await supabase
             .from('notifications')
             .select('id', { count: 'exact', head: true })
             .eq('store_id', store_id)
             .eq('title', '¡Hito de Tráfico Alcanzado! 🚀')
-            .gte('created_at', `${todayDate}T00:00:00Z`);
+            .gte('created_at', localDayStart);
 
           if (alreadyNotified && alreadyNotified > 0) return; // Ya se celebró hoy
 
-          // B. Contar las visitas únicas reales de hoy
+          // C. Contar las visitas únicas reales del día local venezolano
           const { data: todayEvents } = await supabase
             .from('analytics_raw_events')
             .select('session_id')
             .eq('store_id', store_id)
             .eq('event_type', 'page_view')
-            .gte('created_at', `${todayDate}T00:00:00Z`);
+            .gte('created_at', localDayStart);
 
           const uniqueVisitsToday = new Set(todayEvents?.map(e => e.session_id)).size;
 
-          // C. Si llegamos exactamente al hito de 20 (o más, en caso de concurrencia), disparamos la celebración
+          // D. Si llegamos exactamente al hito de 20 (o más, en caso de concurrencia), disparamos la celebración
           if (uniqueVisitsToday >= 20) {
             const title = '¡Hito de Tráfico Alcanzado! 🚀';
             const message = `¡Tu tienda acaba de recibir su visitante número ${uniqueVisitsToday} de hoy! El catálogo está ganando tracción.`;
 
-            // 1. Registrar notificación in-app (Campanita)
-            await supabase.from('notifications').insert({
+            // 1. Intentar Registrar notificación in-app (Campanita)
+            const { error: insertError } = await supabase.from('notifications').insert({
               store_id,
               title,
               message,
@@ -95,7 +97,14 @@ export async function POST(req: Request) {
               link: '/admin/analytics'
             });
 
-            // 2. Disparar Push a los dispositivos móviles
+            // ESCUDO DE CONCURRENCIA: Si otra petición paralela ya insertó la notificación en este microsegundo,
+            // PostgreSQL lanzará un error de llave duplicada (código 23505). Lo capturamos y salimos en silencio.
+            if (insertError) {
+              if (insertError.code === '23505') return; 
+              throw insertError;
+            }
+
+            // 2. Disparar Push a los dispositivos móviles (Solo si la inserción en BD fue la ganadora)
             const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('store_id', store_id);
             if (subs && subs.length > 0) {
               webpush.setVapidDetails(
@@ -133,7 +142,6 @@ export async function POST(req: Request) {
       handleMilestoneCheck();
     }
 
-  
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Analytics Track Error:', error)
