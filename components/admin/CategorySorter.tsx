@@ -93,20 +93,49 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
-        // 🚀 NUEVO: Estado del acordeón (Cerrado por defecto para limpieza visual)
-    const [isInfoOpen, setIsInfoOpen] = useState(false)
-    
-    // 🚀 NUEVO: Estado de búsqueda
     const [searchQuery, setSearchQuery] = useState('')
+    const [isInfoOpen, setIsInfoOpen] = useState(false)
+
+    // 🚀 NUEVO: Detector de Dispositivo
+    const [isMobile, setIsMobile] = useState(false)
+
+      // 🚀 NUEVO: Almacena la categoría que tiene el menú numérico abierto actualmente
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null) 
+
     const supabase = getSupabase()
     
-    // REFERENCIAS Y TIMERS DESACOPLADOS (60 FPS FLUIDO)
     const groupRef = useRef<HTMLUListElement>(null)
     const scrollInterval = useRef<NodeJS.Timeout | null>(null)
     const scrollSpeed = useRef<number>(0)
-    
-    // 🚀 NUEVA REFERENCIA: Almacena el límite estático real de la barra antes del arrastre
     const maxScrollLimit = useRef<number>(0)
+
+    // Sincronizamos la detección de móvil en el cliente de forma segura contra hidratación
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const checkMobile = () => setIsMobile(window.innerWidth < 768);
+            checkMobile();
+            window.addEventListener('resize', checkMobile);
+            return () => window.removeEventListener('resize', checkMobile);
+        }
+    }, []);
+
+    // 🚀 NUEVA FUNCIÓN: Reordenamiento Numérico de Posición para Móvil
+    const handleMobilePositionChange = (currentIndex: number, newPositionStr: string) => {
+        const newPos = parseInt(newPositionStr, 10);
+        if (isNaN(newPos) || newPos < 1 || newPos > categories.length) return;
+        
+        const targetIndex = newPos - 1;
+        if (currentIndex === targetIndex) return;
+
+        const newList = [...categories];
+        const [movedItem] = newList.splice(currentIndex, 1);
+        newList.splice(targetIndex, 0, movedItem);
+        
+        setCategories(newList);
+        setIsDirty(true);
+    };
+
+    // ... (Conserva tu useEffect loadCategories y las demás funciones igual) ...
  // Modifica tu useEffect de carga inicial removiendo el localStorage de la fase anterior:
     useEffect(() => {
         const loadCategories = async () => {
@@ -384,20 +413,104 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
                 )}
             </div>
             
-            {/* CONTENEDOR HORIZONTAL */}
-            <div className="bg-neutral-50/50 p-4 md:p-6 rounded-xl border border-neutral-100 overflow-hidden relative">
+          {/* 🚀 CONTENEDOR ADAPTATIVO (MÓVIL POR SELECTOR / DESKTOP POR ARRASTRE) */}
+            <div className="bg-neutral-50/50 p-4 md:p-6 rounded-xl border border-neutral-100  relative">
                 {filteredCategories.length === 0 ? (
                     <p className="text-xs text-neutral-400 italic py-2">No se encontraron categorías con esa búsqueda.</p>
+                ) : isMobile ? (
+                    
+                    // 🚀 VISTA MÓVIL: Lista Vertical con Rueda de Selección de Posición
+                    <div className="space-y-2.5 animate-in fade-in">
+                       {filteredCategories.map((cat) => {
+                    const originalIdx = categories.indexOf(cat);
+                    const isDropdownOpen = activeDropdown === cat; // Evalúa si este menú está abierto
+                    
+                    return (
+                        <div 
+                            key={cat}
+                            className="flex items-center justify-between bg-white p-3 rounded-lg border border-neutral-200/50 "
+                        >
+                            <div className="flex items-center gap-3">
+                                
+                                {/* 🚀 SELECTOR PERSONALIZADO "SIMPLEMENTE BLANCO" (CERO DIÁLOGOS NATIVOS) */}
+                                <div className="relative shrink-0">
+                                    {/* Botón Gatillo */}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveDropdown(isDropdownOpen ? null : cat);
+                                        }}
+                                        className="w-12 h-8 flex items-center justify-center rounded-lg bg-white hover:bg-neutral-50 border border-neutral-200 text-xs font-bold text-neutral-800 font-mono active:scale-95 transition-all cursor-pointer  hover:border-neutral-900"
+                                    >
+                                        <span>#{originalIdx + 1}</span>
+                                    </button>
+
+                                    {/* Menú Flotante Desplegable */}
+                                    <AnimatePresence>
+                                        {isDropdownOpen && (
+                                            <>
+                                                {/* Capa invisible para cerrar al tocar afuera de la pastilla */}
+                                                <div 
+                                                    className="fixed inset-0 z-30 cursor-default" 
+                                                    onClick={() => setActiveDropdown(null)} 
+                                                />
+                                                
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                                                    transition={{ duration: 0.15, ease: "easeOut" }}
+                                                    className="absolute left-0 mt-1 w-14 bg-white border border-neutral-100 shadow-[0_10px_25px_rgba(0,0,0,0.08)] rounded-lg overflow-hidden max-h-60 overflow-y-auto no-scrollbar z-40"
+                                                >
+                                                    {categories.map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                handleMobilePositionChange(originalIdx, (i + 1).toString());
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className={`w-full py-2 text-center font-mono font-bold text-xs transition-colors cursor-pointer ${
+                                                                originalIdx === i 
+                                                                    ? 'bg-neutral-950 text-white' 
+                                                                    : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 bg-white'
+                                                            }`}
+                                                        >
+                                                            #{i + 1}
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            </>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <span className="font-semibold text-xs text-neutral-800">{cat}</span>
+                            </div>
+                            
+                            {/* Botón de Compartir Pasillo */}
+                            <button 
+                                onClick={() => sharePasillo(cat)}
+                                className="p-2 rounded-lg bg-emerald-50 border border-emerald-200/50 text-emerald-600 hover:bg-emerald-100 transition-all shadow-xs active:scale-[0.97]"
+                            >
+                                <Share2 size={13} strokeWidth={2.5}/>
+                            </button>
+                        </div>
+                    );
+                })}
+                    </div>
                 ) : (
+                    
+                    // 🚀 VISTA DESKTOP: Arrastre Horizontal de Alta Gama (Eje X)
                     <Reorder.Group 
                         ref={groupRef}
                         axis="x" 
                         values={categories} 
                         onReorder={handleReorder} 
-                        className="flex items-center gap-3 overflow-x-auto pb-5 pt-2 custom-horizontal-scrollbar"
+                        className="flex items-center gap-3 overflow-x-auto pb-5 pt-2 custom-horizontal-scrollbar animate-in fade-in"
                     >
                         {filteredCategories.map((cat) => {
-                            // Encontrar el índice real en el array original para mantener la numeración correcta
                             const originalIdx = categories.indexOf(cat);
                             return (
                                 <SortableCategoryItem 
@@ -408,7 +521,7 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
                                     onDrag={handleDragActive}
                                     onDragStart={handleDragStart}
                                     onDragEnd={handleDragEnd}
-                                    isDragDisabled={searchQuery !== ''} // 👈 Se bloquea el arrastre si están filtrando
+                                    isDragDisabled={searchQuery !== ''}
                                 />
                             );
                         })}
