@@ -327,8 +327,8 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
 
        
 
-           {/* 🚀 ACORDEÓN DE AYUDA Y CONSEJOS (ESTILO PRODUCTMODAL COHESIVO) */}
-            <div className="space-y-1">
+           {/* 🚀 ACORDEÓN DE AYUDA Y CONSEJOS (ADAPTATIVO MÓVIL/DESKTOP) */}
+            <div className="space-y-1 animate-in fade-in">
                 <button
                     type="button"
                     onClick={() => setIsInfoOpen(!isInfoOpen)}
@@ -338,7 +338,6 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
                         <Info size={14} className="text-neutral-500 shrink-0" />
                         <span className="text-[11px] font-bold uppercase tracking-wider">Ayuda & Consejos de Uso</span>
                     </div>
-                    {/* Animación de rotación del plus (Se convierte en X al abrir) */}
                     <motion.div
                         animate={{ rotate: isInfoOpen ? 45 : 0 }}
                         transition={{ duration: 0.25, ease: "easeInOut" }}
@@ -348,7 +347,6 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
                     </motion.div>
                 </button>
 
-                {/* Contenedor colapsable con desvanecimiento de altura */}
                 <motion.div
                     initial={false}
                     animate={{ height: isInfoOpen ? "auto" : 0, opacity: isInfoOpen ? 1 : 0 }}
@@ -356,10 +354,30 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
                     className="overflow-hidden"
                 >
                     <div className="p-4 text-[11px] text-neutral-600 leading-relaxed space-y-2.5 border-x border-b border-neutral-200/40 rounded-b-xl bg-neutral-50/30">
-                        <p>
-                            <strong className="text-neutral-900 font-bold">Cómo organizar:</strong> Mantén presionado el icono (<GripVertical size={11} className="inline text-neutral-500"/>) para arrastrar la pastilla. La categoría #1 se verá de primera a la izquierda en tu tienda.
-                        </p>
-                        <p>
+                        {isMobile ? (
+                            // 📱 INSTRUCCIONES CLARAS PARA MÓVIL (Rueda de Selección)
+                            <>
+                                <p>
+                                    <strong className="text-neutral-900 font-bold">Cómo organizar:</strong> Toca el número a la izquierda de la categoría (ej: <span className="font-bold font-mono">#4</span>) y elige su nueva posición en la lista. Se reordenará automáticamente [1].
+                                </p>
+                                <p>
+                                    <strong className="text-neutral-900 font-bold">Cómo afecta a la tienda:</strong> El orden de <strong>arriba hacia abajo (1, 2, 3...)</strong> determinará la prioridad de tus pestañas de <strong>izquierda a derecha</strong> en tu catálogo público.
+                                </p>
+                            </>
+                        ) : (
+                            // 💻 INSTRUCCIONES CLARAS PARA ESCRITORIO (Drag & Drop Horizontal)
+                            <>
+                                <p>
+                                    <strong className="text-neutral-900 font-bold">Cómo organizar:</strong> Desplázate horizontalmente por la lista. Mantén presionado el ícono de los puntos (<GripVertical size={11} className="inline text-neutral-500"/>) para arrastrar la pastilla a la izquierda o derecha.
+                                </p>
+                                <p>
+                                    <strong className="text-neutral-900 font-bold">Cómo afecta a la tienda:</strong> El orden de <strong>izquierda a derecha (1, 2, 3...)</strong> determinará exactamente cómo aparecerán las pestañas en tu catálogo público.
+                                </p>
+                            </>
+                        )}
+                        
+                        {/* Explicación común para el botón de compartir */}
+                        <p className="pt-1.5 border-t border-neutral-200/40">
                             <strong className="text-neutral-900 font-bold">Compartir pasillo (<Share2 size={11} className="inline text-emerald-500"/>):</strong> Copia un link directo de esta categoría. Es ideal para tus historias de Instagram o chats de WhatsApp.
                         </p>
                     </div>
