@@ -5,18 +5,6 @@ import {
     MousePointerClick, Sparkles, Clock, Globe, BarChart3
 } from 'lucide-react'
 
-interface RawEventWithProduct {
-    session_id: string
-    event_type: string
-    product_id: number | null
-    device_type: string
-    location_state: string
-    dwell_time: number
-    referrer_source: string
-    created_at: string
-    products: { name: string } | { name: string }[] | null
-}
-
 export default async function AnalyticsDashboard() {
     const supabase = await createClient()
 
@@ -35,7 +23,6 @@ export default async function AnalyticsDashboard() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
     const fallbackDateString = thirtyDaysAgo.toISOString()
 
-    // Evitamos inflar la conversión al arranque en frío buscando el primer evento registrado
     const { data: firstEvent } = await supabase
         .from('analytics_raw_events')
         .select('created_at')
@@ -44,117 +31,54 @@ export default async function AnalyticsDashboard() {
         .limit(1)
         .maybeSingle()
 
-    const trackingStartDate = firstEvent?.created_at ? new Date(firstEvent.created_at) : thirtyDaysAgo
-    const trackingStartDateString = trackingStartDate.toISOString()
+    const trackingStartDateString = firstEvent?.created_at ? new Date(firstEvent.created_at).toISOString() : fallbackDateString
 
-    const [eventsRes, ordersRes] = await Promise.all([
-        supabase
-            .from('analytics_raw_events')
-            .select('session_id, event_type, product_id, device_type, location_state, dwell_time, referrer_source, created_at, products(name)')
-            .eq('store_id', store.id)
-            .gte('created_at', fallbackDateString)
-            .limit(15000), // Protección contra saturación de memoria por ataques/bots
+    // 🚀 EJECUCIÓN 100% EN BASE DE DATOS (0% CONSUMO DE RAM EN NEXT.JS)
+    const [analyticsRes, ordersRes] = await Promise.all([
+        supabase.rpc('get_store_analytics_summary', {
+            p_store_id: store.id,
+            p_start_date: trackingStartDateString
+        }),
+        // 🚀 HEAD REQUEST: Solo pedimos el contador, NO descargamos las órdenes
         supabase
             .from('orders')
-            .select('id')
+            .select('id', { count: 'exact', head: true }) 
             .eq('store_id', store.id)
             .gte('created_at', trackingStartDateString)
     ])
 
-    const events = (eventsRes.data as unknown as RawEventWithProduct[]) || []
-    const orders = ordersRes.data || []
-
-    // 3. Agregadores de Datos
-    let mobile = 0
-    let desktop = 0
-    const uniqueSessions = new Set<string>()
-    const catalogViewSessions = new Set<string>()
-    const locations: Record<string, number> = {}
-
-    // Orígenes de tráfico
-    let instagram = 0
-    let tiktok = 0
-    let whatsapp = 0
-    let direct = 0
-
-    // Distribución Horaria (0 a 23 horas)
-    const hourlyTraffic = Array(24).fill(0)
-
-    const productStats = new Map<number, { id: number, name: string, views: number, totalDwell: number, countDwell: number }>()
-
-    events.forEach(e => {
-        // Procesamiento por sesión única
-        if (!uniqueSessions.has(e.session_id)) {
-            uniqueSessions.add(e.session_id)
-
-            // Dispositivos
-            if (e.device_type === 'mobile') mobile++
-            else desktop++
-
-            // Ubicaciones
-            const loc = e.location_state || 'Desconocido'
-            locations[loc] = (locations[loc] || 0) + 1
-
-            // Orígenes de tráfico
-            if (e.referrer_source === 'instagram') instagram++
-            else if (e.referrer_source === 'tiktok') tiktok++
-            else if (e.referrer_source === 'whatsapp') whatsapp++
-            else direct++
-
-            // Horas Pico ajustadas a UTC-4 (Venezuela) sin impacto en el CPU
-            const eventDate = new Date(e.created_at)
-            const caracasDate = new Date(eventDate.getTime() - (4 * 60 * 60 * 1000))
-            const caracasHour = caracasDate.getUTCHours()
-            hourlyTraffic[caracasHour]++
-        }
-
-        // Vistas y Dwell Time de Catálogo
-        if (e.event_type === 'product_view' && e.product_id && e.products) {
-            catalogViewSessions.add(e.session_id)
-
-            const id = e.product_id
-            const productsData = e.products
-            const productName = Array.isArray(productsData) ? productsData[0]?.name : productsData?.name
-
-            if (!productStats.has(id)) {
-                productStats.set(id, { id, name: productName || 'Producto', views: 0, totalDwell: 0, countDwell: 0 })
-            }
-
-            const stat = productStats.get(id)!
-
-            if (e.dwell_time === 0) {
-                stat.views += 1
-            } else {
-                stat.totalDwell += e.dwell_time
-                stat.countDwell += 1
-            }
-        }
-    })
-
-    // 4. Cálculos y Porcentajes
-    const visits = uniqueSessions.size
-    const catalogViewers = catalogViewSessions.size
-    const totalOrders = orders.length
+    const analytics = analyticsRes.data || { totals: {}, hourly: [], locations: [], products: [] }
+    const totals = analytics.totals || {}
+    
+    // 4. Cálculos Ultra Livianos
+    const visits = totals.total_visits || 0
+    const catalogViewers = totals.catalog_viewers || 0
+    const totalOrders = ordersRes.count || 0
 
     const interestPct = visits > 0 ? Math.round((catalogViewers / visits) * 100) : 0
     const conversionRate = visits > 0 ? ((totalOrders / visits) * 100).toFixed(1) : '0.0'
 
-    // Matemática de Dispositivos robustecida contra divisiones por cero
-    const totalDevices = mobile + desktop
-    const mobilePct = totalDevices > 0 ? Math.round((mobile / totalDevices) * 100) : 0
+    const totalDevices = (totals.mobile_visits || 0) + (totals.desktop_visits || 0)
+    const mobilePct = totalDevices > 0 ? Math.round((totals.mobile_visits / totalDevices) * 100) : 0
     const desktopPct = totalDevices > 0 ? 100 - mobilePct : 0
 
-    // Porcentajes de Orígenes de Tráfico
-    const totalReferrers = instagram + tiktok + whatsapp + direct
-    const instagramPct = totalReferrers > 0 ? Math.round((instagram / totalReferrers) * 100) : 0
-    const tiktokPct = totalReferrers > 0 ? Math.round((tiktok / totalReferrers) * 100) : 0
-    const whatsappPct = totalReferrers > 0 ? Math.round((whatsapp / totalReferrers) * 100) : 0
+    const totalReferrers = (totals.ig_visits || 0) + (totals.tk_visits || 0) + (totals.wa_visits || 0) + (totals.direct_visits || 0)
+    const instagramPct = totalReferrers > 0 ? Math.round((totals.ig_visits / totalReferrers) * 100) : 0
+    const tiktokPct = totalReferrers > 0 ? Math.round((totals.tk_visits / totalReferrers) * 100) : 0
+    const whatsappPct = totalReferrers > 0 ? Math.round((totals.wa_visits / totalReferrers) * 100) : 0
     const directPct = totalReferrers > 0 ? 100 - (instagramPct + tiktokPct + whatsappPct) : 0
 
-    // Cálculo de la Hora Pico
-    const maxTrafficHourCount = Math.max(...hourlyTraffic)
+    // Procesar Horas y Bloques
+    const hourlyTraffic = Array(24).fill(0)
+    ;(analytics.hourly || []).forEach((h: any) => {
+        if(h.hour_of_day >= 0 && h.hour_of_day <= 23) {
+            hourlyTraffic[h.hour_of_day] = h.visits
+        }
+    })
+
+    const maxTrafficHourCount = Math.max(...hourlyTraffic, 0)
     const peakHour = hourlyTraffic.indexOf(maxTrafficHourCount)
-    // 5. Agrupación por bloques horarios lógicos (Elimina el desorden visual de las 24 barras)
+
     const madrugada = hourlyTraffic.slice(0, 6).reduce((a, b) => a + b, 0)
     const manana = hourlyTraffic.slice(6, 12).reduce((a, b) => a + b, 0)
     const tarde = hourlyTraffic.slice(12, 18).reduce((a, b) => a + b, 0)
@@ -173,33 +97,27 @@ export default async function AnalyticsDashboard() {
     }
     const peakHourString = format12Hour(peakHour)
 
-    const topLocations = Object.entries(locations)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([name, count]) => {
-            const cleanName = name.replace('VE-', '')
-            const stateMap: Record<string, string> = {
-                'A': 'Distrito Capital', 'M': 'Miranda', 'B': 'Anzoátegui', 'C': 'Apure', 'D': 'Aragua',
-                'E': 'Barinas', 'F': 'Bolívar', 'G': 'Carabobo', 'H': 'Cojedes', 'I': 'Falcón',
-                'J': 'Guárico', 'K': 'Lara', 'L': 'Mérida', 'N': 'Monagas', 'O': 'Nueva Esparta',
-                'P': 'Portuguesa', 'R': 'Sucre', 'S': 'Táchira', 'T': 'Trujillo', 'U': 'Yaracuy',
-                'V': 'Zulia', 'X': 'La Guaira', 'Y': 'Delta Amacuro', 'Z': 'Amazonas', 'W': 'Dependencias Federales'
-            }
-            return {
-                name: stateMap[cleanName] || cleanName || 'Desconocido',
-                pct: visits > 0 ? Math.round((count / visits) * 100) : 0
-            }
-        })
+    const topLocations = (analytics.locations || []).map((loc: any) => {
+        const cleanName = loc.name.replace('VE-', '')
+        const stateMap: Record<string, string> = {
+            'A': 'Distrito Capital', 'M': 'Miranda', 'B': 'Anzoátegui', 'C': 'Apure', 'D': 'Aragua',
+            'E': 'Barinas', 'F': 'Bolívar', 'G': 'Carabobo', 'H': 'Cojedes', 'I': 'Falcón',
+            'J': 'Guárico', 'K': 'Lara', 'L': 'Mérida', 'N': 'Monagas', 'O': 'Nueva Esparta',
+            'P': 'Portuguesa', 'R': 'Sucre', 'S': 'Táchira', 'T': 'Trujillo', 'U': 'Yaracuy',
+            'V': 'Zulia', 'X': 'La Guaira', 'Y': 'Delta Amacuro', 'Z': 'Amazonas', 'W': 'Dependencias Federales'
+        }
+        return {
+            name: stateMap[cleanName] || cleanName || 'Desconocido',
+            pct: visits > 0 ? Math.round((loc.visits / visits) * 100) : 0
+        }
+    })
 
-    const topProducts = Array.from(productStats.values())
-        .sort((a, b) => b.views - a.views)
-        .slice(0, 5)
-        .map(p => ({
-            id: p.id,
-            name: p.name,
-            views: p.views,
-            avgTime: p.countDwell > 0 ? `${Math.floor(p.totalDwell / p.countDwell)}s` : '0s',
-        }))
+    const topProducts = (analytics.products || []).map((p: any) => ({
+        id: p.id,
+        name: p.name || 'Producto',
+        views: p.views,
+        avgTime: `${p.avg_time}s`,
+    }))
 
     return (
         <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10 bg-[#f8f9fa] min-h-screen">
@@ -320,7 +238,7 @@ export default async function AnalyticsDashboard() {
             {/* NUEVO SECTOR: TRÁFICO ADICIONAL Y HORAS PICO */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                {/* FUENTES DE TRÁFICO (CON EXCELENCIA VISUAL) */}
+                {/* FUENTES DE TRÁFICO */}
                 <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-6">
                     <div>
                         <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Canales de Adquisición</h2>
@@ -335,7 +253,7 @@ export default async function AnalyticsDashboard() {
                             <div>
                                 <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
                                     <span>Instagram (App/Bio Link)</span>
-                                    <span className="font-mono">{instagramPct}% <span className="text-[10px] text-neutral-400">({instagram} visitas)</span></span>
+                                    <span className="font-mono">{instagramPct}% <span className="text-[10px] text-neutral-400">({totals.ig_visits || 0} visitas)</span></span>
                                 </div>
                                 <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
                                     <div className="bg-neutral-950 h-full transition-all duration-500" style={{ width: `${instagramPct}%` }}></div>
@@ -346,7 +264,7 @@ export default async function AnalyticsDashboard() {
                             <div>
                                 <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
                                     <span>TikTok (App/Video Link)</span>
-                                    <span className="font-mono">{tiktokPct}% <span className="text-[10px] text-neutral-400">({tiktok} visitas)</span></span>
+                                    <span className="font-mono">{tiktokPct}% <span className="text-[10px] text-neutral-400">({totals.tk_visits || 0} visitas)</span></span>
                                 </div>
                                 <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
                                     <div className="bg-neutral-500 h-full transition-all duration-500" style={{ width: `${tiktokPct}%` }}></div>
@@ -357,18 +275,18 @@ export default async function AnalyticsDashboard() {
                             <div>
                                 <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
                                     <span>WhatsApp / Enlaces Directos</span>
-                                    <span className="font-mono">{whatsappPct}% <span className="text-[10px] text-neutral-400">({whatsapp} visitas)</span></span>
+                                    <span className="font-mono">{whatsappPct}% <span className="text-[10px] text-neutral-400">({totals.wa_visits || 0} visitas)</span></span>
                                 </div>
                                 <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
                                     <div className="bg-neutral-300 h-full transition-all duration-500" style={{ width: `${whatsappPct}%` }}></div>
                                 </div>
                             </div>
 
-                            {/* Tráfico Directo / Buscadores */}
+                            {/* Tráfico Directo */}
                             <div>
                                 <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
                                     <span>Buscadores u Otros Sitios</span>
-                                    <span className="font-mono">{directPct}% <span className="text-[10px] text-neutral-400">({direct} visitas)</span></span>
+                                    <span className="font-mono">{directPct}% <span className="text-[10px] text-neutral-400">({totals.direct_visits || 0} visitas)</span></span>
                                 </div>
                                 <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
                                     <div className="bg-neutral-100 h-full border border-neutral-200/50 transition-all duration-500" style={{ width: `${directPct}%` }}></div>
@@ -378,71 +296,70 @@ export default async function AnalyticsDashboard() {
                     )}
                 </div>
 
-                {/* HORARIO PICO (BLOQUES HORARIOS SIMÉTRICOS) */}
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Horario Pico de Conexión</h2>
-              <p className="text-xs text-neutral-400 mt-0.5">Distribución de visitas por bloques del día (Hora VE)</p>
-            </div>
-            {visits > 0 && maxTrafficHourCount > 0 && (
-              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded">
-                <Clock size={11} className="mr-0.5 text-emerald-600" /> Pico: {peakHourString}
-              </span>
-            )}
-          </div>
+                {/* HORARIO PICO */}
+                <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-sm font-bold text-neutral-900 tracking-tight">Horario Pico de Conexión</h2>
+                      <p className="text-xs text-neutral-400 mt-0.5">Distribución de visitas por bloques del día (Hora VE)</p>
+                    </div>
+                    {visits > 0 && maxTrafficHourCount > 0 && (
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded">
+                        <Clock size={11} className="mr-0.5 text-emerald-600" /> Pico: {peakHourString}
+                      </span>
+                    )}
+                  </div>
 
-          {visits === 0 ? (
-            <p className="text-xs text-neutral-400 italic">No hay suficientes registros de visitas.</p>
-          ) : (
-            <div className="space-y-4">
-              {/* Mañana */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
-                  <span>Mañana (6:00 AM - 12:00 PM)</span>
-                  <span className="font-mono">{mananaPct}% <span className="text-[10px] text-neutral-400">({manana} visitas)</span></span>
-                </div>
-                <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="bg-neutral-950 h-full transition-all duration-500" style={{ width: `${mananaPct}%` }}></div>
-                </div>
-              </div>
+                  {visits === 0 ? (
+                    <p className="text-xs text-neutral-400 italic">No hay suficientes registros de visitas.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Mañana */}
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
+                          <span>Mañana (6:00 AM - 12:00 PM)</span>
+                          <span className="font-mono">{mananaPct}% <span className="text-[10px] text-neutral-400">({manana} visitas)</span></span>
+                        </div>
+                        <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                          <div className="bg-neutral-950 h-full transition-all duration-500" style={{ width: `${mananaPct}%` }}></div>
+                        </div>
+                      </div>
 
-              {/* Tarde */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
-                  <span>Tarde (12:00 PM - 6:00 PM)</span>
-                  <span className="font-mono">{tardePct}% <span className="text-[10px] text-neutral-400">({tarde} visitas)</span></span>
-                </div>
-                <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="bg-neutral-500 h-full transition-all duration-500" style={{ width: `${tardePct}%` }}></div>
-                </div>
-              </div>
+                      {/* Tarde */}
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
+                          <span>Tarde (12:00 PM - 6:00 PM)</span>
+                          <span className="font-mono">{tardePct}% <span className="text-[10px] text-neutral-400">({tarde} visitas)</span></span>
+                        </div>
+                        <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                          <div className="bg-neutral-500 h-full transition-all duration-500" style={{ width: `${tardePct}%` }}></div>
+                        </div>
+                      </div>
 
-              {/* Noche */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
-                  <span>Noche (6:00 PM - 12:00 AM)</span>
-                  <span className="font-mono">{nochePct}% <span className="text-[10px] text-neutral-400">({noche} visitas)</span></span>
-                </div>
-                <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="bg-neutral-300 h-full transition-all duration-500" style={{ width: `${nochePct}%` }}></div>
-                </div>
-              </div>
+                      {/* Noche */}
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
+                          <span>Noche (6:00 PM - 12:00 AM)</span>
+                          <span className="font-mono">{nochePct}% <span className="text-[10px] text-neutral-400">({noche} visitas)</span></span>
+                        </div>
+                        <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                          <div className="bg-neutral-300 h-full transition-all duration-500" style={{ width: `${nochePct}%` }}></div>
+                        </div>
+                      </div>
 
-              {/* Madrugada */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
-                  <span>Madrugada (12:00 AM - 6:00 AM)</span>
-                  <span className="font-mono">{madrugadaPct}% <span className="text-[10px] text-neutral-400">({madrugada} visitas)</span></span>
+                      {/* Madrugada */}
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold text-neutral-950 mb-1.5">
+                          <span>Madrugada (12:00 AM - 6:00 AM)</span>
+                          <span className="font-mono">{madrugadaPct}% <span className="text-[10px] text-neutral-400">({madrugada} visitas)</span></span>
+                        </div>
+                        <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                          <div className="bg-neutral-100 h-full border border-neutral-200/50 transition-all duration-500" style={{ width: `${madrugadaPct}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="bg-neutral-100 h-full border border-neutral-200/50 transition-all duration-500" style={{ width: `${madrugadaPct}%` }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
             </div>
 
             {/* SECTOR SECUNDARIO: CATALOG PERFORMANCE & GEOLOC */}
@@ -459,7 +376,7 @@ export default async function AnalyticsDashboard() {
                         <p className="text-xs text-neutral-400 italic py-4">Aún no hay suficientes datos de visualización de productos.</p>
                     ) : (
                         <div className="space-y-3">
-                            {topProducts.map((product) => (
+                            {topProducts.map((product: any) => (
                                 <div key={product.id} className="p-4 bg-neutral-50/50 rounded-lg flex items-center justify-between border border-neutral-100/50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-neutral-400 border border-neutral-200/50 shadow-sm">
@@ -535,7 +452,7 @@ export default async function AnalyticsDashboard() {
                             <p className="text-xs text-neutral-400 italic">No hay datos de ubicación suficientes.</p>
                         ) : (
                             <div className="space-y-4">
-                                {topLocations.map((loc, i) => {
+                                {topLocations.map((loc: any, i: number) => {
                                     const colors = ['bg-neutral-900', 'bg-neutral-400', 'bg-neutral-200']
                                     return (
                                         <div key={loc.name}>
