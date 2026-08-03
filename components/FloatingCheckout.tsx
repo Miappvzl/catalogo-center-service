@@ -22,10 +22,11 @@ interface CheckoutProps {
     products: any[]
     promotions?: any[]
     affiliateCode?: string | null
-    favoriteIds?: Set<string> // 🚀 ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
+       favoriteIds?: Set<string>
+    campaignContext?: string | null // 👈 AÑADE ESTO
 }
 
-export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set() }: CheckoutProps) {
+export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set(), campaignContext = null }: CheckoutProps) {
    const items = useCart(state => state.items)
 const removeItem = useCart(state => state.removeItem)
 const updateQuantity = useCart(state => state.updateQuantity)
@@ -778,15 +779,28 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                     affiliateCode={affiliateCode}
                                                     affiliateDiscountList={affiliateDiscountList}
                                                     affiliateDiscountCash={affiliateDiscountCash}
-                                                    onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
+                                                    // 2. Intercepta la URL en el onSuccess de CheckoutProcess
+onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
+    let finalWaUrl = waUrl;
+    if (campaignContext) {
+        try {
+            const urlObj = new URL(waUrl);
+            let text = urlObj.searchParams.get('text') || '';
+            const campaignName = campaignContext.charAt(0).toUpperCase() + campaignContext.slice(1).replace(/-/g, ' ');
+            text += `\n\n📊 *Origen:* Campaña VIP (${campaignName})`;
+            urlObj.searchParams.set('text', text);
+            finalWaUrl = urlObj.toString();
+        } catch (e) { console.error(e); }
+    }
+
                                                         setGeneratedOrderNumber(orderNumber);
-                                                        setWhatsappUrl(waUrl);
+                                                        setWhatsappUrl(finalWaUrl); // 👈 Guardamos la URL mutada
                                                         setGeneratedOrderId(orderId);
                                                         addOrderToHistory({ id: orderId, number: orderNumber });
                                                         setIsWhatsAppInterception(true);
-                                                        changeStep(3); // 🚀 USA EL MOTOR ESPACIAL
+                                                        changeStep(3);
                                                     }}
-                                                    onBack={() => changeStep(1)} // 🚀 USA EL MOTOR ESPACIAL
+                                                    onBack={() => changeStep(1)}
                                                 />
                                             </motion.div>
                                         </motion.div>

@@ -23,7 +23,9 @@ import {
   FileText,
   User,
   Gift,
-  LineChart
+  LineChart,
+  Megaphone,
+  Lock
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -41,6 +43,7 @@ const NAV_LINKS = [
   { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' },
 
   // 📌 Punto de Venta
+ { name: 'Campañas', href: '/admin/campaigns', icon: Megaphone, isLocked: true, category: 'Ventas' }, // 👈 ACTUALIZA ESTA LÍNEA
   { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, category: 'Ventas' },
   { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas' },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
@@ -214,11 +217,21 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
                         {link.name}
                       </span>
 
-                      {/* Microetiqueta de Novedad */}
+                     {/* Microetiqueta de Novedad */}
                       {link.isNew && (
                         <div className="ml-auto pr-2 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0">
                           <span className="bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
                             NUEVO
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 🚀 INYECTA ESTA ETIQUETA DE BLOQUEO DE PREPARACIÓN EN ESCRITORIO */}
+                      {link.isLocked && (
+                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0 flex items-center gap-1">
+                          <Lock size={10} className="text-neutral-400" />
+                          <span className="bg-neutral-100 border border-neutral-200/50 text-neutral-500 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                            PRONTO
                           </span>
                         </div>
                       )}
@@ -424,10 +437,19 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
         <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
         <span>{link.name}</span>
         
+      
         {/* 👈 INYECTA ESTA MICROETIQUETA MÓVIL SÉCTICA */}
         {link.isNew && (
           <span className="ml-auto bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0">
             NUEVO
+          </span>
+        )}
+
+        {/* 🚀 INYECTA ESTA ETIQUETA DE BLOQUEO DE PREPARACIÓN EN MÓVIL */}
+        {link.isLocked && (
+          <span className="ml-auto bg-neutral-100 text-neutral-500 border border-neutral-200/50 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1">
+            <Lock size={10} className="text-neutral-400" />
+            <span>PRONTO</span>
           </span>
         )}
       </div>

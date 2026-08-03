@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles } from 'lucide-react'
+import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
+import { isValidUUID } from '@/utils/validations'
 import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -186,9 +187,44 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
- // LÓGICA BOUTIQUE
+// LÓGICA BOUTIQUE Y CAMPAÑAS
+ // LÓGICA BOUTIQUE Y CAMPAÑAS
   const pasilloQuery = searchParams?.get('pasillo')
+  const expQuery = searchParams?.get('exp') // 👈 Obtenemos la expiración
   const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
+  const [campaignContext, setCampaignContext] = useState<string | null>(pasilloQuery || null)
+  
+  // 🚀 ESTADOS DEL RELOJ FLASH
+  const [isMounted, setIsMounted] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<string | null>(null)
+  const [isExpired, setIsExpired] = useState(false)
+
+  useEffect(() => {
+      setIsMounted(true);
+      if (!expQuery) return;
+
+      const targetTime = parseInt(expQuery, 10);
+      
+      const updateTimer = () => {
+          const now = Date.now();
+          const distance = targetTime - now;
+
+          if (distance <= 0) {
+              setIsExpired(true);
+              setTimeLeft('00:00:00');
+              return;
+          }
+
+          const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((distance % (1000 * 60)) / 1000);
+          setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      };
+
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
+      return () => clearInterval(interval);
+  }, [expQuery]);
 
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
@@ -219,13 +255,26 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
-  // 2. REFS DE CONTROL DEL DOM
+ 
+
+
+
+   // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
+  const exitBoutiqueMode = () => {
+    // Reemplazamos la URL usando el pathname actual, eliminando el query param de forma segura
+    router.replace(pathname, { scroll: false }) 
+    setIsBoutiqueMode(false)
+    setSelectedCategory('Todos')
+    setSearch('')
+  }
+
+   // 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   const catalogTopRef = useRef<HTMLDivElement>(null) // 🚀 NUEVA REFERENCIA DE ANCLAJE
 
-  // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
+    // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
   // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
   const items = useCart(state => state.items)
@@ -238,15 +287,6 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const hasItems = items.length > 0
   const isEur = store?.currency_type === 'eur'
   const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
-
-   // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
-  const exitBoutiqueMode = () => {
-    // Reemplazamos la URL usando el pathname actual, eliminando el query param de forma segura
-    router.replace(pathname, { scroll: false }) 
-    setIsBoutiqueMode(false)
-    setSelectedCategory('Todos')
-    setSearch('')
-  }
 
   // 5. MÉTODOS DE AYUDA Y AUXILIARES
   const checkFeaturedScrollStatus = () => {
@@ -299,18 +339,30 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return ['Todos', ...sortedCats]
   }, [products, store?.categories_order])
 
-  // 🚀 CLASIFICACIÓN (DECLARADA ANTES DE LOS EFFECTS QUE LA LEEN)
-  const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
-    const baseFiltered = products.filter(p => {
+const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
+    let baseFiltered = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       const productCatClean = normalizeCategory(p.category)
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
       const matchesPromo = activePromo ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) : true
       return matchesSearch && matchesCategory && matchesPromo
     })
+
+    // 🚀 SMART MERCHANDISING: Ordena stock crítico a la cima en Modo Boutique
+    if (isBoutiqueMode) {
+        baseFiltered.sort((a, b) => {
+            const stockA = a.product_variants?.length > 0 ? a.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (a.stock || 0);
+            const stockB = b.product_variants?.length > 0 ? b.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (b.stock || 0);
+            const isCriticalA = stockA > 0 && stockA <= 3 ? 1 : 0;
+            const isCriticalB = stockB > 0 && stockB <= 3 ? 1 : 0;
+            return isCriticalB - isCriticalA;
+        });
+    }
+
     const featured = baseFiltered.filter(p => p.is_featured)
     return { featured, standard: baseFiltered }
-  }, [products, debouncedSearch, selectedCategory, activePromo])
+  }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode])
+ 
 
   // 6. TODOS LOS EFECTOS DE CICLO DE VIDA (UNIFICADOS ABAJO)
   useEffect(() => {
@@ -321,16 +373,17 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return () => subscription.unsubscribe()
   }, [supabase])
 
-  // 🚀 OPTIMIZACIÓN: Onboarding Silencioso de Inquilino y Carga de Favoritos (Vía RPC Seguro)
+// 🚀 OPTIMIZACIÓN: Onboarding Silencioso y Carga de Favoritos Blindado contra UUIDs nulos/"undefined"
   useEffect(() => {
-    if (!currentUser || !store?.id) {
+    // Si no hay sesión, o los UUIDs no son sintácticamente válidos, cancelamos la llamada a la BD
+    if (!currentUser?.id || !store?.id || !isValidUUID(currentUser.id) || !isValidUUID(store.id)) {
       setFavoriteIds(new Set())
       return
     }
 
     const initCustomerOnStore = async () => {
       try {
-        // 1. Silent Onboarding Seguro: Invocamos el RPC con privilegios elevados en el servidor
+        // 1. Silent Onboarding Seguro
         await supabase.rpc('onboard_customer', { p_store_id: store.id });
 
         // 2. Cargar los favoritos locales del cliente de forma normal
@@ -761,6 +814,34 @@ export default function StoreInterface({ store, products, rates, promotions = []
       {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
       <QuoteRecoveryBanner currentSlug={store.slug} />
 
+      {/* 🚀 INYECCIÓN: BANNER DE CAMPAÑA FLASH (Debajo de QuoteRecoveryBanner) */}
+      <AnimatePresence>
+          {isMounted && isBoutiqueMode && expQuery && !isExpired && (
+              <motion.div 
+                  initial={{ height: 0, opacity: 0 }} 
+                  animate={{ height: 'auto', opacity: 1 }} 
+                  className="bg-neutral-950 text-white px-4 py-2.5 flex items-center justify-center gap-3 overflow-hidden"
+              >
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Venta Flash expira en:</span>
+                  <span className="font-mono font-black text-sm tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
+                      {timeLeft}
+                  </span>
+              </motion.div>
+          )}
+      </AnimatePresence>
+
+      {/* 🚀 BLOQUEO POR EXPIRACIÓN */}
+      {isMounted && isExpired && (
+          <div className="fixed inset-0 z-[99999] bg-[var(--store-bg)] flex flex-col items-center justify-center p-6 text-center">
+              <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">Campaña Expirada</h2>
+              <p className="text-sm text-[var(--store-surface-text)] mb-6">El tiempo de acceso a este pasillo VIP ha finalizado.</p>
+              <button onClick={exitBoutiqueMode} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest">
+                  Ver Catálogo Normal
+              </button>
+          </div>
+      )}
+
+     
 
 
       {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
@@ -1177,13 +1258,19 @@ export default function StoreInterface({ store, products, rates, promotions = []
           {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
           <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
 
-          {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
+        {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8 min-h-[40vh]">
             {paginatedProducts.map((product: any, index: number) => {
               const pricing = getProductPricing(product)
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
                 ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
                 : (product.stock || 0) <= 0;
+
+              // 🚀 SMART MERCHANDISING: Evaluamos si el stock es crítico (1 a 3 unidades)
+              const totalStock = product.product_variants && product.product_variants.length > 0
+                ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0)
+                : (product.stock || 0);
+              const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
 
               return (
                 <ProductCard
@@ -1194,6 +1281,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
                   isOutOfStock={isCompletelyOutOfStock}
                   index={index}
                   isFavorite={favoriteIds.has(String(product.id))}
+                  isCriticalStock={isCritical} // 👈 PASAMOS LA PROPIEDAD AQUÍ
                 />
               )
             })}
@@ -1481,7 +1569,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
         )}
       </AnimatePresence>
 
-      <FloatingCheckout
+     <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
         phone={store.phone || '584120000000'}
@@ -1489,9 +1577,10 @@ export default function StoreInterface({ store, products, rates, promotions = []
         storeId={store.id}
         storeConfig={store}
         products={products}
-        promotions={promotions} // 🚀 INYECCIÓN DEL MOTOR
-        affiliateCode={affiliateCode} // 🚀 INYECCIÓN AQUÍ
-        favoriteIds={favoriteIds} // 🚀 INYECCIÓN PARA CROSS-SELLING
+        promotions={promotions}
+        affiliateCode={affiliateCode}
+        favoriteIds={favoriteIds}
+        campaignContext={campaignContext} // 👈 INYECTA ESTA LÍNEA
       />
       <ProductModal
         isOpen={isModalOpen}

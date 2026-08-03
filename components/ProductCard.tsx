@@ -1,7 +1,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame, Heart } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle } from 'lucide-react' // 👈 Añadido AlertCircle
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
 
@@ -12,9 +12,10 @@ interface ProductCardProps {
   isOutOfStock?: boolean;
   index?: number;
   isFavorite?: boolean;
+  isCriticalStock?: boolean; // 👈 NUEVA PROPIEDAD
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, isFavorite = false }: ProductCardProps) {
+export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, isFavorite = false, isCriticalStock = false }: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const penalty = Number(product.usd_penalty || 0);
@@ -43,7 +44,6 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
 
   return (
     <div 
-      // 🚀 NATIVO: Usamos animaciones nativas por hardware sin registrar IntersectionObservers de Framer Motion
       className={`w-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 opacity-0 animate-fade-in-up ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       style={{ transform: 'translate3d(0, 0, 0)' }}
       onClick={() => { if (!isOutOfStock) onOpen(product) }}
@@ -71,18 +71,28 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
              </div>
         )}
 
+{isCriticalStock && !isOutOfStock && (
+    <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10 bg-red-600/90 backdrop-blur-md text-white px-2.5 py-1.5 rounded-lg shadow-sm flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+        <AlertCircle size={12} strokeWidth={2.5} className="animate-pulse" />
+        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest leading-none mt-px">
+          Últimas {product.stock}
+        </span>
+    </div>
+)}
+
         {isPromo && !isOutOfStock && (
             <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-red-600 text-white text-[10px] md:text-xs font-black px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
                 -{promoPercent}%
             </div>
         )}
         
+        {/* 🚀 BOTÓN DE FAVORITO REUBICADO PARA NO CHOCAR CON EL BADGE DE STOCK */}
         <button 
           onClick={(e) => {
             e.stopPropagation();
             document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
           }}
-          className={`absolute top-2.5 left-2.5 md:top-3 md:left-3 z-20 p-2 backdrop-blur-md rounded-full transition-all shadow-sm active:scale-90 ${
+          className={`absolute bottom-2.5 left-2.5 md:bottom-3 md:left-3 z-20 p-2 backdrop-blur-md rounded-full transition-all shadow-sm active:scale-90 ${
             isFavorite 
               ? 'bg-red-50 text-red-500 hover:bg-red-100' 
               : 'bg-[var(--store-surface)]/80 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)]'
@@ -91,6 +101,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         >
           <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
         </button>
+
 
         {uniqueColors.length > 1 && (
             <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">
