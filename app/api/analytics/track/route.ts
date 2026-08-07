@@ -38,17 +38,14 @@ export async function POST(req: Request) {
       referrer_source = 'whatsapp'
     }
 
-    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1'
-    const date = new Date().toISOString().split('T')[0]
-    const session_id = crypto
-      .createHash('sha256')
-      .update(`${ip}-${userAgent}-${date}`)
-      .digest('hex')
+   // REEMPLÁZALO POR ESTO:
+    // 🚀 Recibimos el session_id pre-computado del cliente (Cero uso de CPU en servidor)
+    const { session_id } = body; 
 
     const supabase = getSupabaseAdmin()
     const { error } = await supabase.from('analytics_raw_events').insert({
       store_id,
-      session_id,
+      session_id: session_id || 'anonymous',
       event_type,
       product_id: product_id || null,
       url,
@@ -57,6 +54,8 @@ export async function POST(req: Request) {
       location_state: regionCode,
       dwell_time: dwell_time || 0,
     })
+
+   
 
     if (error) throw error
 
