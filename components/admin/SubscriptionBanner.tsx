@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom' // 1. Import de createPortal
 import { 
   Clock, Zap, ArrowRight, X, Wallet, ShieldCheck, 
   MessageCircle, Copy, Check, AlertTriangle, Lock, Globe, Loader2, Tag 
@@ -20,6 +21,9 @@ interface SubscriptionBannerProps {
 }
 
 export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
+  // Estado para verificar montaje en cliente (prevención de errores SSR en Next.js)
+  const [mounted, setMounted] = useState(false)
+
   // Estados del Banner
   const [daysLeft, setDaysLeft] = useState<number | null>(null)
   const [bannerType, setBannerType] = useState<'hidden' | 'trial' | 'trial_expired' | 'active_expiring' | 'active_expired'>('hidden')
@@ -32,6 +36,10 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   
   const supabase = getSupabase()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 1. Efecto para manejar la lógica de fechas del Banner
   useEffect(() => {
@@ -138,7 +146,6 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
 
   // --- LÓGICA DE PAGO Y MATEMÁTICA EXACTA ---
   const basePriceUSD = PREZISO_BILLING.priceUSD
-  // Calculamos el precio final aplicando el descuento (si existe)
   const finalPriceUSD = discountPct > 0 
     ? Number((basePriceUSD * (1 - discountPct / 100)).toFixed(2)) 
     : basePriceUSD
@@ -151,8 +158,18 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  const handleCopyAllPagoMovil = () => {
+  const allData = [
+    `Banco: ${PREZISO_BILLING.pagoMovil.banco}`,
+    `Teléfono: ${PREZISO_BILLING.pagoMovil.telefono}`,
+    `Cédula/RIF: ${PREZISO_BILLING.pagoMovil.cedula}`,
+    rate > 0 ? `Monto: Bs ${amountBs}` : ''
+  ].filter(Boolean).join('\n')
+
+  copyToClipboard(allData, 'pago_movil_all')
+}
+
   const handleReportPayment = () => {
-    // 🚀 Pasamos el finalPriceUSD al generador de mensajes
     const reportMessage = PREZISO_BILLING.generateReportMessage(store.name || 'Tienda', store.id || 'ID-Pendiente', amountBs, finalPriceUSD)
     const url = `https://wa.me/${PREZISO_BILLING.whatsappContact}?text=${encodeURIComponent(reportMessage)}`
     
@@ -188,173 +205,204 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
         </div>
       </div>
 
-      {/* MODAL PRINCIPAL DE FACTURACIÓN */}
-      <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 font-sans selection:bg-black selection:text-white">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowModal(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            
-            <motion.div 
-              initial={{ opacity: 0, y: 20, scale: 0.95 }} 
-              animate={{ opacity: 1, y: 0, scale: 1 }} 
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="relative w-full max-w-[400px] bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl"
-            >
-              <div 
-                onClick={() => setShowModal(false)} 
-                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10 cursor-pointer"
-              >
-                <X size={16} />
-              </div>
-
-              <div className="p-5 pb-4 text-center border-b border-gray-50 bg-gray-50/30">
-                <div className="inline-flex p-2 rounded-xl bg-black text-white mb-2">
-                  <Lock size={16} strokeWidth={2.5} />
-                </div>
-                <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">{PREZISO_BILLING.planName}</h1>
-                <p className="text-gray-400 text-xs mt-1.5 font-medium px-2">
-                  {bannerType.includes('active') ? 'Renueva tu plan para seguir operando.' : 'Activa tu membresía y vende sin límites.'}
-                </p>
-              </div>
-
-              <div className="p-4 md:p-5 space-y-4 md:space-y-5">
+      {/* PORTAL DE MODALES AL BODY */}
+      {mounted && createPortal(
+        <>
+          {/* MODAL PRINCIPAL DE FACTURACIÓN */}
+          <AnimatePresence>
+            {showModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 font-sans selection:bg-black selection:text-white">
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowModal(false)}
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                />
                 
-                {/* 🚀 PRECIO DUAL, DESCUENTO Y TASA BCV */}
-                <div className="text-center">
-                  {discountPct > 0 && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-full mb-3 border border-emerald-100">
-                      <Tag size={12} /> {discountPct}% Desc. Partner (1er Mes)
-                    </div>
-                  )}
-                  
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-black text-gray-900">${finalPriceUSD}</span>
-                    <span className="text-gray-400 font-bold text-sm">/mes</span>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+                  animate={{ opacity: 1, y: 0, scale: 1 }} 
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  className="relative w-full max-w-[400px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl flex flex-col shadow-2xl z-10"
+                >
+                  <div 
+                    onClick={() => setShowModal(false)} 
+                    className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-black hover:bg-[var(--store-bg)] rounded-full transition-colors z-10 cursor-pointer"
+                  >
+                    <X size={16} />
                   </div>
 
-                  {discountPct > 0 && (
-                    <p className="text-[10px] text-gray-400 font-medium mt-1 line-through">
-                      Precio regular: ${basePriceUSD}
+                  <div className="p-5 pb-4 text-center border-b border-gray-50 bg-gray-50/30">
+                    <div className="inline-flex p-2 rounded-xl bg-black text-white mb-2">
+                      <Lock size={16} strokeWidth={2.5} />
+                    </div>
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">{PREZISO_BILLING.planName}</h1>
+                    <p className="text-gray-400 text-xs mt-1.5 font-medium px-2">
+                      {bannerType.includes('active') ? 'Renueva tu plan para seguir operando.' : 'Activa tu membresía y vende sin límites.'}
                     </p>
-                  )}
-                  
-                  <div className="mt-2 flex justify-center">
-                    {rate > 0 ? (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all">
-                        <span>≈ Bs {amountBs} (BCV)</span>
-                        <div className="w-px h-3 bg-gray-200 mx-0.5"></div>
-                        <div 
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => copyToClipboard(amountBs, 'monto')}
-                          className="text-gray-400 hover:text-black transition-colors flex items-center gap-1 active:scale-90"
-                          title="Copiar monto exacto"
-                        >
-                          {copiedId === 'monto' ? <Check size={12} strokeWidth={3} className="text-emerald-500" /> : <Copy size={12} strokeWidth={2.5} />}
+                  </div>
+
+                  <div className="p-4 md:p-5 space-y-4 md:space-y-5">
+                    {/* PRECIO DUAL, DESCUENTO Y TASA BCV */}
+                    <div className="text-center">
+                      {discountPct > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-full mb-3 border border-emerald-100">
+                          <Tag size={12} /> {discountPct}% Desc. Partner (1er Mes)
+                        </div>
+                      )}
+                      
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-3xl font-black text-gray-900">${finalPriceUSD}</span>
+                        <span className="text-gray-400 font-bold text-sm">/mes</span>
+                      </div>
+
+                      {discountPct > 0 && (
+                        <p className="text-[10px] text-gray-400 font-medium mt-1 line-through">
+                          Precio regular: ${basePriceUSD}
+                        </p>
+                      )}
+                      
+                      <div className="mt-2 flex justify-center">
+                        {rate > 0 ? (
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all">
+                            <span>≈ Bs {amountBs} (BCV)</span>
+                            <div className="w-px h-3 bg-gray-200 mx-0.5"></div>
+                            <div 
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => copyToClipboard(amountBs, 'monto')}
+                              className="text-gray-400 hover:text-black transition-colors flex items-center gap-1 active:scale-90"
+                              title="Copiar monto exacto"
+                            >
+                              {copiedId === 'monto' ? <Check size={12} strokeWidth={3} className="text-emerald-500" /> : <Copy size={12} strokeWidth={2.5} />}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                            <Loader2 size={10} className="animate-spin" /> Calculando...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Métodos de Pago */}
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-2xl bg-gray-50/50 border border-transparent">
+                        {/* Cabecera del bloque Pago Móvil con botón discreto */}
+<div className="flex items-center justify-between mb-2.5">
+  <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs">
+    <Wallet size={14} className="text-gray-400" />
+    Pago Móvil
+  </div>
+
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={handleCopyAllPagoMovil}
+      className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-black bg-white border border-gray-200/60 hover:border-gray-300 px-2 py-0.5 rounded-md transition-all active:scale-95 shadow-2xs"
+      title="Copiar todos los datos de Pago Móvil"
+    >
+      {copiedId === 'pago_movil_all' ? (
+        <>
+          <Check size={11} strokeWidth={3} className="text-emerald-500" />
+          <span className="text-emerald-600">¡Copiados!</span>
+        </>
+      ) : (
+        <>
+          <Copy size={11} strokeWidth={2} />
+          <span>Copiar todo</span>
+        </>
+      )}
+    </button>
+    <span className="text-[9px] font-black text-gray-300 uppercase">VE</span>
+  </div>
+</div>
+                        <div className="space-y-1.5">
+                          <DataRow label="Banco" value={PREZISO_BILLING.pagoMovil.banco} />
+                          <DataRow 
+                            label="Teléfono" 
+                            value={PREZISO_BILLING.pagoMovil.telefono} 
+                            onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.telefono, 'tlf')}
+                            isCopied={copiedId === 'tlf'}
+                          />
+                          <DataRow 
+                            label="Cédula" 
+                            value={PREZISO_BILLING.pagoMovil.cedula} 
+                            onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.cedula, 'ci')}
+                            isCopied={copiedId === 'ci'}
+                          />
                         </div>
                       </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                        <Loader2 size={10} className="animate-spin" /> Calculando...
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Métodos de Pago */}
-                <div className="space-y-3">
-                  <div className="p-3 rounded-2xl bg-gray-50/50 border border-transparent">
-                    <div className="flex items-center justify-between mb-2.5">
-                      <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs">
-                        <Wallet size={14} className="text-gray-400" />
-                        Pago Móvil
+                      <div className="p-3 rounded-2xl bg-gray-50/50">
+                        <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs mb-2.5">
+                          <Globe size={14} className="text-gray-400" />
+                          Global Wallets
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div 
+                            role="button"
+                            tabIndex={0}    
+                            onClick={() => copyToClipboard(PREZISO_BILLING.wallets.binanceId, 'binance')}
+                            className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
+                          >
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Binance ID</p>
+                            <p className="text-[11px] font-black text-gray-900 mt-0.5">{copiedId === 'binance' ? '¡Copiado!' : PREZISO_BILLING.wallets.binanceId}</p>
+                          </div>
+                          <div 
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => copyToClipboard(PREZISO_BILLING.wallets.zinliEmail, 'zinli')}
+                            className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
+                          >
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Zinli / Email</p>
+                            <p className="text-[11px] font-black text-gray-900 mt-0.5 truncate px-1">{copiedId === 'zinli' ? '¡Copiado!' : PREZISO_BILLING.wallets.zinliEmail}</p>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-[9px] font-black text-gray-400 uppercase">Venezuela</span>
                     </div>
-                    <div className="space-y-1.5">
-                      <DataRow label="Banco" value={PREZISO_BILLING.pagoMovil.banco} />
-                      <DataRow 
-                        label="Teléfono" 
-                        value={PREZISO_BILLING.pagoMovil.telefono} 
-                        onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.telefono, 'tlf')}
-                        isCopied={copiedId === 'tlf'}
-                      />
-                      <DataRow 
-                        label="Cédula" 
-                        value={PREZISO_BILLING.pagoMovil.cedula} 
-                        onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.cedula, 'ci')}
-                        isCopied={copiedId === 'ci'}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="p-3 rounded-2xl bg-gray-50/50">
-                    <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs mb-2.5">
-                      <Globe size={14} className="text-gray-400" />
-                      Global Wallets
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div 
-                        role="button"
-                        tabIndex={0}    
-                        onClick={() => copyToClipboard(PREZISO_BILLING.wallets.binanceId, 'binance')}
-                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
-                      >
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Binance ID</p>
-                        <p className="text-[11px] font-black text-gray-900 mt-0.5">{copiedId === 'binance' ? '¡Copiado!' : PREZISO_BILLING.wallets.binanceId}</p>
-                      </div>
-                      <div 
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => copyToClipboard(PREZISO_BILLING.wallets.zinliEmail, 'zinli')}
-                        className="p-2 rounded-xl bg-white border border-gray-100 text-center transition-all hover:border-gray-200 active:scale-95 cursor-pointer"
-                      >
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Zinli / Email</p>
-                        <p className="text-[11px] font-black text-gray-900 mt-0.5 truncate px-1">{copiedId === 'zinli' ? '¡Copiado!' : PREZISO_BILLING.wallets.zinliEmail}</p>
-                      </div >
+                    {/* Botón Principal */}
+                    <div 
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleReportPayment}
+                      className="w-full bg-black text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98] cursor-pointer"
+                    >
+                      <MessageCircle size={16} /> Reportar Pago
                     </div>
                   </div>
-                </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
-                {/* Botón Principal */}
-                <div 
-                  role="button"
-                  tabIndex={0}
-                  onClick={handleReportPayment}
-                  className="w-full bg-black text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:bg-gray-900 active:scale-[0.98] cursor-pointer"
+          {/* MODAL DE CONFIRMACIÓN DE ÉXITO */}
+          <AnimatePresence>
+            {showSuccessModal && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 font-sans">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/80 backdrop-blur-md" />
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }} 
+                  animate={{ scale: 1, opacity: 1 }} 
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="relative bg-white border border-gray-100 p-8 rounded-3xl shadow-2xl max-w-sm text-center z-10"
                 >
-                  <MessageCircle size={16} /> Reportar Pago
-                </div>
+                  <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ShieldCheck size={40} strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 mb-2">Pago Enviado</h3>
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    Generando tu reporte. Serás redirigido a WhatsApp en breve para confirmar.
+                  </p>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL DE CONFIRMACIÓN DE ÉXITO */}
-      <AnimatePresence>
-        {showSuccessModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 font-sans">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/80 backdrop-blur-md" />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white border border-gray-100 p-8 rounded-3xl shadow-2xl max-w-sm text-center"
-            >
-              <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <ShieldCheck size={40} strokeWidth={1.5} />
-              </div>
-              <h3 className="text-xl font-black text-gray-900 mb-2">Pago Enviado</h3>
-              <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                Generando tu reporte. Serás redirigido a WhatsApp en breve para confirmar.
-              </p>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </>
   )
 }
