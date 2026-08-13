@@ -25,7 +25,8 @@ import {
   Gift,
   LineChart,
   Megaphone,
-  Lock
+  Lock,
+  GraduationCap
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -35,29 +36,48 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import VueltoPromoModal from '@/components/admin/VueltoPromoModal';
 
-const NAV_LINKS = [
+
+// Definimos los tipos de planes
+type PlanType = 'retail' | 'digital' | 'pro';
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  category: string;
+  isNew?: boolean;
+  isLocked?: boolean;
+  hideOnBottomBar?: boolean;
+  isAction?: boolean;
+  allowedPlans: PlanType[];
+}
+
+const NAV_LINKS: NavItem[] = [
   // 📌 General
-  { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General' },
-  { name: 'Inteligencia', href: '/admin/analytics', icon: LineChart, isNew: true, category: 'General' }, // 👈 ACTUALIZA ESTA LÍNEA
-  { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General' },
-  { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General' },
+  { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Inteligencia', href: '/admin/analytics', icon: LineChart, isNew: true, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
 
   // 📌 Punto de Venta
- { name: 'Campañas', href: '/admin/campaigns', icon: Megaphone, isLocked: true, category: 'Ventas' }, // 👈 ACTUALIZA ESTA LÍNEA
-  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, category: 'Ventas' },
-  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas' },
-  { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas' },
+  { name: 'Campañas', href: '/admin/campaigns', icon: Megaphone, isLocked: true, category: 'Ventas', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'POS / Cotizar', href: '/admin/pos', icon: Calculator, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
+  { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
+  { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
 
   // 📌 Catálogo
-  { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo' },
-  { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo' },
-  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo' },
+  { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+
+  // 📌 Academia (NUEVO)
+  { name: 'Academia', href: '/admin/academy', icon: GraduationCap, category: 'Academia', allowedPlans: ['digital', 'pro'] },
 
   // 📌 Negocio
-  { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio' },
-  { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio' },
-  { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, isNew: true, category: 'Negocio' },
-  { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio' },
+  { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, isNew: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
 ]
 
 // 🚀 MICRO-COMPONENTE: Avatar Consistente Monocromático (Cleanlook Standard)
@@ -138,6 +158,10 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
     setTimeout(() => setCopied(false), 2000)
   }
 
+    // 👈 NUEVO: Obtenemos el plan actual
+  const currentPlan = (store?.plan_type || 'retail') as PlanType;
+  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+
   return (
     <aside
       className="hidden lg:flex flex-col h-screen fixed left-0 top-0 bg-[#ffffff] z-50 border-r border-neutral-200/50 
@@ -146,7 +170,7 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
     >
       {/* HEADER LOGO */}
       <div className="h-20 flex items-center px-3 pl-4 flex-shrink-0 ">
-        <Link href="/" className="flex items-center min-w-[200px] pl-[-2px] active:scale-95 transition-all">
+        <Link href="/admin" className="flex items-center min-w-[200px] pl-[-2px] active:scale-95 transition-all">
           <Image
             src={getOptimizedUrl("/favicon-light.png")}
             alt="Preziso Logo"
@@ -160,8 +184,9 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
 
       {/* NAVEGACIÓN PRINCIPAL */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-6 px-3">
-        {['General', 'Ventas', 'Catálogo', 'Negocio'].map((category, idx) => {
-          const linksInCategory = NAV_LINKS.filter(link => link.category === category);
+        {/* 👈 NUEVO: Agregamos 'Academia' al arreglo y usamos allowedLinks */}
+        {['General', 'Ventas', 'Catálogo', 'Academia', 'Negocio'].map((category, idx) => {
+          const linksInCategory = allowedLinks.filter(link => link.category === category);
           if (linksInCategory.length === 0) return null;
 
           return (
@@ -309,7 +334,7 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
 
         {/* Soporte */}
         <a
-          href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso`}
+          href={`https://wa.me/584248157859?text=Hola%20equipo%20Preziso`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center p-1.5 rounded-lg hover:bg-neutral-50 transition-colors text-neutral-500 hover:text-neutral-900 border border-transparent"
@@ -422,8 +447,9 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar bg-[#FAFAFC]">
-              {NAV_LINKS.map((link) => {
+              <nav className="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar bg-[#FAFAFC]">
+              {/* 👈 NUEVO: Filtramos por plan */}
+              {NAV_LINKS.filter(link => link.allowedPlans.includes((store?.plan_type || 'retail') as PlanType)).map((link) => {
                 if (link.isAction) return null
                 const isActive = pathname === link.href
 
@@ -470,16 +496,21 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
                 </div>
               )}
 
-              <div className="pt-3.5 mt-3.5 border-t border-neutral-200/50">
-                <GuardedLink
-                  href="/admin/product/new"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold text-neutral-500 bg-white border border-dashed border-neutral-200/50 hover:border-neutral-900 transition-all"
-                >
-                  <Plus size={16} />
-                  <span>Nuevo Producto</span>
-                </GuardedLink>
-              </div>
+                {/* 👈 NUEVO: Ocultamos el botón duro de Nuevo Producto si es Digital */}
+              {store?.plan_type !== 'digital' && (
+                <div className="pt-3.5 mt-3.5 border-t border-neutral-200/50">
+                  <GuardedLink
+                    href="/admin/product/new"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold text-neutral-500 bg-white border border-dashed border-neutral-200/50 hover:border-neutral-900 transition-all"
+                  >
+                    <Plus size={16} />
+                    <span>Nuevo Producto</span>
+                  </GuardedLink>
+                </div>
+              )}
             </nav>
+
+              
 
             {/* SECCIÓN INFERIOR MÓVIL */}
             <div className="p-4 border-t border-neutral-200/50 space-y-3 bg-white">
@@ -505,7 +536,7 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
 
               {/* Enlace Soporte */}
               <a
-                href={`https://wa.me/584145811936?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+                href={`https://wa.me/584248157859?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-semibold text-neutral-500 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
@@ -531,7 +562,8 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
 }
 
 // --- MOBILE BOTTOM BAR (CON DETECCIÓN INTELIGENTE DE MODALES) ---
-const MobileBottomBar = ({ pathname }: { pathname: string }) => {
+// 👈 NUEVO: Pasamos el store por props
+const MobileBottomBar = ({ pathname, store }: { pathname: string, store: any }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isModalActive, setIsModalActive] = useState(false); // 🚀 NUEVO: Estado del modal
   const lastScrollY = useRef(0);
@@ -595,6 +627,8 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     return () => observer.disconnect();
   }, []);
 
+  
+
   // Manejador del scroll para ocultar la barra al deslizar hacia abajo
   useEffect(() => {
     const handleScroll = (e: Event) => {
@@ -626,8 +660,14 @@ const MobileBottomBar = ({ pathname }: { pathname: string }) => {
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
   }, []);
 
-  const normalLinks = NAV_LINKS.filter(link => !link.hideOnBottomBar && !link.isAction)
-  const actionLink = NAV_LINKS.find(link => link.isAction)
+  
+  // 👈 NUEVO: Filtramos la barra inferior
+  const currentPlan = (store?.plan_type || 'retail') as PlanType;
+  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+
+  const normalLinks = allowedLinks.filter(link => !link.hideOnBottomBar && !link.isAction)
+  const actionLink = allowedLinks.find(link => link.isAction)
+
 
   const bottomBarLinks = [
     normalLinks[0],
@@ -717,14 +757,15 @@ export default function AdminNavigation({ store }: NavProps) {
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
       />
-      <MobileSidebar
+    <MobileSidebar
         pathname={pathname}
         store={store}
         onLogout={handleLogout}
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
       />
-      <MobileBottomBar pathname={pathname} />
+      {/* 👈 NUEVO: Le pasamos el store */}
+      <MobileBottomBar pathname={pathname} store={store} />
 
       {store && (
         <VueltoPromoModal
