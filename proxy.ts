@@ -8,8 +8,6 @@ export async function proxy(request: NextRequest) {
 
   const hostname = request.headers.get('host') || ''
   const currentEnvDomain = process.env.NODE_ENV === 'production' ? 'preziso.shop' : 'localhost:3000'
-  
-  // 🚀 BLINDAJE DE SUBDOMINIOS: Guardar cookie a nivel global de .preziso.shop en producción
   const cookieDomain = process.env.NODE_ENV === 'production' ? '.preziso.shop' : undefined
 
   // ---------------------------------------------------------
@@ -22,61 +20,77 @@ export async function proxy(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      domain: cookieDomain, // <-- ESTO es lo que amarra la cookie en todo Preziso
+      domain: cookieDomain,
     })
   }
 
-  // ---------------------------------------------------------
-  // 1. SUPABASE AUTH & CONEXIÓN VIA CLOUDFLARE WORKER
-  // ---------------------------------------------------------
-  const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wandering-surf-2d0c.quanzosinc-179.workers.dev";
-
-  const supabase = createServerClient(
-    proxyUrl,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return request.cookies.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value, ...options })
-          
-          if (ref) {
-            response.cookies.set('preziso_ref', ref, {
-              maxAge: 60 * 60 * 24 * 60,
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              domain: cookieDomain,
-            })
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  // REGLAS DE SEGURIDAD (Protección de paneles)
-  if (pathname.startsWith('/admin') && !user) {
+  // ---------------------------------------------------------
+  // 1. ESCUDO ANTI-BOTS (Fast Path)
+  // ---------------------------------------------------------
+  // Verificamos si hay indicios de sesión en las cookies SIN hacer peticiones de red
+  const hasSessionCookie = request.cookies.getAll().some(cookie => 
+    cookie.name.startsWith('sb-') && cookie.name.includes('-auth-token')
+  )
+
+  const isProtectedRoute = pathname.startsWith('/admin') || pathname.startsWith('/boss')
+  const isLoginRoute = pathname.startsWith('/login')
+
+  // Si un bot intenta entrar a /admin sin cookies, lo rebotamos en 1ms. Cero CPU.
+  if (isProtectedRoute && !hasSessionCookie) {
     return NextResponse.redirect(new URL('/login', request.url))
-  }
-  if (pathname.startsWith('/boss') && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-  if (pathname.startsWith('/login') && user) {
-    return NextResponse.redirect(new URL('/admin', request.url))
   }
 
   // ---------------------------------------------------------
-  // 2. MOTOR DE SUBDOMINIOS (Wildcard Routing)
+  // 2. SUPABASE LAZY AUTH (Solo si es estrictamente necesario)
+  // ---------------------------------------------------------
+  if ((isProtectedRoute && hasSessionCookie) || (isLoginRoute && hasSessionCookie)) {
+    const proxyUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wandering-surf-2d0c.quanzosinc-179.workers.dev";
+
+    const supabase = createServerClient(
+      proxyUrl,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) { return request.cookies.get(name)?.value },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({ name, value, ...options })
+            response = NextResponse.next({ request: { headers: request.headers } })
+            response.cookies.set({ name, value, ...options })
+            
+            if (ref) {
+              response.cookies.set('preziso_ref', ref, {
+                maxAge: 60 * 60 * 24 * 60,
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                domain: cookieDomain,
+              })
+            }
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({ name, value: '', ...options })
+            response = NextResponse.next({ request: { headers: request.headers } })
+            response.cookies.set({ name, value: '', ...options })
+          },
+        },
+      }
+    )
+
+    // Solo hacemos la petición de red si pasaron el escudo
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (isProtectedRoute && !user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    if (isLoginRoute && user) {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+  }
+
+  // ---------------------------------------------------------
+  // 3. MOTOR DE SUBDOMINIOS (Wildcard Routing)
   // ---------------------------------------------------------
   const isSubdomain = hostname !== currentEnvDomain && 
                       hostname !== `www.${currentEnvDomain}` && 
