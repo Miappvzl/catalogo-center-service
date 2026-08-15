@@ -405,13 +405,19 @@ Mi duda es la siguiente: `;
         }
     }
 
-    const isCompletelyOutOfStock = variants.length > 0
+ 
+
+   const isCompletelyOutOfStock = variants.length > 0
         ? variants.every(v => (v.stock || 0) <= 0)
         : (product?.stock || 0) <= 0;
 
-    // 🚀 NUEVO: Variable reactiva para el texto del botón
+    // 🚀 NUEVO: Evaluación arquitectónica temprana del tipo de variante
+    const isModelOption = availableColors.length > 0 && 
+        (availableColors[0].hex === 'transparent' || availableColors[0].hex === '#transparent');
+
+    // 🚀 NUEVO: Variable reactiva para el texto del botón (Corregido para Modelos/Opciones)
     const buttonText = isCompletelyOutOfStock ? 'Agotado'
-        : (variants.length > 0 && !selectedColor) ? 'Elige un Color'
+        : (variants.length > 0 && !selectedColor) ? (isModelOption ? 'Escoge modelo/opción' : 'Elige un Color')
             : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
                 : 'Agregar';
 
@@ -582,9 +588,9 @@ Mi duda es la siguiente: `;
                                                     className={`space-y-3 p-3 -mx-3 rounded-2xl border transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
                                                 >
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                            1. {availableColors.find(c => c.name === selectedColor)?.hex === 'transparent' || availableColors.find(c => c.name === selectedColor)?.hex === '#transparent' ? 'Modelo / Opción' : 'Color'}
-                                                        </span>
+                                                      <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+    1. {isModelOption ? 'Modelo / Opción' : 'Color'}
+</span>
                                                         <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-3">
@@ -644,10 +650,10 @@ Mi duda es la siguiente: `;
                                                         </div>
 
                                                         {!selectedColor ? (
-                                                            <div className="flex items-center gap-2 text-xs font-bold text-[var(--store-surface-text)] bg-[var(--store-bg)] p-3 rounded-xl border border-[var(--store-border)]">
-                                                                <AlertCircle size={16} /> Selecciona un color primero
-                                                            </div>
-                                                        ) : (
+    <div className="flex items-center gap-2 text-xs font-bold text-[var(--store-surface-text)] bg-[var(--store-bg)] p-3 rounded-xl border border-[var(--store-border)]">
+        <AlertCircle size={16} /> Selecciona {isModelOption ? 'una opción' : 'un color'} primero
+    </div>
+) : (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {availableSizes.map(v => {
                                                                     const isOutOfStock = v.stock <= 0;
