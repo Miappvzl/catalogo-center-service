@@ -12,7 +12,7 @@ import StoreLoadingSkeleton from './StoreLoadingSkeleton' // 👈 Moveremos tu e
 import { Metadata } from 'next'
 import { Rocket, Sparkle } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 // ... (Tu función generateMetadata se queda exactamente igual) ...
 
