@@ -6,12 +6,12 @@ import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
-import { revalidateStoreCache, checkAndTriggerStockAlert } from '@/app/admin/actions' // 👈 ACTUALIZA ESTA LÍNEA
+import { revalidateStoreCache, checkAndTriggerStockAlert } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { Zain } from 'next/font/google'
+import TaxCatalogToggle from '@/components/admin/TaxCatalogToggle'
 
-// --- TIPOS (Actualizados con isTaxExempt) ---
 interface InventoryItem {
     rowId: string;
     productId: string;
@@ -23,10 +23,10 @@ interface InventoryItem {
     hex: string;
     size: string;
     stock: number;
-    isTaxExempt: boolean; // 🚀 NUEVO
-    isFeatured: boolean; // 🚀 AÑADIR ESTO
-    displayOrder: number; // 🚀 NUEVO
-    requiresShipping: boolean; // 🚀 NUEVO
+    isTaxExempt: boolean; 
+    isFeatured: boolean; 
+    displayOrder: number; 
+    requiresShipping: boolean; 
 }
 
 export default function InventoryPage() {
@@ -35,24 +35,20 @@ export default function InventoryPage() {
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
     
-    // 2. INYECTA ESTE NUEVO ESTADO PARA ALMACENAR EL ID DE LA TIENDA DE FORMA LOCAL:
     const [storeId, setStoreId] = useState<string | null>(null)
-    // 🚀 ESTADOS DEL MODO MERCHANDISING
     const [isReordering, setIsReordering] = useState(false)
     const [reorderList, setReorderList] = useState<any[]>([])
     const [isSavingOrder, setIsSavingOrder] = useState(false)
     const [editingIndex, setEditingIndex] = useState<string | null>(null)
 
-    // Abre el modal con TODO el catálogo activo para ordenar la tienda completa
     const openReorderModal = () => {
-        // Obtenemos productos únicos (agrupando variantes por su productId)
         const allProducts = Array.from(new Map(
             items.map(i => [i.productId, {
                 id: i.productId,
                 name: i.name,
                 image: i.image,
                 displayOrder: i.displayOrder,
-                isFeatured: i.isFeatured // Mantenemos la referencia visual
+                isFeatured: i.isFeatured 
             }])
         ).values()).sort((a, b) => a.displayOrder - b.displayOrder)
 
@@ -60,9 +56,6 @@ export default function InventoryPage() {
         setIsReordering(true)
     }
 
-
-
-    // 🚀 MAGIA: EL SALTO CUÁNTICO (Editar número manualmente)
     const handleQuantumLeap = (productId: string, newPosStr: string) => {
         const newPos = parseInt(newPosStr)
         if (isNaN(newPos) || newPos < 1) return;
@@ -75,48 +68,48 @@ export default function InventoryPage() {
 
         const newList = [...reorderList]
         const [movedItem] = newList.splice(currentIndex, 1)
-        newList.splice(targetIndex, 0, movedItem) // Inyecta el ítem en la nueva posición y desplaza el resto
+        newList.splice(targetIndex, 0, movedItem) 
 
         setReorderList(newList)
     }
 
-    // Guardado por Lotes (Batch Update a Supabase)
     const saveReorder = async () => {
         setIsSavingOrder(true)
         try {
             const updates = reorderList.map((item, index) => ({
                 id: item.id,
-                display_order: index + 1 // Convertimos el índice del array en el número real (1, 2, 3...)
+                display_order: index + 1 
             }))
 
-            // Enviamos todo a Supabase en paralelo para máxima velocidad
             await Promise.all(updates.map(u =>
                 supabase.from('products').update({ display_order: u.display_order }).eq('id', u.id)
             ))
 
-            // Actualizamos la UI local
             setItems(prev => prev.map(item => {
                 const match = updates.find(u => u.id === item.productId)
                 return match ? { ...item, displayOrder: match.display_order } : item
             }))
 
-            await revalidateStoreCache() // Destruimos la caché para que el cliente lo vea instantáneo
+            await revalidateStoreCache() 
 
             setIsReordering(false)
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            const Toast = Swal.mixin({ 
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            })
             Toast.fire({ icon: 'success', title: 'Escaparate Reorganizado' })
         } catch (e) {
-            Swal.fire('Error', 'No se pudo guardar el orden', 'error')
+            Swal.fire({ title: 'Error', text: 'No se pudo guardar el orden', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
         } finally {
             setIsSavingOrder(false)
         }
     }
 
-
     const [filterStatus, setFilterStatus] = useState('all')
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
-    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null) // 🚀 NUEVO: Estado del perfil
+    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null) 
+    const [showTaxInCatalog, setShowTaxInCatalog] = useState(false) 
 
     useEffect(() => {
         const fetchInventory = async () => {
@@ -124,12 +117,13 @@ export default function InventoryPage() {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
 
-                // 🚀 ACTUALIZACIÓN: Traemos el fiscal_profile de la tienda
-                const { data: store } = await supabase.from('stores').select('id, fiscal_profile').eq('user_id', user.id).single()
+                const { data: store } = await supabase.from('stores').select('id, fiscal_profile, show_tax_in_catalog').eq('user_id', user.id).single() 
                 if (!store) return
 
-                   setStoreId(store.id) // 👈 INYECTA ESTA LÍNEA AQUÍ
-                setFiscalProfile(store.fiscal_profile) // Guardamos el perfil
+                setStoreId(store.id) 
+                setFiscalProfile(store.fiscal_profile) 
+                setShowTaxInCatalog(store.show_tax_in_catalog || false) 
+                
                 const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
@@ -138,8 +132,6 @@ export default function InventoryPage() {
                     const isExempt = prod.is_tax_exempt || false
                     const isFeat = prod.is_featured || false
                     const dOrder = prod.display_order || 0
-
-                    // 🚀 CORRECCIÓN: Declaramos la variable correctamente
                     const reqShipping = prod.requires_shipping ?? true
 
                     if (prod.product_variants && prod.product_variants.length > 0) {
@@ -158,7 +150,7 @@ export default function InventoryPage() {
                                 isTaxExempt: isExempt,
                                 isFeatured: isFeat,
                                 displayOrder: dOrder,
-                                requiresShipping: reqShipping // 🚀 INYECCIÓN AQUÍ
+                                requiresShipping: reqShipping
                             })
                         })
                     } else {
@@ -176,7 +168,7 @@ export default function InventoryPage() {
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
                             displayOrder: dOrder,
-                            requiresShipping: reqShipping // 🚀 INYECCIÓN AQUÍ
+                            requiresShipping: reqShipping
                         })
                     }
                 })
@@ -194,7 +186,7 @@ export default function InventoryPage() {
         setPendingChanges(prev => ({ ...prev, [id]: val }))
     }
 
-  const saveStock = async (row: InventoryItem) => {
+    const saveStock = async (row: InventoryItem) => {
         const pendingVal = pendingChanges[row.rowId]
         if (pendingVal === undefined) return
         const newStock = pendingVal === '' ? 0 : pendingVal
@@ -208,13 +200,10 @@ export default function InventoryPage() {
                 if (error) throw error
             }
             
-            // Actualizamos la UI local
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
             await revalidateStoreCache()
             
-            // 🚀 DISPARO INTELIGENTE Y SEGURO (Server-side)
             if (newStock <= 3 && storeId) {
-                // Ejecutamos la Server Action en segundo plano sin ralentizar la respuesta de la UI
                 checkAndTriggerStockAlert({
                     storeId,
                     productId: Number(row.productId),
@@ -227,32 +216,38 @@ export default function InventoryPage() {
             const remaining = { ...pendingChanges }
             delete remaining[row.rowId]
             setPendingChanges(remaining)
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
-            Toast.fire({ icon: 'success', title: 'Stock Actualizado' })
-        } catch (error) { Swal.fire('Error', 'No se pudo actualizar', 'error') } finally { setSavingButtons(prev => ({ ...prev, [row.rowId]: false })) }
+            
+            const Toast = Swal.mixin({ 
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            })
+            Toast.fire({ icon: 'success', title: 'Stock Sincronizado' })
+        } catch (error) { 
+            Swal.fire({ title: 'Error', text: 'No se pudo actualizar el inventario.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
+        } finally { 
+            setSavingButtons(prev => ({ ...prev, [row.rowId]: false })) 
+        }
     }
 
-    // 🚀 NUEVA FUNCIÓN: Alternar estatus fiscal desde el inventario
     const toggleTaxExempt = async (productId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus
-
-        // Optimistic Update (Actualizamos la UI de todas las variantes de este producto al instante)
         setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: newStatus } : item))
 
         try {
             const { error } = await supabase.from('products').update({ is_tax_exempt: newStatus }).eq('id', productId)
             if (error) throw error
 
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
+            const Toast = Swal.mixin({ 
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            })
             Toast.fire({ icon: 'success', title: newStatus ? 'Producto Exento de IVA' : 'IVA Activado' })
         } catch (error) {
-            // Revertir si falla
             setItems(prev => prev.map(item => item.productId === productId ? { ...item, isTaxExempt: currentStatus } : item))
-            Swal.fire('Error', 'No se pudo actualizar el estatus fiscal', 'error')
+            Swal.fire({ title: 'Error', text: 'No se pudo actualizar la configuración fiscal.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
         }
     }
 
-    // 🚀 NUEVA FUNCIÓN: Alternar estatus de Destacado
     const toggleFeatured = async (productId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus
         setItems(prev => prev.map(item => item.productId === productId ? { ...item, isFeatured: newStatus } : item))
@@ -260,15 +255,17 @@ export default function InventoryPage() {
         try {
             const { error } = await supabase.from('products').update({ is_featured: newStatus }).eq('id', productId)
             if (error) throw error
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } })
-            Toast.fire({ icon: 'success', title: newStatus ? 'Añadido a Lo Más Vendido' : 'Removido de Lo Más Vendido' })
+            const Toast = Swal.mixin({ 
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            })
+            Toast.fire({ icon: 'success', title: newStatus ? 'Fijado en Lo Más Vendido' : 'Removido de Lo Más Vendido' })
         } catch (error) {
             setItems(prev => prev.map(item => item.productId === productId ? { ...item, isFeatured: currentStatus } : item))
-            Swal.fire('Error', 'No se pudo actualizar el estatus', 'error')
+            Swal.fire({ title: 'Error', text: 'No se pudo actualizar el estado de exhibición.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
         }
     }
 
-    // 🚀 NUEVA FUNCIÓN: Alternar Naturaleza Física/Servicio
     const toggleRequiresShipping = async (productId: string, currentStatus: boolean) => {
         const newStatus = !currentStatus;
         setItems(prev => prev.map(item => item.productId === productId ? { ...item, requiresShipping: newStatus } : item));
@@ -277,12 +274,15 @@ export default function InventoryPage() {
             const { error } = await supabase.from('products').update({ requires_shipping: newStatus }).eq('id', productId);
             if (error) throw error;
 
-            await revalidateStoreCache(); // Importante para vaciar la caché de Next.js
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } });
-            Toast.fire({ icon: 'success', title: newStatus ? 'Marcado como Producto Físico' : 'Marcado como Servicio (Sin Envío)' });
+            await revalidateStoreCache();
+            const Toast = Swal.mixin({ 
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            });
+            Toast.fire({ icon: 'success', title: newStatus ? 'Logística: Producto Físico' : 'Logística: Servicio/Digital' });
         } catch (error) {
             setItems(prev => prev.map(item => item.productId === productId ? { ...item, requiresShipping: currentStatus } : item));
-            Swal.fire('Error', 'No se pudo actualizar el tipo de producto', 'error');
+            Swal.fire({ title: 'Error', text: 'No se pudo actualizar el tipo de logística.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
         }
     }
 
@@ -298,11 +298,7 @@ export default function InventoryPage() {
 
     const stats = useMemo(() => ({ total: items.length, low: items.filter(i => i.stock > 0 && i.stock <= 3).length, out: items.filter(i => i.stock === 0).length }), [items])
 
-
-    
-    // =========================================
-    // 🚀 MOTOR DE UX: SENSOR DE SCROLL HORIZONTAL
-    // =========================================
+    // SENSOR DE SCROLL HORIZONTAL
     const tableScrollRef = useRef<HTMLDivElement>(null)
     const [isScrolledToEnd, setIsScrolledToEnd] = useState(false)
     const [isScrollable, setIsScrollable] = useState(false)
@@ -315,17 +311,14 @@ export default function InventoryPage() {
         }
     }
 
-    // 🚀 PROPULSOR CINÉTICO: Si el usuario toca la flecha, desplazamos la tabla
     const scrollRight = (e: React.MouseEvent) => {
         e.preventDefault()
-        e.stopPropagation() // Evita que el clic atraviese hacia el Link del producto
+        e.stopPropagation() 
         if (tableScrollRef.current) {
             tableScrollRef.current.scrollBy({ left: 180, behavior: 'smooth' })
         }
     }
 
-   
-    // Calibramos el sensor cuando cargan los items o se rota la pantalla
     useEffect(() => {
         checkScroll()
         window.addEventListener('resize', checkScroll)
@@ -333,104 +326,118 @@ export default function InventoryPage() {
     }, [filteredItems])
     
     return (
-        <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-gray-900 flex flex-col">
-            {/* HEADER STICKY */}
-            <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
-                <div className="flex items-center gap-4">
-                    <Link href="/admin" className="p-2 bg-transparent hover:bg-gray-50 rounded-full transition-colors group shrink-0">
-                        <ArrowLeft size={18} className="text-gray-500 group-hover:text-black" />
+        <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
+            
+            {/* HEADER STICKY (Cleanlook) */}
+            <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
+                <div className="flex items-center gap-3.5">
+                    <Link href="/admin" className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs active:scale-[0.98]">
+                        <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
                     </Link>
                     <div>
-                        <h1 className="font-black text-xl tracking-tight leading-none">Inventario</h1>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Control de Stock e Impuestos</p>
+                        <h1 className="font-bold text-base tracking-tight leading-none text-neutral-900">Control de Inventario</h1>
+                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">Stock, Impuestos y Logística</p>
                     </div>
                 </div>
-                {/* KPI CHIPS (Borderless) */}
-                <div className="hidden md:flex gap-3">
-                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)]  flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                        <div>
-                            <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Agotados</span>
-                            <span className="block text-sm font-black text-gray-900 leading-none">{stats.out}</span>
+                
+                {/* KPI CHIPS (Muted & Borderless style) */}
+                <div className="hidden md:flex gap-2.5">
+                    <div className="px-3.5 py-1.5 bg-white/80  rounded-lg flex items-center gap-2.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-xs font-bold text-rose-700 font-mono">{stats.out}</span>
+                            <span className="text-[9px] font-semibold text-rose-600/80 uppercase tracking-wider">Agotados</span>
                         </div>
                     </div>
-                    <div className="px-4 py-2 bg-white rounded-[var(--radius-btn)] flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        <div>
-                            <span className="block text-[9px] font-bold text-gray-400 uppercase leading-none mb-1">Poco Stock</span>
-                            <span className="block text-sm font-black text-gray-900 leading-none">{stats.low}</span>
+                    <div className="px-3.5 py-1.5 bg-white/80  rounded-lg flex items-center gap-2.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-xs font-bold text-amber-700 font-mono">{stats.low}</span>
+                            <span className="text-[9px] font-semibold text-amber-600/80 uppercase tracking-wider">Stock Bajo</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-          <div className="w-full max-w-[100vw] flex-1 relative">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
-                    {/* CONTROLES */}
+            <div className="w-full max-w-[100vw] flex-1 relative">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+                    
+                    {/* INYECCIÓN: TOGGLE GLOBAL DE IVA */}
+                    {storeId && fiscalProfile && fiscalProfile !== 'informal' && !loading && (
+                        <TaxCatalogToggle 
+                            storeId={storeId} 
+                            initialState={showTaxInCatalog} 
+                            fiscalProfile={fiscalProfile} 
+                        />
+                    )}
+
+                    {/* BARRA DE CONTROLES */}
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
-                        {/* Filtros Estilo "Clean Look" */}
-                        <div className="flex bg-[#ffffff] p-1 rounded-[var(--radius-btn)] overflow-x-auto no-scrollbar w-full md:w-auto max-w-full">
+                        
+                        {/* Filtros Estilo "Pill" (Clean Look) */}
+                        <div className="flex bg-neutral-100/50 p-1 rounded-lg border border-neutral-200/50 overflow-x-auto no-scrollbar w-full md:w-auto max-w-full shrink-0">
                             {[
-                                { id: 'all', label: 'Todos' },
-                                { id: 'low', label: 'Poco Stock' },
+                                { id: 'all', label: 'Todo el Catálogo' },
+                                { id: 'low', label: 'Atención Requerida' },
                                 { id: 'out', label: 'Agotados' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setFilterStatus(tab.id)}
-                                    className={`shrink-0 px-4 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filterStatus === tab.id
-                                        ? 'bg-[#181818] text-[#f6f6f6] shadow-subtle border border-transparent'
-                                        : 'text-gray-500 hover:text-gray-900 border border-transparent hover:bg-gray-100'
+                                    className={`shrink-0 px-3.5 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${filterStatus === tab.id
+                                        ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/50'
+                                        : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-neutral-50/50'
                                         }`}
                                 >
                                     {tab.label}
                                 </button>
                             ))}
                         </div>
-                        {/* Buscador */}
+                        
+                        {/* Buscador Integrado */}
                         <div className="relative group w-full md:flex-1 shrink-0">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors" size={16} />
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors" size={15} />
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Buscar nombre o color..."
-                                className="w-full bg-white border border-transparent focus:border-black focus:shadow-subtle rounded-[var(--radius-btn)] pl-11 pr-4 py-3 text-sm font-medium outline-none transition-all"
+                                placeholder="Filtrar por nombre del artículo, talla o color..."
+                                className="w-full bg-white border-b-2 border-neutral-100  shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-300 transition-all"
                             />
                         </div>
-                        {/* 🚀 BOTÓN ORGANIZAR ESCAPARATE */}
+                        
+                        {/* BOTÓN ORGANIZAR ESCAPARATE */}
                         {items.length > 1 && (
                             <button
                                 onClick={openReorderModal}
-                                className="bg-black text-white px-5 py-3 rounded-full text-xs font-bold shadow-subtle hover:bg-gray-800 transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+                                className="bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
                             >
-                                <Zap size={14} className="fill-white" /> Organizar Tienda
+                                <Zap size={13} className="fill-white" /> <span>Merchandising</span>
                             </button>
                         )}
                     </div>
 
-                  {/* TABLA ELITE (Borderless) */}
-                    <div className="bg-white rounded-[var(--radius-card)] w-full max-w-full relative ">
+                    {/* TABLA ELITE (Executive Cleanlook) */}
+                    <div className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] w-full max-w-full relative overflow-hidden">
                         {loading ? (
-                            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-gray-300" /></div>
+                            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
                         ) : filteredItems.length === 0 ? (
-                            <div className="p-20 text-center flex flex-col items-center gap-3">
-                                <div className="w-16 h-16 bg-gray-50 rounded-[var(--radius-btn)] flex items-center justify-center">
-                                    <Package size={24} className="text-gray-300" />
+                            <div className="p-16 text-center flex flex-col items-center gap-2.5">
+                                <div className="w-12 h-12 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center justify-center">
+                                    <Package size={20} className="text-neutral-300" />
                                 </div>
-                                <p className="text-gray-400 font-bold text-sm">No se encontraron items.</p>
+                                <p className="text-neutral-400 font-semibold text-xs">No se encontraron artículos en el inventario.</p>
                             </div>
-                     ) : (
+                        ) : (
                             <div className="relative w-full max-w-full">
-                              {/* 🚀 INDICADOR DE PROFUNDIDAD Y PÍLDORA MAGNÉTICA (Bordes Esculpidos) */}
+                                {/* INDICADOR DE PROFUNDIDAD Y PÍLDORA MAGNÉTICA (Mobile Scroll Hint) */}
                                 <div 
-                                    className={`absolute right-0 top-0 h-full w-12 rounded-r-[var(--radius-card)] bg-gradient-to-l from-black/10 via-black/[0.02] to-transparent pointer-events-none z-10 md:hidden transition-opacity duration-500 ${isScrollable && !isScrolledToEnd ? 'opacity-100' : 'opacity-0'}`}
+                                    className={`absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-neutral-900/5 via-neutral-900/[0.02] to-transparent pointer-events-none z-10 md:hidden transition-opacity duration-500 ${isScrollable && !isScrolledToEnd ? 'opacity-100' : 'opacity-0'}`}
                                 >
-                                    {/* 🚀 El "Elevador" ahora es interactivo y tiene masa (pointer-events-auto) */}
                                     <div 
                                         onClick={scrollRight}
-                                        className="sticky top-[60vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.1)]  pointer-events-auto cursor-pointer active:scale-90 transition-transform"
+                                        className="sticky top-[50vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/90 backdrop-blur-md border border-neutral-200/50 rounded-full shadow-sm pointer-events-auto cursor-pointer active:scale-95 transition-transform"
                                     >
-                                        <ChevronRight size={16} className="text-zinc-800 animate-pulse" />
+                                        <ChevronRight size={14} className="text-neutral-600 animate-pulse" />
                                     </div>
                                 </div>
                                 
@@ -439,248 +446,287 @@ export default function InventoryPage() {
                                     onScroll={checkScroll}
                                     className="overflow-x-auto w-full max-w-full no-scrollbar relative z-0"
                                 >
-                                    <table className="w-full text-left border-collapse min-w-[600px]">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                                            <th className="p-4 md:p-6 rounded-tl-[var(--radius-card)]">Producto</th>
-                                            <th className="p-4 md:p-6 hidden md:table-cell">Variante</th>
-                                            <th className="p-4 md:p-6 text-center">Gestión Rápida</th>
-                                            <th className="p-4 md:p-6 text-center">Exhibición</th>
-                                            <th className="p-4 md:p-6 text-right rounded-tr-[var(--radius-card)]">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredItems.map((item) => {
-                                            const isPending = pendingChanges[item.rowId] !== undefined
-                                            const currentStockDisplay = isPending ? pendingChanges[item.rowId] : item.stock
-                                            const isSaving = savingButtons[item.rowId]
+                                    <table className="w-full text-left border-collapse min-w-[700px]">
+                                        <thead className="bg-neutral-50/50 border-b border-neutral-200/50 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5">Producto</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">Variante</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Gestión Rápida</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Exhibición</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5 text-right">Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-100">
+                                            {filteredItems.map((item) => {
+                                                const isPending = pendingChanges[item.rowId] !== undefined
+                                                const currentStockDisplay = isPending ? pendingChanges[item.rowId] : item.stock
+                                                const isSaving = savingButtons[item.rowId]
 
-                                            let statusColor = 'bg-green-50 text-green-700'
-                                            let StatusIcon = CheckCircle2
-                                            let statusText = 'Disponible'
+                                                let statusColor = 'bg-emerald-50 text-emerald-700 border-emerald-100/40'
+                                                let StatusIcon = CheckCircle2
+                                                let statusText = 'Disponible'
 
-                                            if (currentStockDisplay === 0 || currentStockDisplay === '') {
-                                                statusColor = 'bg-red-50 text-red-600'
-                                                StatusIcon = XCircle
-                                                statusText = 'Agotado'
-                                            } else if (currentStockDisplay <= 3) {
-                                                statusColor = 'bg-yellow-50 text-yellow-700'
-                                                StatusIcon = AlertTriangle
-                                                statusText = 'Bajo'
-                                            }
+                                                if (currentStockDisplay === 0 || currentStockDisplay === '') {
+                                                    statusColor = 'bg-rose-50 text-rose-700 border-rose-100/40'
+                                                    StatusIcon = XCircle
+                                                    statusText = 'Agotado'
+                                                } else if (currentStockDisplay <= 3) {
+                                                    statusColor = 'bg-amber-50 text-amber-700 border-amber-100/40'
+                                                    StatusIcon = AlertTriangle
+                                                    statusText = 'Bajo'
+                                                }
 
-
-
-                                            return (
-                                                <tr key={item.rowId} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
-                                                   <td className="p-4 md:p-6 align-middle">
-                                                        {/* 🚀 PORTAL FRONTAL: Enlace directo que elimina la necesidad de scroll horizontal para la acción principal */}
-                                                       <Link href={`/admin/product/edit/${item.productId}`} className="flex items-center gap-4 group/portal active:scale-[0.98] active:opacity-70 transition-all duration-200 origin-left" title="Editar producto">
-                                                            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-gray-50 overflow-hidden shrink-0 relative border border-transparent group-hover/portal:border-gray-200 transition-colors">
-                                                                {item.image ? (
-                                                                    <Image
-                                                                        src={getOptimizedUrl(item.image)}
-                                                                        alt={item.name}
-                                                                        fill
-                                                                        sizes="48px"
-                                                                        className="object-cover mix-blend-multiply group-hover/portal:scale-105 transition-transform duration-500"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center text-gray-300"><Package size={16} /></div>
-                                                                )}
+                                                return (
+                                                    <tr key={item.rowId} className="group hover:bg-neutral-50/40 transition-colors">
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
+                                                            {/* PORTAL FRONTAL: Enlace directo al editor */}
+                                                            <Link href={`/admin/product/edit/${item.productId}`} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
+                                                                <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 relative transition-colors group-hover/portal:border-neutral-300">
+                                                                    {item.image ? (
+                                                                        <Image
+                                                                            src={getOptimizedUrl(item.image)}
+                                                                            alt={item.name}
+                                                                            fill
+                                                                            sizes="44px"
+                                                                            className="object-cover mix-blend-multiply group-hover/portal:scale-105 transition-transform duration-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package size={14} /></div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="min-w-0 flex-1 space-y-0.5">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
+                                                                        <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
+                                                                    </div>
+                                                                    <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">{item.category}</p>
+                                                                    
+                                                                    {/* Variantes en Móvil */}
+                                                                    <div className="flex items-center gap-1.5 mt-1 md:hidden">
+                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                            <span className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" style={{ background: item.hex }}></span>
+                                                                            <span className="truncate max-w-[50px]">{item.color}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                            <span>{item.size}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </Link>
+                                                        </td>
+                                                        
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[110px]">
+                                                                    <span className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0" style={{ background: item.hex }}></span>
+                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+                                                                </div>
+                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
+                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">Talla: {item.size}</span>
+                                                                </div>
                                                             </div>
-                                                            <div className="min-w-0 flex-1">
+                                                        </td>
+                                                        
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
+                                                            <div className="flex flex-col items-center justify-center gap-1.5">
+                                                                {/* STOCK INPUT (Telemetría) */}
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <p className="font-bold text-sm text-gray-900 leading-tight group-hover/portal:text-black truncate">{item.name}</p>
-                                                                    {/* 🚀 MICRO-INTERACCIÓN: Flecha magnética */}
-                                                                    <ArrowUpRight size={14} className="text-gray-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
+                                                                    <input
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        value={currentStockDisplay}
+                                                                        onChange={(e) => handleStockChange(item.rowId, e.target.value)}
+                                                                        className={`w-16 md:w-21 text-center font-mono font-bold text-xs py-1.5 border-b rounded-md transition-all outline-none ${isPending
+                                                                            ? 'border-black/10 bg-white text-neutral-900 shadow-xs'
+                                                                            : 'border-black/10 bg-neutral-50/50 text-neutral-700 hover:bg-white focus:bg-white'
+                                                                            }`}
+                                                                    />
+                                                                    {isPending && (
+                                                                        <button
+                                                                            onClick={() => saveStock(item)}
+                                                                            disabled={isSaving}
+                                                                            className="bg-neutral-950 text-white p-1.5 md:px-2.5 md:py-1.5 rounded-md shadow-xs hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-1"
+                                                                            title="Guardar Stock"
+                                                                        >
+                                                                            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                                                            <span className="hidden md:block text-[10px] font-semibold">Guardar</span>
+                                                                        </button>
+                                                                    )}
                                                                 </div>
-                                                                <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide font-medium hidden md:block">{item.category}</p>
-                                                                <div className="flex items-center gap-2 mt-1.5 md:hidden">
-                                                                    <div className="flex items-center gap-1.5 px-1.5 py-1 bg-gray-50 rounded-md group-hover/portal:bg-gray-100 transition-colors">
-                                                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.hex }}></span>
-                                                                        <span className="text-[10px] text-gray-600 font-bold capitalize leading-none truncate max-w-[60px]">{item.color}</span>
-                                                                    </div>
-                                                                    <div className="flex items-center px-2 py-1 bg-gray-50 rounded-md group-hover/portal:bg-gray-100 transition-colors">
-                                                                        <span className="text-[10px] text-gray-500 font-mono font-bold leading-none">{item.size}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </Link>
-                                                    </td>
-                                                    <td className="p-4 md:p-6 hidden md:table-cell align-middle">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="px-3 py-1 rounded-[var(--radius-badge)] bg-gray-50 flex items-center gap-2 max-w-[120px]">
-                                                                <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ background: item.hex }}></span>
-                                                                <span className="text-xs font-bold text-gray-700 capitalize truncate">{item.color}</span>
-                                                            </div>
-                                                            <div className="px-3 py-1.5 rounded-[var(--radius-badge)] bg-gray-50 flex items-center">
-                                                                <span className="text-xs font-mono font-bold text-gray-600 leading-none">Talla: {item.size}</span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4 md:p-6 align-middle">
-                                                        <div className="flex flex-col items-center justify-center gap-2">
-                                                            {/* STOCK INPUT */}
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    value={currentStockDisplay}
-                                                                    onChange={(e) => handleStockChange(item.rowId, e.target.value)}
-                                                                    className={`w-16 md:w-20 text-center font-mono font-bold text-sm md:text-base py-2 rounded-[var(--radius-btn)] border transition-all outline-none ${isPending
-                                                                        ? 'border-black bg-white text-black ring-1 ring-black shadow-subtle'
-                                                                        : 'border-transparent bg-gray-50 text-gray-700 hover:bg-gray-100 focus:bg-white'
-                                                                        }`}
-                                                                />
-                                                                {isPending && (
+
+                                                                {/* BOTÓN DE EXENCIÓN FISCAL (Muted Emerald) */}
+                                                                {fiscalProfile !== 'informal' && (
                                                                     <button
-                                                                        onClick={() => saveStock(item)}
-                                                                        disabled={isSaving}
-                                                                        className="bg-black text-white p-2 md:px-3 md:py-2 rounded-[var(--radius-btn)] shadow-subtle hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-black"
-                                                                        title="Guardar Stock"
+                                                                        onClick={() => toggleTaxExempt(item.productId, item.isTaxExempt)}
+                                                                        className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border ${item.isTaxExempt ? 'bg-neutral-50 border-neutral-200/50 text-neutral-400 hover:bg-neutral-100' : 'bg-emerald-50 border-emerald-100/40 text-emerald-700 hover:bg-emerald-100/60'}`}
+                                                                        title="Toca para alternar si este producto paga IVA"
                                                                     >
-                                                                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                                                        <span className="hidden md:block text-xs font-bold">Guardar</span>
+                                                                        <Receipt size={10} className={item.isTaxExempt ? "opacity-50" : ""} />
+                                                                        {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
                                                                     </button>
                                                                 )}
-                                                            </div>
-
-                                                            {/* 🚀 BOTÓN DE EXENCIÓN FISCAL */}
-                                                            {/* 🚀 LOGICA DE ÉLITE: Solo mostramos gestión de IVA si el comercio es Formalizado */}
-                                                            {fiscalProfile !== 'informal' && (
+                                                                
+                                                                {/* BOTÓN LOGÍSTICO (Muted Purple vs Neutral) */}
                                                                 <button
-                                                                    onClick={() => toggleTaxExempt(item.productId, item.isTaxExempt)}
-                                                                    className={`flex items-center justify-center gap-1.5 px-2.5 py-1 w-24 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${item.isTaxExempt ? 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
-                                                                    title="Toca para alternar si este producto paga IVA"
+                                                                    onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
+                                                                    className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border ${item.requiresShipping ? 'bg-neutral-50 border-neutral-200/50 text-neutral-500 hover:bg-neutral-100' : 'bg-purple-50 border-purple-100/40 text-purple-700 hover:bg-purple-100/60'}`}
+                                                                    title="Toca para cambiar entre Producto Físico o Servicio (Experiencia)"
                                                                 >
-                                                                    <Receipt size={10} className={item.isTaxExempt ? "opacity-50" : ""} />
-                                                                    {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
+                                                                    {item.requiresShipping ? (
+                                                                        <><Package size={10} /> Físico</>
+                                                                    ) : (
+                                                                        <><Zap size={10} /> Servicio</>
+                                                                    )}
                                                                 </button>
-                                                            )}
-                                                            {/* 🚀 BOTÓN LOGÍSTICO (Físico vs Servicio) */}
-                                                            <button
-                                                                onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
-                                                                className={`flex items-center justify-center gap-1.5 px-2.5 py-1 w-20 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all mt-1.5 ${item.requiresShipping ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-100 text-purple-500 hover:bg-gray-200'}`}
-                                                                title="Toca para cambiar entre Producto Físico o Servicio (Experiencia)"
-                                                            >
-                                                                {item.requiresShipping ? (
-                                                                    <><Package size={10} /> Físico</>
-                                                                ) : (
-                                                                    <><Zap size={10} /> Servicio</>
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    {/* 🚀 NUEVA CELDA: EXHIBICIÓN */}
-                                                    <td className="p-4 md:p-6 align-middle text-center">
-                                                        <button
-                                                            onClick={() => toggleFeatured(item.productId, item.isFeatured)}
-                                                            className={`p-2.5 rounded-xl transition-all active:scale-90 flex items-center justify-center mx-auto ${item.isFeatured ? 'bg-white  text-amber-500 border border-[#ffbe5d8d] ' : 'bg-gray-50 text-gray-300 border border-transparent hover:border-gray-200'}`}
-                                                            title="Destacar en la tienda (Lo más vendido)"
-                                                        >
-                                                            <Star size={18} fill={item.isFeatured ? "currentColor" : "none"} strokeWidth={2.5} />
-                                                        </button>
-                                                    </td>
-                                                    <td className="p-4 md:p-6 text-right align-middle">
-                                                        <div className="flex justify-end items-center gap-4">
-                                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-badge)] text-[10px] font-bold uppercase tracking-wide shrink-0 ${statusColor}`}>
-                                                                <StatusIcon size={12} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
                                                             </div>
-                                                            <Link href={`/admin/product/edit/${item.productId}`} className="hidden md:flex text-gray-400 hover:text-black transition-colors bg-transparent hover:bg-gray-50 p-2 rounded-[var(--radius-btn)] shrink-0" title="Editar producto completo">
-                                                                <ArrowUpRight size={16} />
-                                                            </Link>
-                                                            
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
+                                                        </td>
+                                                        
+                                                        {/* CELDA: EXHIBICIÓN */}
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 align-middle text-center">
+                                                            <button
+                                                                onClick={() => toggleFeatured(item.productId, item.isFeatured)}
+                                                                className={`p-2 rounded-lg transition-all active:scale-95 flex items-center justify-center mx-auto border ${item.isFeatured ? 'bg-amber-50 text-amber-500 border-amber-200/50 shadow-xs' : 'bg-neutral-50/50 text-neutral-300 border-neutral-200/50 hover:bg-white hover:text-neutral-400'}`}
+                                                                title="Destacar en la tienda (Lo más vendido)"
+                                                            >
+                                                                <Star size={16} fill={item.isFeatured ? "currentColor" : "none"} strokeWidth={2} />
+                                                            </button>
+                                                        </td>
+                                                        
+                                                        {/* CELDA: ESTADO */}
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 text-right align-middle">
+                                                            <div className="flex justify-end items-center gap-3">
+                                                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 ${statusColor}`}>
+                                                                    <StatusIcon size={10} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
+                                                                </div>
+                                                                <Link href={`/admin/product/edit/${item.productId}`} className="hidden md:flex text-neutral-400 hover:text-neutral-900 transition-colors bg-white border border-neutral-200/50 hover:bg-neutral-50 p-1.5 rounded-md shrink-0 shadow-xs" title="Editar producto completo">
+                                                                    <ArrowUpRight size={14} />
+                                                                </Link>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                             </div>
                         )}
                     </div>
                 </div>
             </div>
-            {/* 🚀 MODAL DE REORDENAMIENTO (VISUAL MERCHANDISING) */}
+
+            {/* MODAL DE REORDENAMIENTO (VISUAL MERCHANDISING) */}
             <AnimatePresence>
                 {isReordering && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsReordering(false)} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-[#F6F6F6] w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border border-gray-100">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
+                        {/* Backdrop Cleanlook */}
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }} 
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs" 
+                            onClick={() => setIsReordering(false)} 
+                        />
+                        
+                        {/* Tarjeta del Modal */}
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.98, y: 10 }} 
+                            animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } }} 
+                            exit={{ opacity: 0, scale: 0.98, y: 10, transition: { duration: 0.2 } }} 
+                            className="relative bg-[#FAFAFC] w-full max-w-lg rounded-2xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] flex flex-col max-h-[85vh] border border-neutral-200/50 z-10"
+                        >
 
-                            <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-start shrink-0">
+                            {/* Cabecera del Modal */}
+                            <div className="p-5 md:p-6 bg-white border-b border-neutral-200/50 flex justify-between items-center shrink-0">
                                 <div>
-                                    <h3 className="font-black text-xl text-gray-900 leading-tight">Visual Merchandising</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Arrastra o haz clic en el # para mover</p>
+                                    <div className="flex items-center gap-1.5">
+                                        <Zap size={14} className="fill-neutral-900 text-neutral-900" />
+                                        <h3 className="font-bold text-sm md:text-base text-neutral-900 tracking-tight">Visual Merchandising</h3>
+                                    </div>
+                                    <p className="text-[10px] font-semibold text-neutral-400 mt-1 uppercase tracking-wider font-mono">Arrastre las filas o toque el # para fijar posición</p>
                                 </div>
-                                <button onClick={() => setIsReordering(false)} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"><X size={18} strokeWidth={2.5} /></button>
+                                <button 
+                                    onClick={() => setIsReordering(false)} 
+                                    className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors border border-neutral-200/50 active:scale-95 shadow-xs"
+                                >
+                                    <X size={15} strokeWidth={2.5} />
+                                </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar">
-                                {/* 🚀 Framer Motion Reorder Group */}
-                                <Reorder.Group axis="y" values={reorderList} onReorder={setReorderList} className="space-y-3">
+                            {/* Lista de Arrastre Reorder */}
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar space-y-2.5">
+                                <Reorder.Group axis="y" values={reorderList} onReorder={setReorderList} className="space-y-2.5">
                                     {reorderList.map((item, index) => (
-                                        <Reorder.Item key={item.id} value={item} className="bg-white p-3 rounded-2xl border border-gray-100  flex items-center gap-4 cursor-grab active:cursor-grabbing relative group hover:border-gray-300 transition-colors">
+                                        <Reorder.Item 
+                                            key={item.id} 
+                                            value={item} 
+                                            className="bg-white p-2.5 rounded-xl border border-neutral-200/50 flex items-center gap-3 cursor-grab active:cursor-grabbing relative group hover:border-neutral-300 transition-colors shadow-xs"
+                                        >
 
-                                            {/* 🚀 El Salto Cuántico (Input Directo) */}
-                                            <div className="shrink-0 flex items-center justify-center w-12">
+                                            {/* El Salto Cuántico (Input de Posición) */}
+                                            <div className="shrink-0 flex items-center justify-center">
                                                 {editingIndex === item.id ? (
                                                     <input
                                                         autoFocus
                                                         type="number"
                                                         min="1"
                                                         max={reorderList.length}
-                                                        className="w-10 h-8 text-center font-black text-sm bg-gray-100 border-none rounded-lg outline-none focus:ring-2 focus:ring-black"
+                                                        className="w-9 h-7 text-center font-mono font-bold text-xs bg-white border border-neutral-400 rounded-md outline-none shadow-xs text-neutral-900"
                                                         onBlur={(e) => { setEditingIndex(null); handleQuantumLeap(item.id, e.target.value) }}
                                                         onKeyDown={(e) => { if (e.key === 'Enter') { setEditingIndex(null); handleQuantumLeap(item.id, e.currentTarget.value) } }}
                                                     />
                                                 ) : (
                                                     <button
                                                         onClick={() => setEditingIndex(item.id)}
-                                                        className="w-10 h-8 flex items-center justify-center font-black text-gray-400 hover:text-black hover:bg-gray-50 rounded-lg transition-colors"
-                                                        title="Clic para cambiar posición exacto"
+                                                        className="w-9 h-7 flex items-center justify-center font-mono font-bold text-xs text-neutral-600 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/60 rounded-md transition-colors shadow-xs"
+                                                        title="Clic para cambiar posición exacta"
                                                     >
                                                         #{index + 1}
                                                     </button>
                                                 )}
                                             </div>
 
-                                            {/* Info del Producto */}
-                                            <div className="w-12 h-12 rounded-xl bg-gray-50 overflow-hidden shrink-0 relative border border-gray-100">
-                                                {item.image ? <Image src={getOptimizedUrl(item.image)} alt={item.name} fill sizes="48px" className="object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package size={16} className="text-gray-300" /></div>}
-                                            </div>
-
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-bold text-sm text-gray-900 truncate">{item.name}</p>
-                                                    {item.isFeatured && (
-                                                        <Star size={12} className="fill-amber-400 text-amber-500 shrink-0" />
-                                                    )}
-                                                </div>
-                                                {item.isFeatured && (
-                                                    <span className="text-[8px] font-[700] text-[#141414] uppercase -tracking-normal">Aparece en carrusel</span>
+                                            {/* Miniatura e Info */}
+                                            <div className="w-10 h-10 rounded-lg bg-neutral-50 overflow-hidden shrink-0 relative border border-neutral-200/50">
+                                                {item.image ? (
+                                                    <Image src={getOptimizedUrl(item.image)} alt={item.name} fill sizes="40px" className="object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package size={14} /></div>
                                                 )}
                                             </div>
 
-                                            <div className="pr-2 text-gray-300 group-hover:text-gray-500 transition-colors">
-                                                <GripVertical size={20} />
+                                            <div className="flex-1 min-w-0 pr-2 space-y-0.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="font-semibold text-xs text-neutral-900 truncate">{item.name}</p>
+                                                    {item.isFeatured && (
+                                                        <Star size={11} className="fill-amber-500 text-amber-500 shrink-0" />
+                                                    )}
+                                                </div>
+                                                {item.isFeatured && (
+                                                    <span className="inline-block text-[8px] font-semibold text-amber-700 bg-amber-50 border border-amber-100/40 uppercase tracking-wider px-1.5 py-0.5 rounded">
+                                                        Destacado en Carrusel
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Icono de Arrastre */}
+                                            <div className="pr-1 text-neutral-300 group-hover:text-neutral-600 transition-colors">
+                                                <GripVertical size={16} />
                                             </div>
                                         </Reorder.Item>
                                     ))}
                                 </Reorder.Group>
                             </div>
 
-                            <div className="p-4 md:p-6 bg-white border-t border-gray-100 shrink-0">
+                            {/* Footer de Guardado */}
+                            <div className="p-4 md:p-5 bg-white border-t border-neutral-200/50 shrink-0">
                                 <button
                                     onClick={saveReorder}
                                     disabled={isSavingOrder}
-                                    className="w-full bg-black text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-subtle hover:bg-gray-800 active:scale-98 transition-all disabled:opacity-50"
+                                    className="w-full bg-neutral-950 text-white py-3 rounded-lg font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-black active:scale-[0.98] transition-all disabled:opacity-50 shadow-xs"
                                 >
-                                    {isSavingOrder ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                    Guardar Orden Exacto
+                                    {isSavingOrder ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    <span>Guardar Posición Exacta</span>
                                 </button>
                             </div>
                         </motion.div>
@@ -690,3 +736,4 @@ export default function InventoryPage() {
         </div>
     )
 }
+

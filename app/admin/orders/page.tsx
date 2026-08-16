@@ -325,10 +325,10 @@ export default function OrdersPage() {
     }, [selectedOrder]);
 
     return (
-        <div className="min-h-screen bg-[#FAFAFC] pb-20 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-900 selection:text-white">
+        <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-900 selection:text-white">
             
             {/* 🚀 HEADER CLEANLOOK */}
-            <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
+            <div className="bg-[#F6F6F6]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-3">
                     <Link href="/admin" className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs">
                         <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
@@ -348,16 +348,16 @@ export default function OrdersPage() {
                     
                     {/* 🚀 KPI CARDS (Bento Grid Style) */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 w-full">
-                        <div className="bg-white p-5 rounded-xl border border-neutral-200/30 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Pendientes</p>
                             <span className="text-2xl md:text-3xl font-bold text-amber-600 font-mono tabular-nums truncate">{kpiStats.pending}</span>
                         </div>
-                        <div className="bg-white p-5 rounded-xl border border-neutral-200/30 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Ventas Hoy</p>
                             <p className="text-2xl md:text-3xl font-bold text-neutral-900 leading-none font-mono tabular-nums truncate">${kpiStats.salesTodayUSD.toFixed(2)}</p>
                             <p className="text-[10px] font-mono font-semibold text-neutral-400 mt-1.5 truncate">Bs {kpiStats.salesTodayBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="bg-white p-5 rounded-xl border border-neutral-200/30 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between col-span-2 md:col-span-1">
+                        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between col-span-2 md:col-span-1">
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Total Histórico</p>
                             <div className="flex items-baseline gap-1.5">
                                 <p className="text-2xl md:text-3xl font-bold text-neutral-900 font-mono tabular-nums truncate">{kpiStats.total}</p>
