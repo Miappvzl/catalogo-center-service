@@ -469,12 +469,21 @@ export default function CheckoutProcess({
         0,
         cartEngine.finalBsModeUSD - totalDiscountsList + deliveryCost,
     );
-    const totalCashUSD_base = Math.max(
+     const totalCashUSD_base = Math.max(
         0,
         cartEngine.finalCashModeUSD - totalDiscountsCash + deliveryCost,
     );
 
-    // 🚀 LÓGICA FISCAL ESTRICTA (Base Imponible Proporcional)
+    // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
+    const safeTaxableSubtotalList = useMemo(() => {
+        return cartEngine.processedItems.reduce((acc: number, processedItem: any) => {
+            const originalItem = items.find(i => i.id === processedItem.id);
+            const isExempt = originalItem?.isTaxExempt === true;
+            return isExempt ? acc : acc + (processedItem.finalListPrice * processedItem.quantity);
+        }, 0);
+    }, [cartEngine.processedItems, items]);
+
+    // 🚀 LÓGICA FISCAL ESTRICTA (Base Imponible Proporcional Segura)
     const listDiscountMultiplier =
         cartEngine.totalListNominal > 0
             ? 1 - totalDiscountsList / cartEngine.totalListNominal
@@ -487,13 +496,13 @@ export default function CheckoutProcess({
     // Inferimos la base imponible Cash usando la misma proporción que la de Lista
     const taxableRatio =
         cartEngine.totalListNominal > 0
-            ? cartEngine.taxableSubtotalList / cartEngine.totalListNominal
+            ? safeTaxableSubtotalList / cartEngine.totalListNominal
             : 0;
     const taxableCashNominal = cartEngine.totalCashNominal * taxableRatio;
 
-    // El IVA se calcula EXCLUSIVAMENTE sobre la porción gravable, nunca sobre el total de la orden
+    // El IVA se calcula EXCLUSIVAMENTE sobre la porción gravable segura
     const taxAmountListUSD = applyTax
-        ? cartEngine.taxableSubtotalList *
+        ? safeTaxableSubtotalList *
         listDiscountMultiplier *
         (taxPercentage / 100)
         : 0;

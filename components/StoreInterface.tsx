@@ -255,6 +255,10 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
+    // 🚀 LECTURA DE CONFIGURACIÓN FISCAL PARA EL CATÁLOGO
+  const showTaxInCatalog = store?.show_tax_in_catalog === true && store?.fiscal_profile !== 'informal';
+  const taxPercentage = store?.default_tax_percentage || 16;
+
  
 
 
@@ -1226,7 +1230,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                       ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
                       : (product.stock || 0) <= 0;
 
-                    return (
+                     return (
                       <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
                         <ProductCard
                           product={product}
@@ -1235,6 +1239,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                           isOutOfStock={isCompletelyOutOfStock}
                           index={idx}
                           isFavorite={favoriteIds.has(String(product.id))}
+                          showTaxIndicator={showTaxInCatalog} // 🚀 AÑADIDO
+                          taxPercentage={taxPercentage}       // 🚀 AÑADIDO
                         />
                       </div>
                     )
@@ -1272,7 +1278,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                 : (product.stock || 0);
               const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
 
-              return (
+                  return (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -1282,6 +1288,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                   index={index}
                   isFavorite={favoriteIds.has(String(product.id))}
                   isCriticalStock={isCritical} // 👈 PASAMOS LA PROPIEDAD AQUÍ
+                  showTaxIndicator={showTaxInCatalog} // 🚀 AÑADIDO
+                  taxPercentage={taxPercentage}       // 🚀 AÑADIDO
                 />
               )
             })}

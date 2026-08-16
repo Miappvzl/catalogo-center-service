@@ -1,7 +1,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle } from 'lucide-react' // 👈 Añadido AlertCircle
+import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt } from 'lucide-react' // 🚀 AÑADIDO Receipt
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
 
@@ -13,9 +13,20 @@ interface ProductCardProps {
   index?: number;
   isFavorite?: boolean;
   isCriticalStock?: boolean; // 👈 NUEVA PROPIEDAD
+  showTaxIndicator?: boolean; // 🚀 AÑADIDO
+  taxPercentage?: number;     // 🚀 AÑADIDO
 }
 
-export default function ProductCard({ product, pricing, onOpen, isOutOfStock = false, isFavorite = false, isCriticalStock = false }: ProductCardProps) {
+export default function ProductCard({ 
+  product, 
+  pricing, 
+  onOpen, 
+  isOutOfStock = false, 
+  isFavorite = false, 
+  isCriticalStock = false,
+  showTaxIndicator = false, // 🚀 AÑADIDO
+  taxPercentage = 16        // 🚀 AÑADIDO
+}: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const penalty = Number(product.usd_penalty || 0);
@@ -27,6 +38,12 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
   const activeCompareAt = compareAt > listPrice ? compareAt : listPrice;
   const isPromo = activeCompareAt > listPrice; 
   const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
+
+    // 🚀 LÓGICA DE IVA (Cálculo en cliente/componente para evitar N+1 queries)
+  const isTaxable = !product.is_tax_exempt;
+  const taxAmountUsd = isTaxable ? listPrice * (taxPercentage / 100) : 0;
+  const taxAmountBs = isTaxable ? pricing.priceInBs * (taxPercentage / 100) : 0;
+
 
   const uniqueColors = useMemo(() => {
     if (!product.product_variants || !Array.isArray(product.product_variants)) return [];
@@ -127,7 +144,7 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
           {product.name}
         </h3>
 
-        <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
+          <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
           <div className="flex items-end justify-between gap-2 pt-3 border-t border-[var(--store-border)]/30">
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -140,9 +157,19 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
                   ${listPrice.toFixed(2)}
                 </span>
               </div>
+              
               <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums">
                 Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
               </span>
+
+              {/* 🚀 NUEVO DISEÑO DE ETIQUETA DE IVA (Píldora Sutil y Elegante) */}
+              {showTaxIndicator && isTaxable && (
+                <div className="mt-2 flex items-center">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[8px] md:text-[9px] font-black uppercase tracking-widest">
+                    <Receipt size={10} /> + ${taxAmountUsd.toFixed(2)} IVA
+                  </span>
+                </div>
+              )}
             </div>
 
             <button
@@ -163,5 +190,8 @@ export default function ProductCard({ product, pricing, onOpen, isOutOfStock = f
         )}
       </div>
     </div>
+    
   )
+  
 }
+

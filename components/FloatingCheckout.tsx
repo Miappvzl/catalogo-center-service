@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft } from 'lucide-react'
+import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -301,7 +301,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
 
     // --- 🚀 LÓGICA DE IMPUESTOS PÚBLICOS (SENIAT) ---
 
-    const taxPct = storeConfig?.default_tax_percentage || 16;
+  const taxPct = storeConfig?.default_tax_percentage || 16;
 
     // CÁLCULO DE IVA PROPORCIONAL
     // Determinamos cuánto descuento total se aplicó para bajar la base imponible
@@ -310,10 +310,19 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
         ? (1 - (totalDiscountsList / cartEngine.totalListNominal))
         : 1;
 
+    // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
+    // Esto evita que el error de cartLogic.ts afecte el cálculo.
+    const safeTaxableSubtotalList = useMemo(() => {
+        return cartEngine.processedItems.reduce((acc: number, processedItem: any) => {
+            const originalItem = items.find(i => i.id === processedItem.id);
+            const isExempt = originalItem?.isTaxExempt === true;
+            return isExempt ? acc : acc + (processedItem.finalListPrice * processedItem.quantity);
+        }, 0);
+    }, [cartEngine.processedItems, items]);
+
     // El IVA se calcula solo sobre los productos gravables, ajustados por los descuentos
-    // Cambia 'mustApplyTax' por 'isStrictTax'
     const step1TaxAmountUSD = isStrictTax
-        ? (cartEngine.taxableSubtotalList * discountMultiplier) * (taxPct / 100)
+        ? (safeTaxableSubtotalList * discountMultiplier) * (taxPct / 100)
         : 0;
 
     // --- TOTALES FINALES DEL PASO 1 ---
@@ -552,10 +561,15 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                 <div className="space-y-0 flex-1 overflow-x-hidden">
                                                     {/* 🚀 EL MOTOR DE COLAPSO ORGÁNICO (Cero popLayout) */}
                                                     <AnimatePresence initial={false}>
-                                                        {cartEngine.processedItems.map((item) => (
+                                                        {cartEngine.processedItems.map((item: any) => {
+                                                            // 🚀 FIX: Recuperamos la exención fiscal del item original
+                                                            const originalItem = items.find(i => i.id === item.id);
+                                                            const isExempt = originalItem?.isTaxExempt === true;
+
+                                                            return (
                                                             <motion.div
                                                                 key={item.id}
-                                                                layout="position" // 🚀 Solo reubica sin recalcular escalas internas
+                                                                layout="position"
                                                                 initial={{ opacity: 0, height: 0, scale: 0.9 }}
                                                                 animate={{ opacity: 1, height: 'auto', scale: 1 }}
                                                                 // 🚀 Colapsa la altura a 0 y corta el contenido. El resto sube suavemente.
@@ -620,14 +634,23 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                                         {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
                                                                                     </span>
                                                                                 </div>
-                                                                            ) : (
+                                                                          ) : (
                                                                                 <span className="font-black text-base text-[var(--store-text-main)] leading-none">
                                                                                     {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
                                                                                 </span>
                                                                             )}
-                                                                            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
+                                                                                                                                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
                                                                                 Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                                             </span>
+                                                                            
+                                                                            {/* 🚀 INYECCIÓN: IVA POR PRODUCTO (RESPETANDO EXENCIÓN FISCAL) */}
+                                                                            {storeConfig?.show_tax_in_catalog && isStrictTax && !isExempt && (
+                                                                                <div className="mt-1.5">
+                                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[8px] font-black uppercase tracking-widest">
+                                                                                        <Receipt size={10} /> + {currencySymbol}{((item.finalListPrice * item.quantity) * (taxPct / 100)).toFixed(2)} IVA
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
 
                                                                         <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60 bg-[var(--store-bg)]">
@@ -642,7 +665,8 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                     </div>
                                                                 </div>
                                                             </motion.div>
-                                                        ))}
+                                                            ); // 🚀 FIX: Cerramos el return
+                                                        })} 
                                                     </AnimatePresence>
                                                 </div>
                                                 {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
@@ -685,16 +709,16 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                         : (product.stock || 0) <= 0;
 
                                                                     return (
-                                                                        <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                                 <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
                                                                             <ProductCard
                                                                                 product={product}
                                                                                 pricing={pricing}
                                                                                 onOpen={(p) => { setIsOpen(false); document.dispatchEvent(new CustomEvent('openProductModal', { detail: p })); }}
                                                                                 isOutOfStock={isCompletelyOutOfStock}
                                                                                 index={index}
-                                                                            
-                                                                            isFavorite={favoriteIds.has(String(product.id))}
-
+                                                                                isFavorite={favoriteIds.has(String(product.id))}
+                                                                                showTaxIndicator={storeConfig?.show_tax_in_catalog === true && storeConfig?.fiscal_profile !== 'informal'} // 🚀 AÑADIDO
+                                                                                taxPercentage={storeConfig?.default_tax_percentage || 16} // 🚀 AÑADIDO
                                                                             />
                                                                         </div>
                                                                     )
@@ -734,11 +758,23 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                 )}
                                             </motion.div>
 
+                                           // ... código existente ...
                                             {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
                                             <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)]/30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
-                                                    <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
-                                                    <div className="flex flex-col items-start">
+                                                    <div className="flex flex-col gap-1">
+                                                        <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
+                                                        
+                                                        {/* 🚀 INYECCIÓN: INDICADOR DE IVA EN EL TOTAL DE LA BOLSA */}
+                                                        {storeConfig?.show_tax_in_catalog && isStrictTax && step1TaxAmountUSD > 0 && (
+                                                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                                <Receipt size={10} /> Inc. ${step1TaxAmountUSD.toFixed(2)} IVA
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* 🚀 Alineamos los números a la derecha (items-end) para mayor elegancia financiera */}
+                                                    <div className="flex flex-col items-end">
                                                         <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none flex items-center">
                                                             {currencySymbol}<NumberTicker value={step1GrandTotalUSD} />
                                                         </span>
@@ -755,6 +791,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                     )}
 
                                     {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
+
                                     {step === 2 && (
                                         <motion.div
                                             key="step-2" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit"

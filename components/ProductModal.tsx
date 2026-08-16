@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -529,7 +529,7 @@ Mi duda es la siguiente: `;
                                         )}
                                     </div>
 
-                                    {/* 🚀 PRECIOS RE-ALINEADOS A SINCERIDAD RADICAL */}
+                                       {/* 🚀 PRECIOS RE-ALINEADOS A SINCERIDAD RADICAL */}
                                     <div className="flex items-end gap-3 md:gap-4 mt-6">
                                         <div className="flex flex-col">
                                             {pricing.isPromo && (
@@ -545,6 +545,15 @@ Mi duda es la siguiente: `;
                                             Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
+
+                                    {/* 🚀 INYECCIÓN: ETIQUETA DE IVA EN MODAL */}
+                                    {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
+                                        <div className="mt-3">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[10px] font-black uppercase tracking-widest">
+                                                <Receipt size={12} /> + ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA ({(storeConfig?.default_tax_percentage || 16)}%)
+                                            </span>
+                                        </div>
+                                    )}
 
                                     {/* 🚀 B2B PRICING MATRIX (Clean Look) */}
                                     {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
