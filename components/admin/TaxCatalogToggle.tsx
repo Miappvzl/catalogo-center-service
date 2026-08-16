@@ -16,7 +16,7 @@ export default function TaxCatalogToggle({ storeId, initialState, fiscalProfile 
   const [isShowing, setIsShowing] = useState(initialState)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Si es informal, no tiene sentido mostrar esta opción
+
   if (fiscalProfile === 'informal') return null;
 
   const handleToggle = async () => {

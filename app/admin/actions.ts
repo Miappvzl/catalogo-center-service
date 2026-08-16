@@ -94,3 +94,52 @@ export async function checkAndTriggerStockAlert(data: {
 export async function revalidateStoreCache() {
   revalidatePath('/', 'layout')
 }
+
+// 🚀 NUEVA ACCIÓN: Alternar visibilidad del IVA en el catálogo
+export async function toggleCatalogTaxVisibility(storeId: string, showTax: boolean): Promise<ActionState> {
+  const cookieStore = await cookies()
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+            try {
+                cookiesToSet.forEach(({ name, value, options }) => 
+                    cookieStore.set(name, value, options)
+                )
+            } catch {}
+        },
+      },
+    }
+  )
+
+  // 1. Auth Check (Gatekeeper)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, message: 'No autorizado' }
+
+  try {
+    // 2. Mutación Zero-Trust: Actualizamos validando estrictamente el user_id
+    const { error } = await supabase
+      .from('stores')
+      .update({ show_tax_in_catalog: showTax })
+      .eq('id', storeId)
+      .eq('user_id', user.id) // 🔒 CRÍTICO: Evita mutaciones cruzadas entre tenants
+
+    if (error) throw error
+
+   
+    revalidatePath('/', 'layout') 
+    
+    return { 
+      success: true, 
+      message: showTax ? 'Etiqueta de IVA activada' : 'Etiqueta de IVA oculta',
+      timestamp: Date.now()
+    }
+
+  } catch (error) {
+    return { success: false, message: 'Error al actualizar la configuración fiscal' }
+  }
+}
