@@ -2,13 +2,14 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // ============================================================================
-// 🛡️ MOTOR DE CIBERSEGURIDAD EN MEMORIA (EDGE)
+// 🛡️ MOTOR DE CIBERSEGURIDAD EN MEMORIA (EDGE) V2
 // ============================================================================
 const rateLimitMap = new Map<string, { count: number; startTime: number }>()
-const bannedIPs = new Map<string, boolean>()
+const bannedIPs = new Map<string, number>() // 🚀 AHORA GUARDA UN TIMESTAMP DE CADUCIDAD
 
 const WINDOW_MS = 10000 // Ventana de 10 segundos
-const MAX_REQUESTS = 30 // Máximo 30 peticiones en 10 segundos
+const MAX_REQUESTS = 80 // 🚀 AUMENTADO: Da margen a las precargas (Prefetching) de Next.js
+const BAN_DURATION_MS = 3 * 60 * 1000 // 🚀 NUEVO: Castigo de 3 minutos, luego se libera automático
 
 export async function proxy(request: NextRequest) {
   const forwardedFor = request.headers.get('x-forwarded-for')
@@ -20,15 +21,21 @@ export async function proxy(request: NextRequest) {
   const isSensitiveRoute = isProtectedRoute || isLoginRoute
 
   // --------------------------------------------------------------------------
-  // 0. ESCUDO DE LISTA NEGRA Y RATE LIMITER (SOLO PARA RUTAS SENSIBLES)
+  // 0. ESCUDO DE LISTA NEGRA Y RATE LIMITER (CON CADUCIDAD)
   // --------------------------------------------------------------------------
-  // 🚀 CORRECCIÓN: Ahora el escudo NO evalúa a los clientes que visitan las tiendas
   if (isSensitiveRoute) {
-    if (bannedIPs.has(ip)) {
-      return new NextResponse('Military Shield: IP Banned for malicious activity on admin routes.', { status: 429 })
+    const now = Date.now()
+    const banExpiration = bannedIPs.get(ip)
+
+    // 🚀 NUEVA LÓGICA DE AMNISTÍA: Si está baneado pero ya pasó el tiempo, lo liberamos
+    if (banExpiration) {
+      if (now < banExpiration) {
+        return new NextResponse('Medida de Seguridad: Hemos detectado demasiadas peticiones. Por favor, espera unos minutos y recarga la pagina.', { status: 429 })
+      } else {
+        bannedIPs.delete(ip) // El castigo expiró
+      }
     }
 
-    const now = Date.now()
     const ipData = rateLimitMap.get(ip)
 
     if (!ipData) {
@@ -39,21 +46,22 @@ export async function proxy(request: NextRequest) {
       } else {
         ipData.count++
         if (ipData.count > MAX_REQUESTS) {
-          bannedIPs.set(ip, true)
+          bannedIPs.set(ip, now + BAN_DURATION_MS) // 🚀 Se aplica el castigo de 3 minutos
           logThreatToSupabase(ip, request.headers.get('user-agent') || 'unknown', pathname)
-          return new NextResponse('Military Shield: Attack detected and IP Banned.', { status: 429 })
+          return new NextResponse('Medida de Seguridad: Hemos detectado demasiadas peticiones. Por favor, espera unos minutos y recarga la pagina.', { status: 429 })
         }
       }
     }
   }
 
   // --------------------------------------------------------------------------
-  // LÓGICA ORIGINAL DE PREZISO
+  // LÓGICA ORIGINAL DE PREZISO (MANTÉN TODO TU CÓDIGO DE AQUÍ HACIA ABAJO IGUAL)
   // --------------------------------------------------------------------------
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
 
+  // ... (El resto de tu archivo proxy.ts desde "const hostname =" en adelante)
   const hostname = request.headers.get('host') || ''
   const currentEnvDomain = process.env.NODE_ENV === 'production' ? 'preziso.shop' : 'localhost:3000'
   const cookieDomain = process.env.NODE_ENV === 'production' ? '.preziso.shop' : undefined
