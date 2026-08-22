@@ -71,7 +71,6 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
-     // 🚀 NUEVO: Control de apertura del zoom de previsualización
     const [isPreviewZoomOpen, setIsPreviewZoomOpen] = useState(false)
 
     const isEur = storeSettings?.currency === 'eur'
@@ -643,10 +642,10 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-   if (loading) return (
+    if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFC] gap-3">
-            <Loader2 className="animate-spin text-neutral-300" size={24} />
-            <p className="text-xs font-semibold text-neutral-400">Cargando ficha de producto...</p>
+            <Loader2 className="animate-spin text-neutral-400" size={24} />
+            <p className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono">Cargando ficha de producto...</p>
         </div>
     )
 
@@ -654,15 +653,15 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         <div className="min-h-screen bg-[#FAFAFC] pb-32 font-sans text-neutral-900 selection:bg-neutral-950 selection:text-white overflow-x-clip w-full max-w-[100vw] antialiased">
 
             {/* STICKY SMART HEADER */}
-            <div className={` bg-[#FAFAFC]/95 backdrop-blur-md  z-30 px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50   sticky top-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'} ${((isMission1 && tourStep === 4) || (isMission2 && tourStep === 5) || (isMission3 && tourStep === 4) || (isMission4 && tourStep === 3)) ? 'z-[60] bg-white shadow-[0_15px_40px_rgba(0,0,0,0.08)] ring-4 ring-neutral-900/5 relative' : 'z-40 bg-[#FAFAFC]/95'}`}>
+            <div className={`bg-[#FAFAFC]/95 backdrop-blur-md z-30 px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50 sticky top-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'} ${((isMission1 && tourStep === 4) || (isMission2 && tourStep === 5) || (isMission3 && tourStep === 4) || (isMission4 && tourStep === 3)) ? 'z-[60] bg-white shadow-[0_15px_40px_rgba(0,0,0,0.08)] ring-4 ring-neutral-900/10 relative' : 'z-40 bg-[#FAFAFC]/95'}`}>
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <button onClick={handleExit} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-all shrink-0 shadow-xs active:scale-[0.98]" title="Volver">
-                        <ArrowLeft className="text-neutral-400 group-hover:text-neutral-900 transition-colors w-4 h-4 md:w-4.5 md:h-4.5" />
+                    <button onClick={handleExit} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-400 transition-all shrink-0 shadow-xs active:scale-[0.98]" title="Volver">
+                        <ArrowLeft className="text-neutral-600 group-hover:text-neutral-900 transition-colors w-4 h-4 md:w-4.5 md:h-4.5" />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="font-bold text-sm md:text-base leading-none tracking-tight truncate">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
-                        <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
-                            <span className={`flex items-center gap-1.5 text-[0.65rem] font-semibold bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded ${isEur ? 'bg-blue-50/50 text-blue-700 ' : 'bg-emerald-50/50 text-emerald-700 border-emerald-200/40'}`}>
+                        <h1 className="font-bold text-sm md:text-base leading-none tracking-tight truncate text-neutral-900">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
+                        <div className="flex items-center gap-2 mt-1 overflow-hidden">
+                            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'}`}>
                                 {isEur ? 'EUR' : 'USD'} Base
                             </span>
                         </div>
@@ -670,11 +669,11 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 </div>
                 
                 <div className="flex items-center gap-2.5 shrink-0 pl-2">
-                    <button onClick={handleExit} className="hidden md:block px-3 py-2 text-xs font-semibold text-neutral-400 hover:text-neutral-900 transition-colors uppercase tracking-wider">Cancelar</button>
+                    <button onClick={handleExit} className="hidden md:block px-3 py-2 text-xs font-bold text-neutral-600 hover:text-neutral-950 transition-colors uppercase tracking-wider">Cancelar</button>
                     <button 
                         onClick={handleSave} 
                         disabled={saving} 
-                        className={`bg-neutral-950 text-white px-4 md:px-5 py-2 rounded-lg shadow-xs font-semibold text-xs hover:bg-black active:scale-[0.98] flex items-center gap-1.5 disabled:opacity-70 transition-all ${isMission1 ? getSpotlightClass('1', 4, 'button') : isMission2 ? getSpotlightClass('2', 5, 'button') : isMission3 ? getSpotlightClass('3', 4, 'button') : getSpotlightClass('4', 3, 'button')}`}
+                        className={`bg-neutral-950 text-white px-4 md:px-5 py-2 rounded-lg shadow-xs font-bold text-xs uppercase tracking-wider hover:bg-black active:scale-[0.98] flex items-center gap-1.5 disabled:opacity-70 transition-all ${isMission1 ? getSpotlightClass('1', 4, 'button') : isMission2 ? getSpotlightClass('2', 5, 'button') : isMission3 ? getSpotlightClass('3', 4, 'button') : getSpotlightClass('4', 3, 'button')}`}
                     >
                         {saving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : <Save strokeWidth={2} className="w-3.5 h-3.5" />}
                         <span className="hidden sm:block">Guardar Producto</span>
@@ -683,51 +682,51 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 </div>
             </div>
 
-            {/* CONTENEDOR PRINCIPAL - ESCALADO A MAX-W-5XL (CLOSER TO SCREEN) */}
+            {/* CONTENEDOR PRINCIPAL */}
             <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
 
                 {isDirty && (
-                    <div className="bg-amber-50/50 border border-amber-200/50 p-4 rounded-xl flex items-start sm:items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="bg-white border border-amber-100/40 p-2 rounded-lg shrink-0 mt-0.5 sm:mt-0 shadow-xs">
+                    <div className="bg-amber-50 border border-amber-200/70 p-4 rounded-xl flex items-start sm:items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="bg-white border border-amber-200 p-2 rounded-lg shrink-0 mt-0.5 sm:mt-0 shadow-xs">
                             <AlertTriangle className="text-amber-600 w-4 h-4" strokeWidth={2} />
                         </div>
                         <div className="space-y-0.5">
-                            <p className="text-xs font-bold text-amber-800 leading-tight">Modificaciones sin confirmar</p>
-                            <p className="text-[11px] text-amber-700/80">Recuerde presionar el botón <span className="font-semibold text-amber-900">Guardar Producto</span> en la cabecera antes de salir.</p>
+                            <p className="text-xs font-bold text-amber-900 leading-tight">Modificaciones sin confirmar</p>
+                            <p className="text-[11px] font-medium text-amber-800">Recuerde presionar el botón <span className="font-bold text-amber-950 underline">Guardar Producto</span> en la cabecera antes de salir.</p>
                         </div>
                     </div>
                 )}
 
-              {/* CARD 1: INFORMACIÓN GENERAL */}
-<div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
-    <div>
-        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-2">
-            <FileText size={16} className="text-neutral-400" />
-            <span>1. Información Básica</span>
-        </h3>
-        <p className="text-xs text-neutral-400 mt-1">Configure los campos principales y la visibilidad de su artículo en catálogo.</p>
-    </div>
+                {/* CARD 1: INFORMACIÓN GENERAL */}
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
+                    <div>
+                        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-2">
+                            <FileText size={16} className="text-neutral-500" />
+                            <span>1. Información Básica</span>
+                        </h3>
+                        <p className="text-xs text-neutral-600 font-medium mt-1">Configure los campos principales y la visibilidad de su artículo en catálogo.</p>
+                    </div>
                     
                     <div className="space-y-4">
                         <div className={getSpotlightClass('1', 1)}>
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Nombre del Producto</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Nombre del Producto</label>
                             <input 
                                 value={formData.name} 
                                 onChange={e => updateForm('name', e.target.value)} 
                                 placeholder="Ej: Zapatillas Deportivas Run Pro" 
-                                className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300" 
+                                className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-400" 
                             />
                         </div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="relative" ref={categoryDropdownRef}>
-                                <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Categoría de Colección</label>
+                                <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Categoría de Colección</label>
                                 <input 
                                     value={formData.category} 
                                     onChange={e => { updateForm('category', e.target.value); setIsCategoryDropdownOpen(true) }} 
                                     onFocus={() => setIsCategoryDropdownOpen(true)} 
                                     placeholder="Ej: Calzado, Accesorios..." 
-                                    className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300" 
+                                    className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-400" 
                                 />
                                 
                                 <AnimatePresence>
@@ -735,12 +734,12 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                         <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute z-50 w-full mt-2 bg-white border border-neutral-200/50 rounded-lg shadow-sm overflow-hidden max-h-60 flex flex-col">
                                             {existingCategories.filter(c => c.toLowerCase().includes(formData.category.toLowerCase())).length > 0 && (
                                                 <div className="p-1.5 overflow-y-auto no-scrollbar">
-                                                    <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider px-2.5 py-1.5 block">Existentes</span>
+                                                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider px-2.5 py-1.5 block font-mono">Categorías Existentes</span>
                                                     {existingCategories.filter(c => c.toLowerCase().includes(formData.category.toLowerCase())).map(cat => (
                                                         <button 
                                                             key={cat} 
                                                             onClick={(e) => { e.preventDefault(); updateForm('category', cat); setIsCategoryDropdownOpen(false); }} 
-                                                            className="w-full text-left px-2.5 py-2 rounded text-xs font-semibold text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
+                                                            className="w-full text-left px-2.5 py-2 rounded text-xs font-bold text-neutral-800 hover:bg-neutral-50 hover:text-neutral-950 transition-colors"
                                                         >
                                                             {cat}
                                                         </button>
@@ -751,9 +750,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                 <div className="p-1.5 border-t border-neutral-100 bg-neutral-50/50 shrink-0">
                                                     <button 
                                                         onClick={(e) => { e.preventDefault(); setIsCategoryDropdownOpen(false) }} 
-                                                        className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold text-neutral-900 flex items-center gap-1.5 hover:bg-white hover:shadow-xs border border-neutral-200/50 transition-all"
+                                                        className="w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold text-neutral-900 flex items-center gap-1.5 hover:bg-white hover:shadow-xs border border-neutral-200/50 transition-all"
                                                     >
-                                                        <Plus size={12} strokeWidth={2.5} className="text-neutral-500" /> 
+                                                        <Plus size={12} strokeWidth={2.5} className="text-neutral-700" /> 
                                                         <span>Crear nueva categoría: &quot;{formData.category}&quot;</span>
                                                     </button>
                                                 </div>
@@ -764,7 +763,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             </div>
                             
                             <div>
-                                <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Estado de Publicación</label>
+                                <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Estado de Publicación</label>
                                 <div className="relative">
                                     <select 
                                         value={formData.status} 
@@ -779,130 +778,128 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         </div>
                         
                         <div>
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Descripción Detallada</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Descripción Detallada</label>
                             <textarea 
                                 value={formData.description} 
                                 onChange={e => updateForm('description', e.target.value)} 
                                 placeholder="Escriba especificaciones del producto, dimensiones, materiales, o información clave para el comprador..." 
-                                className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300 min-h-24 resize-none" 
+                                className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-400 min-h-24 resize-none leading-relaxed" 
                             />
                         </div>
                         
-                       {/* Etiqueta Logística con Vista Previa Visual */}
-        <div className="pt-4 border-t border-neutral-200/50">
-            <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Sobrescribir Mensaje de Entrega (Opcional)</label>
-            <p className="text-xs text-neutral-400 mb-4">Fije un mensaje logístico específico solo para este producto. Déjelo vacío para heredar las reglas de despacho generales de la tienda.</p>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
-                
-                {/* Inputs de entrada (Toman 2 columnas en pantallas grandes) */}
-                <div className="lg:col-span-2 space-y-4 flex flex-col justify-center">
-                    <div>
-                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Título breve</label>
-                        <input
-                            maxLength={20}
-                            value={formData.shipping_badge_title}
-                            onChange={e => updateForm('shipping_badge_title', e.target.value)}
-                            placeholder="Ej: Sobre Pedido"
-                            className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300 font-medium"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Descripción extendida</label>
-                        <input
-                            maxLength={50}
-                            value={formData.shipping_badge_desc}
-                            onChange={e => updateForm('shipping_badge_desc', e.target.value)}
-                            placeholder="Ej: Tiempo de entrega: de 2 a 7 días hábiles"
-                            className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-300 font-medium"
-                        />
-                    </div>
-                </div>
+                        {/* ETIQUETA LOGÍSTICA CON VISTA PREVIA */}
+                        <div className="pt-4 border-t border-neutral-200/50">
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Sobrescribir Mensaje de Entrega (Opcional)</label>
+                            <p className="text-xs text-neutral-600 font-medium mb-4">Fije un mensaje logístico específico solo para este producto. Déjelo vacío para heredar las reglas de despacho generales de la tienda.</p>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
+                                
+                                <div className="lg:col-span-2 space-y-4 flex flex-col justify-center">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Título breve</label>
+                                        <input
+                                            maxLength={20}
+                                            value={formData.shipping_badge_title}
+                                            onChange={e => updateForm('shipping_badge_title', e.target.value)}
+                                            placeholder="Ej: Sobre Pedido"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Descripción extendida</label>
+                                        <input
+                                            maxLength={50}
+                                            value={formData.shipping_badge_desc}
+                                            onChange={e => updateForm('shipping_badge_desc', e.target.value)}
+                                            placeholder="Ej: Tiempo de entrega: de 2 a 7 días hábiles"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all placeholder:text-neutral-400"
+                                        />
+                                    </div>
+                                </div>
 
-               {/* Previsualización en Tienda Física (Toma 1 columna) - CLICABLE */}
-                <div 
-                    onClick={() => setIsPreviewZoomOpen(true)}
-                    className="bg-neutral-50/40 border border-neutral-200/50 rounded-lg p-3.5 flex flex-col justify-between items-center text-center cursor-zoom-in group hover:bg-neutral-50 hover:border-neutral-300 transition-colors shadow-xs"
-                >
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-2.5 block">Ejemplo en Catálogo</span>
-                    
-                    {/* Contenedor de la imagen */}
-                    <div className="relative w-full aspect-[4/4] rounded bg-white border border-neutral-200/50 overflow-hidden flex items-center justify-center">
-                        <Image 
-                            src="/shipping-badge-preview.webp" 
-                            alt="Vista previa del mensaje de envío en la app"
-                            fill
-                            sizes="(max-width: 1024px) 100vw, 250px"
-                            className="object-contain p-0 group-hover:scale-106 transition-transform duration-300"
-                            priority
-                        />
-                        {/* Micro-overlay de hover para indicar que se puede ampliar */}
-                        <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="bg-white/95 text-neutral-800 text-[10px] font-semibold px-2.5 py-1 rounded shadow-sm border border-neutral-200/50 inline-flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150">
-                                <Eye size={11} /> 
-                                <span>Ampliar vista</span>
-                            </span>
+                                {/* PREVISUALIZACIÓN CLICABLE */}
+                                <div 
+                                    onClick={() => setIsPreviewZoomOpen(true)}
+                                    className="bg-neutral-50/50 border border-neutral-200/50 rounded-lg p-3.5 flex flex-col justify-between items-center text-center cursor-zoom-in group hover:bg-neutral-100/50 hover:border-neutral-300 transition-colors shadow-xs"
+                                >
+                                    <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-2 block font-mono">Ejemplo en Catálogo</span>
+                                    
+                                    <div className="relative w-full aspect-square rounded bg-white border border-neutral-200/50 overflow-hidden flex items-center justify-center">
+                                        <Image 
+                                            src="/shipping-badge-preview.webp" 
+                                            alt="Vista previa del mensaje de envío"
+                                            fill
+                                            sizes="(max-width: 1024px) 100vw, 250px"
+                                            className="object-contain p-1 group-hover:scale-105 transition-transform duration-300"
+                                            priority
+                                        />
+                                        <div className="absolute inset-0 bg-neutral-950/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="bg-white/95 text-neutral-900 text-[10px] font-bold px-2.5 py-1 rounded shadow-sm border border-neutral-200/50 inline-flex items-center gap-1">
+                                                <Eye size={11} /> 
+                                                <span>Ampliar vista</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <span className="text-[10px] text-neutral-600 mt-2 font-medium">Así lo visualizará su cliente en el checkout.</span>
+                                </div>
+
+                            </div>
                         </div>
-                    </div>
-                    
-                    <span className="text-[9px] text-neutral-400 mt-2 font-medium">Así lo visualizará su cliente debajo de la descripción.</span>
-                </div>
-
-            </div>
-        </div>
                     </div>
                 </div>
 
                 {/* CARD 1.5: MERCHANDISING Y ESCAPARATE */}
                 <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
                     <div>
-                        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-100 flex items-center gap-1.5">
-                            <Star size={16} className="fill-amber-500 text-amber-500" /> Exhibición Destacada
+                        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-1.5">
+                            <Star size={16} className="fill-amber-500 text-amber-500" /> 
+                            <span>Exhibición Destacada</span>
                         </h3>
-                        <p className="text-xs text-neutral-400 mt-1">Configure si desea que este artículo gane mayor relevancia dentro de su catálogo virtual.</p>
+                        <p className="text-xs text-neutral-600 font-medium mt-1">Configure si desea que este artículo gane mayor relevancia dentro de su catálogo virtual.</p>
                     </div>
                     
                     <div id="tour-step-3-3" className={`p-1.5 -m-1.5 rounded-xl ${getSpotlightClass('3', 3, 'container')}`}>
                         <div
-                            className={`p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_featured ? 'bg-neutral-950 border-transparent text-white' : 'bg-neutral-50/50 border-neutral-200/50 hover:bg-neutral-50 text-neutral-800'}`}
+                            className={`p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_featured ? 'bg-neutral-950 border-transparent text-white' : 'bg-neutral-50/50 border-neutral-200/50 hover:bg-neutral-100/50 text-neutral-800'}`}
                             onClick={() => updateForm('is_featured', !formData.is_featured)}
                         >
                             <div className="pr-4 mb-3 sm:mb-0 space-y-0.5">
                                 <p className="font-bold text-xs flex items-center gap-1.5">
-                                    <Star size={14} className={formData.is_featured ? 'fill-amber-500 text-amber-500' : 'text-neutral-400'} />
-                                    Fijar en Carrusel de Destacados
+                                    <Star size={14} className={formData.is_featured ? 'fill-amber-400 text-amber-400' : 'text-neutral-500'} />
+                                    <span>Fijar en Carrusel de Destacados</span>
                                 </p>
-                                <p className={`text-xs ${formData.is_featured ? 'text-neutral-400' : 'text-neutral-400'}`}>
+                                <p className={`text-xs ${formData.is_featured ? 'text-neutral-300 font-normal' : 'text-neutral-600 font-medium'}`}>
                                     El producto se anclará en la sección principal de su tienda para maximizar su conversión de venta.
                                 </p>
                             </div>
-                            <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 ${formData.is_featured ? 'bg-white border-white justify-end' : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
-                                <motion.div layout transition={{ type: "spring", stiffness: 600, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_featured ? 'bg-neutral-950' : 'bg-neutral-300'}`} />
+                            <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 ${formData.is_featured ? 'bg-white border-white justify-end' : 'bg-neutral-200 border-neutral-300 justify-start'}`}>
+                                <motion.div layout transition={{ type: "spring", stiffness: 600, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_featured ? 'bg-neutral-950' : 'bg-neutral-400'}`} />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* CARD 2: MEDIOS Y GALERÍA */}
-<div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
-    <div>
-        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-100 flex items-center gap-2">
-            <ImageIcon size={16} className="text-neutral-400" />
-            <span>2. Galería de Imágenes</span>
-        </h3>
-        <p className="text-xs text-neutral-400 mt-1">Gestione el material gráfico promocional de su producto.</p>
-    </div>
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
+                    <div>
+                        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-2">
+                            <ImageIcon size={16} className="text-neutral-500" />
+                            <span>2. Galería de Imágenes</span>
+                        </h3>
+                        <p className="text-xs text-neutral-600 font-medium mt-1">Gestione el material gráfico promocional de su producto.</p>
+                    </div>
                     
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                         
                         {/* Foto Principal */}
                         <div id="tour-step-2" className={`w-full md:w-1/3 p-1.5 ${getSpotlightClass('1', 2, 'container')}`}>
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Imagen Principal (Portada)</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Imagen Principal (Portada)</label>
                             <input type="file" ref={mainImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'main')} />
                             
                             <div 
                                 onClick={() => mainImageInputRef.current?.click()} 
-                                className={`aspect-square bg-neutral-50/50 rounded-lg border border-dashed border-neutral-200/50 ${uploading ? 'animate-pulse bg-neutral-50' : 'hover:border-neutral-400'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-colors shadow-xs`}
+                                className={`aspect-square bg-neutral-50/50 rounded-lg border border-dashed border-neutral-300 ${uploading ? 'animate-pulse bg-neutral-100' : 'hover:border-neutral-500 hover:bg-neutral-50'} flex flex-col items-center justify-center overflow-hidden relative group cursor-pointer transition-all shadow-xs`}
                             >
                                 {formData.image_url ? (
                                     <Image
@@ -914,20 +911,20 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     />
                                 ) : (
                                     <div className="text-center p-4 flex flex-col items-center">
-                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mb-2.5 text-neutral-400 border border-neutral-200/50 transition-colors">
+                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mb-2.5 text-neutral-500 border border-neutral-200/60 transition-colors shadow-xs">
                                             {uploading ? <Loader2 className="animate-spin" size={16} /> : <ImageIcon size={16} />}
                                         </div>
-                                        <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Subir Portada</span>
+                                        <span className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider">Subir Portada</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Galería Adicional */}
-                        <div className="flex-1 w-full space-y-4">
-                            <div className="flex justify-between items-center text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                        <div className="flex-1 w-full space-y-3">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-neutral-700 uppercase tracking-wider">
                                 <span>Tomas de apoyo (Carrusel)</span>
-                                <span>{productGallery.length}/3</span>
+                                <span className="font-mono text-neutral-600">{productGallery.length}/3</span>
                             </div>
                             
                             <input type="file" multiple ref={productGalleryInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'productGallery')} />
@@ -936,13 +933,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 <button 
                                     onClick={() => productGalleryInputRef.current?.click()} 
                                     disabled={productGallery.length >= 3 || uploading} 
-                                    className="w-28 md:w-32 h-full rounded-lg border border-dashed border-neutral-200/50 flex flex-col gap-2 items-center justify-center hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50 text-neutral-400 hover:text-neutral-900 shrink-0 bg-neutral-50/50 shadow-xs"
+                                    className="w-28 md:w-32 h-full rounded-lg border border-dashed border-neutral-300 flex flex-col gap-2 items-center justify-center hover:border-neutral-500 hover:bg-white transition-all disabled:opacity-50 text-neutral-600 hover:text-neutral-950 shrink-0 bg-neutral-50/50 shadow-xs"
                                 >
-                                    {uploading ? <Loader2 className="animate-spin" size={20} /> : <><ImagePlus size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Añadir</span></>}
+                                    {uploading ? <Loader2 className="animate-spin" size={20} /> : <><ImagePlus size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Añadir Foto</span></>}
                                 </button>
                                 
                                 {productGallery.map((img, idx) => (
-                                    <div key={idx} className="relative w-28 md:w-32 h-full rounded-lg border border-neutral-200/50 overflow-hidden group bg-white shrink-0 shadow-xs">
+                                    <div key={idx} className="relative w-28 md:w-32 h-full rounded-lg border border-neutral-200/60 overflow-hidden group bg-white shrink-0 shadow-xs">
                                         <Image
                                             src={getOptimizedUrl(img)}
                                             alt={`Galería ${idx + 1}`}
@@ -950,134 +947,134 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             sizes="160px"
                                             className="object-cover"
                                         />
-                                        <button onClick={() => removeImageFromGallery(idx)} className="absolute inset-0 bg-neutral-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity">
+                                        <button onClick={() => removeImageFromGallery(idx)} className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity">
                                             <X size={18} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-neutral-400 leading-relaxed">Estas imágenes se desplegarán como un carrusel secundario en su catálogo, a menos que el cliente filtre variantes con fotos específicas asociadas.</p>
+                            <p className="text-xs text-neutral-600 font-medium leading-relaxed">Estas imágenes se desplegarán como un carrusel secundario en su catálogo, a menos que el cliente filtre variantes con fotos específicas asociadas.</p>
                         </div>
                     </div>
                 </div>
 
-             {/* CARD 3: ESTRATEGIA DE PRECIO E IMPUESTOS */}
-<div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
-    <div>
-        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-100 flex items-center gap-2">
-            <DollarSign size={16} className="text-neutral-400" />
-            <span>3. Configuración de Precios</span>
-        </h3>
-        <p className="text-xs text-neutral-400 mt-1">Establezca los valores comerciales y los impuestos aplicables al producto.</p>
-    </div>
+                {/* CARD 3: ESTRATEGIA DE PRECIO E IMPUESTOS */}
+                <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                    <div>
+                        <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-2">
+                            <DollarSign size={16} className="text-neutral-500" />
+                            <span>3. Configuración de Precios</span>
+                        </h3>
+                        <p className="text-xs text-neutral-600 font-medium mt-1">Establezca los valores comerciales y los impuestos aplicables al producto.</p>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <div id="tour-step-3" className={`p-2.5 -m-2.5 ${getSpotlightClass('1', 3)}`}>
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-[0.125rem] block">Precio Divisa (Base) *</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Precio Divisa (Base) *</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
                                 <NumberInput min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
                             </div>
                         </div>
                         
                         <div id="tour-step-3-1" className={`p-2.5 -m-2.5 rounded-xl ${getSpotlightClass('3', 1, 'container')}`}>
-                            <label className="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-[0.125rem] block">Precio Anterior (Tachado)</label>
+                            <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-1.5 block">Precio Anterior (Tachado)</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-red-500 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full placeholder:text-red-500 text-rose-600 bg-neutral-50/50 border border-rose-400 focus:bg-white focus:border-rose-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-rose-500 outline-none transition-all font-mono text-center" />
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
+                                <NumberInput min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="0.00" className="w-full placeholder:text-rose-400 text-rose-700 bg-rose-50/30 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold outline-none transition-all font-mono text-center" />
                             </div>
                         </div>
                         
                         <div id="tour-step-4-1" className={`p-2.5 -m-2.5 rounded-xl ${getSpotlightClass('4', 1, 'container')}`}>
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-[0.125rem] block">Margen Conversión (Opcional)</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Margen Conversión (Opcional)</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
                                 <NumberInput min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
                             </div>
                         </div>
                     </div>
 
-                    {/* EXENCIÓN FISCAL */}
+                    {/* EXENCIÓN FISCAL (SENIAT) */}
                     {storeSettings?.fiscalProfile !== 'informal' && (
                         <div
-                            className={`p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_tax_exempt ? 'bg-emerald-50 border-emerald-100/40 text-emerald-800' : 'bg-neutral-50/50 border-neutral-200/50 hover:bg-neutral-50 text-neutral-800'}`}
+                            className={`p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_tax_exempt ? 'bg-emerald-50 border-emerald-200/60 text-emerald-900' : 'bg-neutral-50/50 border-neutral-200/50 hover:bg-neutral-100/50 text-neutral-800'}`}
                             onClick={() => updateForm('is_tax_exempt', !formData.is_tax_exempt)}
                         >
                             <div className="pr-4 mb-3 sm:mb-0 space-y-0.5">
                                 <p className="font-bold text-xs flex items-center gap-1.5">
-                                    <Receipt size={14} className={formData.is_tax_exempt ? 'text-emerald-600' : 'text-neutral-400'} />
-                                    Producto Exento de IVA (Alícuota 0%)
+                                    <Receipt size={14} className={formData.is_tax_exempt ? 'text-emerald-700' : 'text-neutral-600'} />
+                                    <span>Producto Exento de IVA (Alícuota 0%)</span>
                                 </p>
-                                <p className={`text-xs ${formData.is_tax_exempt ? 'text-emerald-700/80' : 'text-neutral-400'}`}>
-                                    Marcar si este rubro califica como exento o exonerado de impuestos según la normativa del SENIAT.
+                                <p className={`text-xs ${formData.is_tax_exempt ? 'text-emerald-800 font-medium' : 'text-neutral-600 font-medium'}`}>
+                                    Marcar si este rubro califica como exento o exonerado de impuestos según la normativa legal del SENIAT.
                                 </p>
                             </div>
-                            <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 ${formData.is_tax_exempt ? 'bg-emerald-500 border-white justify-end' : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
-                                <motion.div layout transition={{ type: "spring", stiffness: 600, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_tax_exempt ? 'bg-white' : 'bg-neutral-300'}`} />
+                            <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 ${formData.is_tax_exempt ? 'bg-emerald-600 border-emerald-600 justify-end' : 'bg-neutral-200 border-neutral-300 justify-start'}`}>
+                                <motion.div layout transition={{ type: "spring", stiffness: 600, damping: 30 }} className={`w-4 h-4 rounded-full ${formData.is_tax_exempt ? 'bg-white' : 'bg-neutral-400'}`} />
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* TARJETA NEGRA DE PULSO CAMBIARIO */}
+                {/* TARJETA NEGRA DE PULSO CAMBIARIO (ALTO CONTRASTE) */}
                 <div id="tour-step-4-2" className={`p-2.5 -m-2.5 rounded-xl ${getSpotlightClass('4', 2, 'container')}`}>
-                    <div className="bg-neutral-950 text-white rounded-xl p-6 text-center relative overflow-hidden border border-neutral-200/50 shadow-xs">
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                            <span className="bg-white/10 text-white/70 px-2.5 py-0.5 rounded text-[9px] font-mono font-semibold tracking-wider border border-white/10">
+                    <div className="bg-neutral-950 text-white rounded-xl p-6 text-center relative overflow-hidden border border-neutral-800 shadow-md">
+                        <div className="relative z-10 flex flex-col items-center gap-2.5">
+                            <span className="bg-white/10 text-white px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider border border-white/20">
                                 {rateLabel}: {activeRate.toFixed(2)} Bs.
                             </span>
                             {math.discountPercent > 0 && (
-                                <div className="bg-white text-neutral-950 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-wider shadow-xs">
+                                <div className="bg-white text-neutral-950 px-3.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
                                     Incentivo Divisa: -{math.discountPercent}%
                                 </div>
                             )}
-                            <div className="w-full border-t border-white/10 pt-4 mt-1 space-y-1">
-                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Referencia de cara al público</p>
-                                <p className="font-bold text-3xl text-white tracking-tight leading-none font-mono">
+                            <div className="w-full border-t border-neutral-800 pt-4 mt-1 space-y-1">
+                                <p className="text-neutral-300 text-[11px] font-bold uppercase tracking-wider">Referencia de cara al público</p>
+                                <p className="font-bold text-3xl md:text-4xl text-white tracking-tight leading-none font-mono">
                                     Bs {math.refBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                 </p>
-                                <p className="text-[10px] text-white/40">Equivalente a un total de ${math.listPrice.toFixed(2)} USD</p>
+                                <p className="text-xs text-neutral-300 font-mono font-medium mt-1">Equivalente a un total de ${math.listPrice.toFixed(2)} USD</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-               <div id="tour-step-3-2" className={`p-2.5 -m-2.5 rounded-xl mb-2 mt-2 ${getSpotlightClass('3', 2, 'container')}`}>
-    <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
-        <div className="flex items-center gap-2 text-neutral-900 pb-3 border-b border-neutral-100">
-            <Percent size={16} className="text-neutral-400" />
-            <h3 className="text-sm font-bold uppercase tracking-wider">Regla Mayorista Individual</h3>
-        </div>
-        <ProductWholesaleConfig 
-            initialActive={formData.wholesale_active}
-            initialMinQty={formData.wholesale_min_qty}
-            initialDiscountPct={formData.wholesale_discount_pct}
-            onChange={(wholesaleData) => {
-                setFormData(prev => ({ 
-                    ...prev, 
-                    wholesale_active: wholesaleData.wholesale_active,
-                    wholesale_min_qty: wholesaleData.wholesale_min_qty,
-                    wholesale_discount_pct: wholesaleData.wholesale_discount_pct
-                }));
-                setIsDirty(true); 
-            }}
-        />
-    </div>
-</div>
-
+                {/* REGLA MAYORISTA INDIVIDUAL */}
+                <div id="tour-step-3-2" className={`p-2.5 -m-2.5 rounded-xl mb-2 mt-2 ${getSpotlightClass('3', 2, 'container')}`}>
+                    <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
+                        <div className="flex items-center gap-2 text-neutral-900 pb-3 border-b border-neutral-200/50">
+                            <Percent size={16} className="text-neutral-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">Regla Mayorista Individual</h3>
+                        </div>
+                        <ProductWholesaleConfig 
+                            initialActive={formData.wholesale_active}
+                            initialMinQty={formData.wholesale_min_qty}
+                            initialDiscountPct={formData.wholesale_discount_pct}
+                            onChange={(wholesaleData) => {
+                                setFormData(prev => ({ 
+                                    ...prev, 
+                                    wholesale_active: wholesaleData.wholesale_active,
+                                    wholesale_min_qty: wholesaleData.wholesale_min_qty,
+                                    wholesale_discount_pct: wholesaleData.wholesale_discount_pct
+                                }));
+                                setIsDirty(true); 
+                            }}
+                        />
+                    </div>
+                </div>
                 {/* CARD 4: INVENTARIO Y VARIANTES */}
                 <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-neutral-100 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-neutral-200/50 pb-3">
                         <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5">
                             <Box size={16} className="text-neutral-500" /> 
                             <span>4. Inventario y Variantes</span>
                         </h3>
                         
-                        <div id="tour-step-2-1" className={`flex bg-neutral-100/60 border border-neutral-200/50 rounded-lg p-0.5 w-full sm:w-auto ${getSpotlightClass('2', 1, 'container')}`}>
-                            <button onClick={(e) => { e.preventDefault(); setHasVariants(false); setIsDirty(true); }} className={`flex-1 sm:flex-none px-4 py-1 rounded-md text-xs font-bold transition-all ${!hasVariants ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/10' : 'text-neutral-400 hover:text-neutral-900 border border-transparent'}`}>
+                        <div id="tour-step-2-1" className={`flex bg-neutral-100 border border-neutral-200/60 rounded-lg p-0.5 w-full sm:w-auto ${getSpotlightClass('2', 1, 'container')}`}>
+                            <button onClick={(e) => { e.preventDefault(); setHasVariants(false); setIsDirty(true); }} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-xs font-bold transition-all ${!hasVariants ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/40' : 'text-neutral-600 hover:text-neutral-950 border border-transparent'}`}>
                                 Producto Único
                             </button>
-                            <button onClick={(e) => { e.preventDefault(); setHasVariants(true); setIsDirty(true); }} className={`flex-1 sm:flex-none px-4 py-1 rounded-md text-xs font-bold transition-all ${hasVariants ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/10' : 'text-neutral-400 hover:text-neutral-900 border border-transparent'}`}>
+                            <button onClick={(e) => { e.preventDefault(); setHasVariants(true); setIsDirty(true); }} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-xs font-bold transition-all ${hasVariants ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/40' : 'text-neutral-600 hover:text-neutral-950 border border-transparent'}`}>
                                 Con Variantes
                             </button>
                         </div>
@@ -1085,9 +1082,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                     {!hasVariants ? (
                         <div className="bg-neutral-50/50 rounded-lg p-5 border border-neutral-200/50 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-sm space-y-2">
-                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">Stock Disponible</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">Stock Disponible</label>
                             <NumberInput min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-sm font-bold text-neutral-900 outline-none transition-all shadow-xs font-mono text-center" />
-                            <p className="text-xs text-neutral-400">El cliente agregará el artículo al carrito sin selección de atributos secundarios de talla o color.</p>
+                            <p className="text-xs text-neutral-600 font-medium">El cliente agregará el artículo al carrito sin selección de atributos secundarios de talla o color.</p>
                         </div>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
@@ -1098,30 +1095,30 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div id="tour-step-2-2" className={`p-2.5 -m-2.5 rounded-xl ${getSpotlightClass('2', 2, 'container')}`}>
-                                        <div className="flex justify-between items-center gap-2 mb-2">
-                                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">Atributo Primario (Nombre)</label>
+                                        <div className="flex justify-between items-center gap-2 mb-1.5">
+                                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">Atributo Primario (Nombre)</label>
                                             <label className="flex items-center gap-1.5 cursor-pointer">
                                                 <input type="checkbox" checked={useColor} onChange={(e) => setUseColor(e.target.checked)} className="accent-neutral-900 cursor-pointer" />
-                                                <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">¿Lleva Color?</span>
+                                                <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider">¿Lleva Color?</span>
                                             </label>
                                         </div>
                                         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-neutral-200/50 focus-within:border-neutral-400 transition-colors shadow-xs h-12">
                                             {useColor && <input type="color" value={variantInput.colorHex} onChange={e => updateVariantInput('colorHex', e.target.value)} className="w-8 h-8 rounded border-none cursor-pointer bg-transparent shrink-0" />}
-                                            <input type="text" placeholder={useColor ? "Ej: Negro, Dorado, Azul..." : "Ej: Licencia Estándar..."} value={variantInput.colorName} onChange={e => updateVariantInput('colorName', e.target.value)} className="flex-1 bg-transparent border-none text-xs font-semibold outline-none text-neutral-900 px-2" />
+                                            <input type="text" placeholder={useColor ? "Ej: Negro, Dorado, Azul..." : "Ej: Licencia Estándar..."} value={variantInput.colorName} onChange={e => updateVariantInput('colorName', e.target.value)} className="flex-1 bg-transparent border-none text-xs font-bold outline-none text-neutral-900 px-2 placeholder:text-neutral-400" />
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className="flex justify-between items-center gap-2 mb-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                        <div className="flex justify-between items-center gap-2 mb-1.5 text-[11px] font-bold text-neutral-700 uppercase tracking-wider">
                                             <span>Fotos de la variante</span>
-                                            <span>{variantInput.images.length}/3</span>
+                                            <span className="font-mono text-neutral-600">{variantInput.images.length}/3</span>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => variantImageInputRef.current?.click()} disabled={variantInput.images.length >= 3 || uploading} className="w-12 h-12 rounded-lg border border-dashed border-neutral-300 flex items-center justify-center hover:border-neutral-400 hover:bg-white transition-all disabled:opacity-50 text-neutral-400 hover:text-neutral-900 shrink-0 bg-white shadow-xs">
-                                                {uploading ? <Loader2 className="animate-spin text-neutral-300" size={16} /> : <Plus size={18} />}
+                                            <button onClick={() => variantImageInputRef.current?.click()} disabled={variantInput.images.length >= 3 || uploading} className="w-12 h-12 rounded-lg border border-dashed border-neutral-300 flex items-center justify-center hover:border-neutral-500 hover:bg-white transition-all disabled:opacity-50 text-neutral-600 hover:text-neutral-950 shrink-0 bg-white shadow-xs">
+                                                {uploading ? <Loader2 className="animate-spin text-neutral-400" size={16} /> : <Plus size={18} />}
                                             </button>
                                             {variantInput.images.map((img, idx) => (
-                                                <div key={idx} className="relative w-12 h-12 rounded-lg border border-neutral-200/50 overflow-hidden group bg-white shrink-0 shadow-xs">
+                                                <div key={idx} className="relative w-12 h-12 rounded-lg border border-neutral-200/60 overflow-hidden group bg-white shrink-0 shadow-xs">
                                                     <Image
                                                         src={getOptimizedUrl(img)}
                                                         alt={`Exclusiva ${idx + 1}`}
@@ -1129,7 +1126,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                         sizes="48px"
                                                         className="object-cover"
                                                     />
-                                                    <button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-neutral-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity">
+                                                    <button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity">
                                                         <X size={14} />
                                                     </button>
                                                 </div>
@@ -1140,9 +1137,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div id="tour-step-2-3" className={`p-2.5 -m-2.5 rounded-xl ${getSpotlightClass('2', 3, 'container')}`}>
-                                        <div className="flex justify-between items-center gap-2 mb-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                        <div className="flex justify-between items-center gap-2 mb-1.5 text-[11px] font-bold text-neutral-700 uppercase tracking-wider">
                                             <label className="block">Atributo Secundario (Medida/Talla)</label>
-                                            <span className="font-normal font-mono">Separar por comas ( , )</span>
+                                            <span className="font-normal font-mono text-[10px] text-neutral-600">Separar por comas ( , )</span>
                                         </div>
                                         <div className="w-full bg-white border border-neutral-200/50 focus-within:border-neutral-400 rounded-lg p-2 min-h-12 flex flex-wrap items-center gap-1.5 transition-colors shadow-xs">
                                             {sizeTags.map(tag => (
@@ -1152,9 +1149,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                 </span>
                                             ))}
                                             <div className="flex-1 min-w-[100px] flex items-center">
-                                                <input placeholder={sizeTags.length === 0 ? "Ej: S, M, L..." : ""} value={sizeInputValue} onChange={handleSizeInputChange} onKeyDown={handleSizeKeyDown} onBlur={handleSizeBlur} className="w-full bg-transparent outline-none text-xs font-semibold text-neutral-900 placeholder:text-neutral-300" />
+                                                <input placeholder={sizeTags.length === 0 ? "Ej: S, M, L..." : ""} value={sizeInputValue} onChange={handleSizeInputChange} onKeyDown={handleSizeKeyDown} onBlur={handleSizeBlur} className="w-full bg-transparent outline-none text-xs font-bold text-neutral-900 placeholder:text-neutral-400" />
                                                 {sizeInputValue.trim() !== '' && (
-                                                    <button onClick={(e) => { e.preventDefault(); addSizeFromInput() }} className="shrink-0 p-1 bg-neutral-50 text-neutral-700 rounded hover:bg-neutral-100 transition-colors">
+                                                    <button onClick={(e) => { e.preventDefault(); addSizeFromInput() }} className="shrink-0 p-1 bg-neutral-100 text-neutral-900 rounded hover:bg-neutral-200 transition-colors">
                                                         <Plus size={12} />
                                                     </button>
                                                 )}
@@ -1162,7 +1159,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                         </div>
                                         <div className="flex flex-wrap gap-1.5 mt-2.5">
                                             {COMMON_SIZES.map(size => (
-                                                <button key={size} onClick={(e) => handleQuickPillClick(e, size)} className="px-2 py-0.5 text-[9px] font-bold bg-white border border-neutral-200/50 text-neutral-500 rounded hover:border-neutral-400 hover:text-neutral-900 transition-colors shadow-xs">
+                                                <button key={size} onClick={(e) => handleQuickPillClick(e, size)} className="px-2 py-0.5 text-[10px] font-bold bg-white border border-neutral-300 text-neutral-700 rounded hover:border-neutral-700 hover:text-neutral-950 transition-colors shadow-xs">
                                                     + {size}
                                                 </button>
                                             ))}
@@ -1170,7 +1167,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     </div>
                                     
                                     <div className="w-full">
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 block">Stock por cada opción</label>
+                                        <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Stock por cada opción</label>
                                         <NumberInput min="0" value={variantInput.defaultStock} onChangeValue={(val) => updateVariantInput('defaultStock', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-sm font-bold text-neutral-900 outline-none text-center transition-colors h-12 shadow-xs font-mono" />
                                     </div>
                                 </div>
@@ -1178,44 +1175,44 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 {/* PRECIOS EN LA GENERACIÓN MASIVA */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-neutral-200/50">
                                     <div>
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Precio de variante (Opcional)</label>
+                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Precio variante (Opcional)</label>
                                         <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
+                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block text-rose-700">Tachado propio (Opcional)</label>
+                                        <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio (Opcional)</label>
                                         <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
+                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-rose-200/70 focus:border-rose-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Margen propio (Opcional)</label>
+                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Margen propio (Opcional)</label>
                                         <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
+                                            <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
                                         </div>
                                     </div>
                                 </div>
 
-                                <button id="tour-step-2-4" onClick={addVariantGroup} className={`w-full bg-neutral-950 text-white py-2.5 rounded-lg hover:bg-black active:scale-[0.98] transition-all font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs border border-transparent ${getSpotlightClass('2', 4, 'button')}`}>
+                                <button id="tour-step-2-4" onClick={addVariantGroup} className={`w-full bg-neutral-950 text-white py-3 rounded-lg hover:bg-black active:scale-[0.98] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs border border-transparent ${getSpotlightClass('2', 4, 'button')}`}>
                                     <Plus size={14} /> 
                                     <span>Generar Matriz de Variantes</span>
                                 </button>
                             </div>
 
                             {/* LISTADO DE VARIANTES CREADAS */}
-                            <div className="flex justify-between items-center mb-3.5 mt-6 px-1">
+                            <div className="flex justify-between items-center mb-3 mt-6 px-1">
                                 <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Matriz de SKUs</h4>
-                                <span className="bg-neutral-100 border border-neutral-200/50 px-2 py-0.5 rounded text-[10px] font-semibold text-neutral-500 font-mono">{variants.length} Creadas</span>
+                                <span className="bg-neutral-100 border border-neutral-200/60 px-2.5 py-0.5 rounded text-[10px] font-bold text-neutral-800 font-mono">{variants.length} Creadas</span>
                             </div>
 
                             {variants.length === 0 ? (
-                                <div className="text-center py-10 border border-dashed border-neutral-200/50 rounded-lg bg-neutral-50/20 flex flex-col items-center justify-center space-y-2">
-                                    <Box size={24} className="text-neutral-300" />
-                                    <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Sin variaciones activas</p>
+                                <div className="text-center py-10 border border-dashed border-neutral-300 rounded-lg bg-neutral-50/30 flex flex-col items-center justify-center space-y-2">
+                                    <Box size={24} className="text-neutral-400" />
+                                    <p className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider">Sin variaciones activas</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2.5">
@@ -1225,7 +1222,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             {/* Cabecera SKU */}
                                             <div className="flex items-center justify-between p-3.5 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
                                                 <div className="flex items-center gap-3.5 min-w-0">
-                                                    <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 flex items-center justify-center relative">
+                                                    <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
                                                         {v.variant_image ? (
                                                             <Image
                                                                 src={getOptimizedUrl(v.variant_image)}
@@ -1240,24 +1237,24 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                     </div>
                                                     <div className="min-w-0 space-y-0.5">
                                                         <div className="flex items-center gap-1.5">
-                                                            {v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent' && <div className="w-2 h-2 rounded-full border border-neutral-200 shrink-0" style={{ backgroundColor: v.color_hex }}></div>}
-                                                            <p className="font-semibold text-xs text-neutral-900 truncate">{v.color_name}</p>
+                                                            {v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent' && <div className="w-2.5 h-2.5 rounded-full border border-neutral-300 shrink-0 shadow-xs" style={{ backgroundColor: v.color_hex }}></div>}
+                                                            <p className="font-bold text-xs text-neutral-900 truncate">{v.color_name}</p>
                                                         </div>
                                                         <div className="flex flex-wrap items-center gap-1.5">
-                                                            <span className="text-[10px] font-mono font-bold bg-neutral-50 border border-neutral-200/50 text-neutral-500 px-1.5 py-0.5 rounded leading-none">{v.size}</span>
-                                                            {v.override_usd_price !== null && v.override_usd_price !== undefined && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-100/40 rounded flex items-center gap-0.5 font-mono"><DollarSign size={10} /> {v.override_usd_price}</span>}
+                                                            <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
+                                                            {v.override_usd_price !== null && v.override_usd_price !== undefined && <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200/60 rounded flex items-center gap-0.5 font-mono"><DollarSign size={10} /> {v.override_usd_price}</span>}
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <div className="text-right hidden sm:block">
-                                                        <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wider">Cantidad</p>
-                                                        <p className="font-mono font-bold text-xs text-neutral-900 leading-none mt-0.5">{v.stock}</p>
+                                                        <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Cantidad</p>
+                                                        <p className="font-mono font-bold text-xs text-neutral-950 leading-none mt-0.5">{v.stock}</p>
                                                     </div>
                                                     <div className="w-px h-6 bg-neutral-200 hidden sm:block" />
-                                                    <div className={`p-1.5 rounded text-neutral-500 transition-colors flex items-center gap-1 ${expandedVariantId === v.id ? 'bg-neutral-150' : 'hover:bg-neutral-50'}`}>
-                                                        <span className="text-[10px] font-semibold hidden sm:inline">Editar</span>
+                                                    <div className={`px-2 py-1 rounded text-neutral-700 transition-colors flex items-center gap-1 ${expandedVariantId === v.id ? 'bg-neutral-100 font-bold text-neutral-950' : 'hover:bg-neutral-100 font-medium'}`}>
+                                                        <span className="text-[10px] font-bold hidden sm:inline">Editar</span>
                                                         {expandedVariantId === v.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                                     </div>
                                                     <button onClick={(e) => { e.stopPropagation(); removeVariant(v.id) }} className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"><Trash2 size={15} /></button>
@@ -1267,17 +1264,17 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             {/* Desplegable de Edición Fina de la Variante */}
                                             <AnimatePresence>
                                                 {expandedVariantId === v.id && (
-                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-neutral-200/50 bg-neutral-50/50">
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-neutral-200/50 bg-neutral-50/60">
                                                         <div className="p-4 space-y-4">
                                                             
                                                             <div className="flex flex-col sm:flex-row gap-4">
                                                                 {/* Foto Variante */}
                                                                 <div className="shrink-0 flex flex-col gap-1.5 group relative">
-                                                                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Foto</label>
+                                                                    <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider">Foto</label>
                                                                     <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
 
                                                                     {v.variant_image ? (
-                                                                        <div className="relative w-14 h-14 rounded border border-neutral-200/50 overflow-hidden bg-white shrink-0 flex items-center justify-center">
+                                                                        <div className="relative w-14 h-14 rounded border border-neutral-200/60 overflow-hidden bg-white shrink-0 flex items-center justify-center shadow-xs">
                                                                             <Image
                                                                                 src={getOptimizedUrl(v.variant_image)}
                                                                                 alt=""
@@ -1287,7 +1284,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                             />
                                                                             <button
                                                                                 onClick={() => document.getElementById(`file-${v.id}`)?.click()}
-                                                                                className="absolute inset-0 bg-neutral-900/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer"
+                                                                                className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer"
                                                                                 title="Cambiar Foto"
                                                                             >
                                                                                 {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon size={16} />}
@@ -1296,7 +1293,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     ) : (
                                                                         <button
                                                                             onClick={() => document.getElementById(`file-${v.id}`)?.click()}
-                                                                            className="w-14 h-14 rounded border border-dashed border-neutral-300 bg-white hover:border-neutral-400 flex items-center justify-center overflow-hidden transition-all text-neutral-400 hover:text-neutral-900"
+                                                                            className="w-14 h-14 rounded border border-dashed border-neutral-300 bg-white hover:border-neutral-500 flex items-center justify-center overflow-hidden transition-all text-neutral-600 hover:text-neutral-950 shadow-xs"
                                                                             title="Añadir Foto"
                                                                         >
                                                                             {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImagePlus size={16} />}
@@ -1307,19 +1304,19 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                 {/* Atributos específicos del SKU */}
                                                                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                                     <div>
-                                                                        <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 block">Talla / Identificador</label>
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Talla / Identificador</label>
                                                                         <input type="text" value={v.size} onChange={(e) => updateVariantOverride(v.id, 'size', e.target.value)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors" />
                                                                     </div>
                                                                     <div>
-                                                                        <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 block">Stock</label>
-                                                                        <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors" />
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Stock</label>
+                                                                        <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors font-mono" />
                                                                     </div>
                                                                     <div className="sm:col-span-2">
-                                                                        <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                                                                        <div className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                                                                             <span>Atributo de opción</span>
                                                                             <label className="flex items-center gap-1 cursor-pointer">
                                                                                 <input type="checkbox" checked={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'} onChange={(e) => updateVariantOverride(v.id, 'color_hex', e.target.checked ? '#000000' : 'transparent')} className="accent-neutral-900" />
-                                                                                <span className="text-[9px] font-semibold text-neutral-400">Lleva Color</span>
+                                                                                <span className="text-[10px] font-bold text-neutral-700">Lleva Color</span>
                                                                             </label>
                                                                         </div>
                                                                         <div className="flex items-center gap-2 bg-white border border-neutral-200/50 rounded-lg p-1 transition-colors">
@@ -1333,24 +1330,24 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                             {/* Sobrescribir Precios por SKU */}
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 border-t border-neutral-200/50">
                                                                 <div>
-                                                                    <label className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider mb-1 block">Precio Propio $</label>
+                                                                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 block font-mono">Precio Propio $</label>
                                                                     <div className="relative">
-                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
+                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
-                                                                    <label className="text-[9px] font-bold text-rose-800 uppercase tracking-wider mb-1 block">Tachado Propio $</label>
+                                                                    <label className="text-[10px] font-bold text-rose-800 uppercase tracking-wider mb-1 block font-mono">Tachado Propio $</label>
                                                                     <div className="relative">
-                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
+                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-rose-200/70 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
                                                                     </div>
                                                                 </div>
                                                                 <div>
-                                                                    <label className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider mb-1 block">Margen Propio $</label>
+                                                                    <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Margen Propio $</label>
                                                                     <div className="relative">
-                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-300 font-mono" />
+                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
+                                                                        <NumberInput min="0" placeholder="Heredado" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1471,13 +1468,16 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             {/* ZONA DE PELIGRO CONTABLE */}
             {productId && (
                 <div className="max-w-5xl mx-auto px-4 md:px-8 mb-10">
-                    <div className="border border-rose-200/50 bg-rose-50/20 rounded-xl p-6 md:p-8 animate-in fade-in duration-200">
+                    <div className="border border-rose-200/60 bg-rose-50/30 rounded-xl p-6 md:p-8 animate-in fade-in duration-200">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="space-y-0.5">
-                                <h3 className="text-sm font-bold text-rose-700 flex items-center gap-1.5"><AlertTriangle size={16} /> Zona de Peligro</h3>
-                                <p className="text-xs text-rose-600/80 max-w-xl leading-relaxed">Remover permanentemente este producto de su catálogo público. Si el producto ya posee historial de órdenes facturadas, se archivará automáticamente como borrador.</p>
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5"><AlertTriangle size={16} /> Zona de Peligro</h3>
+                                <p className="text-xs text-rose-900/80 font-medium max-w-xl leading-relaxed">Remover permanentemente este producto de su catálogo público. Si el producto ya posee historial de órdenes facturadas, se archivará automáticamente como borrador.</p>
                             </div>
-                            <button onClick={(e) => { e.preventDefault(); handleDeleteProduct(); }} disabled={saving} className="shrink-0 px-5 py-2.5 bg-white border border-rose-200/50 text-rose-700 hover:bg-rose-700 hover:text-white hover:border-rose-700 font-semibold text-xs rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"><Trash2 size={14} /> Eliminar Producto</button>
+                            <button onClick={(e) => { e.preventDefault(); handleDeleteProduct(); }} disabled={saving} className="shrink-0 px-5 py-2.5 bg-white border border-rose-300 text-rose-700 hover:bg-rose-700 hover:text-white hover:border-rose-700 font-bold text-xs rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs">
+                                <Trash2 size={14} /> 
+                                <span>Eliminar Producto</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1496,7 +1496,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             className="absolute inset-0 bg-neutral-950/40 backdrop-blur-xs cursor-zoom-out"
                         />
                         
-                        {/* Contenedor de la Imagen con bordes estandarizados */}
+                        {/* Contenedor de la Imagen */}
                         <motion.div 
                             initial={{ scale: 0.98, opacity: 0 }} 
                             animate={{ scale: 1, opacity: 1 }} 
@@ -1506,10 +1506,10 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         >
                             {/* Cabecera del Lightbox */}
                             <div className="p-4 flex justify-between items-center border-b border-neutral-200/50 shrink-0 bg-neutral-50/50">
-                                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Vista Previa de Interfaz (Detalle)</span>
+                                <span className="text-xs font-bold text-neutral-800 uppercase tracking-wider font-mono">Vista Previa de Interfaz (Detalle)</span>
                                 <button 
                                     onClick={() => setIsPreviewZoomOpen(false)} 
-                                    className="p-1.5 text-neutral-400 hover:text-neutral-900 bg-white border border-neutral-200/50 hover:bg-neutral-50 rounded-full transition-colors shadow-xs"
+                                    className="p-1.5 text-neutral-500 hover:text-neutral-950 bg-white border border-neutral-200/50 hover:bg-neutral-50 rounded-full transition-colors shadow-xs"
                                 >
                                     <X size={14} />
                                 </button>
@@ -1517,7 +1517,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             
                             {/* Imagen en resolución completa */}
                             <div className="flex-1 p-6 md:p-8 overflow-y-auto flex items-center justify-center bg-white min-h-[300px]">
-                                <div className="relative w-full h-full min-h-[250px] md:min-h-[450px] aspect-[4/3]">
+                                <div className="relative w-full h-full min-h-[250px] md:min-h-[450px] aspect-square">
                                     <Image 
                                         src="/shipping-badge-preview.webp" 
                                         alt="Ejemplo de mensaje de envío ampliado"
