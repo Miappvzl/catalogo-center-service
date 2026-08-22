@@ -346,7 +346,19 @@ export default function QuotePublicPage() {
                         </div>
                     )}
 
-                  {/* 🚀 TABLA DE ARTÍCULOS ULTRA-COMPACTA (Con Precio Unitario B2B) */}
+               
+                    {/* ALERTA DE INVENTARIO (Solo pantalla) */}
+                    {stockIssues.length > 0 && isQuoteActive && (
+                        <div className="bg-red-50/50 border border-red-100 text-red-700 p-4 rounded-lg mb-8 flex gap-3 items-start print-hidden">
+                            <PackageX size={16} className="shrink-0 mt-0.5" strokeWidth={2.5} />
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-widest mb-1">Stock Insuficiente</p>
+                                <p className="text-xs font-medium">El artículo <b>{stockIssues.join(', ')}</b> se agotó. Contacta a la tienda.</p>
+                            </div>
+                        </div>
+                    )}
+
+                  {/* 🚀 TABLA DE ARTÍCULOS (Multilínea Fluida sin Recortes) */}
                     <div className="mb-6 w-full">
                         <div className="grid grid-cols-12 gap-2 border-b border-zinc-300 pb-1.5 mb-1.5 text-[8px] font-bold uppercase tracking-widest text-zinc-500">
                             <div className="col-span-6">Descripción</div>
@@ -360,26 +372,35 @@ export default function QuotePublicPage() {
                                 <p className="text-[10px] text-zinc-400 py-2 italic">Cargando artículos...</p>
                             ) : (
                                 items.map(item => (
-                                    <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-1.5 border-b border-zinc-100 items-center">
+                                    <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-2 border-b border-zinc-100 items-start">
+                                        {/* 🚀 FIX: Eliminamos 'truncate' y aplicamos 'leading-snug' + 'break-words' */}
                                         <div className="col-span-6 pr-2">
-                                            <p className="text-[11px] font-bold text-zinc-900 leading-none truncate">{item.product_name}</p>
-                                            {item.variant_info && <p className="text-[9px] text-zinc-400 mt-0.5 truncate">{item.variant_info}</p>}
+                                            <p className="text-[11px] font-bold text-zinc-900 leading-snug break-words whitespace-normal">
+                                                {item.product_name}
+                                            </p>
+                                            {item.variant_info && (
+                                                <p className="text-[9px] text-zinc-500 font-medium mt-0.5 leading-tight break-words whitespace-normal">
+                                                    {item.variant_info}
+                                                </p>
+                                            )}
                                         </div>
-                                        <div className="col-span-1 text-center">
+                                        <div className="col-span-1 text-center pt-0.5">
                                             <span className="text-[11px] font-mono font-medium text-zinc-700">{item.quantity}</span>
                                         </div>
-                                        <div className="col-span-2 text-right">
+                                        <div className="col-span-2 text-right pt-0.5">
                                             <span className="text-[10px] font-mono font-medium text-zinc-500">${Number(item.price_at_purchase).toFixed(2)}</span>
                                         </div>
-                                        <div className="col-span-3 text-right flex flex-col justify-center">
-                                            <p className="text-[11px] font-black text-zinc-900 tabular-nums leading-none">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
-                                            <p className="text-[8px] font-mono text-zinc-400 mt-0.5">Bs {((item.price_at_purchase * item.quantity) * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                        <div className="col-span-3 text-right flex flex-col justify-start">
+                                            <p className="text-[11px] font-black text-zinc-900 tabular-nums leading-snug">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
+                                            <p className="text-[8px] font-mono text-zinc-400 mt-0.5 leading-tight">Bs {((item.price_at_purchase * item.quantity) * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
                                         </div>
                                     </div>
                                 ))
                             )}
                         </div>
                     </div>
+
+                 
 
                    {/* 🚀 RESUMEN FINANCIERO INTEGRAL (FASE 4 - Polish) */}
                     <div className="avoid-break flex flex-col md:flex-row print:flex-row justify-between items-end md:items-start print:items-start pt-2 gap-6">
