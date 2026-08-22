@@ -70,8 +70,7 @@ const NAV_LINKS: NavItem[] = [
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
 
-  // 📌 Academia (NUEVO)
-  { name: 'Academia', href: '/admin/academy', icon: GraduationCap, category: 'Academia', allowedPlans: ['digital', 'pro'] },
+
 
   // 📌 Negocio
   { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
