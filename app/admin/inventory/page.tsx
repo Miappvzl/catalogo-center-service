@@ -480,7 +480,8 @@ export default function InventoryPage() {
                                                     <tr key={item.rowId} className="group hover:bg-neutral-50/40 transition-colors">
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             {/* PORTAL FRONTAL: Enlace directo al editor */}
-                                                            <Link href={`/admin/product/edit/${item.productId}`} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
+                                                            
+                                                            <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
                                                                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 relative transition-colors group-hover/portal:border-neutral-300">
                                                                     {item.image ? (
                                                                         <Image
@@ -598,7 +599,7 @@ export default function InventoryPage() {
                                                                 <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 ${statusColor}`}>
                                                                     <StatusIcon size={10} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
                                                                 </div>
-                                                                <Link href={`/admin/product/edit/${item.productId}`} className="hidden md:flex text-neutral-400 hover:text-neutral-900 transition-colors bg-white border border-neutral-200/50 hover:bg-neutral-50 p-1.5 rounded-md shrink-0 shadow-xs" title="Editar producto completo">
+                                                                <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="hidden md:flex text-neutral-400 hover:text-neutral-900 transition-colors bg-white border border-neutral-200/50 hover:bg-neutral-50 p-1.5 rounded-md shrink-0 shadow-xs" title="Editar producto completo">
                                                                     <ArrowUpRight size={14} />
                                                                 </Link>
                                                             </div>
