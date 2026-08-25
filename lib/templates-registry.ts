@@ -1,0 +1,248 @@
+// lib/templates-registry.ts
+import { ThemeConfig } from '@/types/theme';
+
+export interface TemplateDefinition {
+    id: string;
+    name: string;
+    niche: 'general' | 'hardware' | 'streetwear' | 'food' | 'luxury' | 'tech';
+    niche_label: string;
+    description: string;
+    badge?: string;
+    is_premium: boolean;
+    thumbnail_url: string;
+    default_config: ThemeConfig;
+    tags: string[];
+}
+
+export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
+    {
+        id: 'classic',
+        name: 'Preziso Universal',
+        niche: 'general',
+        niche_label: 'General / Retail',
+        description: 'Diseño limpio y moderno con botones en píldora, estética plana sin sombras y alta conversión.',
+        badge: 'Predeterminado',
+        is_premium: false,
+        thumbnail_url: '/base-ui.png',
+        tags: ['universal', 'limpio', 'flat', 'pill'],
+        default_config: {
+            template_id: 'classic',
+            version: 3,
+            colors: {
+                primary: '#000000',
+                primary_text: '#ffffff',
+                background: '#ffffff',
+                text_main: '#111111',
+                surface: '#ffffff',
+                surface_text: '#6b7280',
+                border: '#e5e7eb',
+                incentive: '#059669',
+                badge_discount_bg: '#dc2626',
+                badge_discount_text: '#ffffff',
+                badge_soldout_bg: '#171717',
+                badge_soldout_text: '#ffffff',
+                action_favorite: '#ef4444',
+            },
+            shapes: {
+                button_shape: 'pill',
+                search_bar_shape: 'pill',
+                line_weight: 'thin',
+                ui_shadows: 'none',
+            },
+         typography: {
+                heading_font: 'var(--font-inter), sans-serif',
+                body_font: 'var(--font-inter), sans-serif',
+                price_font: 'var(--font-inter), sans-serif',
+            },
+        layout: {
+                header_style: 'classic',
+                card_style: 'standard',
+                logo_type: 'png_transparent',
+            },
+        },
+    },
+    {
+        id: 'hardware_dense',
+        name: 'Industrial Pro',
+        niche: 'hardware',
+        niche_label: 'Ferretería & Repuestos',
+        description: 'Estructura técnica de esquinas rectas y buscador gigante para ferreterías y repuestos.',
+        badge: 'Popular',
+        is_premium: false,
+        thumbnail_url: '/interfaz-tienda.png',
+        tags: ['ferreteria', 'repuestos', 'automotriz', 'herramientas', 'denso'],
+        default_config: {
+            template_id: 'hardware_dense',
+            version: 3,
+            colors: {
+                primary: '#ffbb00',
+                primary_text: '#1f1f1f',
+                background: '#1f1f1f',
+                text_main: '#ffbb00',
+                surface: '#1f1f1f',
+                surface_text: '#a6a6a6',
+                border: '#424242',
+                incentive: '#f5f5f5',
+                badge_discount_bg: '#dc2626',
+                badge_discount_text: '#ffffff',
+                badge_soldout_bg: '#171717',
+                badge_soldout_text: '#ffffff',
+                action_favorite: '#ef4444',
+            },
+            shapes: {
+                button_shape: 'sharp',
+                search_bar_shape: 'sharp',
+                line_weight: 'thin',
+                ui_shadows: 'none',
+            },
+            typography: {
+                heading_font: 'var(--font-space), system-ui, sans-serif',
+                body_font: 'var(--font-sans), system-ui, sans-serif',
+                price_font: 'var(--font-space), monospace, sans-serif',
+            },
+        layout: {
+                header_style: 'dense_search',
+                card_style: 'dense_hardware',
+                logo_type: 'png_transparent',
+            },
+        },
+    },
+    {
+        id: 'streetwear_bold',
+        name: 'Streetwear Brutalist',
+        niche: 'streetwear',
+        niche_label: 'Moda Urbana & Ropa',
+        description: 'Estética oscura, tipografía Bebas Neue pesada y sombras sólidas de alto impacto visual.',
+        badge: 'Exclusivo',
+        is_premium: false,
+        thumbnail_url: '/hoodietitanio.webp',
+        tags: ['streetwear', 'moda', 'ropa', 'brutalismo', 'dark'],
+        default_config: {
+            template_id: 'streetwear_bold',
+            version: 3,
+            colors: {
+                primary: '#FFFFFF',
+                primary_text: '#000000',
+                background: '#0D0D0D',
+                text_main: '#F5F5F5',
+                surface: '#171717',
+                surface_text: '#A3A3A3',
+                border: '#2E2E2E',
+                incentive: '#10B981',
+                badge_discount_bg: '#dc2626',
+                badge_discount_text: '#ffffff',
+                badge_soldout_bg: '#171717',
+                badge_soldout_text: '#ffffff',
+                action_favorite: '#ef4444',
+            },
+            shapes: {
+                button_shape: 'sharp',
+                search_bar_shape: 'sharp',
+                line_weight: 'bold',
+                ui_shadows: 'hard_brutalist',
+            },
+            typography: {
+                heading_font: 'var(--font-bebas-neue), sans-serif',
+                body_font: 'var(--font-manrope), system-ui, sans-serif',
+                price_font: 'var(--font-bebas-neue), sans-serif',
+            },
+         layout: {
+                header_style: 'minimal',
+                card_style: 'standard',
+                logo_type: 'png_transparent',
+            },
+        },
+    },
+    {
+        id: 'bistro_fast',
+        name: 'Bistro & Fast Food',
+        niche: 'food',
+        niche_label: 'Comida & Restaurantes',
+        description: 'Botones en píldora y colores vibrantes para pedidos rápidos de gastronomía.',
+        badge: 'Popular',
+        is_premium: false,
+        thumbnail_url: '/minimalcargo.webp',
+        tags: ['comida', 'restaurante', 'hamburguesas', 'fast food'],
+        default_config: {
+            template_id: 'bistro_fast',
+            version: 3,
+            colors: {
+                primary: '#E11D48',
+                primary_text: '#FFFFFF',
+                background: '#FFF1F2',
+                text_main: '#1C1917',
+                surface: '#FFFFFF',
+                surface_text: '#78716C',
+                border: '#FECDD3',
+                incentive: '#16A34A',
+                badge_discount_bg: '#dc2626',
+                badge_discount_text: '#ffffff',
+                badge_soldout_bg: '#171717',
+                badge_soldout_text: '#ffffff',
+                action_favorite: '#ef4444',
+            },
+            shapes: {
+                button_shape: 'pill',
+                search_bar_shape: 'pill',
+                line_weight: 'none',
+                ui_shadows: 'soft',
+            },
+            typography: {
+                heading_font: 'var(--font-fredoka), system-ui, sans-serif',
+                body_font: 'var(--font-quicksand), system-ui, sans-serif',
+                price_font: 'var(--font-fredoka), sans-serif',
+            },
+          layout: {
+                header_style: 'classic',
+                card_style: 'standard',
+                logo_type: 'png_transparent',
+            },
+        },
+    },
+    {
+        id: 'minimal_luxury',
+        name: 'Minimal Luxury',
+        niche: 'luxury',
+        niche_label: 'Joyería, Perfumes & Lujo',
+        description: 'Espacios aireados, contrastes tenues y tipografía serifa editorial de alta gama.',
+        badge: 'Pro',
+        is_premium: false,
+        thumbnail_url: '/shipping-badge-preview.webp',
+        tags: ['lujo', 'joyeria', 'perfumes', 'cosmeticos'],
+        default_config: {
+            template_id: 'minimal_luxury',
+            version: 3,
+            colors: {
+                primary: '#18181B',
+                primary_text: '#FFFFFF',
+                background: '#FAFAFA',
+                text_main: '#18181B',
+                surface: '#FFFFFF',
+                surface_text: '#71717A',
+                border: '#E4E4E7',
+                incentive: '#059669',
+                badge_discount_bg: '#dc2626',
+                badge_discount_text: '#ffffff',
+                badge_soldout_bg: '#171717',
+                badge_soldout_text: '#ffffff',
+                action_favorite: '#ef4444',
+            },
+            shapes: {
+                button_shape: 'rounded',
+                search_bar_shape: 'minimal_underlined',
+                line_weight: 'hairline',
+                ui_shadows: 'none',
+            },
+            typography: {
+                heading_font: 'var(--font-cormorant), Georgia, serif',
+                body_font: 'var(--font-montserrat), system-ui, sans-serif',
+                price_font: 'var(--font-outfit), sans-serif',
+            },
+         layout: {
+                header_style: 'minimal',
+                card_style: 'editorial',
+                logo_type: 'png_transparent',
+            },
+        },
+    },
+];

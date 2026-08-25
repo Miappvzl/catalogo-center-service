@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ShoppingCart, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt } from 'lucide-react'
+import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap } from 'lucide-react'
+import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
 import ProductCard from './ProductCard'
@@ -27,6 +28,7 @@ interface CheckoutProps {
 }
 
 export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set(), campaignContext = null }: CheckoutProps) {
+   const activeTheme = useMemo(() => normalizeThemeConfig(storeConfig?.theme_config), [storeConfig?.theme_config])
    const items = useCart(state => state.items)
 const removeItem = useCart(state => state.removeItem)
 const updateQuantity = useCart(state => state.updateQuantity)
@@ -343,119 +345,156 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
         <>
          
 
-{/* 🚀 GATILLO MOBILE DINÁMICO (Optimizado para Interfaces de Alta Gama) */}
+{/* 🚀 GATILLO MOBILE DINÁMICO (Polimorfismo Estructural Awwwards) */}
 <AnimatePresence mode="wait">
     {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
         <motion.div
-            initial={{ y: "100%", opacity: 0 }}
+            initial={{ y: "120%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
+            exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
-            // 🌟 layout permite que el contenedor se adapte fluidamente si cambia de tamaño entre estados
             layout
-            className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/30 flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
         >
-            {items.length > 0 ? (
-                // ==========================================
-                // ESTADO A: CARRITO ACTIVO
-                // ==========================================
-                <>
-                    {/* 🌟 GRUPO INTERACTIVO: Ahora cuenta con feedback háptico visual (whileTap) */}
-                    <motion.div 
-                        whileTap={{ scale: 0.97 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                        className="flex items-center gap-3.5 cursor-pointer group select-none" 
-                        onClick={() => setIsOpen(true)}
-                    >
-                        <div className="relative" data-cart-target="true">
-                            {/* ÍCONO: Mantiene la física de impacto del sistema */}
-                            <motion.div
-                                animate={cartControls}
-                                className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom"
+            {activeTheme.layout?.card_style === 'dense_hardware' ? (
+                /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
+                <div className="w-full bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] h-[72px]">
+                    {items.length > 0 ? (
+                        <>
+                            <div className="flex flex-col justify-center px-5 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
+                                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total a Pagar</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tighter">
+                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                    </span>
+                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)]">
+                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.95, borderRadius: "0px" }}
+                                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                                onClick={() => setIsOpen(true)} 
+                                className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)] active:bg-[var(--store-text-main)] transition-colors"
+                            ><div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="font-mono font-black text-xs uppercase tracking-widest flex items-center gap-1.5"><Zap size={14} className="fill-current" /> PROCESAR</span>
+                                </div>
+                                <span className="font-mono text-[9px] font-bold opacity-80 uppercase tracking-widest">{totalItemsCount} Items</span>
+                            </motion.button>
+                        </>
+                    ) : (
+                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
+                            <div className="flex flex-col justify-center px-5 flex-1">
+                                <span className="text-[10px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
+                                <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate">
+                                    Pedido #{generatedOrderNumber}
+                                </span>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.95, borderRadius: "0px" }}
+                                className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)]"
                             >
-                                <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
-                            </motion.div>
+                                <MessageCircle size={18} className="mb-1" />
+                                <span className="font-mono font-black text-[9px] uppercase tracking-widest">WhatsApp</span>
+                            </motion.button>
+                        </div>
+                    )}
+                </div>
 
-                            {/* BADGE: Efecto Pop Explosivo */}
-                            <motion.span
-                                key={totalItemsCount}
-                                initial={{ scale: 0, y: 8, opacity: 0 }}
-                                animate={{ scale: 1, y: 0, opacity: 1 }}
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 600,
-                                    damping: 14,
-                                    mass: 0.8
-                                }}
-                                className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm"
+            ) : activeTheme.layout?.card_style === 'editorial' ? (
+                /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
+                <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/75 border-[0.5px] border-[var(--store-border)]/50 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-stretch overflow-hidden h-[64px]">
+                    {items.length > 0 ? (
+                        <>
+                            <div className="flex flex-col justify-center px-6 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
+                                <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Subtotal</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-lg font-heading font-medium text-[var(--store-text-main)] leading-none tracking-wide">
+                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                    </span>
+                                    <span className="text-[10px] text-[var(--store-surface-text)] font-medium tracking-wide">
+                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.96 }}
+                                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                                onClick={() => setIsOpen(true)} 
+                                className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 relative overflow-hidden group"
                             >
-                                {totalItemsCount}
-                            </motion.span>
+                                <motion.div 
+                                    animate={{ x: ["-100%", "200%"] }} 
+                                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 2 }} 
+                                    className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--store-text-main)]/10 to-transparent skew-x-12" 
+                                />
+                                <ShoppingBag size={16} strokeWidth={1} />
+                                <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Ver Bolsa</span>
+                                <div className="absolute top-2 right-2 w-3.5 h-3.5 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-full flex items-center justify-center text-[7px] font-bold">
+                                    {totalItemsCount}
+                                </div>
+                            </motion.button>
+                        </>
+                    ) : (
+                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
+                            <div className="flex flex-col justify-center px-6 flex-1">
+                                <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Pendiente</span>
+                                <span className="text-sm font-heading font-medium text-[var(--store-text-main)] tracking-wide truncate">
+                                    Orden #{generatedOrderNumber}
+                                </span>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.96 }} 
+                                className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40"
+                            >
+                                <MessageCircle size={16} strokeWidth={1} />
+                                <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Enviar</span>
+                            </motion.button>
                         </div>
+                    )}
+                </div>
 
-                        {/* BLOQUE DE PRECIO: Tipografía y lectura ultra-limpia */}
-                        <div className="flex flex-col items-start structural-subcontainer">
-                            <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">
-                                {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                            </span>
-                            <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">
-                                Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                    </motion.div>
-
-                    {/* BOTÓN PRINCIPAL DE ACCIÓN */}
-                    <button 
-                        onClick={() => setIsOpen(true)} 
-                        className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer"
-                    >
-                        Pagar
-                    </button>
-                </>
             ) : (
-                // ==========================================
-                // ESTADO B: PEDIDO PENDIENTE POR WHATSAPP
-                // ==========================================
-                <motion.div 
-                    whileTap={{ scale: 0.99 }}
-                    className="flex items-center gap-3 w-full cursor-pointer group select-none" 
-                    onClick={() => setIsOpen(true)}
-                >
-                    {/* 🌟 GLOW DE RESPIRACIÓN PREMIUM: Reemplaza al pulse genérico */}
-                    <motion.div 
-                        animate={{ 
-                            scale: [1, 1.04, 1],
-                            boxShadow: [
-                                "0 0 10px var(--store-primary)/20", 
-                                "0 0 20px var(--store-primary)/50", 
-                                "0 0 10px var(--store-primary)/20"
-                            ]
-                        }}
-                        transition={{ 
-                            repeat: Infinity, 
-                            duration: 2.2, 
-                            ease: "easeInOut" 
-                        }}
-                        className="p-2.5 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)]"
-                    >
-                        <MessageCircle size={22} strokeWidth={1.75} />
-                    </motion.div>
-
-                    {/* INFORMACIÓN DEL PEDIDO */}
-                    <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">
-                            Pedido #{generatedOrderNumber}
-                        </span>
-                        <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)] uppercase tracking-wider">
-                            Pendiente por WhatsApp
-                        </span>
-                    </div>
-
-                    {/* 🌟 ACCESIBILIDAD CORREGIDA: Cambiado de <button> a un <span> semántico */}
-                    <span className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-colors group-hover:bg-[var(--store-border)]/50 pointer-events-none select-none">
-                        Abrir
-                    </span>
-                </motion.div>
+                /* 🌟 VARIANTE UNIVERSAL: Diseño Original Intacto */
+                <div className="w-full backdrop-blur-2xl flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--store-surface)]/85 border-t border-[var(--store-border)]/30">
+                    {items.length > 0 ? (
+                        <>
+                            <motion.div whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 15 }} className="flex items-center gap-3.5 cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
+                                <div className="relative" data-cart-target="true">
+                                    <motion.div animate={cartControls} className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom">
+                                        <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                                    </motion.div>
+                                    <motion.span key={totalItemsCount} initial={{ scale: 0, y: 8, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 600, damping: 14, mass: 0.8 }} className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
+                                        {totalItemsCount}
+                                    </motion.span>
+                                </div>
+                                <div className="flex flex-col items-start structural-subcontainer">
+                                    <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">
+                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                    </span>
+                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">
+                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </motion.div>
+                            <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
+                                Pagar
+                            </button>
+                        </>
+                    ) : (
+                        <motion.div whileTap={{ scale: 0.99 }} className="flex items-center gap-3 w-full cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
+                            <motion.div animate={{ scale: [1, 1.04, 1], boxShadow: ["0 0 10px var(--store-primary)/20", "0 0 20px var(--store-primary)/50", "0 0 10px var(--store-primary)/20"] }} transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }} className="p-2.5 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)]">
+                                <MessageCircle size={22} strokeWidth={1.75} />
+                            </motion.div>
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">Pedido #{generatedOrderNumber}</span>
+                                <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)] uppercase tracking-wider">Pendiente por WhatsApp</span>
+                            </div>
+                            <span className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-colors group-hover:bg-[var(--store-border)]/50 pointer-events-none select-none">Abrir</span>
+                        </motion.div>
+                    )}
+                </div>
             )}
         </motion.div>
     )}

@@ -59,10 +59,8 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true)
     const [store, setStore] = useState<any>(null)
 
-    // Estados de Configuración
-    const [identity, setIdentity] = useState({ phone: '', name: '', hero_url: '', logo_url: '' })
-    const [uploadingLogo, setUploadingLogo] = useState(false)
-    const logoInputRef = useRef<HTMLInputElement>(null)
+  // Estados de Configuración Operacional
+    const [identity, setIdentity] = useState({ phone: '', name: '' }) // 🚀 Logo y Hero removidos de aquí
     const [wholesale, setWholesale] = useState({ active: false, min_items: 6, discount_percentage: 15 })
     const [receipt, setReceipt] = useState({ strict_mode: false })
 
@@ -98,9 +96,9 @@ export default function SettingsPage() {
             if (!user) return
 
             const { data } = await supabase.from('stores').select('*').eq('user_id', user.id).single()
-            if (data) {
+       if (data) {
                 setStore(data)
-                setIdentity({ phone: data.phone || '', name: data.name, hero_url: data.hero_url || '', logo_url: data.logo_url || '' })
+                setIdentity({ phone: data.phone || '', name: data.name }) // 🚀 Logo y Hero removidos
                 setWholesale(data.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 })
                 setReceipt(data.receipt_config || { strict_mode: false })
                 setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
@@ -140,35 +138,7 @@ export default function SettingsPage() {
         setIsDirty(true)
     }
 
-    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return
-        const file = e.target.files[0]
-        if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'error')
-        if (file.size > 2 * 1024 * 1024) return Swal.fire('Error', 'El logo no debe superar los 2MB', 'warning')
-
-        setUploadingLogo(true)
-        try {
-            const fileExt = file.name.split('.').pop()
-            const fileName = `logo-${store.id}-${Date.now()}.${fileExt}`
-
-            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, file)
-            if (uploadError) throw uploadError
-
-            const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
-
-            setIdentity(prev => ({ ...prev, logo_url: publicUrl }))
-            await supabase.from('stores').update({ logo_url: publicUrl }).eq('id', store.id)
-            await revalidateStoreCache()
-
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold shadow-sm' } })
-            Toast.fire({ icon: 'success', title: 'Logo oficial actualizado' })
-        } catch (error) {
-            Swal.fire('Error', 'Falló la subida del logo', 'error')
-        } finally {
-            setUploadingLogo(false)
-            if (logoInputRef.current) logoInputRef.current.value = ''
-        }
-    }
+    
 
     const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
@@ -292,36 +262,7 @@ export default function SettingsPage() {
                           <p className="text-xs text-neutral-400 mt-1">Defina el nombre oficial, logotipo y aspecto público de su comercio.</p>
                         </div>
 
-                        {/* LOGO UPLOADER */}
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-neutral-100">
-                            <div className="relative group cursor-pointer shrink-0 active:scale-95 transition-transform" onClick={() => logoInputRef.current?.click()}>
-                                <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                                
-                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-neutral-50 border border-neutral-200/60 flex items-center justify-center overflow-hidden transition-all relative">
-                                    {uploadingLogo ? (
-                                        <Loader2 className="animate-spin text-neutral-400" size={18} />
-                                    ) : identity.logo_url ? (
-                                        <Image
-                                            src={getOptimizedUrl(identity.logo_url)}
-                                            alt="Logo oficial"
-                                            fill
-                                            sizes="80px"
-                                            className="object-cover mix-blend-multiply transition-transform duration-500"
-                                        />
-                                    ) : (
-                                        <ShoppingBag size={20} className="text-neutral-400" />
-                                    )}
-                                </div>
-                                <div className="absolute -bottom-1 -right-1 bg-white border border-neutral-200 text-neutral-600 w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
-                                    <Edit2 size={10} strokeWidth={2.5} />
-                                </div>
-                            </div>
-                            <div className="text-center sm:text-left space-y-1">
-                                <h4 className="text-xs font-semibold text-neutral-800">Isotipo de marca</h4>
-                                <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-mono">Recomendado: 1:1 • Peso máx 2MB</p>
-                                <p className="text-xs text-neutral-400 max-w-sm leading-relaxed">Este gráfico se incrustará en el encabezado de su sitio web, correos transaccionales y recibos físicos de facturas.</p>
-                            </div>
-                        </div>
+                       
 
                         {/* BRAND FIELDS */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -350,29 +291,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        {/* HERO BANNER UPLOADER */}
-                        <div className="pt-2">
-                            <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-3 block flex items-center gap-1">
-                                <ImageIcon size={12} className="text-neutral-400" /> Banner Promocional Principal
-                            </label>
-                            <input type="file" ref={heroInputRef} className="hidden" accept="image/*" onChange={handleHeroUpload} />
-
-                            {identity.hero_url ? (
-                                <div className="relative w-full h-40 md:h-48 rounded-lg overflow-hidden group border border-neutral-200/80 cursor-pointer" onClick={() => heroInputRef.current?.click()}>
-                                    <Image src={getOptimizedUrl(identity.hero_url)} alt="Banner" fill sizes="(max-width: 768px) 100vw, 1200px" className="object-cover" />
-                                    <div className="absolute inset-0 bg-neutral-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="bg-white text-neutral-900 px-4 py-2 rounded-lg text-xs font-semibold shadow-sm hover:scale-102 transition-transform flex items-center gap-1.5">
-                                            {uploadingHero ? <Loader2 className="animate-spin" size={12} /> : <Upload size={12} />} Cambiar imagen
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div onClick={() => heroInputRef.current?.click()} className={`w-full h-32 rounded-lg border border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingHero ? 'border-neutral-300 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400 bg-neutral-50/40'}`}>
-                                    {uploadingHero ? <Loader2 className="animate-spin text-neutral-400 mb-1.5" size={20} /> : <Upload className="text-neutral-400 mb-1.5" size={20} />}
-                                    <span className="text-xs font-semibold text-neutral-700">Subir Banner Promocional (1920x600px)</span>
-                                </div>
-                            )}
-                        </div>
+                      
                     </section>
 
                     {/* DATOS FISCALES (CON ACENTOS MUTED) */}

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
+import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
@@ -10,6 +11,8 @@ import { isValidUUID } from '@/utils/validations'
 import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
+import { MOCK_DATA } from '@/lib/mock-data'
+import { TEMPLATES_REGISTRY } from '@/lib/templates-registry'
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
@@ -17,6 +20,7 @@ import CustomerAuth from '@/components/passport/CustomerAuth'
 import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRADA
 import BCVLogo from '@/components/icons/BCVLogo' // 🚀 Importación del logo modular
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import StoreHeader from './StoreHeader'
 
 
 
@@ -24,7 +28,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 const CategoryPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
-    className={`px-5 py-2 md:px-6 md:py-2 rounded-full text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
+    className={`px-5 py-2 md:px-6 md:py-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 border active:scale-95 whitespace-nowrap ${active
       ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
       : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)]/40 hover:bg-[var(--store-surface)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]'
       }`}
@@ -33,8 +37,8 @@ const CategoryPill = ({ label, active, onClick }: { label: string, active: boole
   </button>
 )
 
-// 🚀 MICRO-COMPONENTE OPTIMIZADO: The Live Pill (Tabular Nums & Pulse)
-const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string }) => {
+// 🚀 MICRO-COMPONENTE OPTIMIZADO: Reloj Polimórfico
+const PromoCountdown = ({ expiresAt, color, variant = 'standard' }: { expiresAt: string, color: string, variant?: 'standard' | 'industrial' | 'editorial' }) => {
   const [timeLeft, setTimeLeft] = useState('')
 
   useEffect(() => {
@@ -49,7 +53,6 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
         return
       }
 
-
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
       const seconds = Math.floor((distance % (1000 * 60)) / 1000)
@@ -59,6 +62,28 @@ const PromoCountdown = ({ expiresAt, color }: { expiresAt: string, color: string
   }, [expiresAt])
 
   if (!timeLeft) return null;
+
+  if (variant === 'industrial') {
+      return (
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 bg-black/10" style={{ borderColor: `${color}40`, color: color }}>
+              <div className="w-2 h-2 shrink-0 animate-pulse" style={{ backgroundColor: timeLeft !== 'Expirado' ? color : 'transparent' }}></div>
+              <span className="text-[11px] font-mono font-black tabular-nums tracking-widest leading-none mt-px">
+                  {timeLeft}
+              </span>
+          </div>
+      )
+  }
+
+  if (variant === 'editorial') {
+      return (
+          <div className="inline-flex items-center gap-2 opacity-80" style={{ color: color }}>
+              <Clock size={12} strokeWidth={1.5} />
+              <span className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] leading-none mt-px">
+                  {timeLeft !== 'Expirado' ? `Acceso expira en ${timeLeft}` : 'Acceso Expirado'}
+              </span>
+          </div>
+      )
+  }
 
   return (
     <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md transition-all ml-1 md:ml-3" style={{ borderColor: `${color}30`, backgroundColor: `${color}10`, color: color }}>
@@ -96,7 +121,7 @@ const CartHUDIndicator = () => {
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-none flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/80 backdrop-blur-2xl rounded-[32px] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/10"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-none flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/80 backdrop-blur-2xl rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/10"
         >
           <svg className="w-14 h-14 text-[var(--store-primary-text)] mb-2 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }} d="M20 6L9 17l-5-5" />
@@ -183,47 +208,113 @@ const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
 
 interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
 
-export default function StoreInterface({ store, products, rates, promotions = [] }: Props) {
+// 🚀 RENOMBRAMOS LOS PROPS INTERNOS PARA INTERCEPTARLOS
+export default function StoreInterface({ store: initialStore, products: initialProducts, rates, promotions = [] }: Props) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
-// LÓGICA BOUTIQUE Y CAMPAÑAS
- // LÓGICA BOUTIQUE Y CAMPAÑAS
+    const searchParams = useSearchParams()
+     const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
+  // ... (tus hooks de searchParams) ...
+
+// 🚀 1. EL INTERCEPTOR DE HOLOGRAMAS (MOCK HYDRATION)
+  const isPreviewMode = searchParams?.get('mode') === 'preview';
+  const isMockMode = initialProducts.length === 0 && isPreviewMode;
+
+  // 🚀 2. CEREBRO DE TOKENS (Con Inyección Dinámica de Banners Duales)
+  const [liveConfig, setLiveConfig] = useState<any>(() => normalizeThemeConfig(initialStore?.theme_config))
+  
+  const activeTheme = useMemo(() => {
+      const baseTheme = normalizeThemeConfig(liveConfig || initialStore?.theme_config);
+      
+      if (isMockMode) {
+          const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
+          const niche = template ? template.niche : 'general';
+          const mockData = MOCK_DATA[niche];
+          
+          if (mockData) {
+              // Forzamos el modo transparente y los banners duales para el simulador
+              baseTheme.layout = {
+                  ...baseTheme.layout,
+                  logo_type: 'png_transparent',
+                  logo_url: initialStore?.logo_url || mockData.logo,
+                  hero_desktop_url: initialStore?.theme_config?.layout?.hero_desktop_url || mockData.hero_desktop,
+                  hero_mobile_url: initialStore?.theme_config?.layout?.hero_mobile_url || mockData.hero_mobile,
+              };
+          }
+      }
+      return baseTheme;
+  }, [liveConfig, initialStore?.theme_config, initialStore?.logo_url, isMockMode]);
+
+  const activeThemeVariables = useMemo(() => generateCssVariables(activeTheme), [activeTheme]);
+  
+  const currentNiche = useMemo(() => {
+      const template = TEMPLATES_REGISTRY.find(t => t.id === activeTheme.template_id);
+      return template ? template.niche : 'general';
+  }, [activeTheme.template_id]);
+
+  const products = isMockMode && MOCK_DATA[currentNiche] ? MOCK_DATA[currentNiche].products : initialProducts;
+// 🚀 3. INTERCEPTOR DE PROMOCIONES (Holograma Promocional)
+  const displayPromotions = useMemo(() => {
+      if (isMockMode && MOCK_DATA[currentNiche]?.promotion) {
+          return [{
+              ...MOCK_DATA[currentNiche].promotion,
+              id: 'mock-promo-1',
+              is_active: true,
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // +24 horas de urgencia viva
+          }];
+      }
+      return promotions || [];
+  }, [isMockMode, currentNiche, promotions]);
+
+  const store = useMemo(() => {
+      if (!isMockMode || !MOCK_DATA[currentNiche]) return initialStore;
+      return {
+          ...initialStore,
+          // Mantenemos esto por retrocompatibilidad con componentes legacy
+          logo_url: activeTheme.layout.logo_url,
+          hero_url: activeTheme.layout.hero_desktop_url,
+          // 🚀 INYECCIÓN CRÍTICA: Pasamos el holograma a la cabecera
+          theme_config: activeTheme,
+      }
+  }, [initialStore, isMockMode, currentNiche, activeTheme]);
+
+ 
+  // LÓGICA BOUTIQUE Y CAMPAÑAS
+  // LÓGICA BOUTIQUE Y CAMPAÑAS
   const pasilloQuery = searchParams?.get('pasillo')
   const expQuery = searchParams?.get('exp') // 👈 Obtenemos la expiración
   const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
   const [campaignContext, setCampaignContext] = useState<string | null>(pasilloQuery || null)
-  
+
   // 🚀 ESTADOS DEL RELOJ FLASH
   const [isMounted, setIsMounted] = useState(false)
   const [timeLeft, setTimeLeft] = useState<string | null>(null)
   const [isExpired, setIsExpired] = useState(false)
 
   useEffect(() => {
-      setIsMounted(true);
-      if (!expQuery) return;
+    setIsMounted(true);
+    if (!expQuery) return;
 
-      const targetTime = parseInt(expQuery, 10);
-      
-      const updateTimer = () => {
-          const now = Date.now();
-          const distance = targetTime - now;
+    const targetTime = parseInt(expQuery, 10);
 
-          if (distance <= 0) {
-              setIsExpired(true);
-              setTimeLeft('00:00:00');
-              return;
-          }
+    const updateTimer = () => {
+      const now = Date.now();
+      const distance = targetTime - now;
 
-          const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-          const s = Math.floor((distance % (1000 * 60)) / 1000);
-          setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      };
+      if (distance <= 0) {
+        setIsExpired(true);
+        setTimeLeft('00:00:00');
+        return;
+      }
 
-      updateTimer();
-      const interval = setInterval(updateTimer, 1000);
-      return () => clearInterval(interval);
+      const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
   }, [expQuery]);
 
 
@@ -243,7 +334,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
   })
 
 
-  const [liveConfig, setLiveConfig] = useState<any>(store?.theme_config || null)
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
   const [isStickyVisible, setIsStickyVisible] = useState(true)
@@ -255,30 +346,30 @@ export default function StoreInterface({ store, products, rates, promotions = []
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
-    // 🚀 LECTURA DE CONFIGURACIÓN FISCAL PARA EL CATÁLOGO
+  // 🚀 LECTURA DE CONFIGURACIÓN FISCAL PARA EL CATÁLOGO
   const showTaxInCatalog = store?.show_tax_in_catalog === true && store?.fiscal_profile !== 'informal';
   const taxPercentage = store?.default_tax_percentage || 16;
 
- 
 
 
 
-   // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
+
+  // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
   const exitBoutiqueMode = () => {
     // Reemplazamos la URL usando el pathname actual, eliminando el query param de forma segura
-    router.replace(pathname, { scroll: false }) 
+    router.replace(pathname, { scroll: false })
     setIsBoutiqueMode(false)
     setSelectedCategory('Todos')
     setSearch('')
   }
 
-   // 2. REFS DE CONTROL DEL DOM
+  // 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   const catalogTopRef = useRef<HTMLDivElement>(null) // 🚀 NUEVA REFERENCIA DE ANCLAJE
 
-    // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
+  // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
   // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
   const items = useCart(state => state.items)
@@ -343,7 +434,7 @@ export default function StoreInterface({ store, products, rates, promotions = []
     return ['Todos', ...sortedCats]
   }, [products, store?.categories_order])
 
-const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
+  const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
     let baseFiltered = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       const productCatClean = normalizeCategory(p.category)
@@ -354,19 +445,19 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
 
     // 🚀 SMART MERCHANDISING: Ordena stock crítico a la cima en Modo Boutique
     if (isBoutiqueMode) {
-        baseFiltered.sort((a, b) => {
-            const stockA = a.product_variants?.length > 0 ? a.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (a.stock || 0);
-            const stockB = b.product_variants?.length > 0 ? b.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (b.stock || 0);
-            const isCriticalA = stockA > 0 && stockA <= 3 ? 1 : 0;
-            const isCriticalB = stockB > 0 && stockB <= 3 ? 1 : 0;
-            return isCriticalB - isCriticalA;
-        });
+      baseFiltered.sort((a, b) => {
+        const stockA = a.product_variants?.length > 0 ? a.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (a.stock || 0);
+        const stockB = b.product_variants?.length > 0 ? b.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (b.stock || 0);
+        const isCriticalA = stockA > 0 && stockA <= 3 ? 1 : 0;
+        const isCriticalB = stockB > 0 && stockB <= 3 ? 1 : 0;
+        return isCriticalB - isCriticalA;
+      });
     }
 
     const featured = baseFiltered.filter(p => p.is_featured)
     return { featured, standard: baseFiltered }
   }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode])
- 
+
 
   // 6. TODOS LOS EFECTOS DE CICLO DE VIDA (UNIFICADOS ABAJO)
   useEffect(() => {
@@ -377,7 +468,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
     return () => subscription.unsubscribe()
   }, [supabase])
 
-// 🚀 OPTIMIZACIÓN: Onboarding Silencioso y Carga de Favoritos Blindado contra UUIDs nulos/"undefined"
+  // 🚀 OPTIMIZACIÓN: Onboarding Silencioso y Carga de Favoritos Blindado contra UUIDs nulos/"undefined"
   useEffect(() => {
     // Si no hay sesión, o los UUIDs no son sintácticamente válidos, cancelamos la llamada a la BD
     if (!currentUser?.id || !store?.id || !isValidUUID(currentUser.id) || !isValidUUID(store.id)) {
@@ -547,11 +638,17 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const isLocalhost = event.origin.includes('localhost') || event.origin.includes('127.0.0.1');
-      const isPrezisoDomain = event.origin.includes('preziso.shop');
-      if (!isLocalhost && !isPrezisoDomain) return;
+      // 🚀 Permite comunicación en localhost, vercel.app y preziso.shop
+      const origin = event.origin || '';
+      const isAllowed = origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.includes('vercel.app') ||
+        origin.includes('preziso');
+
+      if (!isAllowed) return;
+
       if (event.data?.type === 'UPDATE_THEME') {
-        setLiveConfig(event.data.config);
+        setLiveConfig(normalizeThemeConfig(event.data.config));
       }
     };
     window.addEventListener('message', handleMessage);
@@ -623,8 +720,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
     return () => document.removeEventListener('openProductModal', handleOpenFromCart);
   }, []);
 
-  useEffect(() => {
-    if (!promotions || promotions.length <= 1) return;
+useEffect(() => {
+    if (!displayPromotions || displayPromotions.length <= 1) return;
     const interval = setInterval(() => {
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
@@ -633,7 +730,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [promotions]);
+  }, [displayPromotions]);
 
   useEffect(() => {
     const ref = searchParams?.get('ref');
@@ -666,8 +763,6 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
   }
 
 
-
-  const activeTheme = liveConfig || store?.theme_config || { colors: { primary: '#000000', primary_text: '#ffffff', background: '#ffffff' } };
 
   // 🚀 DETECCIÓN INFALIBLE V2: Superposición de estados (Base de Datos + Motor de Luminancia)
   const isStoreDark = useMemo(() => {
@@ -706,7 +801,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
   };
 
   // 🚀 ESTA ES LA LÍNEA QUE SE HABÍA BORRADO:
-  const dynamicMask = `linear-gradient(to right, ${isScrolledLeft ? 'transparent' : '#000'} 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)`;
+  const dynamicMask = "linear-gradient(to right, " + (isScrolledLeft ? 'transparent' : '#000') + " 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)";
 
   // ==========================================
   // 🚀 MOTOR MATEMÁTICO DE PAGINACIÓN INTELIGENTE
@@ -797,341 +892,148 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
   return (
-    <div className="min-h-screen bg-[var(--store-bg)] pb-8 font-sans selection:bg-[var(--store-primary)] selection:text-[var(--store-primary-text)]" style={{
-
-      // Los 3 originales
-      '--store-primary': activeTheme.colors?.primary || '#000000',
-      '--store-primary-text': activeTheme.colors?.primary_text || '#ffffff',
-      '--store-bg': activeTheme.colors?.background || '#ffffff',
-
-      // 🚀 Los 4 nuevos que le dan soporte absoluto al Modo Oscuro y White-Label
-      '--store-text-main': activeTheme.colors?.text_main || '#111111',
-      '--store-surface': activeTheme.colors?.surface || '#ffffff',
-      '--store-surface-text': activeTheme.colors?.surface_text || '#6b7280',
-      '--store-border': activeTheme.colors?.border || '#d4d4d499',
-      // 🚀 La nueva variable psicológica
-      '--store-incentive': activeTheme.colors?.incentive || '#059669',
-
-    } as React.CSSProperties}
+    <div
+      className="min-h-screen bg-[var(--pz-bg)] pb-8 selection:bg-[var(--pz-primary)] selection:text-[var(--pz-primary-text)]"
+      style={{
+        ...activeThemeVariables,
+        fontFamily: 'var(--font-body, var(--font-inter), sans-serif)',
+      }}
     >
 
-      {/* 🚀 INYECCIÓN: BANNER DE MEMORIA PERSISTENTE (Aparecerá hasta arriba de todo) */}
+      {/* 1. NOTIFICACIÓN DE COTIZACIÓN PENDIENTE (Hasta arriba de todo) */}
       <QuoteRecoveryBanner currentSlug={store.slug} />
 
-      {/* 🚀 INYECCIÓN: BANNER DE CAMPAÑA FLASH (Debajo de QuoteRecoveryBanner) */}
+      {/* 2. BANNER DE CAMPAÑA FLASH */}
       <AnimatePresence>
-          {isMounted && isBoutiqueMode && expQuery && !isExpired && (
-              <motion.div 
-                  initial={{ height: 0, opacity: 0 }} 
-                  animate={{ height: 'auto', opacity: 1 }} 
-                  className="bg-neutral-950 text-white px-4 py-2.5 flex items-center justify-center gap-3 overflow-hidden"
-              >
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Venta Flash expira en:</span>
-                  <span className="font-mono font-black text-sm tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
-                      {timeLeft}
-                  </span>
-              </motion.div>
-          )}
+        {isMounted && isBoutiqueMode && expQuery && !isExpired && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="bg-neutral-950 text-white px-4 py-2.5 flex items-center justify-center gap-3 overflow-hidden"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Venta Flash expira en:</span>
+            <span className="font-mono font-black text-sm tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
+              {timeLeft}
+            </span>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      {/* 🚀 BLOQUEO POR EXPIRACIÓN */}
-      {isMounted && isExpired && (
-          <div className="fixed inset-0 z-[99999] bg-[var(--store-bg)] flex flex-col items-center justify-center p-6 text-center">
-              <h2 className="text-2xl font-black text-[var(--store-text-main)] mb-2">Campaña Expirada</h2>
-              <p className="text-sm text-[var(--store-surface-text)] mb-6">El tiempo de acceso a este pasillo VIP ha finalizado.</p>
-              <button onClick={exitBoutiqueMode} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest">
-                  Ver Catálogo Normal
-              </button>
-          </div>
-      )}
-
-     
-
-
-      {/* --- 1. STORE INFO HEADER (CLEAN LOOK) --- */}
-      <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]/30">
-
-        {/* Logo & Store Info */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <div className="relative shrink-0">
-            {store.logo_url ? (
-              <Image src={getOptimizedUrl(store.logo_url)} width={44} height={44} className="w-10 h-10 md:w-11 md:h-11 object-contain rounded-full border border-[var(--store-border)] shadow-sm" alt="Logo" />
-            ) : (
-              <div className="w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] rounded-full flex items-center justify-center text-[var(--store-surface-text)] border border-[var(--store-border)] shadow-sm">
-                <ShoppingBag size={18} strokeWidth={1.5} />
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px]">
-              {store.name}
-            </h1>
-
-          </div>
-        </div>
-
-        {/* Tasa Oficial Minimalista (Interactiva, Estática y Pixel Perfect) */}
-        <button
-          onClick={() => setIsRateModalOpen(true)}
-          className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-lg active:scale-95 transition-all"
-          aria-label="Ver detalles de la tasa"
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
-              {isEur ? 'Tasa EUR' : 'Tasa BCV'}
-            </span>
-            <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors sm:hidden">
-              {isEur ? 'EUR' : 'BCV'}
-            </span>
-          </div>
-
-          <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
-
-          {/* Monto de Tasa (100% Alineado y Seguro en todo navegador) */}
-          <div className="flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
-
-            {/* Conservamos la respiración sutil en el Bs. */}
-            <motion.span
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="mr-0.5 select-none font-sans text-xs"
-            >
-              Bs.
-            </motion.span>
-
-            {/* Renderizado nativo formateado con comas venezolanas (es-VE) */}
-            <span className="tabular-nums">
-              {Intl.NumberFormat("es-VE", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(activeRate)}
-            </span>
-
-          </div>
-        </button>
-
-      </div>
-
-      {/* --- 2. HERO BANNER (ELITE NATURAL FLOW MASK) --- */}
-      {store.hero_url && (
-        <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)]/30 flex justify-center overflow-hidden">
-
-          {/* La máscara envuelve a la imagen como una segunda piel */}
-          <div className="relative w-full max-w-[1100px] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)] [mask-image:linear-gradient(to_right,transparent_0%,black_15%,black_85%,transparent_100%)]">
-
-            {/* Al quitar "fill" y usar "w-full h-auto", el navegador calcula la altura perfecta sin espacios vacíos y sin recortar NADA */}
-            <Image
-              src={getOptimizedUrl(store.hero_url)}
-              alt={`Banner de ${store.name}`}
-              width={1920}
-              height={600}
-              className="w-full h-auto block"
-              crossOrigin="anonymous"
-              priority
-            />
-
-          </div>
-        </div>
-      )}
+      {/* 🚀 3. ENCABEZADO PROTAGÓNICO (AHORA MANEJA EL HERO INTERNAMENTE) */}
+      <StoreHeader
+        layoutStyle={activeTheme.layout?.header_style || 'classic'}
+        store={store}
+        activeRate={activeRate}
+        isEur={isEur}
+        search={search}
+        setSearch={setSearch}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        isBoutiqueMode={isBoutiqueMode}
+        exitBoutiqueMode={exitBoutiqueMode}
+        currentUser={currentUser}
+        orderHistory={orderHistory}
+        hasItems={hasItems}
+        totalItems={totalItems}
+        cartControls={cartControls}
+        setIsAuthModalOpen={setIsAuthModalOpen}
+        setIsHistoryModalOpen={setIsHistoryModalOpen}
+        setIsRateModalOpen={setIsRateModalOpen}
+        isStickyVisible={isStickyVisible}
+        categoryScrollRef={categoryScrollRef}
+        handleCategoryScroll={handleCategoryScroll}
+        dynamicMask={dynamicMask}
+        scrollCategories={scrollCategories}
+        onProfileClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
+      />
 
 
 
-      <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl  pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-        <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
-          <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center mb-3 md:mb-5">
 
-            {/* 1. BUSCADOR Y ACCIONES MOBILE (Izquierda) */}
-            <div className="flex items-center w-full md:max-w-sm gap-1">
-              <div className="relative flex-1 group min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
-                <input
-                  type="text"
-                  placeholder="Buscar producto..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border border-[var(--store-border)]/30 rounded-full pl-11 pr-4 py-3 text-sm font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-1 focus:ring-[var(--store-primary)] transition-all"
-                />
-                {search && (
-                  <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              {/* 🚀 GATILLO PERFIL (MOBILE)  */}
-              <div className="md:hidden shrink-0 w-13 h-14">
-                <button
-                  // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
-                  onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
-                  className="w-full h-full flex items-center justify-center relative rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)] active:scale-95 transition-all duration-300"
-                  title="Mi Perfil"
-                >
-                  <UserCircle size={26} strokeWidth={1} />
-                </button>
-              </div>
-
-
-              {/* 🚀 GATILLO HISTORIAL (MOBILE ONLY) - Permite acceso al PDF limpiamente */}
-              {orderHistory && orderHistory.length > 0 && (
-                <div className="md:hidden shrink-0 w-13 h-14">
-                  <button
-                    onClick={() => setIsHistoryModalOpen(true)}
-                    className="w-full h-full flex items-center justify-center relative rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)] active:scale-95 transition-all duration-300"
-                    title="Mis Pedidos"
-                  >
-                    <Receipt size={26} strokeWidth={1} />
-                    <span className="absolute -top-[-2px] -right-[-4.5px] bg-[var(--store-primary)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full ">
-                      {orderHistory.length}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-          {/* --- CONTENEDOR DE CATEGORÍAS O CABECERA BOUTIQUE --- */}
-            <div className="w-full md:flex-1 min-w-0 relative group flex items-center">
-              
-              {isBoutiqueMode ? (
-                // 🚀 CABECERA MODO BOUTIQUE (Aislamiento de Catálogo)
-                <div className="w-full flex items-center justify-between py-1 px-1 animate-in fade-in duration-500">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 bg-[var(--store-primary)]/10 px-2.5 py-1 rounded-lg border border-[var(--store-primary)]/20">
-                       <Sparkles size={12} className="text-[var(--store-primary)]" />
-                       <span className="text-[10px] font-black uppercase tracking-widest text-[var(--store-primary)] hidden sm:inline">
-                         Pasillo VIP
-                       </span>
-                    </div>
-                    <h2 className="text-sm md:text-base font-black text-[var(--store-text-main)] truncate max-w-[150px] md:max-w-none">
-                       {selectedCategory}
-                    </h2>
-                  </div>
-                  <button
-                    onClick={exitBoutiqueMode}
-                    className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-95 bg-[var(--store-surface)] px-3 py-1.5 rounded-full border border-[var(--store-border)]/50 shrink-0"
-                  >
-                    Ver Todo <ArrowRight size={12} />
-                  </button>
-                </div>
-              ) : (
-                // 🚀 CARRUSEL NORMAL DE CATEGORÍAS
-                <>
-                  <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                     <button
-                  onClick={() => scrollCategories('left')}
-                  className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
-                  aria-label="Desplazar izquierda"
-                >
-                  <ChevronLeft size={14} strokeWidth={2.5} />
-                </button>
-          </div>
-                 
-
-                  <div
-                    ref={categoryScrollRef}
-                    onScroll={handleCategoryScroll}
-                    className="w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1"
-                    style={{ WebkitMaskImage: dynamicMask, maskImage: dynamicMask, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {categories.map((category) => (
-                      <CategoryPill
-                        key={category}
-                        label={category}
-                        active={selectedCategory === category}
-                        onClick={() => setSelectedCategory(category)}
-                      />
-                    ))}
-                  </div>
-
-               <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button
-                  onClick={() => scrollCategories('right')}
-                  className="pointer-events-auto p-2 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150"
-                  aria-label="Desplazar derecha"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </button>
-          </div>
-                </>
-              )}
-            </div>
-            {/* 🚀 GATILLO DE PERFIL (DESKTOP)  */}
-            <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
-              <button
-                // 🚀 CORREGIDO: Redirección consciente del subdominio / subcarpeta
-                onClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
-                className="cursor-pointer relative p-3 rounded-full  text-[var(--store-text-main)] hover:text-[var(--store-primary)] hover:border-[var(--store-primary)] transition-all duration-300"
-                title="Mi Perfil"
-              >
-                <UserCircle size={25} strokeWidth={1.5} />
-              </button>
-            </div>
-
-
-            {/* 🚀 GATILLO DE HISTORIAL DE COMPRAS */}
-            {orderHistory && orderHistory.length > 0 && (
-              <div className="hidden md:flex shrink-0 w-11 h-11 mr-0">
-                <button
-                  onClick={() => setIsHistoryModalOpen(true)}
-                  className="cursor-pointer relative p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)]   transition-all duration-300"
-                  title="Mis Pedidos"
-                >
-                  <Receipt size={25} strokeWidth={1.5} />
-                  <span className="absolute -top-[0.125rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                    {orderHistory.length}
-                  </span>
-                </button>
-              </div>
-            )}
-
-            {/* 3. GATILLO DE CARRITO DESKTOP (Esquina Derecha + Animación Arreglada) */}
-            <div className="hidden md:flex shrink-0 w-12 h-11">
-              <button
-                data-cart-target="true"
-                onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))}
-                className={`cursor-pointer relative p-3 rounded-full  transition-all duration-300 ${hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-primary)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}
-                title="Ver Bolsa"
-              >
-                {/* 🚀 BUMP MAGNÉTICO (Origen Superior por el golpe desde abajo) */}
-                <motion.div
-                  animate={cartControls}
-                  className={hasItems ? "inline-block origin-top" : "inline-block origin-top"}
-                >
-                  <ShoppingCart size={25} strokeWidth={1.5} />
-                </motion.div>
-
-                {/* 🚀 BADGE EXPLOSIVO: Sincronizado con la física del móvil */}
-                <AnimatePresence>
-                  {hasItems && (
-                    <motion.span
-                      key={totalItems}
-                      initial={{ scale: 0, y: 10, opacity: 0 }}
-                      animate={{ scale: 1, y: 0, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 500,
-                        damping: 12,
-                        mass: 1
-                      }}
-                      className="absolute -top-[0.1rem] -right-[-0.1rem] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full "
-                    >
-                      {totalItems}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* 🚀 EL CARRUSEL DE MACRO-PROMOCIONES (ÉLITE UI/UX) */}
-      {promotions && promotions.length > 0 && (
+     {/* 5. PROMOCIONES Y CONTENIDO PRINCIPAL */}
+      {displayPromotions && displayPromotions.length > 0 && (
         <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)] overflow-hidden relative z-30">
-          <div ref={carouselRef} className="flex overflow-x-auto  rounded-[16px] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
-            {promotions.map((promo: any) => {
+          <div ref={carouselRef} className="flex overflow-x-auto  rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
+            {displayPromotions.map((promo: any) => {
               const isActive = activePromo?.id === promo.id;
+              const cardStyle = activeTheme.layout?.card_style || 'standard';
+
+              // ==========================================
+              // 🛠️ VARIANTE 1: INDUSTRIAL (El HUD Logístico)
+              // ==========================================
+              if (cardStyle === 'dense_hardware') {
+                  return (
+                      <div key={promo.id}
+                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
+                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-300 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
+                          style={{ backgroundColor: promo.bg_color || '#000' }}>
+                          
+                          {/* Patrón de Cinta de Precaución Industrial */}
+                          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 2px, transparent 2px, transparent 12px)', color: promo.text_color || '#fff' }}></div>
+                          
+                          <div className="max-w-[1500px] mx-auto flex flex-col md:flex-row relative z-10 h-full">
+                              {promo.image_url && (
+                                  <div className="p-4 md:p-6 flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r" style={{ borderColor: `${promo.text_color}30`, backgroundColor: `${promo.text_color}05` }}>
+                                      <div className="w-16 h-16 md:w-24 md:h-24 relative">
+                                          <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="100px" className="object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-500" />
+                                      </div>
+                                  </div>
+                              )}
+                              <div className="p-4 md:p-6 flex-1 flex flex-col justify-center border-b md:border-b-0 md:border-r" style={{ borderColor: `${promo.text_color}30` }}>
+                                  {promo.tagline && <span className="text-[10px] font-mono font-bold uppercase tracking-widest mb-1 opacity-80" style={{ color: promo.text_color || '#fff' }}>[ {promo.tagline} ]</span>}
+                                  <h4 className="font-sans font-black text-2xl md:text-3xl uppercase tracking-tighter leading-none line-clamp-2" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
+                              </div>
+                              <div className="p-4 md:p-6 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 shrink-0 min-w-[220px]" style={{ backgroundColor: `${promo.text_color}05` }}>
+                                 <div className={`px-4 py-2.5 font-mono font-black text-[10px] md:text-xs uppercase tracking-widest border-2 w-full flex items-center justify-center gap-1.5 transition-all ${isActive ? 'scale-95' : 'group-hover:scale-105'}`} style={{ backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'), color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'), borderColor: promo.text_color || '#fff' }}>
+                                      {isActive ? '✕ CANCELAR' : <><Zap size={14} className="fill-current" /> RECLAMAR</>}
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  );
+              }
+
+              // ==========================================
+              // 💎 VARIANTE 2: LUXURY (La Invitación VIP)
+              // ==========================================
+              if (cardStyle === 'editorial') {
+                  return (
+                      <div key={promo.id}
+                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
+                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-700 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
+                          style={{ backgroundColor: promo.bg_color || '#000' }}>
+                          
+                          {/* Gradiente sutil de iluminación */}
+                          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: `radial-gradient(circle at 80% 50%, ${promo.text_color} 0%, transparent 60%)` }}></div>
+
+                          <div className="max-w-[1500px] mx-auto px-6 md:px-16 py-8 md:py-12 flex flex-col-reverse md:flex-row items-center justify-between gap-8 md:gap-16 relative z-10">
+                              <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                                  {promo.tagline && <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] mb-3" style={{ color: promo.text_color || '#fff', opacity: 0.7 }}>{promo.tagline}</span>}
+                                  <h4 className="font-heading text-3xl md:text-5xl tracking-wide leading-tight mb-4" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
+                                  
+                                  {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} variant="editorial" />}
+                                  
+                                  <div className="mt-6 flex items-center gap-3">
+                                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] border-b pb-1 transition-all" style={{ color: promo.text_color || '#fff', borderColor: isActive ? 'transparent' : `${promo.text_color}40` }}>
+                                          {isActive ? 'Cerrar Colección' : 'Descubrir Colección'}
+                                      </span>
+                                      <ArrowRight size={14} className={`transition-transform duration-500 ${isActive ? 'rotate-45' : 'group-hover:translate-x-2'}`} style={{ color: promo.text_color || '#fff' }} />
+                                  </div>
+                              </div>
+                              {promo.image_url && (
+                                  <div className="w-32 h-32 md:w-48 md:h-48 shrink-0 relative flex items-center justify-center">
+                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="200px" className="object-contain drop-shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105" />
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  );
+              }
+
+              // ==========================================
+              // 🌟 VARIANTE 3: UNIVERSAL (El Bloque Comercial)
+              // ==========================================
               return (
                 <div key={promo.id}
                   onClick={() => {
@@ -1167,7 +1069,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                           </h4>
 
                           {/* 🚀 RELOJ FOMO INTEGRADO */}
-                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} />}
+                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} variant="standard" />}
                         </div>
                       </div>
                     </div>
@@ -1175,7 +1077,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                     {/* 🚀 CTA INEQUÍVOCO (Botón Real de Alto Contraste) */}
                     <div className="shrink-0 pl-2">
                       <div
-                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`}
+                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`}
                         style={{
                           backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'),
                           color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'),
@@ -1199,10 +1101,17 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
             <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="flex items-end justify-between mb-6 px-1 border-b border-[var(--store-border)] pb-4">
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
-                </div>
+              <div className={`flex items-end justify-between mb-6 px-1 ${activeTheme.layout?.card_style === 'dense_hardware' ? ' pb-2' : ''}`}>
+                {activeTheme.layout?.card_style === 'dense_hardware' ? (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Stock de Alta Rotación</span>
+                    <h2 className="text-xl md:text-2xl font-black tracking-tight text-[var(--store-text-main)] uppercase">Top Ventas</h2>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
+                  </div>
+                )}
               </div>
 
               {/* 🚀 SE CAMBIA 'group' A 'group/featured' PARA ELIMINAR LA COLISIÓN CON LOS CARRITOS */}
@@ -1211,7 +1120,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                 {/* 🚀 BOTÓN IZQUIERDO (Clean Look Apple Style - Control de Hover de Hardware) */}
                 <button
                   onClick={() => scrollFeatured('left')}
-                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -left-4 lg:-left-6 z-10 w-12 h-12 items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
                     }`}
                   aria-label="Anterior"
                 >
@@ -1230,8 +1139,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                       ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
                       : (product.stock || 0) <= 0;
 
-                     return (
-                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start">
+                    return (
+                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start flex">
                         <ProductCard
                           product={product}
                           pricing={pricing}
@@ -1239,8 +1148,9 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                           isOutOfStock={isCompletelyOutOfStock}
                           index={idx}
                           isFavorite={favoriteIds.has(String(product.id))}
-                          showTaxIndicator={showTaxInCatalog} // 🚀 AÑADIDO
-                          taxPercentage={taxPercentage}       // 🚀 AÑADIDO
+                          showTaxIndicator={showTaxInCatalog}
+                          taxPercentage={taxPercentage}
+                          cardStyle={activeTheme.layout?.card_style || 'standard'} // 🚀 AÑADIR ESTA LÍNEA
                         />
                       </div>
                     )
@@ -1250,7 +1160,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                 {/* 🚀 BOTÓN DERECHO (Clean Look Apple Style - Control de Hover de Hardware) */}
                 <button
                   onClick={() => scrollFeatured('right')}
-                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-full bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.right || !featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
+                  className={`hidden md:flex absolute top-1/2 -translate-y-[calc(50%+12px)] -right-4 lg:-right-6 z-10 w-12 h-12 items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] bg-[var(--store-surface)]/85 backdrop-blur-xl border border-[var(--store-border)]/60 text-[var(--store-text-main)] shadow-[0_15px_35px_-5px_rgba(0,0,0,0.2)] hover:scale-105 active:scale-95 transition-all md:opacity-0 md:group-hover/featured:opacity-100 ${featuredScrollStatus.right || !featuredScrollStatus.left ? 'pointer-events-auto scale-100' : 'md:!opacity-0 pointer-events-none scale-95'
                     }`}
                   aria-label="Siguiente"
                 >
@@ -1264,8 +1174,11 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
           {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
           <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
 
-        {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8 min-h-[40vh]">
+          {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
+          <div className={`grid min-h-[40vh] ${activeTheme.layout?.card_style === 'dense_hardware'
+              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+              : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8'
+            }`}>
             {paginatedProducts.map((product: any, index: number) => {
               const pricing = getProductPricing(product)
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
@@ -1278,7 +1191,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                 : (product.stock || 0);
               const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
 
-                  return (
+              return (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -1287,9 +1200,10 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                   isOutOfStock={isCompletelyOutOfStock}
                   index={index}
                   isFavorite={favoriteIds.has(String(product.id))}
-                  isCriticalStock={isCritical} // 👈 PASAMOS LA PROPIEDAD AQUÍ
-                  showTaxIndicator={showTaxInCatalog} // 🚀 AÑADIDO
-                  taxPercentage={taxPercentage}       // 🚀 AÑADIDO
+                  isCriticalStock={isCritical}
+                  showTaxIndicator={showTaxInCatalog}
+                  taxPercentage={taxPercentage}
+                  cardStyle={activeTheme.layout?.card_style || 'standard'} // 🚀 AÑADIR ESTA LÍNEA
                 />
               )
             })}
@@ -1302,7 +1216,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
               >
                 <ChevronLeft size={16} strokeWidth={2.5} className="md:mr-1" />
                 <span className="hidden md:inline">Ant</span>
@@ -1317,7 +1231,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                     <button
                       key={page}
                       onClick={() => handlePageChange(page as number)}
-                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
+                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
                         ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
                         : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
                         }`}
@@ -1332,7 +1246,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-lg text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
               >
                 <span className="hidden md:inline">Sig</span>
                 <ChevronRight size={16} strokeWidth={2.5} className="md:ml-1" />
@@ -1340,59 +1254,95 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
             </div>
           )}
 
-          {/* ========================================== */}
-          {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Sin Salida Muerta) */}
+         {/* ========================================== */}
+          {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Polimórfico) */}
           {/* ========================================== */}
           {explorableCategories.length > 0 && (
             <div className="mt-8 md:mt-12 pt-8 border-t border-[var(--store-border)]/40 w-full animate-in fade-in duration-500">
-              <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
-                <h3 className="text-sm md:text-base font-black tracking-tight text-[var(--store-text-main)] uppercase">
-                  Explora más categorías
-                </h3>
-              </div>
-
-              {/* Carrusel Horizontal: 1:1 Ratio, Aceleración nativa de hardware */}
-              <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
-                {explorableCategories.map((cat: any) => (
-                  <button
-                    key={cat.name}
-                    onClick={() => handleExploreCategory(cat.name)}
-                    className="group relative shrink-0 w-[140px] h-[140px] md:w-[170px] md:h-[170px] rounded-[1.25rem] md:rounded-[1.5rem] overflow-hidden snap-start flex flex-col justify-end text-left active:scale-95 transition-transform duration-300 border border-[var(--store-border)]/30 shadow-sm"
-                    style={{ backgroundColor: cat.useSolidColor ? 'var(--store-primary)' : 'var(--store-surface)' }}
-                  >
-                    {/* Render de Imagen con Carga Diferida (Lazy) */}
-                    {!cat.useSolidColor && cat.coverUrl && (
-                      <Image
-                        src={getOptimizedUrl(cat.coverUrl)}
-                        alt={`Categoría ${cat.name}`}
-                        fill
-                        sizes="(max-width: 768px) 140px, 170px"
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                        loading="lazy"
-                      />
-                    )}
-
-                    {/* Degradado Negro para contraste perfecto (Solo si hay imagen) */}
-                    {!cat.useSolidColor && (
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
-                    )}
-
-                    {/* Meta-Datos Textuales */}
-                    <div className="relative z-10 p-3 md:p-4 w-full">
-                      <span className={`block font-black tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>
-                        {cat.name}
-                      </span>
-                      <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>
-                        {cat.count} {cat.count === 1 ? 'Producto' : 'Productos'}
-                      </span>
+              
+              {activeTheme.layout?.card_style === 'dense_hardware' ? (
+                /* 🛠️ TEMA 2 (INDUSTRIAL): Directorio de Partes */
+                <>
+                  <div className="flex items-center justify-between mb-4 md:mb-5 px-1 border-b border-[var(--store-border)] pb-3">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Directorio de Inventario</span>
+                      <h3 className="text-lg md:text-xl font-black tracking-tight text-[var(--store-text-main)] uppercase">Categorías Técnicas</h3>
                     </div>
-                  </button>
-                ))}
-              </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+                    {explorableCategories.map((cat: any) => (
+                      <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group flex items-center gap-3 p-3 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-all active:scale-[0.98] text-left shadow-[var(--shadow-ui)] rounded-[var(--radius-card)]">
+                        {cat.coverUrl && !cat.useSolidColor ? (
+                          <div className="w-12 h-12 shrink-0 relative bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 overflow-hidden rounded-[var(--radius-btn)]">
+                            <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="48px" className="object-cover grayscale group-hover:grayscale-0 transition-all duration-300" loading="lazy" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 shrink-0 bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 flex items-center justify-center rounded-[var(--radius-btn)]">
+                            <span className="font-mono text-[10px] font-bold text-[var(--store-surface-text)]">00</span>
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="font-bold text-xs text-[var(--store-text-main)] uppercase tracking-wide truncate group-hover:text-[var(--store-primary)] transition-colors">{cat.name}</span>
+                          <span className="font-mono text-[10px] text-[var(--store-surface-text)] mt-0.5">{cat.count} ITEMS</span>
+                        </div>
+                        <ChevronRight size={16} className="text-[var(--store-surface-text)] group-hover:text-[var(--store-primary)] shrink-0 transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : activeTheme.layout?.card_style === 'editorial' ? (
+                /* 💎 TEMA 3 (LUXURY): Lookbook Editorial */
+                <>
+                  <div className="flex flex-col items-center text-center mb-8 md:mb-10 px-1">
+                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-2">Descubrir</span>
+                    <h3 className="text-2xl md:text-4xl font-black tracking-tight text-[var(--store-text-main)] font-heading">
+                      Explorar Colecciones
+                    </h3>
+                  </div>
+                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                    {explorableCategories.map((cat: any) => (
+                      <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group relative shrink-0 w-[220px] md:w-[300px] aspect-[3/4] overflow-hidden snap-start flex flex-col justify-center items-center text-center active:scale-[0.98] transition-transform duration-700 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 shadow-[var(--shadow-ui)]">
+                        {cat.coverUrl && !cat.useSolidColor ? (
+                          <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="300px" className="object-cover transition-transform duration-1000 ease-out group-hover:scale-110" loading="lazy" />
+                        ) : (
+                          <div className="absolute inset-0 bg-[var(--store-surface)]" />
+                        )}
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-700" />
+                        <div className="relative z-10 p-6 w-full flex flex-col items-center">
+                          <span className="block font-heading font-black text-white text-2xl md:text-3xl tracking-wide mb-2 drop-shadow-md">{cat.name}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/90 border-b border-white/40 pb-1">Ver {cat.count} piezas</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                /* 🌟 TEMA 1 (UNIVERSAL): Carrusel Lifestyle B2C */
+                <>
+                  <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
+                    <h3 className="text-sm md:text-base font-black tracking-tight text-[var(--store-text-main)] uppercase">Explora más categorías</h3>
+                  </div>
+                  <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                    {explorableCategories.map((cat: any) => (
+                      <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group relative shrink-0 w-[140px] h-[140px] md:w-[170px] md:h-[170px] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] overflow-hidden snap-start flex flex-col justify-end text-left active:scale-95 transition-transform duration-300 border border-[var(--store-border)]/30" style={{ backgroundColor: cat.useSolidColor ? 'var(--store-primary)' : 'var(--store-surface)' }}>
+                        {!cat.useSolidColor && cat.coverUrl && <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="170px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-110" loading="lazy" />}
+                        {!cat.useSolidColor && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />}
+                        <div className="relative z-10 p-3 md:p-4 w-full">
+                          <span className={`block font-black tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>{cat.name}</span>
+                          <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>{cat.count} Productos</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
         </>
+
+
+
 
 
         {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
@@ -1404,7 +1354,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
               exit={{ opacity: 0, y: -20 }}
               className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
             >
-              <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
+              <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
                 <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
                   <Tag size={20} />
                 </div>
@@ -1545,7 +1495,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative bg-[var(--store-bg)] border border-[var(--store-border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[1.5rem] w-full max-w-[280px] p-6 flex flex-col items-center text-center overflow-hidden"
+              className="relative bg-[var(--store-bg)] border border-[var(--store-border)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] w-full max-w-[280px] p-6 flex flex-col items-center text-center overflow-hidden"
             >
               <button
                 onClick={() => setIsRateModalOpen(false)}
@@ -1577,15 +1527,15 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
         )}
       </AnimatePresence>
 
-     <FloatingCheckout
+  <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
         phone={store.phone || '584120000000'}
         storeName={store.name}
         storeId={store.id}
-        storeConfig={store}
+        storeConfig={{ ...store, theme_config: activeTheme }}
         products={products}
-        promotions={promotions}
+        promotions={displayPromotions}
         affiliateCode={affiliateCode}
         favoriteIds={favoriteIds}
         campaignContext={campaignContext} // 👈 INYECTA ESTA LÍNEA
@@ -1596,9 +1546,9 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
         product={selectedProductForModal}
         currency={isEur ? 'eur' : 'usd'}
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
-        promotions={promotions}
+        promotions={displayPromotions}
         activePromoContext={activePromo}
-        storeConfig={store} // 🚀 NUEVO: Pasamos la configuración maestra
+       storeConfig={{ ...store, theme_config: activeTheme }}
         isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
       />
 
@@ -1611,7 +1561,7 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-[var(--store-surface)] w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[80vh] border border-[var(--store-border)]"
+              className="relative bg-[var(--store-surface)] w-full max-w-sm rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] overflow-hidden flex flex-col max-h-[80vh] border border-[var(--store-border)]"
             >
               <div className="p-6 pb-4 flex justify-between items-start shrink-0 border-b border-[var(--store-border)]/50">
                 <div>
@@ -1630,7 +1580,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
                     href={`/quote/${order.id}`} // 🚀 Ruta relativa limpia (Evita el 404 por slug duplicado)
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-[var(--store-surface)] border border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]/30 hover:shadow-md transition-all active:scale-95 group"
+                    className="flex items-center justify-between p-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)]
+ hover:border-[var(--store-text-main)]/30 hover:shadow-md transition-all active:scale-95 group"
                   >
                     <div className="flex items-center gap-4">
                       <div className="bg-[var(--store-bg)] p-2.5 rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] transition-colors">
@@ -1681,11 +1632,8 @@ const { featured: featuredProducts, standard: standardProducts } = useMemo(() =>
       </AnimatePresence>
 
 
+
       <CartHUDIndicator />
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
 
 
     </div>

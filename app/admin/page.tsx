@@ -31,6 +31,7 @@ import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 import WelcomeModal from "@/components/admin/WelcomeModal";
 import AnalyticsLaunchModal from "@/components/admin/AnalyticsLauchModal";
 import PushNotificationManager from "@/components/admin/PushNotificationManager";
+import ThemeEngineAnnouncement from "@/components/admin/ThemeEngineAnnouncement";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -770,13 +771,8 @@ export default async function AdminDashboard() {
             </main>
 
             {/* 🚀 INYECCIÓN DEL MODAL DE BIENVENIDA */}
+            <ThemeEngineAnnouncement/>
             <WelcomeModal storeName={store.name} />
-
-            {/* Modal de Lanzamiento de Afiliados */}
-            <AffiliateLaunchModal />
-
-             {/* Modal de Lanzamiento de Inteligencia de Tienda (NUEVO) */}
-            <AnalyticsLaunchModal /> {/* 👈 INYECTA ESTA LÍNEA */}
         </div>
     );
 }
