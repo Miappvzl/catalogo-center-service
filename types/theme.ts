@@ -48,7 +48,7 @@ export interface ThemeLayout {
     hero_desktop_url?: string;
     hero_mobile_url?: string;
     logo_url?: string;
-    hero_subtitle?: string; // 🚀 NUEVO: Frase editorial editable
+    hero_subtitle?: string;
 }
 
 export interface ThemeConfig {
