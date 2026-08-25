@@ -812,7 +812,7 @@ return (
                                             <div className="p-3 bg-amber-50/50 border border-amber-200/50 rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
                                                 <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
                                                 <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
-                                                    💡 <strong>Sugerencia de Contraste:</strong> Asegúrese de que su archivo PNG sea blanco, dorado o negro para contrastar perfectamente con el color de Fondo de Tienda seleccionado actualmente para que sea legible.
+                                                    💡 <strong>Sugerencia de Contraste:</strong> Asegúrese de que su archivo PNG r=tenga un color que contraste  perfectamente con el color de Fondo de Tienda seleccionado actualmente para que sea legible.
                                                 </p>
                                             </div>
                                         )}
