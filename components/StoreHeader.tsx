@@ -2,14 +2,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu } from 'lucide-react'
+import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils } from 'lucide-react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
-import { normalizeThemeConfig } from '@/utils/themeAdapter' // 🚀 IMPORTACIÓN DE NORMALIZACIÓN RESTAURADA
+import { normalizeThemeConfig } from '@/utils/themeAdapter'
 
 interface StoreHeaderProps {
-    layoutStyle: 'classic' | 'minimal' | 'dense_search';
+    layoutStyle: 'classic' | 'minimal' | 'dense_search' | 'brutalist' | 'pill_nav';
     store: any;
     activeRate: number;
     isEur: boolean;
@@ -114,7 +114,7 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
         </button>
     );
 
-    const SearchBlock = ({ isDense = false }: { isDense?: boolean }) => (
+const renderSearchBlock = (isDense: boolean = false) => (
         <div className={`relative flex-1 group min-w-0 ${isDense ? 'w-full' : 'w-full md:max-w-sm'}`}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
             <input
@@ -345,12 +345,12 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
                     </div>
 
                     <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-4 md:gap-8">
+                       <div className="flex items-center justify-between gap-4 md:gap-8">
                             <LogoBlock />
-                            <div className="hidden md:flex flex-1 max-w-3xl"><SearchBlock isDense /></div>
+                            <div className="hidden md:flex flex-1 max-w-3xl">{renderSearchBlock(true)}</div>
                             <div className="flex items-center gap-1.5 shrink-0"><IconsBlock /></div>
                         </div>
-                        <div className="block md:hidden w-full"><SearchBlock isDense /></div>
+                        <div className="block md:hidden w-full">{renderSearchBlock(true)}</div>
                         <div className="pt-1 hidden md:block"><CategoriesBlock /></div>
                     </div>
                     <MobileMenu />
@@ -534,6 +534,199 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
     }
 
     // ==========================================
+    // 🏴‍☠️ RENDERIZADO: TEMA 4 - STREETWEAR BRUTALIST (MARQUEE & RAW UI)
+    // ==========================================
+    if (props.layoutStyle === 'brutalist') {
+        return (
+            <>
+                {/* 1. MARQUEE TICKER INFINITO (High-Energy Brutalist Top Bar) */}
+                <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] border-b-2 border-[var(--store-border)] py-1.5 overflow-hidden flex items-center select-none">
+                    <motion.div 
+                        animate={{ x: ["0%", "-50%"] }} 
+                        transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+                        className="flex items-center gap-8 whitespace-nowrap text-[10px] font-mono font-black uppercase tracking-[0.25em]"
+                    >
+                        <span>🔥 LIMITED DROP DISPONIBLE</span>
+                        <span>•</span>
+                        <span>⚡ DESPACHO NACIONAL 24-48H</span>
+                        <span>•</span>
+                        <span>📦 PIEZAS DE EDICIÓN LIMITADA</span>
+                        <span>•</span>
+                        <span>TASA BCV: BS. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                        <span>•</span>
+                        <span>🔥 LIMITED DROP DISPONIBLE</span>
+                        <span>•</span>
+                        <span>⚡ DESPACHO NACIONAL 24-48H</span>
+                        <span>•</span>
+                        <span>📦 PIEZAS DE EDICIÓN LIMITADA</span>
+                        <span>•</span>
+                        <span>TASA BCV: BS. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                    </motion.div>
+                </div>
+
+                {/* 2. ENCABEZADO PRINCIPAL BRUTALISTA */}
+                <div className={`sticky top-0 z-40 bg-[var(--store-bg)] border-b-2 border-[var(--store-border)] transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+                        <LogoBlock />
+                        
+                        {/* Buscador de Alto Contraste en Desktop */}
+                        <div className="hidden md:flex flex-1 max-w-md">
+                            <div className="relative w-full">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={16} strokeWidth={2.5} />
+                                <input
+                                    type="text"
+                                    placeholder="BUSCAR STREETWEAR / DROP..."
+                                    value={props.search}
+                                    onChange={(e) => props.setSearch(e.target.value)}
+                                    className="w-full bg-[var(--store-surface)] border-2 border-[var(--store-border)] pl-10 pr-4 py-2 text-xs font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-primary)] uppercase tracking-wider"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                            <RateBlock />
+                            <IconsBlock />
+                        </div>
+                    </div>
+
+                    {/* Buscador Móvil + Categorías Cinta Adhesiva */}
+                    <div className="px-4 pb-3 flex flex-col gap-2 md:hidden">
+                        <div className="relative w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} strokeWidth={2.5} />
+                            <input
+                                type="text"
+                                placeholder="BUSCAR DROP..."
+                                value={props.search}
+                                onChange={(e) => props.setSearch(e.target.value)}
+                                className="w-full bg-[var(--store-surface)] border-2 border-[var(--store-border)] pl-9 pr-3 py-2 text-xs font-mono font-bold text-[var(--store-text-main)] outline-none uppercase"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="px-4 md:px-8 pb-3 border-t border-[var(--store-border)]/40 pt-2">
+                        <CategoriesBlock />
+                    </div>
+                </div>
+
+                {/* 3. HERO BANNER BRUTALISTA (Segregación Estricta con Borde Cortante) */}
+                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden border-b-2 border-[var(--store-border)]">
+                        <div 
+                            className="relative w-full max-w-[1500px]"
+                            style={{
+                                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, rgba(0,0,0,0.85) 75%, transparent 100%)',
+                                maskImage: 'linear-gradient(to bottom, black 60%, rgba(0,0,0,0.85) 75%, transparent 100%)'
+                            }}
+                        >
+                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                <div className="hidden md:block w-full">
+                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Streetwear Hero" width={1920} height={600} className="w-full h-auto block" priority />
+                                </div>
+                            )}
+                            {liveTheme.layout?.hero_mobile_url && (
+                                <div className="block md:hidden w-full">
+                                    <div className="relative w-full aspect-[4/5] max-h-[320px] overflow-hidden">
+                                        <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Streetwear Portada" fill className="object-cover object-center" priority />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
+
+    // ==========================================
+    // 🍔 RENDERIZADO: TEMA 5 - BISTRO & FAST FOOD (PILL NAV & APP FEEL)
+    // ==========================================
+    if (props.layoutStyle === 'pill_nav') {
+        return (
+            <>
+                {/* 1. TOP BAR GASTRONÓMICA */}
+                <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between border-b border-[var(--store-border)]/40 text-xs font-bold">
+                    <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-wider uppercase">
+                            <Utensils size={11} /> Cocina Activa & Delivery
+                        </span>
+                    </div>
+                    <RateBlock />
+                </div>
+
+                {/* 2. HEADER FLOTANTE TIPO APP */}
+                <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/40 transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-4">
+                            <LogoBlock />
+                            
+                            {/* Buscador Píldora Completo */}
+                            <div className="hidden md:flex flex-1 max-w-lg">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={16} />
+                                    <input
+                                        type="text"
+                                        placeholder="¿Qué se te antoja hoy? (Hamburguesas, pizzas, combos...)"
+                                        value={props.search}
+                                        onChange={(e) => props.setSearch(e.target.value)}
+                                        className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            <IconsBlock />
+                        </div>
+
+                        {/* Buscador Mobile Píldora */}
+                        <div className="block md:hidden w-full">
+                            <div className="relative w-full">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar plato, combo o bebida..."
+                                    value={props.search}
+                                    onChange={(e) => props.setSearch(e.target.value)}
+                                    className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-10 pr-4 py-2 text-xs font-medium text-[var(--store-text-main)] outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Barra de Menú de Categorías (Píldoras) */}
+                        <div className="pt-1">
+                            <CategoriesBlock />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. HERO BANNER GASTRONÓMICO (Esquinas Redondeadas & Apetito) */}
+                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
+                        <div 
+                            className="relative w-full max-w-[1500px]"
+                            style={{
+                                WebkitMaskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.9) 65%, rgba(0,0,0,0.5) 80%, transparent 100%)',
+                                maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.9) 65%, rgba(0,0,0,0.5) 80%, transparent 100%)'
+                            }}
+                        >
+                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                <div className="hidden md:block w-full">
+                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Bistro Hero" width={1920} height={600} className="w-full h-auto block" priority />
+                                </div>
+                            )}
+                            {liveTheme.layout?.hero_mobile_url && (
+                                <div className="block md:hidden w-full">
+                                    <div className="relative w-full aspect-[4/5] max-h-[300px] overflow-hidden">
+                                        <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Bistro Portada" fill className="object-cover object-center" priority />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
+
+    // ==========================================
     // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
     // ==========================================
     return (
@@ -602,9 +795,9 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
                 <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
                     <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center mb-3 md:mb-5">
                         
-                        {/* 1. Buscador (Ancho rígido protegido en desktop) */}
+                    {/* 1. Buscador (Ancho rígido protegido en desktop) */}
                         <div className="flex items-center w-full md:w-72 shrink-0 gap-1">
-                            <SearchBlock />
+                            {renderSearchBlock(false)}
                             <div className="md:hidden flex items-center"><IconsBlock /></div>
                         </div>
 
