@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
+import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
@@ -222,27 +222,39 @@ export default function StoreInterface({ store: initialStore, products: initialP
   // 🚀 2. CEREBRO DE TOKENS (Con Inyección Dinámica de Banners Duales)
   const [liveConfig, setLiveConfig] = useState<any>(() => normalizeThemeConfig(initialStore?.theme_config))
   
-  const activeTheme = useMemo(() => {
+ const activeTheme = useMemo(() => {
       const baseTheme = normalizeThemeConfig(liveConfig || initialStore?.theme_config);
       
+      // 🚀 JERARQUÍA ESTRICTA: El logo que se está editando en vivo manda sobre todo
+      const resolvedLogoUrl = baseTheme.layout?.logo_url || initialStore?.theme_config?.layout?.logo_url || initialStore?.logo_url;
+      const resolvedHeroDesktop = baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
+      const resolvedHeroMobile = baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
+
       if (isMockMode) {
           const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
           const niche = template ? template.niche : 'general';
           const mockData = MOCK_DATA[niche];
           
           if (mockData) {
-              // Forzamos el modo transparente y los banners duales para el simulador
               baseTheme.layout = {
                   ...baseTheme.layout,
-                  logo_type: 'png_transparent',
-                  logo_url: initialStore?.logo_url || mockData.logo,
-                  hero_desktop_url: initialStore?.theme_config?.layout?.hero_desktop_url || mockData.hero_desktop,
-                  hero_mobile_url: initialStore?.theme_config?.layout?.hero_mobile_url || mockData.hero_mobile,
+                  logo_type: baseTheme.layout?.logo_type || 'png_transparent',
+                  // Si el usuario subió un logo (incluso en preview), lo respetamos. Si no hay nada, entra el mock.
+                  logo_url: resolvedLogoUrl || mockData.logo,
+                  hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
+                  hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
               };
           }
+      } else {
+          baseTheme.layout = {
+              ...baseTheme.layout,
+              logo_url: resolvedLogoUrl || '',
+              hero_desktop_url: resolvedHeroDesktop || '',
+              hero_mobile_url: resolvedHeroMobile || '',
+          };
       }
       return baseTheme;
-  }, [liveConfig, initialStore?.theme_config, initialStore?.logo_url, isMockMode]);
+  }, [liveConfig, initialStore?.theme_config, initialStore?.logo_url, initialStore?.hero_url, isMockMode]);
 
   const activeThemeVariables = useMemo(() => generateCssVariables(activeTheme), [activeTheme]);
   
@@ -1171,15 +1183,52 @@ useEffect(() => {
             </section>
           )}
 
-          {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
+      {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
           <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
 
-          {/* 🚀 REJILLA PAGINADA DE PRODUCTOS (Carga diferida solucionada) */}
-          <div className={`grid min-h-[40vh] ${activeTheme.layout?.card_style === 'dense_hardware'
-              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
-              : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8'
-            }`}>
-            {paginatedProducts.map((product: any, index: number) => {
+          {/* 🚀 ENRUTADOR DE ESTADO (VACÍO VS CATÁLOGO) */}
+          {standardProducts.length === 0 ? (
+              <div className="w-full min-h-[40vh] flex flex-col items-center justify-center py-16 px-4 animate-in fade-in zoom-in-95 duration-500">
+                  {activeTheme.layout?.card_style === 'brutalist' ? (
+                      /* 🏴‍☠️ Empty State: Brutalist */
+                      <div className="flex flex-col items-center text-center p-8 md:p-12 border-2 border-[var(--store-border)] shadow-[8px_8px_0px_#000] bg-[var(--store-surface)] max-w-lg w-full mx-auto">
+                          <SearchX size={48} strokeWidth={1.5} className="mb-4 text-[var(--store-text-main)]" />
+                          <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">0 RESULTADOS</h3>
+                          <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO HAY COINCIDENCIAS PARA "{debouncedSearch}"</p>
+                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                              RESETEAR FILTROS
+                          </button>
+                      </div>
+                  ) : activeTheme.layout?.card_style === 'editorial' ? (
+                      /* 💎 Empty State: Minimal Luxury */
+                      <div className="flex flex-col items-center text-center p-8 max-w-lg w-full mx-auto">
+                          <SearchX size={32} strokeWidth={1} className="mb-6 text-[var(--store-surface-text)] opacity-50" />
+                          <h3 className="font-heading text-2xl md:text-3xl mb-3 text-[var(--store-text-main)]">Sin resultados</h3>
+                          <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No pudimos encontrar piezas que coincidan con tu búsqueda actual.</p>
+                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                              Explorar Colección
+                          </button>
+                      </div>
+                  ) : (
+                      /* 🌟 Empty State: Universal & Food */
+                      <div className="flex flex-col items-center text-center p-8 md:p-12 bg-[var(--store-surface)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] max-w-lg w-full mx-auto">
+                          <div className="bg-[var(--store-bg)] p-4 rounded-full mb-5 border border-[var(--store-border)]/50 shadow-sm">
+                              <SearchX size={28} strokeWidth={1.5} className="text-[var(--store-text-main)] opacity-70" />
+                          </div>
+                          <h3 className="font-black text-xl text-[var(--store-text-main)] mb-2">No encontramos lo que buscas</h3>
+                          <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otras palabras o revisa nuestras categorías principales.</p>
+                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
+                              Ver todo el catálogo
+                          </button>
+                      </div>
+                  )}
+              </div>
+          ) : (
+              <div className={`grid min-h-[40vh] ${activeTheme.layout?.card_style === 'dense_hardware'
+                  ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+                  : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8'
+                }`}>
+                {paginatedProducts.map((product: any, index: number) => {
               const pricing = getProductPricing(product)
               const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
                 ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
@@ -1204,10 +1253,11 @@ useEffect(() => {
                   showTaxIndicator={showTaxInCatalog}
                   taxPercentage={taxPercentage}
                   cardStyle={activeTheme.layout?.card_style || 'standard'} // 🚀 AÑADIR ESTA LÍNEA
-                />
+        />
               )
             })}
           </div>
+          )}
 
           {/* 🚀 CONTROLES DE PAGINACIÓN PREMIUM (Estilo Clean UI Cero Sombras) */}
           {totalPages > 1 && (
