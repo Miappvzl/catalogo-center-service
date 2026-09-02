@@ -2,7 +2,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2 } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
 
@@ -16,9 +16,8 @@ interface ProductCardProps {
   isCriticalStock?: boolean;
   showTaxIndicator?: boolean;
   taxPercentage?: number;
-  cardStyle?: 'standard' | 'dense_hardware' | 'editorial';
+  cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
 }
-
 export default function ProductCard({ 
   product, 
   pricing, 
@@ -262,6 +261,214 @@ export default function ProductCard({
           <span className="text-[10px] text-[var(--store-surface-text)] mt-1.5 font-medium">
             Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
           </span>
+        </div>
+      </div>
+    );
+  }
+
+// =========================================================================
+  // 🏴‍☠️ VARIANTE: TEMA 4 (STREETWEAR BRUTALIST CARD)
+  // =========================================================================
+  if (cardStyle === 'brutalist') {
+    return (
+      <div 
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-2 border-[var(--store-border)] hover:border-[var(--store-primary)] transition-all duration-200 relative overflow-hidden shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff] ${isOutOfStock ? 'opacity-60 grayscale-[60%]' : ''}`}
+        style={{ transform: 'translate3d(0, 0, 0)' }}
+        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      >
+        {/* 1. ENCUADRE DE ALTO IMPACTO (1:1 Square) */}
+        <div className="relative w-full aspect-square bg-[var(--store-bg)] flex items-center justify-center overflow-hidden border-b-2 border-[var(--store-border)] p-2">
+          {product.image_url ? (
+            <Image
+              src={getOptimizedUrl(product.image_url)}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+              onLoad={() => setIsImageLoaded(true)}
+              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
+              <ImageIcon size={28} strokeWidth={1.5} />
+            </div>
+          )}
+
+          {/* STICKER TAPE BADGES (Pegatinas Brutalistas) */}
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+            {isOutOfStock ? (
+              <span className="bg-black text-white text-[9px] font-mono font-black uppercase tracking-widest px-2 py-0.5 border border-white/40 shadow-[2px_2px_0px_#000]">
+                SOLD OUT
+              </span>
+            ) : isCriticalStock ? (
+              <span className="bg-amber-400 text-black text-[9px] font-mono font-black uppercase tracking-widest px-2 py-0.5 border border-black shadow-[2px_2px_0px_#000]">
+                LAST {product.stock}
+              </span>
+            ) : null}
+          </div>
+
+          {isPromo && !isOutOfStock && (
+            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-mono font-black px-2 py-0.5 border border-black shadow-[2px_2px_0px_#000]">
+              -{promoPercent}% OFF
+            </div>
+          )}
+
+          {/* BOTÓN DE FAVORITO CUADRADO */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+            }}
+            className={`absolute bottom-2 right-2 z-20 p-1.5 border-2 transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+              isFavorite 
+                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-black' 
+                : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-black hover:text-[var(--store-action-favorite)]'
+            }`}
+            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 20%, #000)' } : {}}
+            aria-label="Favorito"
+          >
+            <Heart size={14} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
+          </button>
+        </div>
+
+        {/* 2. DETALLES RAW */}
+        <div className="p-3 flex flex-col flex-1 justify-between gap-2">
+          <div>
+            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] block mb-1">
+              //{product.category || 'DROP'}
+            </span>
+            <h3 className="text-xs md:text-sm font-black uppercase text-[var(--store-text-main)] font-heading tracking-tight line-clamp-2 leading-tight">
+              {product.name}
+            </h3>
+          </div>
+
+          <div className="pt-2 border-t-2 border-[var(--store-border)] flex items-end justify-between gap-1 mt-auto">
+            <div className="flex flex-col min-w-0">
+              {isPromo && (
+                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] line-through">
+                  ${activeCompareAt.toFixed(2)}
+                </span>
+              )}
+              <span className="text-base md:text-lg font-black font-price text-[var(--store-text-main)] leading-none tracking-tight">
+                ${listPrice.toFixed(2)}
+              </span>
+              <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
+                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+              </span>
+            </div>
+
+            <button
+              disabled={isOutOfStock}
+              className={`px-3 py-2 border-2 border-black font-mono font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+                isOutOfStock 
+                  ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed border-neutral-400 shadow-none' 
+                  : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90'
+              }`}
+              aria-label="Ver detalles"
+            >
+              <span>ADD</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP CARD)
+  // =========================================================================
+  if (cardStyle === 'food_menu') {
+    return (
+      <div 
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-300 relative overflow-hidden shadow-xs hover:shadow-md ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
+        style={{ transform: 'translate3d(0, 0, 0)' }}
+        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      >
+        {/* 1. ENCUADRE DE APETITO (4:3) */}
+        <div className="relative w-full aspect-[4/3] bg-[var(--store-bg)] flex items-center justify-center overflow-hidden">
+          {product.image_url ? (
+            <Image
+              src={getOptimizedUrl(product.image_url)}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+              onLoad={() => setIsImageLoaded(true)}
+              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
+              <ImageIcon size={28} strokeWidth={1.5} />
+            </div>
+          )}
+
+          {/* BADGES PÍLDORA BLANDAS */}
+          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1">
+            {isOutOfStock ? (
+              <span className="bg-neutral-900/80 backdrop-blur-md text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                Agotado
+              </span>
+            ) : isPromo ? (
+              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
+                -{promoPercent}%
+              </span>
+            ) : null}
+          </div>
+
+          {/* FAVORITO SUTIL */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+            }}
+            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full backdrop-blur-md transition-all shadow-xs active:scale-90 ${
+              isFavorite 
+                ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' 
+                : 'bg-white/80 text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'
+            }`}
+            style={isFavorite ? { color: 'var(--store-action-favorite)' } : {}}
+            aria-label="Favorito"
+          >
+            <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
+          </button>
+
+          {/* QUICK ADD (+) FLOTANTE */}
+          {!isOutOfStock && (
+            <div className="absolute bottom-2.5 right-2.5 z-20">
+              <div
+                className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-all duration-200"
+              >
+                <Plus size={18} strokeWidth={3} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 2. DETALLE GASTRONÓMICO */}
+        <div className="p-3.5 flex flex-col flex-1 justify-between gap-1.5">
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] block mb-0.5">
+              {product.category || 'Especialidad'}
+            </span>
+            <h3 className="text-xs md:text-sm font-black text-[var(--store-text-main)] font-heading line-clamp-2 leading-snug">
+              {product.name}
+            </h3>
+          </div>
+
+          <div className="pt-2 border-t border-[var(--store-border)]/40 flex items-baseline justify-between mt-auto">
+            <div className="flex items-baseline gap-1.5">
+              {isPromo && (
+                <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through">
+                  ${activeCompareAt.toFixed(2)}
+                </span>
+              )}
+              <span className="text-sm md:text-base font-black font-price text-[var(--store-text-main)] leading-none">
+                ${listPrice.toFixed(2)}
+              </span>
+            </div>
+            
+            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] tabular-nums">
+              Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+            </span>
+          </div>
         </div>
       </div>
     );

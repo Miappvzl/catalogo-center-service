@@ -141,14 +141,14 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 line_weight: 'bold',
                 ui_shadows: 'hard_brutalist',
             },
-            typography: {
+           typography: {
                 heading_font: 'var(--font-bebas-neue), sans-serif',
                 body_font: 'var(--font-manrope), system-ui, sans-serif',
                 price_font: 'var(--font-bebas-neue), sans-serif',
             },
-         layout: {
-                header_style: 'minimal',
-                card_style: 'standard',
+            layout: {
+                header_style: 'brutalist',
+                card_style: 'brutalist',
                 logo_type: 'png_transparent',
             },
         },
@@ -192,9 +192,9 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 body_font: 'var(--font-quicksand), system-ui, sans-serif',
                 price_font: 'var(--font-fredoka), sans-serif',
             },
-          layout: {
-                header_style: 'classic',
-                card_style: 'standard',
+            layout: {
+                header_style: 'pill_nav',
+                card_style: 'food_menu',
                 logo_type: 'png_transparent',
             },
         },

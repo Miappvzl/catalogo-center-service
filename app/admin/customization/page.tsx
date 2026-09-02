@@ -119,8 +119,8 @@ export default function CustomizationPage() {
     const [selectedNicheFilter, setSelectedNicheFilter] = useState<string>('all')
    const [mobileViewMode, setMobileViewMode] = useState<'editor' | 'preview'>('editor')
 
-    // 🚀 IDs de plantillas completamente auditadas y listas para producción
-    const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense']
+  // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
+    const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast']
 
     // 🚀 ARQUITECTURA DE NAVEGACIÓN (Reutilizable)
     const STUDIO_TABS = [
@@ -142,7 +142,7 @@ export default function CustomizationPage() {
     const heroDInputRef = useRef<HTMLInputElement>(null)
     const heroMInputRef = useRef<HTMLInputElement>(null)
 
-    useEffect(() => {
+   useEffect(() => {
         const initData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
@@ -150,6 +150,15 @@ export default function CustomizationPage() {
                 if (store) {
                     setStoreData(store)
                     const loadedConfig = normalizeThemeConfig(store.theme_config)
+                    
+                    // 🚀 SINCRONIZACIÓN DE SEGURIDAD: Inyectar datos legacy si el JSONB no los tenía
+                    if (!loadedConfig.layout.logo_url && store.logo_url) {
+                        loadedConfig.layout.logo_url = store.logo_url;
+                    }
+                    if (!loadedConfig.layout.hero_desktop_url && store.hero_url) {
+                        loadedConfig.layout.hero_desktop_url = store.hero_url;
+                    }
+
                     setConfig(loadedConfig)
                     setOriginalConfig(loadedConfig)
                 }
@@ -421,11 +430,22 @@ toast.success('Logo oficial actualizado');
         }
     }
 
-    const handleApplyTemplate = (template: TemplateDefinition) => {
-        const newConfig = normalizeThemeConfig(template.default_config);
+   const handleApplyTemplate = (template: TemplateDefinition) => {
+        // 🚀 PRESERVACIÓN MULTIMEDIA: Cambia el diseño pero conserva el logo y banners del usuario
+        const newConfig = normalizeThemeConfig({
+            ...template.default_config,
+            layout: {
+                ...template.default_config.layout,
+                logo_url: config.layout?.logo_url || storeData?.logo_url || '',
+                logo_type: config.layout?.logo_type || 'png_transparent',
+                hero_desktop_url: config.layout?.hero_desktop_url || storeData?.hero_url || '',
+                hero_mobile_url: config.layout?.hero_mobile_url || '',
+                hero_subtitle: config.layout?.hero_subtitle || template.default_config.layout?.hero_subtitle,
+            }
+        });
         setConfig(newConfig);
 
-      toast.success(`Plantilla "${template.name}" aplicada`);
+        toast.success(`Plantilla "${template.name}" aplicada`);
     }
 
     const handleColorChange = (key: string, value: string) => {
@@ -656,73 +676,50 @@ return (
                                     ))}
                                 </div>
 
-                              <div className="space-y-3">
+                             <div className="space-y-3">
                                     {filteredTemplates.map(template => {
                                         const isCurrent = config.template_id === template.id;
-                                        const isReady = ACTIVE_TEMPLATE_IDS.includes(template.id) && template.niche !== 'streetwear' && template.niche !== 'food';
 
                                         return (
                                             <div
                                                 key={template.id}
-                                                className={`relative p-4 rounded-xl border transition-all flex flex-col gap-2.5 overflow-hidden ${
+                                                className={`relative p-4 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${
                                                     isCurrent
-                                                        ? 'bg-white border-neutral-900 ring-1 ring-neutral-900/10'
-                                                        : isReady
-                                                            ? 'bg-white border-neutral-200/50 hover:border-neutral-300'
-                                                            : 'bg-neutral-50/70 border-dashed border-neutral-300/80'
+                                                        ? 'bg-white border-neutral-900 ring-2 ring-neutral-900/10 shadow-sm'
+                                                        : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
                                                 }`}
                                             >
-                                                {/* BADGE SUPERIOR PARA PLANTILLAS EN PREPARACIÓN */}
-                                                {!isReady && (
-                                                    <div className="flex items-center justify-between pb-2 border-b border-neutral-200/60">
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 text-white text-[9px] font-mono font-bold tracking-wider uppercase shadow-2xs">
-                                                            <Sparkles size={10} className="text-amber-400" /> Próximo Lanzamiento
-                                                        </span>
-                                                        <span className="text-[9px] font-mono text-neutral-400 uppercase font-semibold">
-                                                            En Auditoría UX
-                                                        </span>
-                                                    </div>
-                                                )}
-
                                                 <div className="flex items-center justify-between gap-3 w-full">
-                                                    <div className={`min-w-0 flex-1 ${!isReady ? 'opacity-85' : ''}`}>
-                                                        <h4 className="font-bold text-xs text-neutral-900 truncate">
-                                                            {template.name}
-                                                        </h4>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <h4 className="font-bold text-xs text-neutral-900 truncate">
+                                                                {template.name}
+                                                            </h4>
+                                                            {template.badge && (
+                                                                <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 text-[8px] font-mono font-bold uppercase text-neutral-600 rounded">
+                                                                    {template.badge}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <span className="text-[9px] font-mono text-neutral-400 uppercase font-semibold block truncate">
                                                             {template.niche_label}
                                                         </span>
                                                     </div>
 
-                                                    {isReady ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleApplyTemplate(template)}
-                                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${isCurrent ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs' : 'bg-white text-neutral-800 border-neutral-200 hover:bg-neutral-50 active:scale-95'}`}
-                                                        >
-                                                            {isCurrent ? 'Activa' : 'Aplicar'}
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                Swal.fire({
-                                                                    title: 'Arquetipo en Desarrollo',
-                                                                    html: `El diseño <b>${template.name}</b> está en proceso de calibración y auditoría UX. Se activará automáticamente en el próximo despliegue.`,
-                                                                    icon: 'info',
-                                                                    confirmButtonColor: '#171717',
-                                                                    confirmButtonText: 'Entendido',
-                                                                    customClass: { popup: 'rounded-2xl text-xs font-sans' }
-                                                                });
-                                                            }}
-                                                            className="shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-neutral-200/80 text-neutral-700 border border-neutral-300 hover:bg-neutral-300 transition-colors flex items-center gap-1 active:scale-95"
-                                                        >
-                                                            <Lock size={10} /> En cola
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleApplyTemplate(template)}
+                                                        className={`shrink-0 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border active:scale-95 ${
+                                                            isCurrent 
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs cursor-default' 
+                                                                : 'bg-neutral-900 text-white border-neutral-900 hover:bg-black shadow-xs'
+                                                        }`}
+                                                    >
+                                                        {isCurrent ? 'Activa' : 'Aplicar'}
+                                                    </button>
                                                 </div>
 
-                                                <p className={`text-[11px] leading-relaxed font-medium ${isReady ? 'text-neutral-500' : 'text-neutral-500/90'}`}>
+                                                <p className="text-[11px] leading-relaxed font-medium text-neutral-500">
                                                     {template.description}
                                                 </p>
                                             </div>
@@ -996,11 +993,11 @@ return (
                                         )}
                                     </div>
 
-                                 <div className={`grid gap-4 ${config.template_id === 'minimal_luxury' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                               <div className={`grid gap-4 ${['minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast'].includes(config.template_id) ? 'grid-cols-2' : 'grid-cols-3'}`}>
                                         {[
-                                            { id: 'sharp', label: 'Cuadrado', radius: '0px' },
+                                            ...(config.template_id !== 'bistro_fast' ? [{ id: 'sharp', label: 'Cuadrado', radius: '0px' }] : []),
                                             { id: 'rounded', label: 'Suave', radius: '10px' },
-                                            ...(config.template_id !== 'hardware_dense' && config.template_id !== 'minimal_luxury' ? [{ id: 'pill', label: 'Píldora', radius: '999px' }] : [])
+                                            ...(!['hardware_dense', 'minimal_luxury', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'pill', label: 'Píldora', radius: '999px' }] : [])
                                         ].map(item => {
                                             const isActive = config.shapes.button_shape === item.id;
                                             return (
@@ -1024,11 +1021,11 @@ return (
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         2. Grosor de Líneas y Bordes
                                     </label>
-                                 <div className={`grid gap-1.5 ${config.template_id === 'hardware_dense' ? 'grid-cols-2' : config.template_id === 'minimal_luxury' ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                               <div className={`grid gap-1.5 ${['hardware_dense', 'streetwear_bold'].includes(config.template_id) ? 'grid-cols-2' : ['minimal_luxury', 'bistro_fast'].includes(config.template_id) ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
                                         {[
-                                            ...(config.template_id !== 'hardware_dense' ? [{ id: 'none', label: 'Sin Borde' }, { id: 'hairline', label: '0.5px' }] : []),
+                                            ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'none', label: 'Sin Borde' }, { id: 'hairline', label: '0.5px' }] : []),
                                             { id: 'thin', label: '1px Fino' },
-                                            ...(config.template_id !== 'minimal_luxury' ? [{ id: 'bold', label: '2px Bold' }] : []),
+                                            ...(!['minimal_luxury', 'bistro_fast'].includes(config.template_id) ? [{ id: 'bold', label: '2px Bold' }] : []),
                                         ].map(item => (
                                             <button
                                                 key={item.id}
@@ -1056,12 +1053,12 @@ return (
                                             <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
                                         </div>
                                     ) : (
-                                  <div className="grid grid-cols-2 gap-5 pt-2">
+                                <div className="grid grid-cols-2 gap-5 pt-2">
                                             {[
                                                 { id: 'none', label: 'Plano', shadow: 'none' },
-                                                ...(config.template_id === 'hardware_dense'
+                                                ...(config.template_id === 'hardware_dense' || config.template_id === 'streetwear_bold'
                                                     ? [{ id: 'hard_brutalist', label: 'Sólida', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
-                                                    : config.template_id === 'minimal_luxury'
+                                                    : config.template_id === 'minimal_luxury' || config.template_id === 'bistro_fast'
                                                         ? [{ id: 'soft', label: 'Sutil', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
                                                         : [
                                                             { id: 'soft', label: 'Sutil', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' },
@@ -1083,9 +1080,36 @@ return (
                                                         <span className={`text-xs font-bold ${isActive ? 'text-neutral-900' : 'text-neutral-600'}`}>{item.label}</span>
                                                     </motion.button>
                                                 )
-                                            })}
+                                        })}
                                         </div>
                                     )}
+                                </div>
+
+                                {/* 🚀 4. DENSIDAD DE INFORMACIÓN (ACORDEÓN VS DESPLEGADO) */}
+                                <div className="pt-2">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
+                                        4. Densidad de Información (Modal de Producto)
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[
+                                            { id: 'accordion', label: 'Acordeón', desc: 'Compacto & Limpio' },
+                                            { id: 'expanded', label: 'Desplegado', desc: 'Lectura Rápida' }
+                                        ].map(item => {
+                                            const isActive = config.shapes.info_layout === item.id;
+                                            return (
+                                                <motion.button
+                                                    key={item.id}
+                                                    whileHover={{ scale: 1.03 }}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => handleShapeChange('info_layout', item.id)}
+                                                    className={`relative h-16 flex flex-col items-center justify-center rounded-2xl border transition-all overflow-hidden ${isActive ? 'border-neutral-900 bg-neutral-900 shadow-md' : 'border-neutral-200/60 bg-white hover:border-neutral-300 shadow-sm'}`}
+                                                >
+                                                    <span className={`relative z-10 text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>{item.label}</span>
+                                                    <span className={`relative z-10 text-[9px] font-medium mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-500'}`}>{item.desc}</span>
+                                                </motion.button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1099,9 +1123,8 @@ return (
                                     </label>
                                     <p className="text-[11px] text-neutral-500 font-medium mb-3">Define la geometría del buscador en el catálogo.</p>
                                 </div>
-
-                               {config.template_id === 'minimal_luxury' ? (
-                                    <div className="p-3.5 rounded-xl border border-neutral-200/50 bg-neutral-50 flex items-center justify-between">
+{config.template_id === 'minimal_luxury' ? (
+                                    <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
                                         <div className="flex flex-col">
                                             <span className="text-xs font-bold text-neutral-800">Línea Inferior (Boutique)</span>
                                             <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Minimal Luxury utiliza un buscador editorial fijo.</span>
@@ -1109,11 +1132,11 @@ return (
                                         <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
                                     </div>
                                 ) : (
-                                    <div className={`grid gap-2 ${config.template_id === 'hardware_dense' ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                                    <div className="grid grid-cols-2 gap-2">
                                         {[
-                                            { id: 'sharp', label: 'Cuadrada (0px)', desc: 'Industrial / Técnico' },
+                                            ...(!['bistro_fast'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrada (0px)', desc: 'Industrial / Drop' }] : []),
                                             { id: 'rounded', label: 'Redondeada (8px)', desc: 'Moderna' },
-                                            ...(config.template_id !== 'hardware_dense'
+                                            ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id)
                                                 ? [
                                                     { id: 'pill', label: 'Píldora Completa', desc: 'Comercial' },
                                                     { id: 'minimal_underlined', label: 'Línea Inferior', desc: 'Boutique' }

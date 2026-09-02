@@ -4,6 +4,7 @@ export type ButtonShapeOption = 'sharp' | 'rounded' | 'pill';
 export type SearchBarShapeOption = 'sharp' | 'rounded' | 'pill' | 'minimal_underlined';
 export type LineWeightOption = 'none' | 'hairline' | 'thin' | 'bold';
 export type ShadowLevelOption = 'none' | 'soft' | 'medium' | 'hard_brutalist';
+export type InfoLayoutOption = 'accordion' | 'expanded'; // 🚀 NUEVO: Densidad de Información
 
 export interface ThemeColors {
     primary: string;
@@ -27,6 +28,7 @@ export interface ThemeShapes {
     search_bar_shape: SearchBarShapeOption; // Forma exclusiva del buscador
     line_weight: LineWeightOption;        // Grosor de los bordes estructurales
     ui_shadows: ShadowLevelOption;        // Sombras de tarjetas, modales e inputs
+    info_layout: InfoLayoutOption;        // 🚀 NUEVO: Acordeón vs Desplegado en Modales
 }
 
 export interface ThemeTypography {
@@ -42,8 +44,8 @@ export interface ThemeTypography {
 // (Modifica únicamente la interfaz ThemeLayout agregando esta propiedad)
 
 export interface ThemeLayout {
-    header_style: 'classic' | 'dense_search' | 'minimal';
-    card_style: 'standard' | 'dense_hardware' | 'editorial';
+    header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav';
+    card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
     logo_type?: 'standard' | 'png_transparent';
     hero_desktop_url?: string;
     hero_mobile_url?: string;

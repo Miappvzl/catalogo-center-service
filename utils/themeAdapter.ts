@@ -25,11 +25,12 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
         badge_soldout_text: '#ffffff',
         action_favorite: '#ef4444', // red-500
     },
-    shapes: {
+  shapes: {
         button_shape: 'pill',
         search_bar_shape: 'pill',
         line_weight: 'thin',
         ui_shadows: 'none',
+        info_layout: 'accordion', // 🚀 Valor por defecto seguro
     },
     typography: {
         heading_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
@@ -135,11 +136,12 @@ export function normalizeThemeConfig(raw: any): ThemeConfig {
     const rawTypography = raw.typography || {};
     const rawLayout = raw.layout || {};
 
-    const shapes: ThemeConfig['shapes'] = {
+ const shapes: ThemeConfig['shapes'] = {
         button_shape: rawShapes.button_shape || 'pill',
         search_bar_shape: rawShapes.search_bar_shape || 'pill',
         line_weight: rawShapes.line_weight || 'thin',
         ui_shadows: raw.template_id === 'classic' ? 'none' : (rawShapes.ui_shadows || 'none'),
+        info_layout: rawShapes.info_layout || 'accordion', // 🚀 Normalización segura
     };
 
     const typography: ThemeConfig['typography'] = {
