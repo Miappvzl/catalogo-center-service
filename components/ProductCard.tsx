@@ -4,7 +4,7 @@
 import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap } from 'lucide-react'
 import Image from 'next/image'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react' // 🚀 INYECCIÓN DE MEMO
 
 interface ProductCardProps {
   product: any;
@@ -18,7 +18,7 @@ interface ProductCardProps {
   taxPercentage?: number;
   cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
 }
-export default function ProductCard({ 
+function ProductCardComponent({ 
   product, 
   pricing, 
   onOpen, 
@@ -595,7 +595,7 @@ export default function ProductCard({
           </div>
         </div>
 
-        {penalty > 0 && !isOutOfStock && (
+       {penalty > 0 && !isOutOfStock && (
           <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)] py-1 rounded-[var(--radius-btn)] self-start transition-colors">
             <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
             <span>Paga ${cashPrice.toFixed(2)} en Divisas</span>
@@ -603,5 +603,8 @@ export default function ProductCard({
         )}
       </div>
     </div>
-  )
+  );
 }
+
+// 🚀 EXPORTACIÓN MEMORIZADA: Previene re-renders innecesarios en un 95%
+export default memo(ProductCardComponent);

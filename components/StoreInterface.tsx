@@ -349,9 +349,8 @@ export default function StoreInterface({ store: initialStore, products: initialP
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
-  const [isStickyVisible, setIsStickyVisible] = useState(true)
-  const [lastScrollY, setLastScrollY] = useState(0)
-  const [isDarkHero, setIsDarkHero] = useState(true)
+const [isStickyVisible, setIsStickyVisible] = useState(true)
+  const lastScrollYRef = useRef(0) // 🚀 CERO RE-RENDERS EN SCROLL
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1) // 🚀 NUEVO ESTADO DE PAGINACIÓN
   const [isMobile, setIsMobile] = useState(true) // 🚀 NUEVO ESTADO RESPONSIVO
@@ -672,30 +671,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
     return () => clearTimeout(timer)
   }, [search])
 
-  useEffect(() => {
-    if (!store?.hero_url) return;
-    const img = new window.Image()
-    img.crossOrigin = "Anonymous";
-    img.src = store.hero_url;
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        canvas.width = img.width; canvas.height = img.height * 0.2;
-        ctx.drawImage(img, 0, 0, img.width, img.height * 0.2, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        let r = 0, g = 0, b = 0;
-        for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
-        const pixels = data.length / 4;
-        const luminance = ((r / pixels) * 299 + (g / pixels) * 587 + (b / pixels) * 114) / 1000;
-        setIsDarkHero(luminance < 128);
-      } catch (e) {
-        setIsDarkHero(true);
-      }
-    };
-  }, [store?.hero_url]);
+
 
   // 🚀 REINICIO DE PÁGINA AL BUSCAR O FILTRAR
   useEffect(() => {
@@ -710,18 +686,28 @@ export default function StoreInterface({ store: initialStore, products: initialP
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+// 🚀 SCROLL ULTRA-OPTIMIZADO: Solo muta el estado cuando hay un cambio real de dirección
   useEffect(() => {
+    let ticking = false;
     const controlNavbar = () => {
-      if (typeof window !== 'undefined') {
-        const currentScrollY = window.scrollY
-        if (currentScrollY < 350) { setIsStickyVisible(true); setLastScrollY(currentScrollY); return; }
-        setIsStickyVisible(currentScrollY <= lastScrollY)
-        setLastScrollY(currentScrollY)
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY < 250) {
+            setIsStickyVisible(true);
+          } else {
+            const isScrollingUp = currentScrollY < lastScrollYRef.current;
+            setIsStickyVisible(isScrollingUp);
+          }
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
       }
-    }
-    window.addEventListener('scroll', controlNavbar, { passive: true })
-    return () => window.removeEventListener('scroll', controlNavbar)
-  }, [lastScrollY])
+    };
+    window.addEventListener('scroll', controlNavbar, { passive: true });
+    return () => window.removeEventListener('scroll', controlNavbar);
+  }, []);
 
   useEffect(() => {
     const handleOpenFromCart = (e: any) => {

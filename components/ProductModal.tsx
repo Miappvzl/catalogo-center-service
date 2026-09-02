@@ -13,7 +13,7 @@ import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animat
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter' 
 
-// 🚀 VISOR INMERSIVO DE ALTA GAMA (Multi-Touch Pinch en Mobile, Click-Zoom en Desktop & Doble Tap)
+// 🚀 VISOR INMERSIVO HÍBRIDO (Drag Nativo en Desktop, Multi-Touch Pinch en Móvil & Doble Tap)
 interface LightboxViewerProps {
     isOpen: boolean;
     onClose: () => void;
@@ -32,6 +32,7 @@ const LightboxViewer = ({
     cardStyle = 'standard'
 }: LightboxViewerProps) => {
     const [isZoomed, setIsZoomed] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
     
     // 🚀 Coordenadas y Escala de Hardware GPU
     const x = useMotionValue(0);
@@ -47,6 +48,13 @@ const LightboxViewer = ({
         isPanning: false,
         lastTap: 0,
     });
+
+    // 🖥️ Detección de Ratón de Precisión (Desktop)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsDesktop(window.matchMedia('(pointer: fine)').matches);
+        }
+    }, []);
 
     // Reseteo total al cambiar de imagen o al abrir/cerrar
     useEffect(() => {
@@ -144,7 +152,7 @@ const LightboxViewer = ({
                 setIsZoomed(newScale > 1.05);
             }
         } else if (e.touches.length === 1 && touchState.current.isPanning) {
-            // Desplazamiento fluido 1:1 con el dedo
+            // Desplazamiento fluido 1:1 con el dedo en móvil
             const dx = e.touches[0].clientX - touchState.current.lastTouch.x;
             const dy = e.touches[0].clientY - touchState.current.lastTouch.y;
             x.set(x.get() + dx);
@@ -160,15 +168,13 @@ const LightboxViewer = ({
 
             const curScale = scale.get();
             if (curScale <= 1.05) {
-                // 🚀 Regreso elástico si se despinchó a tamaño normal
                 resetToCenter();
             } else if (curScale > 4.0) {
                 animate(scale, 3.5, { type: "spring", stiffness: 300, damping: 30 });
             } else {
-                // Contención de límites para no perder la foto de vista
                 const curX = x.get();
                 const curY = y.get();
-                const bound = 1200;
+                const bound = 1400;
                 if (Math.abs(curX) > bound || Math.abs(curY) > bound) {
                     const clampedX = Math.max(-bound, Math.min(bound, curX));
                     const clampedY = Math.max(-bound, Math.min(bound, curY));
@@ -223,7 +229,7 @@ const LightboxViewer = ({
                     {/* Escenario de Interacción */}
                     <div
                         className="relative w-full h-full flex items-center justify-center p-2 sm:p-6 md:p-12 overflow-hidden cursor-default"
-                        style={{ touchAction: 'none' }} // 🚀 Previene scroll nativo en móvil durante el pinzado
+                        style={{ touchAction: 'none' }}
                         onClick={() => {
                             if (isZoomed) resetToCenter();
                             else handleClose();
@@ -233,18 +239,22 @@ const LightboxViewer = ({
                             ref={imgContainerRef}
                             key={`zoom-canvas-${currentIndex}`}
                             style={{ x, y, scale }}
+                            drag={isZoomed && isDesktop} // 🚀 DRAG HABILITADO CON RATÓN EN DESKTOP
+                            dragConstraints={{ left: -1400, right: 1400, top: -1400, bottom: 1400 }}
+                            dragElastic={0}
+                            dragMomentum={false}
                             onTouchStart={handleTouchStart}
                             onTouchMove={handleTouchMove}
                             onTouchEnd={handleTouchEnd}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // 🖥️ En Desktop: clic con ratón amplía / aleja
-                                if (typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches) {
+                            onClick={(e) => e.stopPropagation()}
+                            onTap={(_e, info) => {
+                                // 🖥️ En Desktop: clic con ratón conmuta zoom sin interferir con arrastre
+                                if (isDesktop) {
                                     if (!isZoomed) {
                                         const rect = imgContainerRef.current?.getBoundingClientRect();
                                         if (rect) {
-                                            const clickX = Math.max(0, Math.min(1, (e.clientX - rect.left) / (rect.width || 1)));
-                                            const clickY = Math.max(0, Math.min(1, (e.clientY - rect.top) / (rect.height || 1)));
+                                            const clickX = Math.max(0, Math.min(1, (info.point.x - rect.left) / (rect.width || 1)));
+                                            const clickY = Math.max(0, Math.min(1, (info.point.y - rect.top) / (rect.height || 1)));
                                             const targetX = -(clickX - 0.5) * (rect.width * 1.5);
                                             const targetY = -(clickY - 0.5) * (rect.height * 1.5);
 
@@ -259,7 +269,7 @@ const LightboxViewer = ({
                                 }
                             }}
                             className={`relative w-full max-w-4xl h-[75vh] md:h-[80vh] flex items-center justify-center ${
-                                isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'
+                                isZoomed ? (isDesktop ? 'cursor-grab active:cursor-grabbing' : '') : 'cursor-zoom-in'
                             }`}
                         >
                             <Image
