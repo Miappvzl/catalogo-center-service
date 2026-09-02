@@ -28,7 +28,7 @@ export interface ThemeShapes {
     search_bar_shape: SearchBarShapeOption; // Forma exclusiva del buscador
     line_weight: LineWeightOption;        // Grosor de los bordes estructurales
     ui_shadows: ShadowLevelOption;        // Sombras de tarjetas, modales e inputs
-    info_layout: InfoLayoutOption;        // 🚀 NUEVO: Acordeón vs Desplegado en Modales
+    info_layout?: InfoLayoutOption;       // 🚀 Opcional con fallback seguro en themeAdapter
 }
 
 export interface ThemeTypography {

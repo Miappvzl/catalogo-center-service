@@ -43,11 +43,12 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 badge_soldout_text: '#ffffff',
                 action_favorite: '#ef4444',
             },
-            shapes: {
+           shapes: {
                 button_shape: 'pill',
                 search_bar_shape: 'pill',
                 line_weight: 'thin',
                 ui_shadows: 'none',
+                info_layout: 'accordion',
             },
          typography: {
                 heading_font: 'var(--font-inter), sans-serif',
@@ -89,11 +90,12 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 badge_soldout_text: '#ffffff',
                 action_favorite: '#ef4444',
             },
-            shapes: {
+           shapes: {
                 button_shape: 'sharp',
                 search_bar_shape: 'sharp',
                 line_weight: 'thin',
                 ui_shadows: 'none',
+                info_layout: 'accordion',
             },
             typography: {
                 heading_font: 'var(--font-space), system-ui, sans-serif',
@@ -135,11 +137,12 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 badge_soldout_text: '#ffffff',
                 action_favorite: '#ef4444',
             },
-            shapes: {
+           shapes: {
                 button_shape: 'sharp',
                 search_bar_shape: 'sharp',
                 line_weight: 'bold',
                 ui_shadows: 'hard_brutalist',
+                info_layout: 'accordion',
             },
            typography: {
                 heading_font: 'var(--font-bebas-neue), sans-serif',
@@ -186,6 +189,7 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 search_bar_shape: 'pill',
                 line_weight: 'none',
                 ui_shadows: 'soft',
+                info_layout: 'accordion',
             },
             typography: {
                 heading_font: 'var(--font-fredoka), system-ui, sans-serif',
@@ -227,11 +231,12 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 badge_soldout_text: '#ffffff',
                 action_favorite: '#ef4444',
             },
-            shapes: {
+           shapes: {
                 button_shape: 'rounded',
                 search_bar_shape: 'minimal_underlined',
                 line_weight: 'hairline',
                 ui_shadows: 'none',
+                info_layout: 'accordion',
             },
             typography: {
                 heading_font: 'var(--font-cormorant), Georgia, serif',
