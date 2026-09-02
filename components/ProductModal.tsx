@@ -13,7 +13,7 @@ import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animat
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter' 
 
-// 🚀 VISOR INMERSIVO DE ALTA GAMA (Control Imperativo de Coordenadas, Retorno Forzado al Centro & Amplitud ±1400px)
+// 🚀 VISOR INMERSIVO DE ALTA GAMA (Multi-Touch Pinch en Mobile, Click-Zoom en Desktop & Doble Tap)
 interface LightboxViewerProps {
     isOpen: boolean;
     onClose: () => void;
@@ -33,14 +33,22 @@ const LightboxViewer = ({
 }: LightboxViewerProps) => {
     const [isZoomed, setIsZoomed] = useState(false);
     
-    // 🚀 Controladores de movimiento imperativo directo en GPU
+    // 🚀 Coordenadas y Escala de Hardware GPU
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const scale = useMotionValue(1);
     
     const imgContainerRef = useRef<HTMLDivElement>(null);
+    const touchState = useRef({
+        startDistance: 0,
+        startScale: 1,
+        lastTouch: { x: 0, y: 0 },
+        isPinching: false,
+        isPanning: false,
+        lastTap: 0,
+    });
 
-    // 🚀 Reseteo Forzado al cambiar de foto o al abrir/cerrar
+    // Reseteo total al cambiar de imagen o al abrir/cerrar
     useEffect(() => {
         setIsZoomed(false);
         x.set(0);
@@ -77,6 +85,100 @@ const LightboxViewer = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, images.length, isZoomed, onClose, setIndex]);
 
+    // 📱 MOTOR MULTI-TOUCH MOBILE (Pinch-to-Zoom, Pan libre & Doble Tap)
+    const handleTouchStart = (e: React.TouchEvent) => {
+        const now = Date.now();
+
+        if (e.touches.length === 1) {
+            // 🚀 DOBLE TAP NATIVO (Zoom Rápido / Reset)
+            if (now - touchState.current.lastTap < 300) {
+                if (scale.get() > 1.1) {
+                    resetToCenter();
+                } else {
+                    const rect = imgContainerRef.current?.getBoundingClientRect();
+                    if (rect) {
+                        const touch = e.touches[0];
+                        const clickX = Math.max(0, Math.min(1, (touch.clientX - rect.left) / (rect.width || 1)));
+                        const clickY = Math.max(0, Math.min(1, (touch.clientY - rect.top) / (rect.height || 1)));
+                        const targetX = -(clickX - 0.5) * (rect.width * 1.5);
+                        const targetY = -(clickY - 0.5) * (rect.height * 1.5);
+                        
+                        animate(scale, 2.5, { type: "spring", stiffness: 300, damping: 30 });
+                        animate(x, targetX, { type: "spring", stiffness: 300, damping: 30 });
+                        animate(y, targetY, { type: "spring", stiffness: 300, damping: 30 });
+                        setIsZoomed(true);
+                    }
+                }
+                touchState.current.lastTap = 0;
+                return;
+            }
+            touchState.current.lastTap = now;
+
+            // Arrastre con un dedo cuando hay zoom activo
+            touchState.current.lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            touchState.current.isPanning = scale.get() > 1.05;
+            touchState.current.isPinching = false;
+
+        } else if (e.touches.length === 2) {
+            // 🚀 PINCH TO ZOOM CON DOS DEDOS
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            touchState.current.startDistance = dist;
+            touchState.current.startScale = scale.get();
+            touchState.current.isPinching = true;
+            touchState.current.isPanning = false;
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2 && touchState.current.isPinching) {
+            // Ampliación continua por distancia de dedos
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            if (touchState.current.startDistance > 0) {
+                const factor = dist / touchState.current.startDistance;
+                const newScale = Math.max(0.85, Math.min(4.5, touchState.current.startScale * factor));
+                scale.set(newScale);
+                setIsZoomed(newScale > 1.05);
+            }
+        } else if (e.touches.length === 1 && touchState.current.isPanning) {
+            // Desplazamiento fluido 1:1 con el dedo
+            const dx = e.touches[0].clientX - touchState.current.lastTouch.x;
+            const dy = e.touches[0].clientY - touchState.current.lastTouch.y;
+            x.set(x.get() + dx);
+            y.set(y.get() + dy);
+            touchState.current.lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (e.touches.length === 0) {
+            touchState.current.isPinching = false;
+            touchState.current.isPanning = false;
+
+            const curScale = scale.get();
+            if (curScale <= 1.05) {
+                // 🚀 Regreso elástico si se despinchó a tamaño normal
+                resetToCenter();
+            } else if (curScale > 4.0) {
+                animate(scale, 3.5, { type: "spring", stiffness: 300, damping: 30 });
+            } else {
+                // Contención de límites para no perder la foto de vista
+                const curX = x.get();
+                const curY = y.get();
+                const bound = 1200;
+                if (Math.abs(curX) > bound || Math.abs(curY) > bound) {
+                    const clampedX = Math.max(-bound, Math.min(bound, curX));
+                    const clampedY = Math.max(-bound, Math.min(bound, curY));
+                    animate(x, clampedX, { type: "spring", stiffness: 300, damping: 30 });
+                    animate(y, clampedY, { type: "spring", stiffness: 300, damping: 30 });
+                }
+            }
+        }
+    };
+
     if (!isOpen || images.length === 0) return null;
 
     const isBrutalist = cardStyle === 'brutalist';
@@ -98,11 +200,9 @@ const LightboxViewer = ({
                             <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-white text-[11px] font-mono font-bold tracking-wider">
                                 {currentIndex + 1} / {images.length}
                             </span>
-                            {isZoomed && (
-                                <span className="hidden sm:inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-white/80 text-[10px] font-mono uppercase tracking-wider animate-in fade-in">
-                                    Arrastra libremente • Clic para centrar y alejar
-                                </span>
-                            )}
+                            <span className="hidden sm:inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-white/80 text-[10px] font-mono uppercase tracking-wider animate-in fade-in">
+                                {isZoomed ? "Arrastra para mover • Clic para alejar" : "Clic para ampliar • Doble tap en móvil"}
+                            </span>
                         </div>
 
                         <button
@@ -122,7 +222,8 @@ const LightboxViewer = ({
 
                     {/* Escenario de Interacción */}
                     <div
-                        className="relative w-full h-full flex items-center justify-center p-4 md:p-12 overflow-hidden cursor-default"
+                        className="relative w-full h-full flex items-center justify-center p-2 sm:p-6 md:p-12 overflow-hidden cursor-default"
+                        style={{ touchAction: 'none' }} // 🚀 Previene scroll nativo en móvil durante el pinzado
                         onClick={() => {
                             if (isZoomed) resetToCenter();
                             else handleClose();
@@ -131,34 +232,33 @@ const LightboxViewer = ({
                         <motion.div
                             ref={imgContainerRef}
                             key={`zoom-canvas-${currentIndex}`}
-                            drag={isZoomed}
                             style={{ x, y, scale }}
-                            dragConstraints={{ left: -1400, right: 1400, top: -1400, bottom: 1400 }} // 🚀 AMPLITUD TOTAL ±1400px: Permite bajar la parte superior de cualquier imagen vertical
-                            dragElastic={0}
-                            dragMomentum={false}
-                            onClick={(e) => e.stopPropagation()}
-                            onTap={(_e, info) => {
-                                if (!isZoomed) {
-                                    if (imgContainerRef.current) {
-                                        const rect = imgContainerRef.current.getBoundingClientRect();
-                                        const clickX = Math.max(0, Math.min(1, (info.point.x - rect.left) / (rect.width || 1)));
-                                        const clickY = Math.max(0, Math.min(1, (info.point.y - rect.top) / (rect.height || 1)));
-                                        
-                                        // 🚀 Desplazamiento reactivo hacia la zona tocada
-                                        const targetX = -(clickX - 0.5) * (rect.width * 1.5);
-                                        const targetY = -(clickY - 0.5) * (rect.height * 1.5);
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // 🖥️ En Desktop: clic con ratón amplía / aleja
+                                if (typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches) {
+                                    if (!isZoomed) {
+                                        const rect = imgContainerRef.current?.getBoundingClientRect();
+                                        if (rect) {
+                                            const clickX = Math.max(0, Math.min(1, (e.clientX - rect.left) / (rect.width || 1)));
+                                            const clickY = Math.max(0, Math.min(1, (e.clientY - rect.top) / (rect.height || 1)));
+                                            const targetX = -(clickX - 0.5) * (rect.width * 1.5);
+                                            const targetY = -(clickY - 0.5) * (rect.height * 1.5);
 
-                                        animate(scale, 2.5, { type: "spring", stiffness: 300, damping: 30 });
-                                        animate(x, targetX, { type: "spring", stiffness: 300, damping: 30 });
-                                        animate(y, targetY, { type: "spring", stiffness: 300, damping: 30 });
-                                        setIsZoomed(true);
+                                            animate(scale, 2.5, { type: "spring", stiffness: 300, damping: 30 });
+                                            animate(x, targetX, { type: "spring", stiffness: 300, damping: 30 });
+                                            animate(y, targetY, { type: "spring", stiffness: 300, damping: 30 });
+                                            setIsZoomed(true);
+                                        }
+                                    } else {
+                                        resetToCenter();
                                     }
-                                } else {
-                                    // 🚀 REGRESO FORZADO AL CENTRO EXACTO (0, 0)
-                                    resetToCenter();
                                 }
                             }}
-                            className={`relative w-full max-w-4xl h-[70vh] md:h-[80vh] flex items-center justify-center ${
+                            className={`relative w-full max-w-4xl h-[75vh] md:h-[80vh] flex items-center justify-center ${
                                 isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'
                             }`}
                         >
@@ -168,7 +268,7 @@ const LightboxViewer = ({
                                 fill
                                 sizes="100vw"
                                 priority
-                                className="object-contain pointer-events-none drop-shadow-2xl"
+                                className="object-contain pointer-events-none drop-shadow-2xl select-none"
                             />
                         </motion.div>
                     </div>
