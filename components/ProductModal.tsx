@@ -884,15 +884,16 @@ Mi duda es la siguiente: `;
                                             {/* Variantes */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-6">
-                                                    <div>
-                                                        <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)] flex items-center gap-2 mb-3">
-                                                            {isModelOption ? 'Modelo' : 'Color'} <span className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor}</span>
-                                                            {!selectedColor && (
-                                                                <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-[var(--store-text-main)] normal-case tracking-normal text-[9px] italic">
-                                                                    👉 Toca para elegir
-                                                                </motion.span>
-                                                            )}
-                                                        </span>
+                                                   {/* Colores (Anillos finos) */}
+                                                <div>
+                                                    <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)] flex items-center gap-2 mb-3">
+                                                        {isModelOption ? 'Modelo' : 'Color'} <span className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor}</span>
+                                                        {!selectedColor && (
+                                                            <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)] opacity-75 font-normal italic">
+                                                                — Seleccionar —
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                         <div className="flex flex-wrap gap-4">
                                                             {availableColors.map((c: any, idx: number) => (
                                                                 <button
@@ -1158,13 +1159,14 @@ Mi duda es la siguiente: `;
                                         {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                             <div className="space-y-5 pt-4 border-t-2 border-[var(--store-border)]">
                                                 {/* Colores */}
+                                              {/* Colores */}
                                                 <div>
                                                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] flex items-center gap-2 mb-2">
                                                         COLOR: <strong className="text-[var(--store-text-main)] font-black">{selectedColor || 'SELECCIONA'}</strong>
                                                         {!selectedColor && (
-                                                            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-[var(--store-primary)] normal-case tracking-normal text-[10px]">
-                                                                👉 Toca para elegir
-                                                            </motion.span>
+                                                            <span className="font-mono text-[9px] font-black uppercase text-amber-500 bg-amber-500/10 px-1.5 py-0.5 border border-amber-500/30">
+                                                                [ REQUERIDO ]
+                                                            </span>
                                                         )}
                                                     </span>
                                                     <div className="flex flex-wrap gap-2">
@@ -1415,13 +1417,13 @@ Mi duda es la siguiente: `;
 
                                         {/* Opciones / Variantes en Píldoras */}
                                         {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
-                                           <div className="space-y-4 pt-4 border-t border-[var(--store-border)]/40">
+                                          <div className="space-y-4 pt-4 border-t border-[var(--store-border)]/40">
                                                 <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] flex items-center gap-2">
                                                     Elige tu opción:
                                                     {!selectedColor && (
-                                                        <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-[var(--store-primary)] normal-case tracking-normal text-[10px]">
-                                                            👉 Toca para elegir
-                                                        </motion.span>
+                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--store-primary)]/10 text-[var(--store-primary)] text-[9px] font-bold uppercase tracking-wider">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" /> Requerido
+                                                        </span>
                                                     )}
                                                 </span>
                                                 <div className="flex flex-wrap gap-2">
@@ -1718,17 +1720,17 @@ Mi duda es la siguiente: `;
                                                             animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
                                                             className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : 'border-transparent'}`}
                                                         >
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-2">
-                                                                    1. {isModelOption ? 'Modelo / Opción' : 'Color'}
-                                                                    {!selectedColor && (
-                                                                        <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-[var(--store-primary)] normal-case tracking-normal text-[9px]">
-                                                                            👉 Toca para elegir
-                                                                        </motion.span>
-                                                                    )}
-                                                                </span>
-                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
-                                                            </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-2">
+                                                                1. {isModelOption ? 'Modelo / Opción' : 'Color'}
+                                                                {!selectedColor && (
+                                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--store-primary)]/10 text-[var(--store-primary)] text-[9px] font-bold">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" /> Seleccionar
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
+                                                        </div>
                                                             <div className="flex flex-wrap gap-3">
                                                                 {availableColors.map((c: any, idx: number) => (
                                                                     <button
