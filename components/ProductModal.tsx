@@ -1724,8 +1724,8 @@ Mi duda es la siguiente: `;
                                                             <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-2">
                                                                 1. {isModelOption ? 'Modelo / Opción' : 'Color'}
                                                                 {!selectedColor && (
-                                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--store-primary)]/10 text-[var(--store-primary)] text-[9px] font-bold">
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" /> Seleccionar
+                                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--store-text-main)]/10 text-[var(--store-text-main)] text-[9px] font-bold">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-text-main)] animate-pulse" /> Seleccionar
                                                                     </span>
                                                                 )}
                                                             </span>
