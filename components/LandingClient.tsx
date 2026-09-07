@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionValueEvent } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import {
   AlertCircle,
   MessageSquare,
@@ -48,37 +49,25 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // =========================================
-// COMPONENTE: SMART NAVBAR (PRECISION BAR)
+// COMPONENTE: SMART NAVBAR (CON ATMOSPHERIC TOP SCRIM)
 // =========================================
 
 const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
-  const [isVisible, setIsVisible] = useState(true)
-  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-
-  // Control de ocultamiento al hacer scroll (se desactiva si el menú móvil está abierto)
+  // 🚀 SENSOR DE ACTIVACIÓN SUAVE DEL EFECTO CENITAL
   useEffect(() => {
-    const controlNavbar = () => {
-      if (isMobileMenuOpen) return;
-      if (window.scrollY > lastScrollY && window.scrollY > 100) {
-        setIsVisible(false)
-      } else {
-        setIsVisible(true)
-      }
-      setLastScrollY(window.scrollY)
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
     }
-    window.addEventListener('scroll', controlNavbar)
-    return () => window.removeEventListener('scroll', controlNavbar)
-  }, [lastScrollY, isMobileMenuOpen])
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
-  // Bloquear scroll cuando el menú móvil está abierto
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden'
+    else document.body.style.overflow = 'unset'
   }, [isMobileMenuOpen])
 
   const navLinks = [
@@ -93,7 +82,6 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
     setIsMobileMenuOpen(false)
     const element = document.querySelector(href)
     if (element) {
-      // Pequeño delay para permitir que el menú móvil se cierre antes de hacer scroll
       setTimeout(() => {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 300)
@@ -102,122 +90,135 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
 
   return (
     <>
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: isVisible ? 0 : -100 }}
-        transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed top-0 left-0 right-0 z-[100] px-4 md:px-4 py-3 flex justify-center"
+      {/* 🚀 EFECTO CENITAL DISCRETO (Atmospheric Scrim)
+          No tiene contenedor, no tiene bordes y no intercepta clics.
+          Oscurece ligeramente el borde superior y se desvanece a transparente. */}
+      <div 
+        className={`fixed top-0 left-0 right-0 h-28 md:h-36 pointer-events-none z-[95] transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isScrolled ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          background: 'linear-gradient(to bottom, rgba(10, 10, 10, 0.08) 0%, rgba(10, 10, 10, 0.06) 35%, rgba(10, 10, 10, 0.035) 45%, rgba(10, 10, 10, 0.015) 75%, rgba(10, 10, 10, 0) 100%)'
+        }}
+      />
+
+      {/* 🚀 NAVBAR TOTALMENTE FLOTANTE Y TRANSPARENTE */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-[100] px-6 md:px-12 py-6 md:py-8 flex items-center justify-between pointer-events-none bg-transparent border-none shadow-none"
       >
-        <div className="w-full max-w-7xl bg-white/40 backdrop-blur-xl rounded-full px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_10px_13px_rgba(0,0,0,0.1)]">
-
-          {/* Logo Inyectado */}
-          <div className="flex items-center">
-            <a className="flex items-center group active:scale-95 transition-transform" href="/">
-              <img
-                alt="Preziso Logo"
-                width="auto"
-                height="20px"
-                className="h-10 md:h-12 w-auto object-contain brightness-0"
-                src="/pezisologo.png"
-              />
-            </a>
-          </div>
-
-          {/* Links Centrales (Desktop) */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                onClick={(e) => handleNavClick(e, item.href)}
-                className="text-[10px] font-mono text-slate-500 uppercase tracking-widest hover:text-zinc-900 transition-colors"
-              >
-                {item.name}
-              </a>
-            ))}
-          </div>
-
-          {/* Widgets & CTAs */}
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1  rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
-              <span className="text-[12px] font-mono text-zinc-700 uppercase tracking-tighter">BCV: {bcvRate}</span>
-            </div>
-
-            <Link
-              href="/login"
-              className="group flex items-center gap-2   px-6 md:px-10 py-3 rounded-full text-zinc-900/80 font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-black hover:text-white active:scale-95"
-            >
-
-              <span>Crear Tienda</span>
-              <ArrowUpRight size={16} className="text-zinc-900/80 group-hover:text-white transition-colors" />
-
-            </Link>
-
-            {/* Menú Hamburguesa (Mobile) */}
-            <button
-              className="md:hidden p-2 text-zinc-900 active:scale-95 transition-transform"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
-          </div>
+        {/* Logo */}
+        <div className="flex items-center pointer-events-auto">
+          <a className="flex items-center group active:scale-95 transition-transform" href="/">
+            <img
+              alt="Preziso Logo"
+              className="h-8 md:h-10 w-auto object-contain brightness-0"
+              src="/pezisologo.png"
+            />
+          </a>
         </div>
-      </motion.nav>
 
-      {/* Menú Desplegable Móvil (Pantalla Completa) */}
+        {/* Links Centrales Flotantes */}
+        <div className="hidden md:flex items-center gap-10 pointer-events-auto">
+          {navLinks.map((item) => (
+            <a
+              key={item.name}
+              href={item.href}
+              onClick={(e) => handleNavClick(e, item.href)}
+              className="relative text-[10px] font-bold text-neutral-600 uppercase tracking-widest hover:text-neutral-950 transition-colors group py-2"
+            >
+              {item.name}
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-neutral-900 transition-all duration-300 ease-out group-hover:w-full" />
+            </a>
+          ))}
+        </div>
+
+        {/* Widgets & CTAs */}
+        <div className="flex items-center gap-6 md:gap-8 pointer-events-auto">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-mono font-bold text-neutral-600 uppercase tracking-widest">
+              BCV: {bcvRate}
+            </span>
+          </div>
+
+          <Link
+            href="/admin"
+            className="hidden md:flex items-center gap-2 bg-neutral-950 hover:bg-black text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"
+          >
+            <span>Crear Tienda</span>
+            <ArrowUpRight size={16} strokeWidth={2.5} />
+          </Link>
+
+          {/* Menú Hamburguesa (Mobile) */}
+          <button
+            className="md:hidden text-neutral-900 active:scale-95 transition-transform p-1"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            <Menu size={24} strokeWidth={2} />
+          </button>
+        </div>
+      </nav>
+
+      {/* MENÚ MÓVIL */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: "-100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "-100%" }}
-            transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed inset-0 z-[110] bg-white/95 backdrop-blur-3xl flex flex-col px-6 py-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-[110] bg-white flex flex-col h-[100dvh] overflow-hidden"
           >
-            {/* Header del Menú Móvil */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-6 mb-8">
-              <img alt="Preziso Logo" className="h-15 w-auto object-contain brightness-0" src="/pezisologo.png" />
+            <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none">
+              <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
+            </div>
+
+            <div className="flex items-center justify-between px-6 py-6 relative z-10 border-b border-neutral-100">
+              <img alt="Preziso Logo" className="h-8 w-auto object-contain brightness-0" src="/pezisologo.png" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 bg-white/10 rounded-full text-zinc-900 active:scale-95"
+                className="p-2 bg-neutral-50 border border-neutral-200/50 rounded-full text-neutral-600 active:scale-95 transition-all shadow-xs"
               >
-                <X size={20} />
+                <X size={18} strokeWidth={2.5} />
               </button>
             </div>
 
-            {/* Links Móviles con Animación en Cascada */}
-            <div className="flex flex-col gap-6 mt-8">
+            <div className="flex flex-col px-8 pt-12 gap-8 relative z-10">
               {navLinks.map((item, i) => (
                 <motion.a
                   key={item.name}
                   href={item.href}
                   onClick={(e) => handleNavClick(e, item.href)}
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 * i, duration: 0.5, ease: "easeOut" }}
-                  className="text-4xl font-medium tracking-tighter text-slate-500 hover:text-zinc-900 uppercase transition-colors flex items-center justify-between border-b border-slate-200 pb-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + (i * 0.05), duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-4xl font-light tracking-tighter text-neutral-400 hover:text-neutral-900 uppercase transition-colors flex items-center justify-between group"
                 >
                   {item.name}
-                  <ArrowUpRight size={24} className="opacity-0 hover:opacity-100 transition-opacity" />
+                  <ArrowUpRight size={28} strokeWidth={1.5} className="text-neutral-200 group-hover:text-neutral-900 transition-colors" />
                 </motion.a>
               ))}
             </div>
 
-            {/* Footer Móvil */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mt-auto pb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="mt-auto p-6 relative z-10 bg-gradient-to-t from-white via-white to-transparent pt-20"
             >
-              <div className="flex items-center gap-2 px-4 py-3 bg-slate-100/50 border border-slate-200 rounded-2xl justify-center mb-6">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Tasa BCV Activa: {bcvRate} Bs</span>
+              <div className="flex items-center gap-2 justify-center mb-6 bg-neutral-50 border border-neutral-200/50 py-3 rounded-xl shadow-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-mono font-bold text-neutral-500 uppercase tracking-widest">
+                  Tasa BCV Sincronizada: {bcvRate} Bs
+                </span>
               </div>
-              <button className="w-full bg-black text-zinc-900 py-4 rounded-full text-xs font-black uppercase tracking-widest active:scale-95 flex justify-center items-center gap-2">
-                Crear Tienda ahora <ArrowUpRight size={16} />
-              </button>
+              
+              <Link 
+                href="/admin"
+                className="w-full bg-neutral-950 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-[0.98] transition-transform flex justify-center items-center gap-2 shadow-lg"
+              >
+                Crear Tienda ahora <ArrowUpRight size={16} strokeWidth={2.5} />
+              </Link>
             </motion.div>
           </motion.div>
         )}
@@ -225,101 +226,174 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
     </>
   )
 }
-
-
-
 // =========================================
-// NODO 0: LA INICIALIZACIÓN (PRE-LOADER & HERO)
+// NODO 0: LA INICIALIZACIÓN (HERO AWWWARDS & FOUNDER MANIFESTO)
 // =========================================
 
 const NodeZeroHero = () => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [isFounderModalOpen, setIsFounderModalOpen] = useState(false);
 
-  // 🚀 DETECTOR DE DISPOSITIVO MÓVIL (Bypass de hidratación seguro contra SSR)
-  const [isMobile, setIsMobile] = useState(true)
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  })
-
-  const y = useTransform(scrollYProgress, [0, 1], [0, -100])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
-
-   return (
-    <section
-      ref={containerRef}
-      className="relative h-[85vh] md:h-screen w-full bg-white flex flex-col items-center justify-start overflow-hidden border-b border-neutral-200/50"
-    >
-    
-
-
-      <motion.div
-        style={isMobile ? {} : { y, opacity, scale }}
-        className="relative md:sticky md:top-0 h-full md:h-screen w-full flex flex-col items-center justify-center px-6 z-10"
-      >
-        <div className="max-w-7xl w-full text-center flex flex-col items-center">
-
-          {/* SEO Invisible */}
-          <h1 className="sr-only">
-            Preziso Commerce: Plataforma SaaS de E-commerce y Punto de Venta (POS) multimoneda sincronizada con el BCV en Venezuela.
+  return (
+    <section className="relative min-h-[90vh] md:min-h-screen w-full bg-white flex flex-col items-center justify-center overflow-hidden border-b border-neutral-200/50 pt-32 lg:pt-28 pb-12">
+   
+      <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center relative z-10">
+        
+        {/* ========================================= */}
+        {/* COLUMNA IZQUIERDA: COPY EDITORIAL & CTAs */}
+        {/* ========================================= */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center lg:items-start text-center lg:text-left"
+        >
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
+            Crea tu tienda online en Venezuela y vende por WhatsApp.
           </h1>
+          
+          <p className="text-sm md:text-base text-neutral-500 font-medium leading-relaxed max-w-lg mb-10">
+            El único catálogo virtual con Punto de Venta (POS) multimoneda que sincroniza la tasa BCV en tiempo real. Cobra en dólares, Zelle y Pago Móvil sin descuadres de caja.
+          </p>
 
-          {/* ADN Visual Centrado */}
-          <HeroAnimatedLogo className="text-zinc-900 drop-shadow-sm" />
+         {/* Botones de Acción (Primary + Founder Manifesto) */}
+          <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 w-full sm:w-auto">
+            <Link
+              href="/admin"
+              className="group flex items-center justify-center gap-3 bg-neutral-950 border border-neutral-700 px-8 py-4 rounded-xl text-white font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-[0_10px_20px_rgba(0,0,0,0.1)] w-full sm:w-auto shrink-0"
+            >
+              <span>Crear tienda gratis</span>
+              <ArrowUpRight
+                size={18}
+                strokeWidth={2.5}
+                className="text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300"
+              />
+            </Link>
+            
+            {/* 🚀 BOTÓN SECUNDARIO (Premium Brutalism: Borde grueso y contraste extremo) */}
+            <button
+              onClick={() => setIsFounderModalOpen(true)}
+              className="group flex items-center justify-center gap-2.5 bg-transparent border-2 border-neutral-700 px-6 py-4 rounded-xl text-neutral-800 font-bold uppercase tracking-widest text-[10px] transition-all duration-300 hover:bg-neutral-50 active:scale-[0.98] w-full sm:w-auto shrink-0"
+            >
+              <MessageSquare size={15} strokeWidth={2.5} className="text-neutral-800 transition-colors" />
+              <span>Por qué creamos Preziso</span>
+            </button>
+          </div>
+          
+          <div className="mt-5 flex items-center gap-1.5 opacity-70">
+            <CheckCircle2 size={12} className="text-emerald-600" />
+            <span className="text-[10px] font-mono font-semibold text-neutral-500 uppercase tracking-wider">
+              No requiere tarjeta de crédito
+            </span>
+          </div>
+        </motion.div>
 
-          {/* Propuesta de Valor y CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 1 }}
-            className="-mt-3 md:-mt-8 flex flex-col items-center gap-6 md:gap-8 relative z-10"
-          >
-            <p className="text-slate-500 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] max-w-lg leading-relaxed">
-              Tu tienda. Multimoneda. Sincronizada al BCV. Domina el caos de vender en Venezuela con un ecosistema de punto de venta y e-commerce. <br />
-            </p>
-
-            <div className="mt-2 flex flex-col items-center gap-4">
-              <Link
-                href="/admin"
-                className="group flex items-center gap-3 bg-white border border-black px-8 md:px-10 py-4 rounded-full text-black font-black uppercase tracking-[0.2em] text-[10px] md:text-xs transition-all duration-300 hover:bg-black hover:text-white active:scale-95"
-              >
-                <span>Crear tienda gratis</span>
-                <ArrowUpRight
-                  size={18}
-                  strokeWidth={2.5}
-                  className="text-black group-hover:text-white transition-all duration-300 group-hover:translate-x-1"
-                />
-              </Link>
-
-              <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
-                No requiere tarjeta de crédito
-              </span>
-            </div>
-          </motion.div>
-        </div>
-      </motion.div>
+        {/* ========================================= */}
+        {/* COLUMNA DERECHA: MOCKUP CON FADE-OUT INFERIOR */}
+        {/* ========================================= */}
+        <motion.div 
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="relative w-full flex justify-center lg:justify-end items-center h-[350px] md:h-[500px] lg:h-[550px]"
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-neutral-100/80 rounded-full blur-[80px] -z-10" />
+          
+          <img 
+            src="/hero-hand-mockup.webp" 
+            alt="Cliente usando tienda online Preziso en smartphone"
+            className="w-full h-full object-contain object-center lg:object-right drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
+            loading="eager"
+            decoding="async"
+            // 🚀 MÁSCARA CSS: Difumina la imagen y su sombra hacia transparente en el 30% inferior
+            style={{ 
+              WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', 
+              maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' 
+            }}
+          />
+        </motion.div>
+      </div>
 
       {/* Grid de Fondo Dinámico */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+      <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_transparent_80%)]" />
       </div>
+
+      {/* ========================================= */}
+      {/* MODAL: MANIFIESTO DEL FUNDADOR (EDITORIAL DESIGN) */}
+      {/* ========================================= */}
+      <AnimatePresence>
+        {isFounderModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+            {/* Backdrop más claro y elegante */}
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setIsFounderModalOpen(false)}
+              className="absolute inset-0 bg-neutral-900/20 backdrop-blur-md"
+            />
+            
+            {/* Contenedor Editorial */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.98, y: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative w-full max-w-3xl bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-neutral-200/50 flex flex-col z-10 max-h-[90dvh]"
+            >
+              {/* Botón de cierre invisible (Cero ruido) */}
+              <button 
+                onClick={() => setIsFounderModalOpen(false)}
+                className="absolute top-6 right-6 md:top-8 md:right-8 p-2 text-neutral-400 hover:text-neutral-900 transition-colors z-20"
+              >
+                <X size={20} strokeWidth={1.5} />
+              </button>
+
+              {/* Cuerpo del Manifiesto */}
+              <div className="p-8 pt-12 md:p-14 lg:p-16 overflow-y-auto no-scrollbar relative">
+                
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.2em] mb-8 block">
+                  Carta Abierta
+                </span>
+
+                <h3 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-neutral-900 leading-[1.1] mb-10">
+                  "La tecnología debe adaptarse a nuestra cultura, no al revés."
+                </h3>
+                
+                {/* Columna de lectura estrecha para no cansar el ojo */}
+                <div className="space-y-6 text-sm md:text-base text-neutral-500 leading-relaxed font-medium max-w-2xl">
+                  <p>
+                    Soy <strong className="text-neutral-900 font-bold">Ángel Gabriel Ojeda Medina</strong>. A mis 20 años, me cansé de ver cómo los comercios venezolanos luchaban a diario contra plataformas internacionales que simplemente no entienden nuestra realidad operativa.
+                  </p>
+                  <p>
+                    Preziso nació de esa frustración. Decidí construir una infraestructura desde cero que comprendiera psicológicamente cómo compra y vende el venezolano en redes sociales.
+                  </p>
+                  <p>
+                    Transformamos el caos multimoneda, la inestabilidad de las tasas y el desorden de los mensajes de WhatsApp en una tecnología intuitiva, rápida y elegante.
+                  </p>
+                  <p className="text-neutral-900 font-bold">
+                    Preziso no es solo un software; es un motor diseñado para acelerar el crecimiento de nuestro país.
+                  </p>
+                </div>
+
+                {/* Firma del Fundador */}
+                <div className="mt-12 pt-8 border-t border-neutral-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-neutral-900 text-white flex items-center justify-center text-lg font-light shadow-sm">
+                    A
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-neutral-900 tracking-tight">Ángel Gabriel Ojeda Medina</span>
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mt-0.5">Fundador & Arquitecto Principal</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
-
-
-
 
 const NodeZeroShowcase = () => {
   return (
@@ -356,7 +430,7 @@ const NodeZeroShowcase = () => {
       {/* Copit de Contexto */}
       <div className="max-w-7xl mx-auto px-6 text-center mb-16 relative z-10">
         <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.4em] mb-4 block">Experiencia de Usuario Real</span>
-        <h2 className="text-3xl md:text-5xl font-black text-neutral-900 tracking-tight leading-none uppercase">
+        <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 mb-6 md:text-5xl leading-none">
           Interfaces que enamoran <br />
           <span className="text-neutral-500 font-medium">a primera vista.</span>
         </h2>
@@ -470,7 +544,7 @@ const NodeTrustEcosystem = () => {
           <span className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 uppercase tracking-widest border border-slate-200 px-3 py-1.5 rounded-full mb-6 bg-white/50 backdrop-blur-sm shadow-sm">
             <Database size={12} className="text-black" /> Ecosistema Omnicanal
           </span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-zinc-900 leading-[0.9] mb-6 uppercase">
+          <h2 className="ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1]  text-4xl md:text-5xl  mb-6 ">
             Tu inventario.<br />
             Tu caja.<br />
             Una sola plataforma.
@@ -602,7 +676,7 @@ const NodeOneReconciliation = () => {
             <Wallet size={12} className="text-neutral-500" /> Conciliación Multimoneda
           </span>
 
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 leading-tight uppercase">
+          <h2 className="ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-3xl md:text-5x">
             El fin del caos en <br />
             <span className="text-neutral-500">sus cierres de caja.</span>
           </h2>
@@ -735,7 +809,7 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
         className="w-full max-w-6xl px-6 relative z-10 flex flex-col items-center"
       >
         <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-4">Prueba Empírica Interactiva</span>
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-16">
+        <h2 className="text-4xl md:text-6xl  text-center  ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
           El fin del cálculo manual.
         </h2>
 
@@ -945,9 +1019,9 @@ const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
         <div className="max-w-7xl mx-auto px-6 w-full">
           
           {/* Encabezado */}
-          <div className="text-center md:text-left mb-10 md:mb-16">
+          <div className="text-center md:text-left mb-6 md:mb-2">
             <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 uppercase leading-none">
+            <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1] mb-6 md:text-5xl">
               El cerebro detrás <br className="hidden md:block" />
               <span className="text-neutral-500 font-medium">de tu operación.</span>
             </h2>
@@ -1152,9 +1226,9 @@ const NodeFourNeural = ({ bcvRate }: { bcvRate: number }) => {
     <section className="relative min-h-[120vh] w-full bg-white py-40 overflow-hidden flex flex-col items-center border-t border-slate-200">
 
       {/* Texto Estructural */}
-      <div className="max-w-7xl px-6 relative z-20 w-full text-center mb-20 pointer-events-none">
+      <div className="max-w-7xl px-6 relative z-20 w-full text-center mb-10 pointer-events-none">
         <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Fricción Cero en Front-End</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
+        <h2 className="ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-4xl md:text-7x">
           Experiencia <br />
           <span className="text-zinc-600">Magnética.</span>
         </h2>
@@ -1349,9 +1423,9 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
 
   return (
     <section ref={targetRef} className="relative min-h-screen w-full bg-slate-50 py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
-      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-32">
+      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-20">
         <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Fricción Cero en el Mostrador</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
+        <h2 className="ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-4xl md:text-7x">
           Pagos Mixtos <br />
           <span className="text-zinc-600">Sin Calculadora.</span>
         </h2>
@@ -1504,7 +1578,7 @@ const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
 
       <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-16">
         <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Control de ADN Visual</span>
-        <h2 className="text-4xl md:text-7xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9]">
+        <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6 md:text-7xl">
           Muta en <br />
           <span className="text-zinc-600">Milisegundos.</span>
         </h2>
@@ -1730,7 +1804,7 @@ const NodeSevenSwarm = () => {
             <Zap size={32} className="text-black" />
             <span className="text-[10px] font-mono text-black uppercase tracking-widest">Motor de Crecimiento</span>
           </div>
-          <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase leading-[0.9] mb-6">
+          <h2 className="sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-4xl md:text-6xl">
             Tus clientes son <br />
             <span className="text-zinc-600">tus vendedores.</span>
           </h2>
