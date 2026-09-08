@@ -179,6 +179,9 @@ export default function CheckoutProcess({
         discount_percentage: 15,
     };
     const deliveryZones = shipping.delivery_zones || [];
+    
+    // 🚀 LECTOR DE POLÍTICA DE ENVÍO
+    const nationalShippingLabel = shipping.national_shipping_is_free ? "(Envío Gratis)" : "(Cobro en Destino)";
 
     // 🚀 LÓGICA DE MÉTODOS Y DIVISAS
     const paymentKeysMap: { [key: string]: string } = {
@@ -330,11 +333,11 @@ export default function CheckoutProcess({
 
     // 🚀 HELPER: GENERADOR DE WHATSAPP OMNICANAL (TICKET PREMIUM)
     const generateWaMessage = (orderNum: string | number, isP2P: boolean = false) => {
-        // 1. Lógica de Envíos (Intacta)
+    // 1. Lógica de Envíos (Dinámica)
         let deliveryInfoFull = "Servicio en Local / Experiencia";
         if (needsShipping) {
             if (clientData.deliveryType === "courier") {
-                deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+                deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
             } else if (clientData.deliveryType === "local_delivery") {
                 deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
             } else if (clientData.deliveryType === "pickup") {
@@ -888,13 +891,13 @@ export default function CheckoutProcess({
                 }),
             );
 
-            // 🚀 RESOLUCIÓN DE LOGÍSTICA (Intacta)
+          // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica)
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
 
             if (needsShipping) {
                 finalShippingMethod = clientData.deliveryType;
-                if (clientData.deliveryType === "courier") deliveryInfoFull = `${clientData.courier} (Cobro en Destino) - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+                if (clientData.deliveryType === "courier") deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
                 else if (clientData.deliveryType === "local_delivery") deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
                 else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }

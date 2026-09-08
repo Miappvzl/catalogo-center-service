@@ -23,7 +23,8 @@ import {
     ShieldAlert,
     ChevronRight,
     MapPin,
-    AlertCircle
+    AlertCircle,
+    Truck
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
@@ -78,10 +79,11 @@ export default function SettingsPage() {
     
     const [isDirty, setIsDirty] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [uploadingHero, setUploadingHero] = useState(false)
+  const [uploadingHero, setUploadingHero] = useState(false)
     const heroInputRef = useRef<HTMLInputElement>(null)
 
     const [shippingRaw, setShippingRaw] = useState<any>({})
+    const [nationalShippingFree, setNationalShippingFree] = useState(false) // 🚀 NUEVO ESTADO LOGÍSTICO
 
     // Estado aislado para la UI de Servicios
     const [serviceConfig, setServiceConfig] = useState({
@@ -101,8 +103,9 @@ export default function SettingsPage() {
                 setIdentity({ phone: data.phone || '', name: data.name }) // 🚀 Logo y Hero removidos
                 setWholesale(data.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 })
                 setReceipt(data.receipt_config || { strict_mode: false })
-                setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
+              setAffiliate(data.affiliate_config || { active: false, global_commission_pct: 5, buyer_discount_pct: 5 })
                 setShippingRaw(data.shipping_config || {})
+                setNationalShippingFree(data.shipping_config?.national_shipping_is_free || false) // 🚀 LECTURA DE BD
                 setServiceConfig({
                     service_badge: data.shipping_config?.service_badge || 'Se consume en tienda',
                     service_title: data.shipping_config?.service_title || 'Servicio / Experiencia',
@@ -197,11 +200,12 @@ export default function SettingsPage() {
         if (!isDirty) return
         setSaving(true)
 
-        const updatedShippingConfig = {
+      const updatedShippingConfig = {
             ...shippingRaw,
             service_badge: serviceConfig.service_badge,
             service_title: serviceConfig.service_title,
-            service_desc: serviceConfig.service_desc
+            service_desc: serviceConfig.service_desc,
+            national_shipping_is_free: nationalShippingFree // 🚀 GUARDADO EN BD
         }
 
         const { error } = await supabase
@@ -550,6 +554,8 @@ export default function SettingsPage() {
                             )}
                         </div>
 
+                   
+
                         {/* COMPROBANTES (COLOR ACENTO: MUTED BLUE) */}
                         <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
                             <div 
@@ -565,7 +571,6 @@ export default function SettingsPage() {
                                 <AnimatedSwitch active={receipt.strict_mode} activeColor="bg-blue-600" />
                             </div>
                         </div>
-
                         {/* GUARDADO DE CAMBIOS INTEGRADO (FLAT STYLE) */}
                         <div className="mt-6 pt-5 border-t border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2 text-xs font-medium">
@@ -591,13 +596,14 @@ export default function SettingsPage() {
                     </section>
                 </div>
 
-                {/* COMPONENTES SECUNDARIOS */}
+          {/* COMPONENTES SECUNDARIOS */}
                 <PayPalSetupCard storeId={store.id} />
                 <PaymentSettings storeId={store.id} initialData={store.payment_config} />
+                
+            
+
                 <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
                 <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
-                <PushNotificationManager storeId={store.id} mode="settings" />
-                <SecuritySettings />
 
                 {/* BOTÓN CERRAR SESIÓN */}
                 <button 

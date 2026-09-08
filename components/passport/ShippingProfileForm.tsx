@@ -110,11 +110,11 @@ export default function ShippingProfileForm({ customerId, initialData }: Shippin
                     <span className="text-black font-semibold text-right">{phone}</span>
                   </div>
                 )}
-                {addressDetail ? (
+             {addressDetail ? (
                   <div className="flex flex-col gap-1 pt-1">
                     <span className="text-gray-400 font-medium">Agencia de Envío Nacional:</span>
                     <span className="text-black font-semibold leading-relaxed">
-                      {courier} (Cobro en Destino) - {addressDetail}, {city}, {state}. {reference && `Ref: ${reference}`}
+                      {courier} - {addressDetail}, {city}, {state}. {reference && `Ref: ${reference}`}
                     </span>
                   </div>
                 ) : (
@@ -163,12 +163,11 @@ export default function ShippingProfileForm({ customerId, initialData }: Shippin
                   value={courier} onChange={e => setCourier(e.target.value)}
                   className="w-full bg-gray-50 text-xs font-semibold rounded-xl py-3.5 px-4 outline-none border border-transparent focus:border-black focus:bg-white transition-all cursor-pointer"
                 >
-                  <option value="MRW">MRW (Cobro en Destino)</option>
-                  <option value="Zoom">Zoom (Cobro en Destino)</option>
-                  <option value="Tealca">Tealca (Cobro en Destino)</option>
+                  <option value="MRW">MRW</option>
+                  <option value="Zoom">Zoom</option>
+                  <option value="Tealca">Tealca</option>
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Estado</label>
