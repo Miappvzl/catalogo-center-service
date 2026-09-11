@@ -436,7 +436,7 @@ export default async function AdminDashboard() {
 
                             {/* Badge Ámbar de Acción Requerida */}
                             {pendingOrdersCount > 0 ? (
-                                <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded">
+                                <div className="flex items-center gap-1.5 bg-amber-400/10 border-none px-2 py-0.5 rounded">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                                     <span className="text-[9px] font-bold font-mono uppercase tracking-wider text-amber-300">
                                         Acción
