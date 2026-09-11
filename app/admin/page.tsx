@@ -10,7 +10,7 @@ import {
     Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
     SquareArrowOutUpRight, ChartNoAxesColumnIncreasing, LineChart,
     Sparkles, ExternalLink, CheckCircle2, Circle, Play, Trophy, // Nuevos iconos
-     MapPin, Users as UsersIcon // 👈 AÑADE ESTOS ICONOS
+    MapPin, Users as UsersIcon // 👈 AÑADE ESTOS ICONOS
 } from 'lucide-react'
 
 // COMPONENTES IMPORTADOS
@@ -54,44 +54,36 @@ export default async function AdminDashboard() {
         switch (status) {
             case "pending":
                 return {
-                    // Reposo: Amarillo sutil. Hover: Amarillo sólido. Active: Amarillo profundo.
-                    iconWrapper:
-                        "bg-yellow-50 text-yellow-700 group-hover:bg-yellow-500 group-hover:text-white active:bg-yellow-600",
-                    dot: "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]",
-                    label: "text-yellow-700",
-                    text: "Pendiente",
+                    iconWrapper: "bg-amber-50 text-amber-600 border border-amber-200/20",
+                    dot: "bg-amber-500",
+                    label: "text-amber-700 border-none font-semibold uppercase tracking-wider",
+                    text: "pendiente",
                 };
             case "paid":
                 return {
-                    // Reposo: Fondo sutil esmeralda. Hover: Esmeralda sólido. Active: Esmeralda oscuro.
-                    iconWrapper:
-                        "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white active:bg-emerald-600",
-                    dot: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
-                    label: "text-emerald-600",
-                    text: "Pagado",
+                    iconWrapper: "bg-emerald-50 text-emerald-600 border border-emerald-200/20",
+                    dot: "bg-emerald-500",
+                    label: "text-emerald-700 border-none font-semibold uppercase tracking-wider",
+                    text: "pagado",
                 };
             case "cancelled":
                 return {
-                    // Reposo: Fondo sutil rojo. Hover: Rojo sólido. Active: Rojo oscuro.
-                    iconWrapper:
-                        "bg-red-50 text-red-600 group-hover:bg-red-500 group-hover:text-white active:bg-red-600",
-                    dot: "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]",
-                    label: "text-red-600",
-                    text: "Cancelado",
+                    iconWrapper: "bg-rose-50 text-rose-600 border border-rose-200/20",
+                    dot: "bg-rose-500",
+                    label: "text-rose-700 border-none font-semibold uppercase tracking-wider",
+                    text: "cancelado",
                 };
             default: // Enviado / Otros
                 return {
-                    // Mantiene el alto contraste blanco/negro estándar
-                    iconWrapper:
-                        "bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white active:bg-gray-800",
-                    dot: "bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.4)]",
-                    label: "text-gray-500",
-                    text: "Enviado",
+                    iconWrapper: "bg-blue-50 text-blue-600 border border-blue-200/20",
+                    dot: "bg-blue-500",
+                    label: "text-blue-700 border-none font-semibold uppercase tracking-wider",
+                    text: "enviado",
                 };
         }
     };
 
-       const {
+    const {
         data: { user },
     } = await supabase.auth.getUser();
 
@@ -203,10 +195,10 @@ export default async function AdminDashboard() {
 
     const recentOrders = recentOrdersRes.data || [];
 
-// Detectar si la tienda es nueva (menos de 24 horas) para mostrar el banner de éxito
+    // Detectar si la tienda es nueva (menos de 24 horas) para mostrar el banner de éxito
     const isNewStore = new Date().getTime() - new Date(store.created_at).getTime() < 24 * 60 * 60 * 1000;
-    
-  // --- LÓGICA DE ANALÍTICAS ENRIQUECIDA PARA EL BENTO GRID ---
+
+    // --- LÓGICA DE ANALÍTICAS ENRIQUECIDA PARA EL BENTO GRID ---
     const rawEvents = eventsRes.data || [];
     const uniqueSessions = new Set<string>();
     const locations: Record<string, number> = {};
@@ -219,7 +211,7 @@ export default async function AdminDashboard() {
     rawEvents.forEach((e: any) => {
         if (!uniqueSessions.has(e.session_id)) {
             uniqueSessions.add(e.session_id);
-            
+
             // Ubicaciones
             const loc = e.location_state || 'Desconocido';
             locations[loc] = (locations[loc] || 0) + 1;
@@ -246,10 +238,10 @@ export default async function AdminDashboard() {
 
     // 2. Datos para Top Estados (Top 2 Desglosado)
     const stateMap: Record<string, string> = {
-        'A': 'Distrito Capital', 'M': 'Miranda', 'B': 'Anzoátegui', 'C': 'Apure', 'D': 'Aragua', 
-        'E': 'Barinas', 'F': 'Bolívar', 'G': 'Carabobo', 'H': 'Cojedes', 'I': 'Falcón', 
-        'J': 'Guárico', 'K': 'Lara', 'L': 'Mérida', 'N': 'Monagas', 'O': 'Nueva Esparta', 
-        'P': 'Portuguesa', 'R': 'Sucre', 'S': 'Táchira', 'T': 'Trujillo', 'U': 'Yaracuy', 
+        'A': 'Distrito Capital', 'M': 'Miranda', 'B': 'Anzoátegui', 'C': 'Apure', 'D': 'Aragua',
+        'E': 'Barinas', 'F': 'Bolívar', 'G': 'Carabobo', 'H': 'Cojedes', 'I': 'Falcón',
+        'J': 'Guárico', 'K': 'Lara', 'L': 'Mérida', 'N': 'Monagas', 'O': 'Nueva Esparta',
+        'P': 'Portuguesa', 'R': 'Sucre', 'S': 'Táchira', 'T': 'Trujillo', 'U': 'Yaracuy',
         'V': 'Zulia', 'X': 'La Guaira', 'Y': 'Delta Amacuro', 'Z': 'Amazonas', 'W': 'Dependencias Federales'
     };
 
@@ -277,7 +269,7 @@ export default async function AdminDashboard() {
     ];
     const topBlock = [...blockStats].sort((a, b) => b.pct - a.pct)[0];
 
-// --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
+    // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
     const storeCreatedAt = new Date(store.created_at).getTime();
     const now = new Date().getTime();
     const daysSinceCreation = (now - storeCreatedAt) / (1000 * 60 * 60 * 24);
@@ -286,13 +278,13 @@ export default async function AdminDashboard() {
     const missions = store.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false };
     const completedCount = [missions.mission_1, missions.mission_2, missions.mission_3].filter(Boolean).length;
     const allMissionsCompleted = completedCount === 3;
-    
+
     // Solo mostramos el panel si tiene menos de 7 días y NO ha completado todo
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
     const storeUrl = `${store.slug}.preziso.shop`;
 
 
-    
+
 
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
@@ -322,7 +314,7 @@ export default async function AdminDashboard() {
                         {/* Lista de Misiones */}
                         <div className="flex flex-col">
                             {/* Misión 1 */}
-                            <Link 
+                            <Link
                                 href={missions.mission_1 ? "#" : "/admin/product/new?mission=1"}
                                 className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_1 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'} border-b border-neutral-100`}
                             >
@@ -341,7 +333,7 @@ export default async function AdminDashboard() {
                             </Link>
 
                             {/* Misión 2 */}
-                            <Link 
+                            <Link
                                 href={missions.mission_2 ? "#" : "/admin/product/new?mission=2"}
                                 className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_2 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'} border-b border-neutral-100`}
                             >
@@ -360,7 +352,7 @@ export default async function AdminDashboard() {
                             </Link>
 
                             {/* Misión 3 */}
-                            <Link 
+                            <Link
                                 href={missions.mission_3 ? "#" : "/admin/product/new?mission=3"}
                                 className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_3 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'}`}
                             >
@@ -382,19 +374,18 @@ export default async function AdminDashboard() {
                 </div>
             )}
 
-            
 
-            <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6 md:space-y-8 relative z-10">
 
-                  {/* 🚀 INYECTA EL BANNER DE NOTIFICACIONES EN LA PARTE SUPERIOR DEL MAIN */}
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6 relative z-10">
+
+                {/* GESTOR DE NOTIFICACIONES */}
                 <PushNotificationManager storeId={store.id} />
 
+                {/* --- BENTO GRID: KPIS INDUSTRIALES DE ALTA DENSIDAD --- */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                {/* --- BENTO GRID SYSTEM 2.0 (BORDERLESS) --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    {/* 1. RATE WIDGET */}
-
-                    <div className="col-span-1 min-h-[160px]">
+                    {/* 1. TASA ACTIVA WIDGET */}
+                    <div className="col-span-1 min-h-[140px]">
                         <RateWidget
                             storeCurrency={storeCurrency}
                             usdRate={usdRate}
@@ -403,105 +394,83 @@ export default async function AdminDashboard() {
                         />
                     </div>
 
-                    {/* 2. VENTAS HOY */}
-                    <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group min-h-[160px] transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] active:scale-[0.98] active:bg-[#fafafa] cursor-default">
-                        <div className="flex justify-between items-start relative z-10">
-                            {/* Contenedor del Ícono: Polaridad Activa en Hover */}
-                            <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
-                                <DollarSign
-                                    size={18}
-                                    strokeWidth={2.2}
-                                    className="group-hover:scale-110 transition-transform duration-500 ease-out"
-                                />
+                    {/* 2. VENTAS HOY (Blanco Puro sobre #F6F6F6) */}
+                    <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px] group transition-all cursor-default">
+                        <div className="flex justify-between items-start">
+                            <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0">
+                                <DollarSign size={16} strokeWidth={2.2} />
                             </div>
 
-                            {/* Badge 'Hoy': Paleta Titanium con Status Dot en tiempo real */}
-                            <div className="flex items-center gap-1.5 bg-gray-900 text-white px-2.5 py-1 rounded-[var(--radius-badge)] shadow-sm">
-                                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-                                <span className="text-[9px] font-bold uppercase tracking-widest">
-                                    Hoy
-                                </span>
-                            </div>
+                            <span className="text-[9px] font-bold font-mono uppercase tracking-wider text-neutral-500 bg-[#F6F6F6] px-2 py-0.5 rounded">
+                                Facturado Hoy
+                            </span>
                         </div>
 
-                        <div className="relative z-10 mt-2">
-                            {/* Cifra Financiera: Tabular nums y Micro-desplazamiento */}
-                            <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none group-hover:translate-x-0.5 transition-transform duration-500 ease-out tabular-nums">
-                                {currencySymbol}
-                                {salesTodayUSD.toFixed(2)}
+                        <div className="mt-4">
+                            <p className="text-3xl md:text-4xl font-mono font-bold tracking-tight text-neutral-900 leading-none tabular-nums">
+                                {currencySymbol}{salesTodayUSD.toFixed(2)}
                             </p>
 
-                            {/* Etiqueta Auxiliar: Contraste Editorial */}
-                            <div className="flex items-center gap-2 mt-2.5">
-                                <LineChart
-                                    size={14}
-                                    strokeWidth={2.5}
-                                    className="text-gray-400 group-hover:text-gray-900 transition-colors duration-500 ease-out"
-                                />
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500 ease-out">
-                                    Ingreso Neto
+                            <div className="flex items-center gap-1.5 mt-2 text-neutral-400">
+                                <LineChart size={12} strokeWidth={2.2} />
+                                <p className="text-[10px] font-bold uppercase tracking-wider">
+                                    Ingreso Neto en Caja
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* 3. PEDIDOS PENDIENTES (Dark Luxury Hardware Node) */}
+                    {/* 3. POR DESPACHAR: NODO OBSIDIANA CON RESPLANDOR ÁMBAR INTERNO */}
                     <Link
                         href="/admin/orders"
-                        className="bg-black text-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group relative overflow-hidden transition-all duration-500 ease-out active:scale-[0.98] active:bg-[#0a0a0a] hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.5)] min-h-[160px]"
+                        className="bg-[#0C0D0E] text-white p-5 md:p-6 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] flex flex-col justify-between min-h-[140px] group relative overflow-hidden transition-transform active:scale-[0.99]"
                     >
-                        {/* Efecto Cinematográfico: Backlight Bloom */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-white/10 transition-all duration-500 ease-out"></div>
+                        {/* 🚀 RESPLANDOR ÁMBAR DENTRO DE LA TARJETA (Ambient Backlight contenido) */}
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-amber-600/10 rounded-full blur-xl pointer-events-none" />
 
                         <div className="flex justify-between items-start relative z-10">
-                            {/* Contenedor del Ícono: Regla matemática 11x11 y brillo interactivo */}
-                            <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-white/5 text-gray-300 group-hover:bg-white/10 group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
-                                <Clock
-                                    size={18}
-                                    strokeWidth={2.2}
-                                    className="group-hover:scale-110 transition-transform duration-500 ease-out"
-                                />
+                            <div className="w-8 h-8 rounded-lg bg-white/10 text-neutral-200 flex items-center justify-center shrink-0">
+                                <Clock size={16} strokeWidth={2.2} />
                             </div>
 
-                            {/* Badge de Acción: Estética Glassmorphism Premium (Cero rojo) */}
-                            {pendingOrdersCount > 0 && (
-                                <div className="flex items-center gap-1.5 bg-white/10 border border-white/5 px-2.5 py-1 rounded-[var(--radius-badge)] backdrop-blur-md shadow-sm">
-                                    <span className="w-1 h-1 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)] animate-pulse"></span>
-                                    <span className="text-[9px] font-bold text-gray-200 uppercase tracking-widest mt-[1px]">
+                            {/* Badge Ámbar de Acción Requerida */}
+                            {pendingOrdersCount > 0 ? (
+                                <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                    <span className="text-[9px] font-bold font-mono uppercase tracking-wider text-amber-300">
                                         Acción
                                     </span>
                                 </div>
+                            ) : (
+                                <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider">Al día</span>
                             )}
                         </div>
 
-                        <div className="relative z-10 mt-2">
-                            {/* Cifra Inmutable: tabular-nums y micro-desplazamiento */}
-                            <p className="text-4xl font-black tracking-tighter text-white leading-none mb-2.5 tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
+                        <div className="relative z-10 mt-4">
+                            <p className="text-3xl md:text-4xl font-mono font-bold tracking-tight text-white leading-none tabular-nums">
                                 {pendingOrdersCount}
                             </p>
 
-                            {/* Jerarquía de salida (Affordance) */}
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors duration-500 ease-out">
+                            <div className="flex items-center gap-1.5 mt-2 text-neutral-400 group-hover:text-amber-200 transition-colors">
+                                <p className="text-[10px] font-bold uppercase tracking-wider">
                                     Por Despachar
                                 </p>
-                                <ArrowRight
-                                    size={14}
-                                    className="text-gray-500 group-hover:text-white transition-all duration-500 ease-out translate-x-0 group-hover:translate-x-1"
-                                    strokeWidth={2.5}
-                                />
+                                <ArrowRight size={12} className="transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
                             </div>
                         </div>
                     </Link>
 
-                  {/* 4. ALERTAS DE INVENTARIO (INTELIGENTES) */}
-                    <CriticalStockCardWrapper
-                        lowStockCount={lowStockCount}
-                        totalProducts={totalProducts}
-                        storeId={store.id}
-                    />
+                    {/* 4. STOCK CRÍTICO (Alerta Roja Semántica) */}
+                    <div className="col-span-1 min-h-[140px]">
+                        <CriticalStockCardWrapper
+                            lowStockCount={lowStockCount}
+                            totalProducts={totalProducts}
+                            storeId={store.id}
+                        />
+                    </div>
 
-                   
+
 
 
                     {/* --- FILA 2: GRÁFICO GIGANTE --- */}
@@ -509,45 +478,44 @@ export default async function AdminDashboard() {
                         {store?.id ? <AnalyticsChart storeId={store.id} /> : null}
                     </div>
 
-                    {/* 🚀 NUEVA FILA 3 REDISEÑADA: MICRO-ANALÍTICAS CON GRÁFICOS REALES */}
+                    {/* --- FILA 3: TELEMETRÍA NACIONAL (Métricas Regionales & Horarios) --- */}
                     {store?.id && (
-                        <div className="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                            
+                        <div className="col-span-1 sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+
                             {/* Tarjeta 1: Visitantes con Histograma Real de 7 Días */}
-                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative overflow-hidden">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
-                                        <UsersIcon size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                            <div className="bg-white p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px] relative overflow-hidden">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0">
+                                        <UsersIcon size={15} strokeWidth={2.2} />
                                     </div>
-                                    
-                                    {/* Botón CTA Superior */}
-                                    <Link 
-                                        href="/admin/analytics" 
-                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
+
+                                    <Link
+                                        href="/admin/analytics"
+                                        className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-900 transition-colors"
                                     >
-                                        <span>Ver todo</span>
-                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                        <span>Auditar</span>
+                                        <ArrowUpRight size={11} strokeWidth={2.5} />
                                     </Link>
                                 </div>
 
                                 <div className="flex items-end justify-between mt-auto">
                                     <div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 group-hover:text-gray-900 transition-colors duration-500">
+                                        <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider mb-1">
                                             Visitantes Únicos (30d)
                                         </p>
-                                        <p className="text-4xl font-black tracking-tighter text-gray-900 leading-none tabular-nums group-hover:translate-x-0.5 transition-transform duration-500 ease-out">
+                                        <p className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-neutral-900 leading-none tabular-nums">
                                             {visitsCount.toLocaleString()}
                                         </p>
                                     </div>
 
-                                    {/* Histograma real de los últimos 7 días */}
-                                    <div className="flex items-end gap-1 h-8 px-1">
+                                    {/* Histograma real sin saturación */}
+                                    <div className="flex items-end gap-1 h-7 px-1">
                                         {dailyTrafficCounts.map((count, i) => {
                                             const heightPct = (count / maxDailyTraffic) * 100;
                                             return (
-                                                <div 
-                                                    key={i} 
-                                                    className="w-1.5 bg-neutral-200 group-hover:bg-neutral-950 rounded-t-xs transition-all duration-500" 
+                                                <div
+                                                    key={i}
+                                                    className="w-1.5 bg-neutral-200 hover:bg-neutral-900 rounded-t-xs transition-colors"
                                                     style={{ height: `${Math.max(15, heightPct)}%` }}
                                                     title={`Día ${i + 1}: ${count} visitas`}
                                                 />
@@ -557,41 +525,40 @@ export default async function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {/* Tarjeta 2: Foco Geográfico con Desglose Top 2 */}
-                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
-                                        <MapPin size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                            {/* Tarjeta 2: Foco Geográfico Nacional */}
+                            <div className="bg-white p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0">
+                                        <MapPin size={15} strokeWidth={2.2} />
                                     </div>
 
-                                    {/* Botón CTA Superior */}
-                                    <Link 
-                                        href="/admin/analytics" 
-                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
+                                    <Link
+                                        href="/admin/analytics"
+                                        className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-900 transition-colors"
                                     >
-                                        <span>Ver mapa</span>
-                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                        <span>Detalle</span>
+                                        <ArrowUpRight size={11} strokeWidth={2.5} />
                                     </Link>
                                 </div>
 
-                                <div className="mt-auto space-y-3">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500">
-                                        Top Regiones
+                                <div className="mt-auto space-y-2.5">
+                                    <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider">
+                                        Distribución Regional
                                     </p>
-                                    
+
                                     {topLocationsList.length === 0 ? (
-                                        <p className="font-bold text-lg text-gray-900">Sin datos geográficos</p>
+                                        <p className="font-mono text-xs text-neutral-400">Sin datos geográficos</p>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             {topLocationsList.map((loc, idx) => (
                                                 <div key={loc.name} className="space-y-1">
-                                                    <div className="flex justify-between text-xs font-bold text-gray-900">
+                                                    <div className="flex justify-between text-[11px] font-medium text-neutral-800">
                                                         <span className="truncate max-w-[140px]">{loc.name}</span>
-                                                        <span className="font-mono tabular-nums text-neutral-500">{loc.pct}%</span>
+                                                        <span className="font-mono tabular-nums font-bold text-neutral-900">{loc.pct}%</span>
                                                     </div>
-                                                    <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full transition-all duration-500 ${idx === 0 ? 'bg-neutral-950' : 'bg-neutral-400'}`} 
+                                                    <div className="h-1 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full transition-all duration-300 ${idx === 0 ? 'bg-neutral-900' : 'bg-neutral-400'}`}
                                                             style={{ width: `${loc.pct}%` }}
                                                         />
                                                     </div>
@@ -602,51 +569,40 @@ export default async function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {/* Tarjeta 3: Horario Activo con Desglose de Fases del Día */}
-                            <div className="bg-white p-6 rounded-[var(--radius-card)] flex flex-col justify-between group transition-all duration-500 ease-out hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)] min-h-[190px] relative">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-[#f6f6f6] text-gray-900 group-hover:bg-black group-hover:text-white transition-all duration-500 ease-out flex items-center justify-center shrink-0">
-                                        <Clock size={18} strokeWidth={2.2} className="group-hover:scale-110 transition-transform duration-500 ease-out" />
+                            {/* Tarjeta 3: Horario Activo de Tráfico */}
+                            <div className="bg-white p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0">
+                                        <Clock size={15} strokeWidth={2.2} />
                                     </div>
 
-                                    {/* Botón CTA Superior */}
-                                    <Link 
-                                        href="/admin/analytics" 
-                                        className="group/btn flex items-center gap-1 bg-[#f6f6f6] hover:bg-neutral-900 text-neutral-500 hover:text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all duration-300"
-                                    >
-                                        <span>Ver horas</span>
-                                        <ArrowUpRight size={12} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                                    </Link>
+                                    {topBlock && topBlock.pct > 0 ? (
+                                        <span className="text-[9px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded uppercase">
+                                            Pico: {topBlock.name}
+                                        </span>
+                                    ) : null}
                                 </div>
 
-                                <div className="mt-auto space-y-3">
-                                    <div className="flex justify-between items-baseline">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-900 transition-colors duration-500">
-                                            Afluencia por Bloques
-                                        </p>
-                                        {topBlock && topBlock.pct > 0 && (
-                                            <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">
-                                                Pico: {topBlock.name}
-                                            </span>
-                                        )}
-                                    </div>
+                                <div className="mt-auto space-y-2.5">
+                                    <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider">
+                                        Fases de Compra
+                                    </p>
 
-                                    {/* Barra horizontal segmentada con etiquetas claras */}
-                                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                                    <div className="grid grid-cols-4 gap-1.5">
                                         {blockStats.map((block) => {
                                             const isPeak = block.name === topBlock?.name && block.pct > 0;
                                             return (
                                                 <div key={block.name} className="flex flex-col items-center gap-1">
-                                                    <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full transition-all duration-500 ${isPeak ? 'bg-neutral-950' : 'bg-neutral-300'}`} 
+                                                    <div className="h-1 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full transition-all duration-300 ${isPeak ? 'bg-neutral-900' : 'bg-neutral-300'}`}
                                                             style={{ width: `${Math.max(10, block.pct)}%` }}
                                                         />
                                                     </div>
-                                                    <span className={`text-[9px] font-bold uppercase ${isPeak ? 'text-gray-900' : 'text-gray-400'}`}>
+                                                    <span className={`text-[8px] font-mono font-bold uppercase ${isPeak ? 'text-neutral-900' : 'text-neutral-400'}`}>
                                                         {block.name.substring(0, 3)}
                                                     </span>
-                                                    <span className="text-[9px] font-mono tabular-nums text-gray-500">
+                                                    <span className="text-[9px] font-mono tabular-nums font-semibold text-neutral-500">
                                                         {block.pct}%
                                                     </span>
                                                 </div>
@@ -659,119 +615,101 @@ export default async function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* --- FILA 4: INTELIGENCIA Y ACTIVIDAD (Antes era la fila 3) --- */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2">
+                    {/* --- FILA 4: INTELIGENCIA DE VENTAS & ACTIVIDAD RECIENTE --- */}
+                    <div className="col-span-1 sm:col-span-2 lg:col-span-2">
                         {store?.id ? <TopPerformers storeId={store.id} /> : null}
                     </div>
 
-                   
+                    {/* ÚLTIMOS PEDIDOS (Filas de contacto sin bordes pesados) */}
+                    <div className="col-span-1 sm:col-span-2 lg:col-span-2 bg-white p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between overflow-hidden">
 
-                    {/* ÚLTIMOS PEDIDOS */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white rounded-[var(--radius-card)] flex flex-col overflow-hidden relative">
-                        {/* Header sin bordes sólidos, estructurado mediante Negative Space */}
-                        <div className="p-6 flex justify-between items-center relative z-10">
-                            <h3 className="font-black text-gray-900 flex items-center gap-2 text-xs uppercase tracking-widest">
-                                Actividad Reciente
-                            </h3>
+                        {/* Header Limpio */}
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider leading-none">
+                                    Actividad Reciente
+                                </h3>
+                                <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider mt-1">
+                                    Últimos 5 registros
+                                </p>
+                            </div>
 
-                            {/* Botón fantasma con transición sutil (Titanium feel) */}
                             <Link
                                 href="/admin/orders"
-                                className="group text-[10px] font-bold text-gray-500 hover:text-gray-900 transition-all duration-300 uppercase tracking-widest rounded-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#f6f6f6]"
+                                className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 hover:text-neutral-900 transition-colors"
                             >
-                                Ver Todo{" "}
-                                <ArrowUpRight
-                                    size={14}
-                                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300"
-                                />
+                                <span>Ver Todo</span>
+                                <ArrowUpRight size={11} strokeWidth={2.5} />
                             </Link>
                         </div>
 
-                        {/* Contenedor de lista utilizando padding y gap en lugar de líneas divisorias */}
-                        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5 no-scrollbar">
+                        {/* Filas de Pedidos */}
+                        <div className="space-y-1.5 overflow-y-auto no-scrollbar">
                             {recentOrders.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3 min-h-[150px]">
-                                    <div className="w-12 h-12 bg-[#f6f6f6] rounded-full flex items-center justify-center">
-                                        <Package size={20} className="opacity-30 text-gray-600" />
-                                    </div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 text-gray-500">
-                                        Sin pedidos recientes
-                                    </p>
+                                <div className="py-8 text-center text-neutral-400 space-y-1.5">
+                                    <Package size={18} className="mx-auto text-neutral-300" />
+                                    <p className="text-[10px] font-mono uppercase tracking-wider">Sin pedidos recientes</p>
                                 </div>
                             ) : (
                                 recentOrders.map((order) => {
-                                    const StatusIcon =
-                                        order.status === "pending"
-                                            ? Clock
-                                            : order.status === "paid"
-                                                ? DollarSign
-                                                : order.status === "cancelled"
-                                                    ? XCircle
-                                                    : Package;
+    const StatusIcon =
+        order.status === "pending"
+            ? Clock
+            : order.status === "paid"
+                ? DollarSign
+                : order.status === "cancelled"
+                    ? XCircle
+                    : Truck;
 
-                                    // 1. Invocamos la configuración de diseño para este estado exacto
-                                    const theme = getStatusTheme(order.status);
+    // 🚀 CONEXIÓN DIRECTA: Usamos la función global para eliminar el error de TypeScript y activar los estados en minúsculas
+    const theme = getStatusTheme(order.status);
 
-                                    return (
-                                        <Link
-                                            href="/admin/orders"
-                                            key={order.id}
-                                            className="group flex items-center justify-between p-3.5 bg-white hover:bg-[#fafafa] active:bg-[#f0f0f0] active:scale-[0.98] transition-all duration-300 ease-out rounded-[var(--radius-card)] hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                {/* Contenedor de Ícono: Inyectamos los colores dinámicos del theme */}
-                                                <div
-                                                    className={`w-11 h-11 rounded-[var(--radius-btn)] transition-all duration-300 ease-out flex items-center justify-center shrink-0 ${theme.iconWrapper}`}
-                                                >
-                                                    <StatusIcon
-                                                        size={18}
-                                                        strokeWidth={2.2}
-                                                        className="group-hover:scale-110 transition-transform duration-300 ease-out"
-                                                    />
-                                                </div>
+    return (
+        <Link
+            href="/admin/orders"
+            key={order.id}
+            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-[#F6F6F6] transition-colors group"
+        >
+            <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${theme.iconWrapper}`}>
+                    <StatusIcon size={14} strokeWidth={2.2} />
+                </div>
 
-                                                <div>
-                                                    <p className="font-bold text-sm text-gray-900 leading-none mb-1.5 truncate max-w-[120px] sm:max-w-[200px] group-hover:translate-x-0.5 transition-transform duration-300">
-                                                        {order.customer_name}
-                                                    </p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider">
-                                                            #{order.order_number}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                <div className="min-w-0 truncate">
+                    <p className="font-bold text-xs text-neutral-900 truncate leading-snug">
+                        {order.customer_name}
+                    </p>
+                    <span className="text-[10px] font-mono text-neutral-400 font-medium">
+                        #{order.order_number}
+                    </span>
+                </div>
+            </div>
 
-                                            <div className="text-right flex flex-col items-end">
-                                                <p className="font-black text-sm text-gray-900">
-                                                    ${Number(order.total_usd).toFixed(2)}
-                                                </p>
+            <div className="text-right flex flex-col items-end shrink-0 pl-2">
+                <p className="font-mono font-bold text-xs text-neutral-900 tabular-nums">
+                    ${Number(order.total_usd).toFixed(2)}
+                </p>
 
-                                                {/* Status Dot y Label: Eliminamos los ternarios y usamos el theme */}
-                                                <div className="flex items-center gap-1.5 mt-1.5">
-                                                    <span
-                                                        className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}
-                                                    ></span>
-                                                    <span
-                                                        className={`text-[9px] font-bold uppercase tracking-widest ${theme.label}`}
-                                                    >
-                                                        {theme.text}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })
+                {/* 🚀 BADGE CORREGIDO: Consume theme.label y theme.text sin errores */}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1 h-1 rounded-full ${theme.dot}`} />
+                    <span className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded border ${theme.label}`}>
+                        {theme.text}
+                    </span>
+                </div>
+            </div>
+        </Link>
+    );
+})
                             )}
                         </div>
                     </div>
-                </div>
-     
 
+                </div>
             </main>
 
-            {/* 🚀 INYECCIÓN DEL MODAL DE BIENVENIDA */}
-            <ThemeEngineAnnouncement/>
+            {/* MODALES DEL SISTEMA */}
+            <ThemeEngineAnnouncement />
             <WelcomeModal storeName={store.name} />
         </div>
     );
