@@ -33,6 +33,7 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from './NumberInput'
 import ProductWholesaleConfig from '@/components/admin/ProductWholesaleConfig';
+import { generateSmartSKU } from '@/utils/skuGenerator';
 
 interface ProductEditorProps {
     productId?: string
@@ -76,9 +77,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const isEur = storeSettings?.currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd
     const rateLabel = isEur ? 'Tasa Euro' : 'Tasa BCV'
-
-    const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
         name: '',
+        sku: '',
         category: '',
         description: '',
         image_url: '',
@@ -249,9 +250,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     router.push('/admin/inventory')
                     return
                 }
-
-                setFormData({
+setFormData({
                     name: product.name,
+                    sku: product.sku || '',
                     category: product.category,
                     description: product.description || '',
                     image_url: product.image_url || '',
@@ -430,12 +431,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         const stockToApply = Number(variantInput.defaultStock) || 0
         const finalHex = useColor ? variantInput.colorHex : 'transparent'
 
-        const newVariants = tagsToUse.map(s => ({
+       const newVariants = tagsToUse.map(s => ({
             id: `temp-${crypto.randomUUID()}`,
             color_name: variantInput.colorName,
             color_hex: finalHex,
             size: s,
             stock: stockToApply,
+            sku: generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${variantInput.colorName} ${s}`),
             gallery: variantInput.images,
             variant_image: variantInput.images[0] || '',
             override_usd_price: variantInput.priceOverride !== '' ? Number(variantInput.priceOverride) : null,
@@ -520,8 +522,11 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Acceso no autorizado.")
 
+         const baseSkuResolved = formData.sku?.trim() || generateSmartSKU(formData.category, formData.name);
+
             const payload = {
                 name: formData.name,
+                sku: baseSkuResolved,
                 category: formData.category,
                 description: formData.description,
                 image_url: formData.image_url,
@@ -563,9 +568,11 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     const toInsert: any[] = []
                     const toUpdate: any[] = []
 
-                    variants.forEach(v => {
+                 variants.forEach(v => {
+                        const variantSkuResolved = v.sku?.trim() || generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${v.color_name} ${v.size}`);
                         const vPayload = {
                             product_id: currentId,
+                            sku: variantSkuResolved,
                             color_name: v.color_name,
                             color_hex: v.color_hex,
                             size: v.size,
@@ -660,11 +667,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     </button>
                     <div className="min-w-0">
                         <h1 className="font-bold text-sm md:text-base leading-none tracking-tight truncate text-neutral-900">{productId ? 'Editar Producto' : 'Nuevo Producto'}</h1>
-                        <div className="flex items-center gap-2 mt-1 overflow-hidden">
-                            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${isEur ? 'bg-blue-50 text-blue-700 border-blue-200/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'}`}>
-                                {isEur ? 'EUR' : 'USD'} Base
-                            </span>
-                        </div>
+                    
                     </div>
                 </div>
                 
@@ -1080,11 +1083,34 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         </div>
                     </div>
 
-                    {!hasVariants ? (
-                        <div className="bg-neutral-50/50 rounded-lg p-5 border border-neutral-200/50 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-sm space-y-2">
-                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">Stock Disponible</label>
-                            <NumberInput min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-sm font-bold text-neutral-900 outline-none transition-all shadow-xs font-mono text-center" />
-                            <p className="text-xs text-neutral-600 font-medium">El cliente agregará el artículo al carrito sin selección de atributos secundarios de talla o color.</p>
+                 {!hasVariants ? (
+                        <div className="bg-neutral-50/50 rounded-xl p-5 border border-neutral-200/50 animate-in fade-in slide-in-from-bottom-2 duration-300 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">Stock Disponible</label>
+                                <NumberInput min="0" value={simpleStock} onChangeValue={(val) => { setSimpleStock(val); setIsDirty(true) }} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-sm font-bold text-neutral-900 outline-none transition-all shadow-xs font-mono text-center" />
+                                <p className="text-xs text-neutral-600 font-medium">Cantidad física en almacén para compras directas.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider">SKU / Código Logístico</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => updateForm('sku', generateSmartSKU(formData.category, formData.name))}
+                                        className="text-[10px] font-mono font-bold text-neutral-600 hover:text-neutral-950 underline cursor-pointer"
+                                    >
+                                        Autogenerar
+                                    </button>
+                                </div>
+                                <input 
+                                    type="text"
+                                    value={formData.sku}
+                                    onChange={(e) => updateForm('sku', e.target.value.toUpperCase())}
+                                    placeholder={generateSmartSKU(formData.category, formData.name || 'PROD')}
+                                    className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-all shadow-xs placeholder:text-neutral-300"
+                                />
+                                <p className="text-xs text-neutral-600 font-medium">Si lo deja vacío, Preziso asignará un SKU inteligente al guardar.</p>
+                            </div>
                         </div>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
@@ -1242,6 +1268,11 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                         </div>
                                                         <div className="flex flex-wrap items-center gap-1.5">
                                                             <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
+                                                            {v.sku && (
+                                                                <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
+                                                                    {v.sku}
+                                                                </span>
+                                                            )}
                                                             {v.override_usd_price !== null && v.override_usd_price !== undefined && <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200/60 rounded flex items-center gap-0.5 font-mono"><DollarSign size={10} /> {v.override_usd_price}</span>}
                                                         </div>
                                                     </div>
@@ -1301,8 +1332,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     )}
                                                                 </div>
 
-                                                                {/* Atributos específicos del SKU */}
-                                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                             {/* Atributos específicos del SKU */}
+                                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                     <div>
                                                                         <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Talla / Identificador</label>
                                                                         <input type="text" value={v.size} onChange={(e) => updateVariantOverride(v.id, 'size', e.target.value)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors" />
@@ -1311,7 +1342,26 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                         <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Stock</label>
                                                                         <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors font-mono" />
                                                                     </div>
-                                                                    <div className="sm:col-span-2">
+                                                                    <div>
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">SKU Variante</label>
+                                                                            <button 
+                                                                                type="button" 
+                                                                                onClick={() => updateVariantOverride(v.id, 'sku', generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${v.color_name} ${v.size}`))}
+                                                                                className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer"
+                                                                            >
+                                                                                Generar
+                                                                            </button>
+                                                                        </div>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={v.sku || ''} 
+                                                                            onChange={(e) => updateVariantOverride(v.id, 'sku', e.target.value.toUpperCase())} 
+                                                                            placeholder="AUTO" 
+                                                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300" 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="sm:col-span-3">
                                                                         <div className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                                                                             <span>Atributo de opción</span>
                                                                             <label className="flex items-center gap-1 cursor-pointer">

@@ -368,14 +368,15 @@ export default function CheckoutProcess({
                 ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
                 : `*$${item.listPrice.toFixed(2)}*`;
 
-            const itemName = `${item.quantity}x ${item.name}`;
+          const itemName = `${item.quantity}x ${item.name}`;
+            const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : ""; // 🚀 AÑADIDO: SKU Visible
 
             // Si tiene variante, colocamos el nombre limpio y la variante abajo alineada con el precio
             if (item.variantInfo && item.variantInfo !== 'N/A') {
-                msg += `${itemName}\n`;
+                msg += `${skuText}${itemName}\n`;
                 msg += row(`  Var: ${item.variantInfo}`, pt);
             } else {
-                msg += row(itemName, pt);
+                msg += row(`${skuText}${itemName}`, pt);
             }
         });
 
@@ -891,7 +892,7 @@ export default function CheckoutProcess({
                 }),
             );
 
-          // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica)
+        // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica)
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
 
@@ -957,8 +958,8 @@ export default function CheckoutProcess({
                 order = insertedOrder;
             }
 
-            const orderItemsPayload = items.map((item) => ({
-                order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || "N/A", quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
+        const orderItemsPayload = items.map((item) => ({
+                order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || "N/A", quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null, sku: item.sku || null, // 🚀 AÑADIDO: Congelamos el SKU en la orden histórica
             }));
 
             const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
@@ -978,9 +979,10 @@ export default function CheckoutProcess({
 
             // Generar WhatsApp (Intacto)
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
-            cartEngine.processedItems.forEach((item: any) => {
+           cartEngine.processedItems.forEach((item: any) => {
                 const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
-                message += `🔸 ${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
+                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : ""; // 🚀 AÑADIDO: SKU en fallback
+                message += `🔸 ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
             });
             message += `\n*RESUMEN FINANCIERO:*\nSubtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`;
             if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`;

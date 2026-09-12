@@ -32,6 +32,7 @@ import WelcomeModal from "@/components/admin/WelcomeModal";
 import AnalyticsLaunchModal from "@/components/admin/AnalyticsLauchModal";
 import PushNotificationManager from "@/components/admin/PushNotificationManager";
 import ThemeEngineAnnouncement from "@/components/admin/ThemeEngineAnnouncement";
+import SkuFeatureModal from "@/components/admin/SkuFeatureModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -708,8 +709,7 @@ export default async function AdminDashboard() {
                 </div>
             </main>
 
-            {/* MODALES DEL SISTEMA */}
-            <ThemeEngineAnnouncement />
+      
             <WelcomeModal storeName={store.name} />
         </div>
     );

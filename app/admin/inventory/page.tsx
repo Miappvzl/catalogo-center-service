@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode } from 'lucide-react'
 import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -22,6 +22,7 @@ interface InventoryItem {
     color: string;
     hex: string;
     size: string;
+    sku: string | null;
     stock: number;
     isTaxExempt: boolean; 
     isFeatured: boolean; 
@@ -124,7 +125,7 @@ export default function InventoryPage() {
                 setFiscalProfile(store.fiscal_profile) 
                 setShowTaxInCatalog(store.show_tax_in_catalog || false) 
                 
-                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+             const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
 
@@ -146,6 +147,7 @@ export default function InventoryPage() {
                                 color: variant.color_name,
                                 hex: variant.color_hex,
                                 size: variant.size,
+                                sku: variant.sku || null,
                                 stock: variant.stock,
                                 isTaxExempt: isExempt,
                                 isFeatured: isFeat,
@@ -164,6 +166,7 @@ export default function InventoryPage() {
                             color: 'Único',
                             hex: '#000000',
                             size: 'U',
+                            sku: prod.sku || null,
                             stock: prod.stock || 0,
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
@@ -405,17 +408,31 @@ export default function InventoryPage() {
                             />
                         </div>
                         
-                        {/* BOTÓN ORGANIZAR ESCAPARATE */}
-                        {items.length > 1 && (
-                            <button
-                                onClick={openReorderModal}
-                                className="bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
+                       {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            {/* BOTÓN MATRIZ DE SKUs */}
+                            <Link
+                                href="/admin/inventory/skus"
+                                className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
                             >
-                                <Zap size={13} className="fill-white" /> <span>Merchandising</span>
-                            </button>
-                        )}
-                    </div>
+                                <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+                                <span>Matriz de SKUs</span>
+                                <span className="bg-neutral-950 text-white text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                                    NUEVO
+                                </span>
+                            </Link>
 
+                            {/* BOTÓN ORGANIZAR ESCAPARATE */}
+                            {items.length > 1 && (
+                                <button
+                                    onClick={openReorderModal}
+                                    className="bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                                >
+                                    <Zap size={13} className="fill-white" /> <span>Merchandising</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>  
                     {/* TABLA ELITE (Executive Cleanlook) */}
                     <div className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] w-full max-w-full relative overflow-hidden">
                         {loading ? (
@@ -495,15 +512,27 @@ export default function InventoryPage() {
                                                                         <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package size={14} /></div>
                                                                     )}
                                                                 </div>
-                                                                <div className="min-w-0 flex-1 space-y-0.5">
+                                                               <div className="min-w-0 flex-1 space-y-0.5">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
                                                                     </div>
-                                                                    <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">{item.category}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">{item.category}</p>
+                                                                        {/* SKU Badge en Desktop */}
+                                                                        {item.sku ? (
+                                                                            <span className="hidden md:inline-flex items-center font-mono text-[9px] font-bold tabular-nums uppercase tracking-widest bg-neutral-100/90 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.2 rounded leading-none">
+                                                                                {item.sku}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="hidden md:inline-flex items-center font-mono text-[8px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50/80 border border-amber-200/50 px-1.5 py-0.2 rounded leading-none">
+                                                                                Sin SKU
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     
-                                                                    {/* Variantes en Móvil */}
-                                                                    <div className="flex items-center gap-1.5 mt-1 md:hidden">
+                                                                    {/* Variantes & SKU en Móvil */}
+                                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
                                                                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
                                                                             <span className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" style={{ background: item.hex }}></span>
                                                                             <span className="truncate max-w-[50px]">{item.color}</span>
@@ -511,6 +540,15 @@ export default function InventoryPage() {
                                                                         <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
                                                                             <span>{item.size}</span>
                                                                         </div>
+                                                                        {item.sku ? (
+                                                                            <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200/60 rounded text-[8px] font-mono font-bold uppercase tracking-widest text-neutral-600">
+                                                                                {item.sku}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-1 py-0.5 bg-amber-50 border border-amber-200/60 rounded text-[8px] font-mono font-semibold text-amber-700">
+                                                                                Sin SKU
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </Link>

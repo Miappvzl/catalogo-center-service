@@ -26,7 +26,8 @@ import {
   LineChart,
   Megaphone,
   Lock,
-  GraduationCap
+  GraduationCap,
+  Barcode
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -65,8 +66,9 @@ const NAV_LINKS: NavItem[] = [
   { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
 
-  // 📌 Catálogo
+// 📌 Catálogo
   { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, isNew: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
 

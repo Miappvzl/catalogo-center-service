@@ -21,6 +21,7 @@ export interface CartItem {
   productWholesaleDiscountPct?: number 
   requiresShipping?: boolean 
   isTaxExempt?: boolean // 🚀 AÑADIDO: Contrato fiscal del producto
+  sku?: string | null // 🚀 AÑADIDO: SKU del producto o variante (Fulfillment)
 }
 // 🚀 NUEVO TIPO: Contrato de Orden Histórica
 export interface SavedOrder {
@@ -91,9 +92,10 @@ export const useCart = create<CartState>()(
                               : (product.compare_at_usd ? Number(product.compare_at_usd) : null),
               productWholesaleActive: product.wholesale_active || false,
               productWholesaleMinQty: Number(product.wholesale_min_qty || 6),
-              productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0),
+            productWholesaleDiscountPct: Number(product.wholesale_discount_pct || 0),
               requiresShipping: product.requires_shipping ?? true,
-              isTaxExempt: product.is_tax_exempt ?? false // 🚀 AÑADIDO: Guardamos el estatus fiscal
+              isTaxExempt: product.is_tax_exempt ?? false, // 🚀 AÑADIDO: Guardamos el estatus fiscal
+              sku: variant?.sku || product.sku || null // 🚀 AÑADIDO: Resolución inteligente de SKU
             }
             return { items: [...state.items, newItem] }
           }
