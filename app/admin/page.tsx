@@ -1,3 +1,5 @@
+
+
 import { createServerClient } from "@supabase/ssr";
 
 import { cookies } from "next/headers";
@@ -6,11 +8,9 @@ import Link from "next/link";
 
 
 import {
-    Plus, Package, TrendingUp, AlertTriangle, ArrowRight, ArrowUpRight,
-    Clock, DollarSign, Truck, Box, ChevronRight, XCircle,
-    SquareArrowOutUpRight, ChartNoAxesColumnIncreasing, LineChart,
-    Sparkles, ExternalLink, CheckCircle2, Circle, Play, Trophy, // Nuevos iconos
-    MapPin, Users as UsersIcon // 👈 AÑADE ESTOS ICONOS
+   Package, ArrowRight, ArrowUpRight,
+    Clock, DollarSign, Truck, XCircle, CheckCircle2, Circle, Play, Trophy, // Nuevos iconos
+    MapPin, Users as UsersIcon, // 👈 AÑADE ESTOS ICONOS
 } from 'lucide-react'
 
 // COMPONENTES IMPORTADOS
@@ -23,16 +23,9 @@ import AnalyticsChart from "@/components/admin/AnalyticsChart";
 
 import TopPerformers from "@/components/admin/TopPerformers";
 import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrapper"; // <-- NUEVA IMPORTACIÓN
-
-
-
-
-import AffiliateLaunchModal from "@/components/admin/AffiliateLaunchModal";
 import WelcomeModal from "@/components/admin/WelcomeModal";
-import AnalyticsLaunchModal from "@/components/admin/AnalyticsLauchModal";
 import PushNotificationManager from "@/components/admin/PushNotificationManager";
-import ThemeEngineAnnouncement from "@/components/admin/ThemeEngineAnnouncement";
-import SkuFeatureModal from "@/components/admin/SkuFeatureModal";
+import TodaySalesWidget from "@/components/admin/TodaySalesWidget";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -50,35 +43,34 @@ export default async function AdminDashboard() {
             },
         },
     );
-
-    const getStatusTheme = (status: string) => {
+const getStatusTheme = (status: string) => {
         switch (status) {
             case "pending":
                 return {
-                    iconWrapper: "bg-amber-50 text-amber-600 border border-amber-200/20",
+                    iconWrapper: "bg-amber-50 text-amber-600 border border-amber-200/50",
                     dot: "bg-amber-500",
-                    label: "text-amber-700 border-none font-semibold uppercase tracking-wider",
+                    label: "text-amber-700 bg-amber-50 border border-amber-200/50",
                     text: "pendiente",
                 };
             case "paid":
                 return {
-                    iconWrapper: "bg-emerald-50 text-emerald-600 border border-emerald-200/20",
+                    iconWrapper: "bg-emerald-50 text-emerald-600 border border-emerald-200/50",
                     dot: "bg-emerald-500",
-                    label: "text-emerald-700 border-none font-semibold uppercase tracking-wider",
+                    label: "text-emerald-700 bg-emerald-50 border border-emerald-200/50",
                     text: "pagado",
                 };
             case "cancelled":
                 return {
-                    iconWrapper: "bg-rose-50 text-rose-600 border border-rose-200/20",
+                    iconWrapper: "bg-rose-50 text-rose-600 border border-rose-200/50",
                     dot: "bg-rose-500",
-                    label: "text-rose-700 border-none font-semibold uppercase tracking-wider",
+                    label: "text-rose-700 bg-rose-50 border border-rose-200/50",
                     text: "cancelado",
                 };
             default: // Enviado / Otros
                 return {
-                    iconWrapper: "bg-blue-50 text-blue-600 border border-blue-200/20",
+                    iconWrapper: "bg-blue-50 text-blue-600 border border-blue-200/50",
                     dot: "bg-blue-500",
-                    label: "text-blue-700 border-none font-semibold uppercase tracking-wider",
+                    label: "text-blue-700 bg-blue-50 border border-blue-200/50",
                     text: "enviado",
                 };
         }
@@ -101,78 +93,84 @@ export default async function AdminDashboard() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const fallbackDateString = thirtyDaysAgo.toISOString();
 
-    // 3. Añade la consulta paralela "eventsRes" dentro de tu Promise.all existente:
-    const [
+  const [
         productsRes,
         variantsRes,
         pendingRes,
         todayOrdersRes,
         configRes,
         recentOrdersRes,
-        eventsRes, // 👈 INYECTA ESTO
+        eventsRes,
     ] = await Promise.all([
-        supabase
-            .from("products")
-            .select("id", { count: "exact", head: true })
-            .eq("store_id", store.id),
-
-        supabase
-            .from("product_variants")
-            .select("stock, products!inner(store_id)")
-            .eq("products.store_id", store.id)
-            .lte("stock", 3),
-
-        supabase
-            .from("orders")
-            .select("id", { count: "exact", head: true })
-            .eq("store_id", store.id)
-            .eq("status", "pending"),
-
-        supabase
-            .from("orders")
-            .select("total_usd, total_bs, exchange_rate")
-            .eq("store_id", store.id)
-            .gte("created_at", `${today}T00:00:00Z`)
-            .neq("status", "cancelled"),
-
-        supabase
-            .from("app_config")
-            .select("usd_rate, eur_rate, updated_at")
-            .eq("id", 1)
-            .single(),
-
-        supabase
-            .from("orders")
-            .select("*")
-            .eq("store_id", store.id)
-            .order("created_at", { ascending: false })
-            .limit(5),
-
-        // 👈 INYECTA ESTA CONSULTA PARALELA:
-        supabase
-            .from("analytics_raw_events")
-            .select("session_id, event_type, location_state, created_at")
-            .eq("store_id", store.id)
-            .gte("created_at", fallbackDateString)
-            .limit(10000) // Salvaguarda de memoria
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", store.id),
+        supabase.from("product_variants").select("stock, products!inner(store_id)").eq("products.store_id", store.id).lte("stock", 3),
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", store.id).eq("status", "pending"),
+        supabase.from("orders").select("total_usd, total_bs, exchange_rate, payment_method").eq("store_id", store.id).gte("created_at", `${today}T00:00:00Z`).neq("status", "cancelled"),
+        // 🚀 LECTURA DIRECTA O(1) DE TASAS ACTUALES Y PREVIAS
+        supabase.from("app_config").select("usd_rate, eur_rate, previous_usd_rate, previous_eur_rate, updated_at").eq("id", 1).single(),
+        supabase.from("orders").select("*").eq("store_id", store.id).order("created_at", { ascending: false }).limit(5),
+        supabase.from("analytics_raw_events").select("session_id, event_type, location_state, created_at").eq("store_id", store.id).gte("created_at", fallbackDateString).limit(10000),
     ]);
-
     const totalProducts = productsRes.count || 0;
-
     const lowStockCount = variantsRes.data?.length || 0;
-
     const pendingOrdersCount = pendingRes.count || 0;
-
     const todayOrders = todayOrdersRes.data || [];
 
-    const salesTodayUSD = todayOrders.reduce(
-        (acc, o) => acc + Number(o.total_usd || 0),
-        0,
-    );
+const usdRate = Number(configRes.data?.usd_rate ?? 0);
+    const eurRate = Number(configRes.data?.eur_rate ?? 0);
 
-    const usdRate = configRes.data?.usd_rate ?? 0;
+    // 🚀 ASIGNACIÓN DIRECTA E INFALIBLE (0ms de latencia, 0 consumo de CPU)
+    const prevUsdRate = Number(configRes.data?.previous_usd_rate ?? usdRate);
+    const prevEurRate = Number(configRes.data?.previous_eur_rate ?? eurRate);
+ // 🚀 MOTOR MATEMÁTICO DE LIQUIDEZ Y VENTAS HOY (100% Sincronizado)
+    let salesTodayUSD = 0;
+    let cashTotalUSD = 0;
+    const digitalMethodsMap: Record<string, number> = {};
 
-    const eurRate = configRes.data?.eur_rate ?? 0;
+    todayOrders.forEach((o: any) => {
+        const orderTotal = Number(o.total_usd || 0);
+        salesTodayUSD += orderTotal;
+
+        if (o.split_payments && Array.isArray(o.split_payments) && o.split_payments.length > 0) {
+            // Audita pagos mixtos
+            o.split_payments.forEach((sp: any) => {
+                const spMethod = (sp.method || '').toLowerCase();
+                const spAmountUsd = Number(sp.amount_usd || 0);
+                if (spMethod.includes('efectivo') || spMethod === 'cash' || spMethod === 'usd') {
+                    cashTotalUSD += spAmountUsd;
+                } else {
+                    const niceName = sp.method || 'Digital';
+                    digitalMethodsMap[niceName] = (digitalMethodsMap[niceName] || 0) + spAmountUsd;
+                }
+            });
+        } else {
+            // Audita pagos únicos
+            const method = (o.payment_method || '').toLowerCase();
+            const niceName = o.payment_method || 'Digital';
+            if (method.includes('efectivo') || method === 'cash' || method === 'usd') {
+                cashTotalUSD += orderTotal;
+            } else {
+                digitalMethodsMap[niceName] = (digitalMethodsMap[niceName] || 0) + orderTotal;
+            }
+        }
+    });
+
+    // 🚀 PARIDAD MATEMÁTICA CON LA TASA EN PANTALLA ($30.00 * 842.20 = Bs 25.266,00)
+    const salesTodayBs = salesTodayUSD * usdRate;
+
+    const digitalTotalUSD = salesTodayUSD - cashTotalUSD;
+    const cashPct = salesTodayUSD > 0 ? Math.round((cashTotalUSD / salesTodayUSD) * 100) : 0;
+    const digitalPct = salesTodayUSD > 0 ? 100 - cashPct : 0;
+
+    // Ordenamos los métodos digitales de mayor a menor volumen
+    const sortedDigitalMethods = Object.entries(digitalMethodsMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, amount]) => ({ name, amount }));
+
+
+
+
+
 
     // --- PARCHE ARCHITECTURE: Server-Side Time Formatting ---
 
@@ -231,6 +229,8 @@ export default async function AdminDashboard() {
         }
     });
 
+
+
     const visitsCount = uniqueSessions.size;
 
     // 1. Datos para Histograma de 7 días
@@ -283,7 +283,6 @@ export default async function AdminDashboard() {
     // Solo mostramos el panel si tiene menos de 7 días y NO ha completado todo
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
     const storeUrl = `${store.slug}.preziso.shop`;
-
 
 
 
@@ -385,41 +384,29 @@ export default async function AdminDashboard() {
                 {/* --- BENTO GRID: KPIS INDUSTRIALES DE ALTA DENSIDAD --- */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                    {/* 1. TASA ACTIVA WIDGET */}
-                    <div className="col-span-1 min-h-[140px]">
+                    {/* 1. RATE WIDGET (Ahora con datos históricos reales) */}
+                    <div className="col-span-1 min-h-[160px]">
                         <RateWidget
                             storeCurrency={storeCurrency}
                             usdRate={usdRate}
                             eurRate={eurRate}
+                            prevUsdRate={prevUsdRate} // 👈 INYECTADO
+                            prevEurRate={prevEurRate} // 👈 INYECTADO
                             lastUpdated={formattedLastUpdated}
                         />
                     </div>
 
-                    {/* 2. VENTAS HOY (Blanco Puro sobre #F6F6F6) */}
-                    <div className="bg-white p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px] group transition-all cursor-default">
-                        <div className="flex justify-between items-start">
-                            <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0">
-                                <DollarSign size={16} strokeWidth={2.2} />
-                            </div>
-
-                            <span className="text-[9px] font-bold font-mono uppercase tracking-wider text-neutral-500 bg-[#F6F6F6] px-2 py-0.5 rounded">
-                                Facturado Hoy
-                            </span>
-                        </div>
-
-                        <div className="mt-4">
-                            <p className="text-3xl md:text-4xl font-mono font-bold tracking-tight text-neutral-900 leading-none tabular-nums">
-                                {currencySymbol}{salesTodayUSD.toFixed(2)}
-                            </p>
-
-                            <div className="flex items-center gap-1.5 mt-2 text-neutral-400">
-                                <LineChart size={12} strokeWidth={2.2} />
-                                <p className="text-[10px] font-bold uppercase tracking-wider">
-                                    Ingreso Neto en Caja
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                  {/* 2. VENTAS HOY (Componente Cliente Modular) */}
+                    <TodaySalesWidget
+                        currencySymbol={currencySymbol}
+                        salesTodayUSD={salesTodayUSD}
+                        salesTodayBs={salesTodayBs} // 👈 INYECTAR AQUÍ
+                        cashPct={cashPct}
+                        digitalPct={digitalPct}
+                        cashTotalUSD={cashTotalUSD}
+                        digitalTotalUSD={digitalTotalUSD}
+                        sortedDigitalMethods={sortedDigitalMethods}
+                    />
 
                     {/* 3. POR DESPACHAR: NODO OBSIDIANA CON RESPLANDOR ÁMBAR INTERNO */}
                     <Link
@@ -653,55 +640,55 @@ export default async function AdminDashboard() {
                                 </div>
                             ) : (
                                 recentOrders.map((order) => {
-    const StatusIcon =
-        order.status === "pending"
-            ? Clock
-            : order.status === "paid"
-                ? DollarSign
-                : order.status === "cancelled"
-                    ? XCircle
-                    : Truck;
+                                    const StatusIcon =
+                                        order.status === "pending"
+                                            ? Clock
+                                            : order.status === "paid"
+                                                ? DollarSign
+                                                : order.status === "cancelled"
+                                                    ? XCircle
+                                                    : Truck;
 
-    // 🚀 CONEXIÓN DIRECTA: Usamos la función global para eliminar el error de TypeScript y activar los estados en minúsculas
-    const theme = getStatusTheme(order.status);
+                                    // 🚀 CONEXIÓN DIRECTA: Usamos la función global para eliminar el error de TypeScript y activar los estados en minúsculas
+                                    const theme = getStatusTheme(order.status);
 
-    return (
-        <Link
-            href="/admin/orders"
-            key={order.id}
-            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-[#F6F6F6] transition-colors group"
-        >
-            <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${theme.iconWrapper}`}>
-                    <StatusIcon size={14} strokeWidth={2.2} />
-                </div>
+                                    return (
+                                        <Link
+                                            href="/admin/orders"
+                                            key={order.id}
+                                            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-[#F6F6F6] transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${theme.iconWrapper}`}>
+                                                    <StatusIcon size={14} strokeWidth={2.2} />
+                                                </div>
 
-                <div className="min-w-0 truncate">
-                    <p className="font-bold text-xs text-neutral-900 truncate leading-snug">
-                        {order.customer_name}
-                    </p>
-                    <span className="text-[10px] font-mono text-neutral-400 font-medium">
-                        #{order.order_number}
-                    </span>
-                </div>
-            </div>
+                                                <div className="min-w-0 truncate">
+                                                    <p className="font-bold text-xs text-neutral-900 truncate leading-snug">
+                                                        {order.customer_name}
+                                                    </p>
+                                                    <span className="text-[10px] font-mono text-neutral-400 font-medium">
+                                                        #{order.order_number}
+                                                    </span>
+                                                </div>
+                                            </div>
 
-            <div className="text-right flex flex-col items-end shrink-0 pl-2">
-                <p className="font-mono font-bold text-xs text-neutral-900 tabular-nums">
-                    ${Number(order.total_usd).toFixed(2)}
-                </p>
+                                            <div className="text-right flex flex-col items-end shrink-0 pl-2">
+                                                <p className="font-mono font-bold text-xs text-neutral-900 tabular-nums">
+                                                    ${Number(order.total_usd).toFixed(2)}
+                                                </p>
 
-                {/* 🚀 BADGE CORREGIDO: Consume theme.label y theme.text sin errores */}
-                <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-1 h-1 rounded-full ${theme.dot}`} />
-                    <span className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded border ${theme.label}`}>
-                        {theme.text}
-                    </span>
-                </div>
-            </div>
-        </Link>
-    );
-})
+                                                {/* 🚀 BADGE CORREGIDO: Consume theme.label y theme.text sin errores */}
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className={`w-1 h-1 rounded-full ${theme.dot}`} />
+                                                    <span className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded border ${theme.label}`}>
+                                                        {theme.text}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    );
+                                })
                             )}
                         </div>
                     </div>
@@ -709,7 +696,9 @@ export default async function AdminDashboard() {
                 </div>
             </main>
 
-      
+
+
+
             <WelcomeModal storeName={store.name} />
         </div>
     );
