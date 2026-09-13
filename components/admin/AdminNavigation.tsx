@@ -405,6 +405,11 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
     exit: { opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } }
   }
 
+  // 🚀 Lógica de filtrado de enlaces
+  const currentPlan = (store?.plan_type || 'retail') as PlanType;
+  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+  const CATEGORIES = ['General', 'Ventas', 'Catálogo', 'Academia', 'Negocio'];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -430,6 +435,7 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
             exit="exit"
             className="relative w-[80%] max-w-sm h-full bg-[#FAFAFC] shadow-2xl flex flex-col will-change-transform border-l border-neutral-200/50"
           >
+            {/* Header del menú */}
             <div className="p-5 flex items-center justify-between border-b border-neutral-200/50 bg-[#FAFAFC]">
               <div className="flex items-center gap-3">
                 <Link href="/" className="flex items-center group active:scale-95 transition-all">
@@ -448,79 +454,102 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
               </button>
             </div>
 
-              <nav className="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar bg-[#FAFAFC]">
-              {/* 👈 NUEVO: Filtramos por plan */}
-              {NAV_LINKS.filter(link => link.allowedPlans.includes((store?.plan_type || 'retail') as PlanType)).map((link) => {
-                if (link.isAction) return null
-                const isActive = pathname === link.href
+            {/* 🚀 NAVEGACIÓN AGRUPADA (Adiós a la sobrecarga cognitiva) */}
+            <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-7 no-scrollbar bg-[#FAFAFC]">
+              
+              {CATEGORIES.map((category) => {
+                const linksInCategory = allowedLinks.filter(link => link.category === category && !link.isAction);
+                if (linksInCategory.length === 0) return null;
 
-                  return (
-    <GuardedLink
-      key={link.href}
-      href={link.href}
-      className={`relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold transition-all duration-150 ${isActive ? 'text-neutral-900' : 'text-neutral-400'}`}
-    >
-      <div className="relative z-10 flex items-center gap-3 w-full">
-        <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
-        <span>{link.name}</span>
-        
-      
-        {/* 👈 INYECTA ESTA MICROETIQUETA MÓVIL SÉCTICA */}
-        {link.isNew && (
-          <span className="ml-auto bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0">
-            NUEVO
-          </span>
-        )}
+                return (
+                  <div key={category} className="flex flex-col">
+                    {/* Título de la Categoría */}
+                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2.5">
+                      {category}
+                    </h3>
+                    
+                    {/* Lista de enlaces de esta categoría */}
+                    <div className="space-y-0.5">
+                      {linksInCategory.map((link) => {
+                        const isActive = pathname === link.href;
 
-        {/* 🚀 INYECTA ESTA ETIQUETA DE BLOQUEO DE PREPARACIÓN EN MÓVIL */}
-        {link.isLocked && (
-          <span className="ml-auto bg-neutral-100 text-neutral-500 border border-neutral-200/50 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1">
-            <Lock size={10} className="text-neutral-400" />
-            <span>PRONTO</span>
-          </span>
-        )}
-      </div>
-    </GuardedLink>
-  )
+                        return (
+                          <GuardedLink
+                            key={link.href}
+                            href={link.href}
+                            className={`relative overflow-hidden flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${isActive ? 'text-neutral-900' : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100/50'}`}
+                          >
+                            {/* EL GANADOR INDISCUTIBLE: Degradado violeta original */}
+                            {isActive && (
+                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                                <div className="absolute inset-0 bg-neutral-100/40 rounded-lg" />
+                                <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, #edeaff 0%, rgb(242 240 255) 30%, rgba(255, 255, 255, 0.4) 100%)' }} />
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-[2px] bg-white opacity-90 rounded-l-full" />
+                              </div>
+                            )}
+
+                            <div className="relative z-10 flex items-center gap-3 w-full">
+                              <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
+                              <span>{link.name}</span>
+
+                              {/* MICROETIQUETAS ALINEADAS A LA DERECHA */}
+                              {link.isNew && (
+                                <span className="ml-auto bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0">
+                                  NUEVO
+                                </span>
+                              )}
+
+                              {link.isLocked && (
+                                <span className="ml-auto bg-neutral-100 text-neutral-500 border border-neutral-200/50 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1">
+                                  <Lock size={10} className="text-neutral-400" />
+                                  <span>PRONTO</span>
+                                </span>
+                              )}
+                            </div>
+                          </GuardedLink>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
               })}
 
-              {/* Botón Promocional: Vuelto Inteligente Móvil (Carbón Mate) */}
-              {!isVueltoActive && (
-                <div className="pt-2">
+              {/* Botones Especiales al final del scroll */}
+              <div className="pt-2 space-y-3">
+                {/* Botón Promocional: Vuelto Inteligente Móvil */}
+                {!isVueltoActive && (
                   <button
                     onClick={onOpenPromo}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold text-white bg-neutral-900 border border-neutral-800 shadow-xs"
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-semibold text-white bg-neutral-900 border border-neutral-800 shadow-xs"
                   >
                     <Gift size={16} className="animate-pulse" />
                     <span>Activar Vuelto Inteligente</span>
                   </button>
-                </div>
-              )}
+                )}
 
-                {/* 👈 NUEVO: Ocultamos el botón duro de Nuevo Producto si es Digital */}
-              {store?.plan_type !== 'digital' && (
-                <div className="pt-3.5 mt-3.5 border-t border-neutral-200/50">
-                  <GuardedLink
-                    href="/admin/product/new"
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold text-neutral-500 bg-white border border-dashed border-neutral-200/50 hover:border-neutral-900 transition-all"
-                  >
-                    <Plus size={16} />
-                    <span>Nuevo Producto</span>
-                  </GuardedLink>
-                </div>
-              )}
+                {/* Botón Nuevo Producto (Oculto si el plan es digital) */}
+                {store?.plan_type !== 'digital' && (
+                  <div className="pt-2 border-t border-neutral-200/50">
+                    <GuardedLink
+                      href="/admin/product/new"
+                      className="flex items-center gap-3 px-3 py-3 rounded-xl text-xs font-semibold text-neutral-500 bg-white border border-dashed border-neutral-200/60 hover:border-neutral-900 hover:text-neutral-900 transition-all"
+                    >
+                      <Plus size={16} />
+                      <span>Nuevo Producto</span>
+                    </GuardedLink>
+                  </div>
+                )}
+              </div>
             </nav>
 
-              
-
-            {/* SECCIÓN INFERIOR MÓVIL */}
-            <div className="p-4 border-t border-neutral-200/50 space-y-3 bg-white">
+            {/* SECCIÓN INFERIOR FIJA (Footer del Menú) */}
+            <div className="p-4 border-t border-neutral-200/50 space-y-2.5 bg-white shrink-0">
               {store && (
-                <div className="flex items-center justify-between p-1 rounded-lg bg-neutral-50 border border-neutral-200/50">
+                <div className="flex items-center justify-between p-1 rounded-lg bg-neutral-50 border border-neutral-200/50 mb-1">
                   <Link
                     href={`/${store.slug}`}
                     target="_blank"
-                    className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold text-neutral-500 hover:text-neutral-950 hover:bg-white transition-all"
+                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded text-[11px] font-bold text-neutral-600 hover:text-neutral-950 hover:bg-white transition-all"
                   >
                     <Store size={14} />
                     <span>Ver mi Tienda</span>
@@ -528,28 +557,26 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
                   <div className="w-px h-4 bg-neutral-200 mx-1"></div>
                   <button
                     onClick={copyLink}
-                    className="w-8 h-8 flex items-center justify-center rounded bg-transparent hover:bg-white text-neutral-500 hover:text-neutral-900 transition-all active:scale-95 shadow-xs border border-transparent hover:border-neutral-100"
+                    className="w-9 h-9 flex items-center justify-center rounded bg-transparent hover:bg-white text-neutral-500 hover:text-neutral-900 transition-all active:scale-95 shadow-none hover:shadow-xs border border-transparent hover:border-neutral-200/50"
                   >
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                   </button>
                 </div>
               )}
 
-              {/* Enlace Soporte */}
               <a
-                href={`https://wa.me/584248157859?text=Hola%20equipo%20Preziso,%20necesito%20ayuda%20con%20mi%20tienda%20${store?.name || ''}`}
+                href={`https://wa.me/584248157859?text=Hola%20equipo%20Preziso`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-semibold text-neutral-500 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
               >
-                <Headset size={14} className="text-neutral-400" />
+                <Headset size={15} className="text-neutral-400" />
                 <span>Hablar con Soporte</span>
               </a>
 
-              {/* Mi Perfil */}
               <GuardedLink
                 href="/admin/profile"
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-semibold text-neutral-500 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
               >
                 <NavAvatarIcon store={store} />
                 <span>Mi Perfil</span>
