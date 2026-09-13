@@ -46,7 +46,7 @@ interface NavItem {
   href: string;
   icon: any;
   category: string;
-  isNew?: boolean;
+  hasPulse?: boolean; // 🚀 Reemplaza a isNew con el pulso vivo rose-500
   isLocked?: boolean;
   hideOnBottomBar?: boolean;
   isAction?: boolean;
@@ -56,9 +56,9 @@ interface NavItem {
 const NAV_LINKS: NavItem[] = [
   // 📌 General
   { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
-  { name: 'Inteligencia', href: '/admin/analytics', icon: LineChart, isNew: true, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Inteligencia', href: '/admin/analytics', icon: LineChart, hasPulse: true, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
   { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
-  { name: 'Clientes', href: '/admin/customers', icon: User, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Clientes', href: '/admin/customers', icon: User, hasPulse: true, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] }, // 🚀 PULSE ACTIVO
 
   // 📌 Punto de Venta
   { name: 'Campañas', href: '/admin/campaigns', icon: Megaphone, isLocked: true, category: 'Ventas', allowedPlans: ['retail', 'digital', 'pro'] },
@@ -66,18 +66,16 @@ const NAV_LINKS: NavItem[] = [
   { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
 
-// 📌 Catálogo
+  // 📌 Catálogo
   { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
-  { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, isNew: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, hasPulse: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
-
-
 
   // 📌 Negocio
   { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
   { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
-  { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, isNew: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
+  { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, hasPulse: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
   { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
 ]
 
@@ -147,7 +145,7 @@ const GuardedLink = ({ href, children, className }: any) => {
 
 
 
-const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void }) => {
+const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo, seenPulses }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void, seenPulses: Record<string, boolean> }) => {
   const [copied, setCopied] = useState(false)
 
   const copyLink = () => {
@@ -233,34 +231,33 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
                         </motion.div>
                       )}
 
-                      {/* Contenedor de Icono rígido de 36px para evitar Layout Shift */}
-                      <div className="flex items-center justify-center w-9 h-7 flex-shrink-0 z-10">
-                        <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                      </div>
+                {/* Contenedor de Icono rígido de 36px con Punto Estático (Desaparece al visitar) */}
+                      {(() => {
+                        const showIndicator = link.hasPulse && !seenPulses[link.href] && pathname !== link.href;
 
-                      {/* Texto de Enlace */}
-                      <span className="ml-2.5 text-xs font-semibold tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
-                        {link.name}
-                      </span>
+                        return (
+                          <>
+                            <div className="relative flex items-center justify-center w-9 h-7 flex-shrink-0 z-10">
+                              <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                              {showIndicator && (
+                                <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.6)] pointer-events-none group-hover/sidebar:opacity-0 transition-opacity duration-200" />
+                              )}
+                            </div>
 
-                     {/* Microetiqueta de Novedad */}
-                      {link.isNew && (
-                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0">
-                          <span className="bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                            NUEVO
-                          </span>
-                        </div>
-                      )}
+                            {/* Texto de Enlace */}
+                            <span className="ml-2.5 text-xs font-semibold tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
+                              {link.name}
+                            </span>
 
-                      {/* 🚀 INYECTA ESTA ETIQUETA DE BLOQUEO DE PREPARACIÓN EN ESCRITORIO */}
-                      {link.isLocked && (
-                        <div className="ml-auto pr-2 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0 flex items-center gap-1">
-                          <Lock size={10} className="text-neutral-400" />
-                          <span className="bg-neutral-100 border border-neutral-200/50 text-neutral-500 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                            PRONTO
-                          </span>
-                        </div>
-                      )}
+                            {/* MICRO-INDICADOR EN SIDEBAR EXPANDIDO */}
+                            {showIndicator && (
+                              <div className="ml-auto pr-3 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0 flex items-center">
+                                <span className="w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.6)]" />
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </GuardedLink>
                   );
                 })}
@@ -364,7 +361,7 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
     </aside>
   );
 }
-const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void }) => {
+const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo, seenPulses }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void, seenPulses: Record<string, boolean> }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -492,11 +489,9 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
                               <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
                               <span>{link.name}</span>
 
-                              {/* MICROETIQUETAS ALINEADAS A LA DERECHA */}
-                              {link.isNew && (
-                                <span className="ml-auto bg-neutral-950 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0">
-                                  NUEVO
-                                </span>
+                      {/* 🚀 MICRO-INDICADOR ESTÁTICO MÓVIL (Desaparece al visitar) */}
+                              {link.hasPulse && !seenPulses[link.href] && pathname !== link.href && (
+                                <span className="ml-auto mr-1 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.6)] shrink-0" />
                               )}
 
                               {link.isLocked && (
@@ -591,7 +586,7 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo 
 
 // --- MOBILE BOTTOM BAR (CON DETECCIÓN INTELIGENTE DE MODALES) ---
 // 👈 NUEVO: Pasamos el store por props
-const MobileBottomBar = ({ pathname, store }: { pathname: string, store: any }) => {
+const MobileBottomBar = ({ pathname, store, seenPulses }: { pathname: string, store: any, seenPulses: Record<string, boolean> }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isModalActive, setIsModalActive] = useState(false); // 🚀 NUEVO: Estado del modal
   const lastScrollY = useRef(0);
@@ -730,7 +725,7 @@ const MobileBottomBar = ({ pathname, store }: { pathname: string, store: any }) 
             )
           }
 
-          return (
+        return (
             <GuardedLink
               key={link.href}
               href={link.href}
@@ -740,13 +735,18 @@ const MobileBottomBar = ({ pathname, store }: { pathname: string, store: any }) 
                 {isActive && (
                   <motion.div
                     layoutId="mobile-nav-indicator"
-                    className="absolute inset-0 bg-[#f0f0f0]  rounded-full -z-10"
+                    className="absolute inset-0 bg-[#f0f0f0] rounded-full -z-10"
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
                 <div className={`transition-transform duration-200 ${isActive ? '-translate-y-0.5' : ''}`}>
                   <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
+
+              {/* 🚀 MICRO-INDICADOR ESTÁTICO EN LA BARRA INFERIOR MÓVIL (Desaparece al visitar) */}
+                {link.hasPulse && !seenPulses[link.href] && pathname !== link.href && (
+                  <span className="absolute top-0.5 right-2 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.6)] pointer-events-none" />
+                )}
               </div>
               <span className="text-[9px] font-bold tracking-wide">
                 {link.name}
@@ -768,6 +768,31 @@ export default function AdminNavigation({ store }: NavProps) {
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [storeConfigLocal, setStoreConfigLocal] = useState(store?.payment_config || {});
 
+  // 🚀 PERSISTENCIA DE PULSOS VISITADOS (Desaparecen al entrar)
+  const [seenPulses, setSeenPulses] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('preziso_seen_nav_pulses') || '{}');
+      setSeenPulses(stored);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!pathname) return;
+    const matchingLink = NAV_LINKS.find(l => l.href === pathname);
+    if (matchingLink?.hasPulse) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('preziso_seen_nav_pulses') || '{}');
+        if (!stored[pathname]) {
+          stored[pathname] = true;
+          localStorage.setItem('preziso_seen_nav_pulses', JSON.stringify(stored));
+          setSeenPulses(prev => ({ ...prev, [pathname]: true }));
+        }
+      } catch {}
+    }
+  }, [pathname]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.refresh()
@@ -784,16 +809,21 @@ export default function AdminNavigation({ store }: NavProps) {
         onLogout={handleLogout}
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
+        seenPulses={seenPulses}
       />
-    <MobileSidebar
+      <MobileSidebar
         pathname={pathname}
         store={store}
         onLogout={handleLogout}
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
+        seenPulses={seenPulses}
       />
-      {/* 👈 NUEVO: Le pasamos el store */}
-      <MobileBottomBar pathname={pathname} store={store} />
+      <MobileBottomBar 
+        pathname={pathname} 
+        store={store} 
+        seenPulses={seenPulses} 
+      />
 
       {store && (
         <VueltoPromoModal
