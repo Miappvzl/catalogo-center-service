@@ -545,7 +545,7 @@ export default function CustomersPage() {
           <div className="flex-1 min-h-0 flex flex-col rounded-2xl border border-neutral-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.01)] overflow-hidden">
             
             {/* 🚀 RIEL DE PESTAÑAS CON SCROLL HORIZONTAL TÁCTIL LIBRE */}
-            <div className="w-full min-w-0 relative border-b border-neutral-200/60 flex items-center gap-4 overflow-x-auto no-scrollbar px-3.5 pt-2 shrink-0">
+            <div className="w-full min-w-0 relative border-b border-neutral-200/60 flex items-center gap-4 overflow-x-auto no-scrollbar px-3.5 pt-3 shrink-0">
               {[
                 { id: 'all', label: 'Todos', count: counts.all },
                 { id: 'both', label: 'Híbridos', count: counts.both, icon: Sparkles },
@@ -690,31 +690,31 @@ export default function CustomersPage() {
                         )}
 
                         {customer.origin_type === 'quotes_only' && (
-                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-200/60">
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700">
                             Cotización
                           </span>
                         )}
 
                         {(customer.ltv_usd >= 100 || customer.pipeline_usd >= 100) && (
-                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 bg-amber-50 text-amber-800 border-amber-200/60 font-mono">
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md flex items-center gap-0.5 bg-amber-50 text-amber-800 font-mono">
                             <Star size={8} className="fill-amber-400 text-amber-500" /> VIP
                           </span>
                         )}
 
                         {customer.pending_orders > 0 && (
-                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md border bg-amber-50/90 text-amber-800 border-amber-200/70 tabular-nums">
+                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-amber-50/90 text-amber-800 tabular-nums">
                             {customer.pending_orders} por despachar
                           </span>
                         )}
                         
                         {customer.pending_quotes > 0 && (
-                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-200/60 tabular-nums">
+                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 tabular-nums">
                             {customer.pending_quotes} cotiz. activa
                           </span>
                         )}
                         
                         {customer.credit_balance > 0 && (
-                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200/60 tabular-nums">
+                          <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 tabular-nums">
                             saldo +${customer.credit_balance.toFixed(2)}
                           </span>
                         )}
@@ -856,7 +856,7 @@ export default function CustomersPage() {
                       En Tránsito:
                     </span>
                     {selectedCustomer.pipeline_usd > 0 ? (
-                      <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50/80 border border-amber-200/60 px-2 py-0.5 rounded-md flex items-center gap-1.5 tabular-nums">
+                      <span className="font-mono font-bold text-xs text-amber-700 bg-amber-50/80 px-2 py-0.5 rounded-md flex items-center gap-1.5 tabular-nums">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                         +${selectedCustomer.pipeline_usd.toFixed(2)}
                         <span className="text-[9px] font-normal text-amber-600 font-sans">
@@ -883,7 +883,7 @@ export default function CustomersPage() {
                 </div>
 
                 {/* 3. 🚀 RIEL DE PESTAÑAS CON SCROLL HORIZONTAL TÁCTIL LIBRE */}
-                <div className="w-full min-w-0 relative border-b border-neutral-200/60 flex items-center gap-6 md:gap-8 overflow-x-auto no-scrollbar pt-1 shrink-0">
+                <div className="w-full min-w-0 relative border-b border-neutral-200/60 flex items-center gap-6 md:gap-8 overflow-x-auto no-scrollbar pt-3 mb-2 shrink-0">
                   {[
                     { id: 'purchases', label: 'Compras Reales', count: selectedCustomer.total_orders },
                     { id: 'quotes', label: 'Cotizaciones', count: selectedCustomer.total_quotes },
@@ -956,7 +956,7 @@ export default function CustomersPage() {
                                           Pedido #{order.order_number}
                                         </p>
                                         
-                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-semibold uppercase tracking-wider border ${
+                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-semibold uppercase tracking-wider${
                                           isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
                                           isPending ? 'bg-amber-50 text-amber-700 border-amber-200/60' :
                                           isCancelled ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
