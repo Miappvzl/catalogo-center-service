@@ -382,7 +382,7 @@ function ProductCardComponent({
     );
   }
 
-  // =========================================================================
+// =========================================================================
   // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP CARD)
   // =========================================================================
   if (cardStyle === 'food_menu') {
@@ -391,7 +391,8 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-colors duration-150 relative overflow-hidden shadow-xs hover:shadow-md ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
         onClick={handleOpenCard}
       >
-        <div className="relative aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
+        {/* Proporción 1:1 Cuadrada: +33% de altura para evitar cortes en platos y bebidas */}
+        <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -473,7 +474,7 @@ function ProductCardComponent({
     );
   }
 
-  // =========================================================================
+// =========================================================================
   // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO CARD)
   // =========================================================================
   return (
@@ -481,7 +482,8 @@ function ProductCardComponent({
       className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-200 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={handleOpenCard}
     >
-      <div className="relative aspect-square w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/50">
+      {/* Proporción 4:5 de Alta Gama: +25% de presencia visual y cero recortes arriba/abajo */}
+      <div className="relative aspect-[4/5] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/50">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
