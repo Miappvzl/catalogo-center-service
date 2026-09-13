@@ -682,7 +682,9 @@ const renderSearchBlock = (isDense: boolean = false) => (
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} />
                                 <input
                                     type="text"
-                                    placeholder="Buscar plato, combo o bebida..."
+                                    placeholder="
+¿Qué se te antoja hoy?
+"
                                     value={props.search}
                                     onChange={(e) => props.setSearch(e.target.value)}
                                     className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-10 pr-4 py-2 text-xs font-medium text-[var(--store-text-main)] outline-none"

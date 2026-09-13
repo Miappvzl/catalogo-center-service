@@ -4,11 +4,19 @@
 import { getOptimizedUrl } from '@/utils/cdn';
 import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap } from 'lucide-react'
 import Image from 'next/image'
-import { useMemo, useState, memo } from 'react' // 🚀 INYECCIÓN DE MEMO
+import { useMemo, useState, memo, useCallback } from 'react'
+
+// 🚀 SINGLETON DE ALTO RENDIMIENTO (Cero garbage collection en render loops)
+const currencyFormatter = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 });
 
 interface ProductCardProps {
   product: any;
-  pricing: { cashPrice: number; priceInBs: number; discountPercent: number; hasDiscount: boolean; };
+  pricing: {
+    cashPrice: number;
+    priceInBs: number;
+    discountPercent: number;
+    hasDiscount: boolean;
+  };
   onOpen: (product: any) => void;
   isOutOfStock?: boolean;
   index?: number;
@@ -18,70 +26,89 @@ interface ProductCardProps {
   taxPercentage?: number;
   cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
 }
-function ProductCardComponent({ 
-  product, 
-  pricing, 
-  onOpen, 
-  isOutOfStock = false, 
-  isFavorite = false, 
-  isCriticalStock = false, 
-  showTaxIndicator = false, 
+
+function ProductCardComponent({
+  product,
+  pricing,
+  onOpen,
+  isOutOfStock = false,
+  isFavorite = false,
+  isCriticalStock = false,
+  showTaxIndicator = false,
   taxPercentage = 16,
-  cardStyle = 'standard'
+  cardStyle = 'standard',
+  index = 99
 }: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
+  // Cálculos financieros protegidos
   const penalty = Number(product.usd_penalty || 0);
   const cashPrice = Number(product.usd_cash_price || 0);
   const listPrice = cashPrice + penalty;
   const compareAt = Number(product.compare_at_usd || 0);
   const activeCompareAt = compareAt > listPrice ? compareAt : listPrice;
-  const isPromo = activeCompareAt > listPrice; 
+  const isPromo = activeCompareAt > listPrice;
   const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
 
   const isTaxable = !product.is_tax_exempt;
   const taxAmountUsd = isTaxable ? listPrice * (taxPercentage / 100) : 0;
 
+  // 🚀 OPTIMIZACIÓN: Solo calcular matriz de colores si el estilo realmente la renderiza
   const uniqueColors = useMemo(() => {
-    if (!product.product_variants || !Array.isArray(product.product_variants)) return [];
-    const colorMap = new Map();
+    if (cardStyle !== 'standard' || !product.product_variants || !Array.isArray(product.product_variants)) return [];
+    const colorSet = new Set<string>();
     product.product_variants.forEach((v: any) => {
       if (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent') {
-        if (!colorMap.has(v.color_hex)) colorMap.set(v.color_hex, v.color_hex);
+        colorSet.add(v.color_hex);
       }
     });
-    return Array.from(colorMap.values());
-  }, [product.product_variants]);
+    return Array.from(colorSet);
+  }, [cardStyle, product.product_variants]);
+
+  // Manejadores estables en memoria
+  const handleOpenCard = useCallback(() => {
+    if (!isOutOfStock) onOpen(product);
+  }, [isOutOfStock, onOpen, product]);
+
+  const handleToggleFav = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+  }, [product]);
+
+  // Decisión de prioridad para LCP de alta velocidad
+  const isPriorityImage = index < 4;
+  const formattedBs = currencyFormatter.format(pricing.priceInBs);
 
   // =========================================================================
   // 🛠️ VARIANTE: TEMA 2 (DENSE HARDWARE CARD / ALTA DENSIDAD)
   // =========================================================================
   if (cardStyle === 'dense_hardware') {
     return (
-      <div 
-        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-all duration-200 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
-        style={{ transform: 'translate3d(0, 0, 0)' }}
-        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-colors duration-150 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
+        onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE TÉCNICO 1:1 (Aspecto Cuadrado Sin Espacio Muerto) */}
-        <div className="relative w-full aspect-square bg-[var(--store-bg)] flex items-center justify-center overflow-hidden border-b-[length:var(--border-width-ui)] border-[var(--store-border)]/40 p-2">
+        {/* 1. ENCUADRE TÉCNICO 1:1 */}
+        <div className="relative aspect-square w-full bg-white overflow-hidden shrink-0 border-b border-[var(--store-border)]/40">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
               fill
+              priority={isPriorityImage}
+              loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-contain p-4 transition-transform duration-300 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-contain p-4 transition-transform duration-200 group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={28} strokeWidth={1.5} />
+              <ImageIcon size={24} strokeWidth={1.5} />
             </div>
           )}
 
-        {/* 🚦 SEMÁFORO DE STOCK TÉCNICO (Estático & Nítido) */}
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+          {/* SEMÁFORO DE STOCK TÉCNICO */}
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
             {isOutOfStock ? (
               <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-soldout-bg)]">
                 Agotado
@@ -98,45 +125,39 @@ function ProductCardComponent({
               </span>
             )}
           </div>
-{/* BADGE DE DESCUENTO PROMO */}
+
+          {/* BADGE DE DESCUENTO */}
           {isPromo && !isOutOfStock && (
-            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-mono font-black px-1.5 py-0.5 rounded-[var(--radius-btn)]">
+            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] md:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-discount-bg)]">
               -{promoPercent}%
             </div>
           )}
 
-         {/* BOTÓN DE FAVORITO */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-            }}
-            className={`absolute bottom-2 right-2 z-20 p-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-all ${
-              isFavorite 
-                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)]' 
+          {/* BOTÓN DE FAVORITO */}
+          <button
+            onClick={handleToggleFav}
+            className={`absolute bottom-2 right-2 z-20 p-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors active:scale-95 ${
+              isFavorite
+                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)]'
                 : 'bg-[var(--store-surface)]/90 text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-action-favorite)] hover:border-[var(--store-action-favorite)]'
             }`}
-            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--store-action-favorite) 30%, transparent)' } : {}}
+            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--store-action-favorite) 30%, transparent)' } : undefined}
             aria-label="Favorito"
           >
             <Heart size={14} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
           </button>
         </div>
 
-        {/* 2. CAJA DE INFORMACIÓN TÉCNICA (Compacta & Directa) */}
+        {/* 2. CAJA DE INFORMACIÓN TÉCNICA */}
         <div className="p-2.5 md:p-3 flex flex-col flex-1 justify-between gap-1.5">
-          
-          {/* Categoría / Rubro */}
           <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--store-surface-text)] truncate">
             {product.category || 'General'}
           </span>
 
-          {/* Título de Producto */}
           <h3 className="text-xs md:text-[13px] font-bold text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.4em] group-hover:text-[var(--store-primary)] transition-colors">
             {product.name}
           </h3>
 
-          {/* 3. MÓDULO FINANCIERO Y COMPRA */}
           <div className="pt-2 border-t border-[var(--store-border)]/40 flex items-end justify-between gap-1.5 mt-auto">
             <div className="flex flex-col min-w-0">
               {isPromo && (
@@ -148,9 +169,9 @@ function ProductCardComponent({
                 ${listPrice.toFixed(2)}
               </span>
               <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
-                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                Bs {formattedBs}
               </span>
-              
+
               {showTaxIndicator && isTaxable && (
                 <span className="text-[8px] font-mono text-[var(--store-surface-text)] mt-1">
                   +${taxAmountUsd.toFixed(2)} IVA
@@ -158,12 +179,11 @@ function ProductCardComponent({
               )}
             </div>
 
-            {/* Botón Técnico de Compra Angular */}
             <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all ${
-                isOutOfStock 
-                  ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed' 
+              className={`w-8 h-8 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors ${
+                isOutOfStock
+                  ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
                   : 'bg-[var(--store-surface)] text-[var(--store-text-main)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-95 shadow-xs'
               }`}
               aria-label="Ver detalles"
@@ -172,7 +192,6 @@ function ProductCardComponent({
             </button>
           </div>
 
-          {/* Micro-badge de Ahorro en Divisas */}
           {penalty > 0 && !isOutOfStock && (
             <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-[var(--store-incentive)] font-mono">
               <Flame size={11} className="text-[var(--store-incentive)] shrink-0 fill-current" />
@@ -189,64 +208,62 @@ function ProductCardComponent({
   // =========================================================================
   if (cardStyle === 'editorial') {
     return (
-      <div 
-        className={`w-full h-full group cursor-pointer flex flex-col relative transition-all duration-700 ease-out hover:-translate-y-2 opacity-0 animate-fade-in-up ${isOutOfStock ? 'opacity-50' : ''}`}
-        style={{ transform: 'translate3d(0, 0, 0)' }}
-        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-50' : ''}`}
+        onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE EDITORIAL (Aspecto 3:4 - Estilo Revista) */}
-        <div className="relative w-full aspect-[3/4] bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] mb-4 md:mb-5 border-[length:var(--border-width-ui)] border-transparent group-hover:border-[var(--store-border)]/50 transition-colors">
+        <div className="relative aspect-[3/4] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-3">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
               fill
+              priority={isPriorityImage}
+              loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={24} strokeWidth={1} />
+              <ImageIcon size={32} strokeWidth={1} />
             </div>
           )}
 
-    {/* Badges Minimalistas (Lookbook Tag con porcentaje real) */}
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
             {isOutOfStock ? (
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-badge-soldout-text)] bg-[var(--store-badge-soldout-bg)]/80 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)]">Agotado</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-badge-soldout-text)] bg-[var(--store-badge-soldout-bg)]/90 px-2.5 py-1 rounded-[var(--radius-btn)]">Agotado</span>
             ) : isPromo ? (
-              <span className="text-[9px] font-price font-bold tracking-widest text-[var(--store-text-main)] bg-[var(--store-bg)]/95 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/50 shadow-sm">
+              <span className="text-[9px] font-bold tracking-widest text-[var(--store-text-main)] bg-[var(--store-bg)]/95 px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/50 shadow-sm">
                 -{promoPercent}%
               </span>
             ) : null}
           </div>
-{/* Favorito Sutil */}
-          <button 
-            onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }}
-            className={`absolute top-3 right-3 z-20 p-2 transition-opacity duration-500 ${isFavorite ? 'opacity-100 text-[var(--store-action-favorite)]' : 'opacity-0 group-hover:opacity-100 text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)]'}`}
+
+          <button
+            onClick={handleToggleFav}
+            className={`absolute top-3 right-3 z-20 p-2 transition-opacity duration-200 active:scale-90 ${
+              isFavorite ? 'opacity-100 text-[var(--store-action-favorite)]' : 'opacity-0 group-hover:opacity-100 text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)]'
+            }`}
+            aria-label="Favorito"
           >
             <Heart size={18} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
           </button>
 
-          {/* Quick Add Hover (Solo Desktop) */}
           {!isOutOfStock && (
-            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
-              <button className="w-full bg-[var(--store-bg)]/95 backdrop-blur-md text-[var(--store-text-main)] py-3.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors rounded-[var(--radius-btn)] shadow-sm">
+            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-200 hidden md:block z-20">
+              <button className="w-full bg-[var(--store-bg)]/95 text-[var(--store-text-main)] py-3.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors rounded-[var(--radius-btn)] shadow-sm">
                 Añadir a la bolsa
               </button>
             </div>
           )}
         </div>
 
-        {/* 2. INFO EDITORIAL CENTRADA */}
         <div className="flex flex-col items-center text-center px-2 flex-1">
           <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-[var(--store-surface-text)] mb-2">{product.category || 'Boutique'}</span>
-          
           <h3 className="text-sm md:text-base font-black text-[var(--store-text-main)] leading-snug mb-2.5 font-heading line-clamp-2">
             {product.name}
           </h3>
-          
           <div className="flex items-center justify-center gap-2.5 mt-auto">
             {isPromo && (
               <span className="text-xs text-[var(--store-surface-text)] line-through decoration-[0.5px]">
@@ -257,44 +274,42 @@ function ProductCardComponent({
               ${listPrice.toFixed(2)}
             </span>
           </div>
-          
-          <span className="text-[10px] text-[var(--store-surface-text)] mt-1.5 font-medium">
-            Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+          <span className="text-[10px] text-[var(--store-surface-text)] mt-1.5 font-medium tabular-nums">
+            Bs {formattedBs}
           </span>
         </div>
       </div>
     );
   }
 
-// =========================================================================
+  // =========================================================================
   // 🏴‍☠️ VARIANTE: TEMA 4 (STREETWEAR BRUTALIST CARD)
   // =========================================================================
   if (cardStyle === 'brutalist') {
     return (
-      <div 
-        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-2 border-[var(--store-border)] hover:border-[var(--store-primary)] transition-all duration-200 relative overflow-hidden shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff] ${isOutOfStock ? 'opacity-60 grayscale-[60%]' : ''}`}
-        style={{ transform: 'translate3d(0, 0, 0)' }}
-        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-2 border-[var(--store-border)] hover:border-[var(--store-primary)] transition-colors duration-150 relative overflow-hidden shadow-[4px_4px_0px_0px_#000000] dark:shadow-[4px_4px_0px_0px_#ffffff] ${isOutOfStock ? 'opacity-60 grayscale-[60%]' : ''}`}
+        onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE DE ALTO IMPACTO (1:1 Square) */}
-        <div className="relative w-full aspect-square bg-[var(--store-bg)] flex items-center justify-center overflow-hidden border-b-2 border-[var(--store-border)] p-2">
+        <div className="relative aspect-square w-full bg-white overflow-hidden border-b-2 border-[var(--store-border)]">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
               fill
+              priority={isPriorityImage}
+              loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-cover transition-transform duration-200 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={28} strokeWidth={1.5} />
+            <div className="w-full h-full flex items-center justify-center text-neutral-400 font-mono text-xs">
+              [NO_IMAGE]
             </div>
           )}
 
-          {/* STICKER TAPE BADGES (Pegatinas Brutalistas) */}
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
             {isOutOfStock ? (
               <span className="bg-black text-white text-[9px] font-mono font-black uppercase tracking-widest px-2 py-0.5 border border-white/40 shadow-[2px_2px_0px_#000]">
                 SOLD OUT
@@ -312,25 +327,19 @@ function ProductCardComponent({
             </div>
           )}
 
-          {/* BOTÓN DE FAVORITO CUADRADO */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-            }}
-            className={`absolute bottom-2 right-2 z-20 p-1.5 border-2 transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
-              isFavorite 
-                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-black' 
+          <button
+            onClick={handleToggleFav}
+            className={`absolute bottom-2 right-2 z-20 p-1.5 border-2 transition-transform shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+              isFavorite
+                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-black'
                 : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-black hover:text-[var(--store-action-favorite)]'
             }`}
-            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 20%, #000)' } : {}}
             aria-label="Favorito"
           >
             <Heart size={14} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
           </button>
         </div>
 
-        {/* 2. DETALLES RAW */}
         <div className="p-3 flex flex-col flex-1 justify-between gap-2">
           <div>
             <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] block mb-1">
@@ -352,15 +361,15 @@ function ProductCardComponent({
                 ${listPrice.toFixed(2)}
               </span>
               <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
-                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                Bs {formattedBs}
               </span>
             </div>
 
             <button
               disabled={isOutOfStock}
-              className={`px-3 py-2 border-2 border-black font-mono font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
-                isOutOfStock 
-                  ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed border-neutral-400 shadow-none' 
+              className={`px-3 py-2 border-2 border-black font-mono font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 transition-transform shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+                isOutOfStock
+                  ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed border-neutral-400 shadow-none'
                   : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90'
               }`}
               aria-label="Ver detalles"
@@ -378,21 +387,21 @@ function ProductCardComponent({
   // =========================================================================
   if (cardStyle === 'food_menu') {
     return (
-      <div 
-        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-300 relative overflow-hidden shadow-xs hover:shadow-md ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
-        style={{ transform: 'translate3d(0, 0, 0)' }}
-        onClick={() => { if (!isOutOfStock) onOpen(product) }}
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-colors duration-150 relative overflow-hidden shadow-xs hover:shadow-md ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
+        onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE DE APETITO (4:3) */}
-        <div className="relative w-full aspect-[4/3] bg-[var(--store-bg)] flex items-center justify-center overflow-hidden">
+        <div className="relative aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
               fill
+              priority={isPriorityImage}
+              loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -400,10 +409,9 @@ function ProductCardComponent({
             </div>
           )}
 
-          {/* BADGES PÍLDORA BLANDAS */}
-          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1">
+          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
             {isOutOfStock ? (
-              <span className="bg-neutral-900/80 backdrop-blur-md text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+              <span className="bg-neutral-900/90 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                 Agotado
               </span>
             ) : isPromo ? (
@@ -413,36 +421,27 @@ function ProductCardComponent({
             ) : null}
           </div>
 
-          {/* FAVORITO SUTIL */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-            }}
-            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full backdrop-blur-md transition-all shadow-xs active:scale-90 ${
-              isFavorite 
-                ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' 
+          <button
+            onClick={handleToggleFav}
+            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-transform shadow-xs active:scale-90 ${
+              isFavorite
+                ? 'text-[var(--store-action-favorite)] bg-white shadow-sm'
                 : 'bg-white/80 text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'
             }`}
-            style={isFavorite ? { color: 'var(--store-action-favorite)' } : {}}
             aria-label="Favorito"
           >
             <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
           </button>
 
-          {/* QUICK ADD (+) FLOTANTE */}
           {!isOutOfStock && (
             <div className="absolute bottom-2.5 right-2.5 z-20">
-              <div
-                className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-all duration-200"
-              >
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-transform duration-150">
                 <Plus size={18} strokeWidth={3} />
               </div>
             </div>
           )}
         </div>
 
-        {/* 2. DETALLE GASTRONÓMICO */}
         <div className="p-3.5 flex flex-col flex-1 justify-between gap-1.5">
           <div>
             <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] block mb-0.5">
@@ -464,9 +463,9 @@ function ProductCardComponent({
                 ${listPrice.toFixed(2)}
               </span>
             </div>
-            
+
             <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] tabular-nums">
-              Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+              Bs {formattedBs}
             </span>
           </div>
         </div>
@@ -478,68 +477,66 @@ function ProductCardComponent({
   // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO CARD)
   // =========================================================================
   return (
-    <div 
-      className={`w-full h-full group cursor-pointer flex flex-col relative transition-all duration-300 ease-out hover:-translate-y-1.5 opacity-0 animate-fade-in-up ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
-      style={{ transform: 'translate3d(0, 0, 0)' }}
-      onClick={() => { if (!isOutOfStock) onOpen(product) }}
+    <div
+      className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-200 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
+      onClick={handleOpenCard}
     >
-      {/* Contenedor de Imagen */}
-      <div className="relative w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] aspect-[4/5] flex items-center justify-center border-[length:var(--border-width-ui)] border-transparent group-hover:border-[var(--store-border)]/50 transition-all">
+      <div className="relative aspect-square w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/50">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
             alt={product.name}
             fill
+            priority={isPriorityImage}
+            loading={isPriorityImage ? undefined : 'lazy'}
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             onLoad={() => setIsImageLoaded(true)}
-            className={`object-cover transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 ${isImageLoaded ? 'blur-0 opacity-100' : 'blur-md opacity-0 scale-105'}`}
+            className={`object-cover transition-transform duration-300 ease-out group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] bg-[var(--store-bg)]">
-            <ImageIcon size={32} strokeWidth={1.5} />
+          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
+            <ImageIcon size={32} strokeWidth={1} />
           </div>
         )}
-        
-      {isOutOfStock && (
-          <div className="absolute inset-0 bg-[var(--store-surface)]/40 backdrop-blur-[2px] flex items-center justify-center z-10">
-            <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)]">Agotado</span>
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-[var(--store-surface)]/60 flex items-center justify-center z-10 pointer-events-none">
+            <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)]">
+              Agotado
+            </span>
           </div>
         )}
 
         {isCriticalStock && !isOutOfStock && (
-          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10 bg-red-600/90 backdrop-blur-md text-white px-2.5 py-1.5 rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
-            <AlertCircle size={12} strokeWidth={2.5} className="animate-pulse" />
+          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10 bg-red-600 text-white px-2.5 py-1 rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] flex items-center gap-1.5 pointer-events-none">
+            <AlertCircle size={12} strokeWidth={2.5} />
             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest leading-none mt-px">
               Últimas {product.stock}
             </span>
           </div>
         )}
 
-      {isPromo && !isOutOfStock && (
-          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] md:text-xs font-black px-2.5 py-1 rounded-[var(--radius-btn)] tracking-widest shadow-[var(--shadow-ui)]">
+        {isPromo && !isOutOfStock && (
+          <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] md:text-xs font-black px-2.5 py-1 rounded-[var(--radius-btn)] tracking-widest shadow-[var(--shadow-ui)] pointer-events-none">
             -{promoPercent}%
           </div>
         )}
-        
-        {/* Botón de Favorito */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-          }}
-          className={`absolute bottom-2.5 left-2.5 md:bottom-3 md:left-3 z-20 p-2 backdrop-blur-md rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-all shadow-[var(--shadow-ui)] active:scale-90 ${
-            isFavorite 
-              ? 'text-[var(--store-action-favorite)] border-transparent' 
-              : 'bg-[var(--store-surface)]/80 text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:text-[var(--store-action-favorite)] hover:bg-[var(--store-surface)]'
+
+        <button
+          onClick={handleToggleFav}
+          className={`absolute bottom-2.5 left-2.5 md:bottom-3 md:left-3 z-20 p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors shadow-[var(--shadow-ui)] active:scale-90 ${
+            isFavorite
+              ? 'text-[var(--store-action-favorite)] border-transparent'
+              : 'bg-[var(--store-surface)]/90 text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:text-[var(--store-action-favorite)] hover:bg-[var(--store-surface)]'
           }`}
-          style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)' } : {}}
+          style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)' } : undefined}
           aria-label="Añadir a favoritos"
         >
           <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
         </button>
 
         {uniqueColors.length > 1 && (
-          <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/25 backdrop-blur-md p-1.5 rounded-full shadow-sm pointer-events-none">
+          <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/60 p-1.5 rounded-full shadow-sm pointer-events-none">
             {uniqueColors.slice(0, 3).map((colorHex, idx) => (
               <div key={idx} className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm" style={{ backgroundColor: colorHex }} />
             ))}
@@ -552,7 +549,6 @@ function ProductCardComponent({
         )}
       </div>
 
-      {/* Contenido Editorial */}
       <div className="flex flex-col flex-1 pt-3 pb-1">
         <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] tracking-[0.05em] leading-snug group-hover:text-[var(--store-primary)] transition-colors line-clamp-2 mb-2 min-h-[2.4em] md:min-h-[2.8em]">
           {product.name}
@@ -571,9 +567,9 @@ function ProductCardComponent({
                   ${listPrice.toFixed(2)}
                 </span>
               </div>
-              
+
               <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums">
-                Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                Bs {formattedBs}
               </span>
 
               {showTaxIndicator && isTaxable && (
@@ -587,7 +583,11 @@ function ProductCardComponent({
 
             <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOutOfStock ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed' : 'text-[var(--store-surface-text)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90'}`}
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors ${
+                isOutOfStock
+                  ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed'
+                  : 'text-[var(--store-surface-text)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90'
+              }`}
               aria-label="Ver producto"
             >
               <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />
@@ -595,8 +595,8 @@ function ProductCardComponent({
           </div>
         </div>
 
-       {penalty > 0 && !isOutOfStock && (
-          <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] md:text-[10px] font-bold text-[var(--store-incentive)] py-1 rounded-[var(--radius-btn)] self-start transition-colors">
+        {penalty > 0 && !isOutOfStock && (
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold text-[var(--store-incentive)] py-1 rounded-[var(--radius-btn)] self-start">
             <Flame size={12} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
             <span>Paga ${cashPrice.toFixed(2)} en Divisas</span>
           </div>
@@ -606,5 +606,29 @@ function ProductCardComponent({
   );
 }
 
-// 🚀 EXPORTACIÓN MEMORIZADA: Previene re-renders innecesarios en un 95%
-export default memo(ProductCardComponent);
+function areProductCardPropsEqual(prev: ProductCardProps, next: ProductCardProps) {
+  // 1. Si la referencia del producto es idéntica (lo habitual en scrolls), son iguales
+  const isProductIdentical = 
+    prev.product === next.product || 
+    (prev.product.id === next.product.id && 
+     prev.product.updated_at === next.product.updated_at &&
+     prev.product.stock === next.product.stock);
+
+  // 2. Si el producto no cambió, validamos únicamente los estados externos de UI
+  if (!isProductIdentical) return false;
+
+  return (
+    prev.isFavorite === next.isFavorite &&
+    prev.isOutOfStock === next.isOutOfStock &&
+    prev.isCriticalStock === next.isCriticalStock &&
+    prev.showTaxIndicator === next.showTaxIndicator &&
+    prev.taxPercentage === next.taxPercentage &&
+    prev.cardStyle === next.cardStyle &&
+    // Validamos pricing porque los padres suelen pasarlo como objeto literal
+    prev.pricing.priceInBs === next.pricing.priceInBs &&
+    prev.pricing.cashPrice === next.pricing.cashPrice &&
+    prev.pricing.discountPercent === next.pricing.discountPercent
+  );
+}
+
+export default memo(ProductCardComponent, areProductCardPropsEqual);
