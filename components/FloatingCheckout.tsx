@@ -606,7 +606,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                             const isExempt = originalItem?.isTaxExempt === true;
 
                                                             return (
-                                                            <motion.div
+                                                           <motion.div
                                                                 key={item.id}
                                                                 layout="position"
                                                                 initial={{ opacity: 0, height: 0, scale: 0.9 }}
@@ -625,16 +625,15 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                 transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
                                                                 className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top"
                                                             >
-                                                                <div className="w-20 h-20 bg-[var(--store-surface)] rounded-xl overflow-hidden shrink-0 relative border border-[var(--store-border)]">
+                                                                <div className={`w-20 h-20 bg-[var(--store-surface)] overflow-hidden shrink-0 relative border border-[var(--store-border)]/50 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none' : 'rounded-xl'}`}>
                                                                     <Image
                                                                         src={getOptimizedUrl(item.image)}
                                                                         alt={item.name}
                                                                         fill
                                                                         sizes="80px"
-                                                                        className="object-cover "
+                                                                        className="object-cover"
                                                                     />
                                                                 </div>
-
                                                                 {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
                                                                 <div className="flex-1 flex flex-col justify-between py-0.5">
                                                                     <div>
@@ -646,11 +645,11 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                                 {item.badge.text}
                                                                             </span>
                                                                         )}
-                                                                        <div className="flex justify-between items-start">
-                                                                            <h3 className="font-bold text-sm text-[var(--store-text-main)] line-clamp-2 leading-snug pr-2">{item.name}</h3>
+                                                                 <div className="flex justify-between items-start">
+                                                                            <h3 className={`font-bold text-[var(--store-text-main)] line-clamp-2 pr-2 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-base uppercase tracking-wider font-heading leading-tight' : 'text-sm leading-snug'}`}>{item.name}</h3>
                                                                             <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 hover:bg-red-50 transition-colors p-1.5 rounded-md active:scale-90"><Trash2 size={14} /></button>
                                                                         </div>
-                                                                        <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1">{item.variantInfo || 'Estándar'}</p>
+                                                                        <p className={`text-[var(--store-surface-text)] mt-1 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-mono font-bold uppercase tracking-widest mt-1.5' : 'text-[11px] font-medium'}`}>{item.variantInfo || 'Estándar'}</p>
 
                                                                         {item.requiresShipping === false && (
                                                                             <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded-md uppercase tracking-wider w-fit max-w-full">
@@ -664,21 +663,21 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
 
                                                                     <div className="flex items-end justify-between mt-2">
                                                                         <div className="flex flex-col min-w-0">
-                                                                            {item.finalListPrice < item.listPrice ? (
+                                                                           {item.finalListPrice < item.listPrice ? (
                                                                                 <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                                                                                     <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
                                                                                         {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
                                                                                     </span>
-                                                                                    <span className="font-black text-base text-red-600 leading-none">
+                                                                                    <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'font-bold text-xl font-price tracking-widest text-red-600' : 'font-black text-base text-red-600'}`}>
                                                                                         {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
                                                                                     </span>
                                                                                 </div>
                                                                           ) : (
-                                                                                <span className="font-black text-base text-[var(--store-text-main)] leading-none">
+                                                                                <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'font-bold text-xl font-price tracking-widest text-[var(--store-text-main)]' : 'font-black text-base text-[var(--store-text-main)]'}`}>
                                                                                     {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
                                                                                 </span>
                                                                             )}
-                                                                                                                                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1">
+                                                                            <span className={`font-mono font-bold text-[var(--store-surface-text)] mt-1 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs tracking-widest mt-1.5' : 'text-[10px]'}`}>
                                                                                 Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                                             </span>
                                                                             
@@ -692,13 +691,13 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                             )}
                                                                         </div>
 
-                                                                        <div className="flex items-center p-1 gap-3 rounded-full border border-[var(--store-border)]/60 bg-[var(--store-bg)]">
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90">
-                                                                                <Minus size={14} strokeWidth={3} />
+                                                                     <div className={`flex items-center p-1 gap-3 border bg-[var(--store-bg)] ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none border-[var(--store-border)]/40' : 'rounded-full border-[var(--store-border)]/60'}`}>
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className={`w-6 h-6 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none hover:border hover:border-[var(--store-border)]' : 'rounded-full hover:border hover:border-[var(--store-border)]'}`}>
+                                                                                <Minus size={14} strokeWidth={activeTheme.layout?.card_style === 'brutalist' ? 2 : 3} />
                                                                             </button>
-                                                                            <span className="text-xs font-bold w-3 text-center text-[var(--store-text-main)]">{item.quantity}</span>
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-6 h-6 flex rounded-full items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] hover:border hover:border-[var(--store-border)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90">
-                                                                                <Plus size={14} strokeWidth={3} />
+                                                                            <span className={`text-center text-[var(--store-text-main)] ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-bold font-mono w-4' : 'text-xs font-bold w-3'}`}>{item.quantity}</span>
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className={`w-6 h-6 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none hover:border hover:border-[var(--store-border)]' : 'rounded-full hover:border hover:border-[var(--store-border)]'}`}>
+                                                                                <Plus size={14} strokeWidth={activeTheme.layout?.card_style === 'brutalist' ? 2 : 3} />
                                                                             </button>
                                                                         </div>
                                                                     </div>
@@ -708,13 +707,22 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                         })} 
                                                     </AnimatePresence>
                                                 </div>
-                                                {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
+                                            {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
                                                 {recommendedProducts.length > 0 && (
-                                                    <div className="mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]">
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
-                                                            <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
-                                                        </div>
+                                                    <div className={`mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]`}>
+                                                        {activeTheme.layout?.card_style === 'brutalist' ? (
+                                                            <div className="flex items-end justify-between mb-5 border-b border-[var(--store-border)]/30 pb-3">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em] mb-1">// SYSTEM_RECOMMENDATIONS</span>
+                                                                    <h3 className="text-sm md:text-base font-bold text-[var(--store-text-main)] font-heading uppercase tracking-[0.1em]">RELATED ARCHIVE</h3>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <h3 className="text-sm font-black text-[var(--store-text-main)] uppercase tracking-widest">Mas para ti</h3>
+                                                                <span className="text-[10px] font-bold text-[var(--store-text-main)] uppercase">Sugerencias</span>
+                                                            </div>
+                                                        )}
 
                                                         {/* 🛡️ SE TRADUCE 'group' A 'group/carousel' PARA AISLAR EL CONTEXTO VISUAL */}
                                                         <div className="w-full relative group/carousel flex items-center overflow-hidden">

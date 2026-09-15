@@ -1065,7 +1065,7 @@ cardStyle = { activeTheme.layout?.card_style }
     }
 
 // =========================================================================
-// 🏴‍☠️ VARIANTE: TEMA 4 (STREETWEAR BRUTALIST MODAL)
+// 🏴‍☠️ VARIANTE: TEMA 4 (TECHNICAL LUXURY STREETWEAR MODAL)
 // =========================================================================
 if (activeTheme.layout?.card_style === 'brutalist') {
     return (
@@ -1077,7 +1077,7 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1, transition: { duration: 0.3 } }}
                             exit={{ opacity: 0 }}
-                            className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
+                            className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
                             onClick={onClose}
                         />
 
@@ -1086,29 +1086,29 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className={`relative bg-[var(--store-bg)] w-full md:w-[620px] lg:w-[820px] h-[98vh] md:h-full border-t-2 md:border-t-0 md:border-l-2 border-[var(--store-border)] flex flex-col md:flex-row overflow-hidden shadow-[8px_8px_0px_0px_#000] will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                         >
-                            {/* Botón de Cerrar Cuadrado */}
+                            {/* Botón de Cerrar (Clean Look) */}
                             <button
                                 onClick={onClose}
-                                className="absolute top-4 right-4 z-50 p-2 bg-[var(--store-surface)] border-2 border-[var(--store-border)] text-[var(--store-text-main)] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+                                className="absolute top-4 right-4 z-50 p-2.5 rounded-full hover:bg-black/5 transition-colors text-[var(--store-text-main)] active:scale-95"
                             >
-                                <X size={18} strokeWidth={2.5} />
+                                <X size={20} strokeWidth={1.5} />
                             </button>
 
-                            {/* Botón de Favorito Cuadrado */}
+                            {/* Botón de Favorito */}
                             <button
                                 onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }}
-                                className={`absolute top-4 left-4 z-50 p-2 border-2 transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${isFavorite ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-black' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-action-favorite)]'}`}
-                                style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 20%, #000)' } : {}}
+                                className={`absolute top-4 left-4 z-50 p-2.5 rounded-full transition-colors active:scale-95 ${isFavorite ? 'text-[var(--store-action-favorite)]' : 'text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)] hover:bg-black/5'}`}
                             >
-                                <Heart size={18} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
+                                <Heart size={20} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
                             </button>
 
                             <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
-                                {/* 1. IMAGEN BRUTALISTA CON MARCO (Side-Zoom & Lightbox) */}
+                                
+                                {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
                                 <div
-                                    className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center shrink-0 border-b-2 md:border-b-0 md:border-r-2 border-[var(--store-border)] overflow-hidden group cursor-zoom-in"
+                                    className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-surface)] relative flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/20 overflow-hidden group cursor-zoom-in"
                                     onMouseMove={handleZoomMove}
                                     onMouseEnter={handleZoomEnter}
                                     onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
@@ -1116,79 +1116,86 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                 >
                                     {currentGallery.length > 0 ? (
                                         <>
-                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-cover p-4 md:p-8 transition-transform duration-500 ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
                                             {zoomData.show && (
-                                                <div className="hidden md:block absolute pointer-events-none bg-black/10 border-2 border-black backdrop-blur-[2px] shadow-[4px_4px_0px_rgba(0,0,0,0.5)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
+                                                <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/20 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
                                             )}
                                         </>
                                     ) : (
-                                        <span className="text-4xl font-mono font-black text-[var(--store-border)]">NO_IMAGE</span>
+                                        <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
                                     )}
 
                                     {currentGallery.length > 1 && (
                                         <>
-                                            <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-[var(--store-surface)] border-2 border-[var(--store-border)] text-[var(--store-text-main)] shadow-[2px_2px_0px_#000] active:scale-90 z-30"><ChevronLeft size={18} strokeWidth={2.5} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-[var(--store-surface)] border-2 border-[var(--store-border)] text-[var(--store-text-main)] shadow-[2px_2px_0px_#000] active:scale-90 z-30"><ChevronRight size={18} strokeWidth={2.5} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronLeft size={20} strokeWidth={1.5} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronRight size={20} strokeWidth={1.5} /></button>
                                         </>
                                     )}
                                 </div>
 
-                                {/* 2. DETALLES RAW */}
-                                <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
-                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
+                                {/* 2. DETALLES TÉCNICOS */}
+                                <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
+                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[130px]">
                                         <div>
-                                            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] block mb-1">
-                                                // {product?.category || 'STREETWEAR DROP'}
+                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-2">
+                                                // {product?.category || 'ARCHIVE'}
                                             </span>
-                                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-[var(--store-text-main)] font-heading leading-tight">
+                                            <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-[0.1em] text-[var(--store-text-main)] font-sans leading-tight mb-3">
                                                 {product?.name}
                                             </h2>
 
                                             {pricing.promoBadgeText && (
-                                                <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-mono font-black uppercase tracking-widest border border-black shadow-[2px_2px_0px_#000]">
-                                                    <Tag size={12} /> {pricing.promoBadgeText}
+                                                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-mono uppercase tracking-[0.2em] shadow-sm">
+                                                    <Tag size={12} strokeWidth={1.5} /> {pricing.promoBadgeText}
                                                 </div>
                                             )}
 
-                                            <div className="flex items-baseline gap-3 mt-4">
+                                            <div className="flex items-baseline gap-4 mt-5">
                                                 {pricing.isPromo && (
-                                                    <span className="text-sm font-mono font-bold text-[var(--store-surface-text)] line-through">
+                                                    <span className="text-sm font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
                                                         ${pricing.compareAt.toFixed(2)}
                                                     </span>
                                                 )}
-                                                <span className="text-3xl font-black font-price text-[var(--store-text-main)] leading-none">
+                                                <span className="text-3xl md:text-4xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
                                                     ${pricing.listPrice.toFixed(2)}
                                                 </span>
-                                                <span className="text-xs font-mono font-bold text-[var(--store-surface-text)]">
+                                            </div>
+                                            <div className="mt-2">
+                                                <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
                                                     Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
                                                 </span>
                                             </div>
 
+                                            {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                <div className="mt-3 inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
+                                                    <Flame size={12} className="fill-current shrink-0" /> PAGA EN USD: ${pricing.cashPrice.toFixed(2)}
+                                                </div>
+                                            )}
+
                                             {isCompletelyOutOfStock && (
-                                                <div className="mt-3 text-[10px] font-mono font-black uppercase tracking-widest text-red-500 bg-red-500/10 px-2.5 py-1 border border-red-500 w-fit">
-                                                    SOLD OUT // TEMPORALMENTE AGOTADO
+                                                <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.2em] text-white bg-black/80 backdrop-blur-md px-3 py-1.5 w-fit">
+                                                    [ SOLD OUT ]
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Selector de Variantes Cuadradas */}
+                                        {/* Selector de Variantes Minimalista/Técnico */}
                                         {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
-                                            <div className="space-y-5 pt-4 border-t-2 border-[var(--store-border)]">
-                                                {/* Colores */}
+                                            <div className="space-y-6 pt-6 border-t border-[var(--store-border)]/20">
                                                 {/* Colores */}
                                                 <motion.div
                                                     ref={colorSectionRef}
-                                                    animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0] } : {}}
+                                                    animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
                                                     transition={{ duration: 0.4 }}
-                                                    className={`p-3 -mx-3 transition-all duration-300 ${!selectedColor ? 'border-2 border-dashed border-[var(--store-text-main)]/50 bg-[var(--store-text-main)]/5' : 'border-2 border-transparent'}`}
+                                                    className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
                                                 >
                                                     <div className="flex items-center justify-between mb-3">
-                                                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)]">
-                                                            COLOR: <strong className="text-[var(--store-text-main)] font-black">{selectedColor || 'PENDIENTE'}</strong>
+                                                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
+                                                            COLOR: <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
                                                         </span>
                                                         {!selectedColor && (
-                                                            <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }} className="text-[10px] font-mono font-black uppercase text-[var(--store-text-main)]">
-                                                                [ SELECT_COLOR ]_
+                                                            <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
+                                                                [ SELECT ]_
                                                             </motion.span>
                                                         )}
                                                     </div>
@@ -1205,22 +1212,23 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                                     }
                                                                 }}
                                                                 disabled={!c.isAvailable}
-                                                                className={`relative flex items-center justify-center transition-all overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                        ? `w-10 h-10 border-2 ${selectedColor === c.name ? 'border-black shadow-[3px_3px_0px_#000] scale-105 z-10' : 'border-[var(--store-border)] hover:border-black shadow-[1px_1px_0px_#000]'}`
-                                                                        : `px-3 py-2 border-2 text-xs font-mono font-bold uppercase ${selectedColor === c.name ? 'border-black bg-black text-white shadow-[3px_3px_0px_#000]' : 'border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-black'}`
-                                                                    } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                                                                className={`relative flex items-center justify-center transition-all overflow-hidden ${
+                                                                    c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
+                                                                        ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
+                                                                        : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
+                                                                } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                                                                 style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
                                                                 title={c.name}
                                                             >
                                                                 {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
                                                                     <>
-                                                                        {selectedColor === c.name && <Check size={18} className="text-white mix-blend-difference" strokeWidth={4} />}
-                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[2px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                        {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
+                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
                                                                     </>
                                                                 ) : (
                                                                     <>
                                                                         <span>{c.name}</span>
-                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[2px] bg-red-500 top-1/2 -rotate-[20deg]" />}
+                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
                                                                     </>
                                                                 )}
                                                             </button>
@@ -1232,12 +1240,12 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                 {availableSizes.length > 1 && (
                                                     <motion.div
                                                         ref={sizeSectionRef}
-                                                        animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0] } : {}}
+                                                        animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}}
                                                         transition={{ duration: 0.4 }}
-                                                        className={`p-3 -mx-3 transition-all duration-300 ${!selectedSize && selectedColor ? 'border-2 border-dashed border-[var(--store-text-main)]/50 bg-[var(--store-text-main)]/5' : 'border-2 border-transparent'}`}
+                                                        className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
                                                     >
-                                                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] block mb-2">
-                                                            TALLA / SIZE
+                                                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-3">
+                                                            SIZE
                                                         </span>
                                                         <div className="flex flex-wrap gap-2">
                                                             {availableSizes.map((v, idx) => (
@@ -1245,7 +1253,7 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                                     key={v.id || v.size || `brutalist-size-${idx}`}
                                                                     onClick={() => { if (v.stock > 0) setSelectedSize(v.size); }}
                                                                     disabled={v.stock <= 0}
-                                                                    className={`min-w-[3rem] px-3 py-2 border-2 text-xs font-mono font-black uppercase transition-all ${selectedSize === v.size ? 'border-black bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[2px_2px_0px_#000]' : 'border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-black'} ${v.stock <= 0 ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
+                                                                    className={`min-w-[3rem] px-4 py-2 border text-[10px] font-mono uppercase tracking-widest transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'} ${v.stock <= 0 ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
                                                                 >
                                                                     {v.size}
                                                                 </button>
@@ -1256,26 +1264,26 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                             </div>
                                         )}
 
-                                        {/* 🚀 ACORDEÓN / DESPLEGADO BRUTALISTA */}
-                                        <div className="mt-8 space-y-4">
+                                        {/* 🚀 ACORDEÓN / DESPLEGADO TÉCNICO */}
+                                        <div className="mt-8 space-y-2">
                                             {/* Descripción */}
                                             {product?.description && (
-                                                <div className="border-t-2 border-[var(--store-border)] pt-4">
+                                                <div className="border-t border-[var(--store-border)]/20 pt-4">
                                                     {activeTheme.shapes.info_layout === 'expanded' ? (
                                                         <div>
-                                                            <span className="text-[10px] font-mono font-black uppercase tracking-widest text-[var(--store-text-main)] block mb-2">
-                                                                // ESPECIFICACIONES
+                                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
+                                                                // DETAILS
                                                             </span>
-                                                            <p className="text-xs text-[var(--store-surface-text)] font-mono leading-relaxed whitespace-pre-line">{product.description}</p>
+                                                            <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line">{product.description}</p>
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors p-2 border-2 border-transparent hover:border-black">
-                                                                <span className="text-[10px] font-mono font-black uppercase tracking-widest">// ESPECIFICACIONES</span>
-                                                                <span className="text-[10px] font-mono font-black">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
+                                                            <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
+                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em]">// DETAILS</span>
+                                                                <span className="text-[10px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
                                                             </button>
                                                             <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <p className="text-xs text-[var(--store-surface-text)] font-mono leading-relaxed whitespace-pre-line pt-4 px-2">{product.description}</p>
+                                                                <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line pt-2 pb-4">{product.description}</p>
                                                             </motion.div>
                                                         </>
                                                     )}
@@ -1284,27 +1292,27 @@ if (activeTheme.layout?.card_style === 'brutalist') {
 
                                             {/* Envío */}
                                             {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="border-t-2 border-[var(--store-border)] pt-4">
+                                                <div className="border-t border-[var(--store-border)]/20 pt-4">
                                                     {activeTheme.shapes.info_layout === 'expanded' ? (
                                                         <div>
-                                                            <span className="text-[10px] font-mono font-black uppercase tracking-widest text-[var(--store-text-main)] block mb-2">
-                                                                // LOGÍSTICA & ENVÍO
+                                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
+                                                                // SHIPPING
                                                             </span>
-                                                            <div className="flex flex-col gap-1 px-2 border-l-2 border-[var(--store-primary)] pl-3">
-                                                                <span className="text-xs font-black text-[var(--store-text-main)] uppercase">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'BAJO PEDIDO'}</span>
-                                                                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'TIEMPO DE ENTREGA: 2 A 7 DÍAS'}</span>
+                                                            <div className="flex flex-col gap-1 px-3 border-l border-[var(--store-text-main)]/30">
+                                                                <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
+                                                                <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors p-2 border-2 border-transparent hover:border-black">
-                                                                <span className="text-[10px] font-mono font-black uppercase tracking-widest">// LOGÍSTICA & ENVÍO</span>
-                                                                <span className="text-[10px] font-mono font-black">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
+                                                            <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
+                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em]">// SHIPPING</span>
+                                                                <span className="text-[10px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
                                                             </button>
                                                             <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <div className="flex flex-col gap-1 pt-4 px-2 border-l-2 border-[var(--store-primary)] ml-2 mt-2">
-                                                                    <span className="text-xs font-black text-[var(--store-text-main)] uppercase">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'BAJO PEDIDO'}</span>
-                                                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'TIEMPO DE ENTREGA: 2 A 7 DÍAS'}</span>
+                                                                <div className="flex flex-col gap-1 pt-2 pb-4 px-3 border-l border-[var(--store-text-main)]/30">
+                                                                    <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
+                                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
                                                                 </div>
                                                             </motion.div>
                                                         </>
@@ -1317,40 +1325,40 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                 </div>
                             </div>
 
-                            {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
+                          {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
                             <AnimatePresence>
                                 {zoomData.show && currentGallery.length > 0 && (
-                                    <motion.div
+                                    <motion.div 
                                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l-2 border-[var(--store-border)]"
+                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/20"
                                     >
                                         <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
                                     </motion.div>
                                 )}
                             </AnimatePresence>
 
-                            {/* FOOTER BRUTALISTA DE COMPRA */}
-                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] z-50 flex items-center gap-3">
-                                <div className="flex items-center border-2 border-black bg-[var(--store-bg)] shadow-[2px_2px_0px_#000]">
-                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="p-3 text-[var(--store-text-main)] hover:bg-black/10 transition-colors disabled:opacity-30"><Minus size={14} strokeWidth={3} /></button>
-                                    <span className="font-mono font-black text-sm w-8 text-center">{quantity}</span>
-                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="p-3 text-[var(--store-text-main)] hover:bg-black/10 transition-colors disabled:opacity-30"><Plus size={14} strokeWidth={3} /></button>
+                            {/* FOOTER CLEAN LOOK DE COMPRA */}
+                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-full bg-transparent">
+                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
+                                    <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center">{quantity}</span>
+                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
                                 </div>
 
                                 <motion.button
                                     whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                     onClick={handleAddToCart}
                                     disabled={isCompletelyOutOfStock || isAdding}
-                                    className={`flex-1 h-12 border-2 border-black font-mono font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed border-neutral-400 shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
+                                    className={`flex-1 h-12 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
                                 >
-                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingBag size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR AL DROP' : buttonText}</>}
+                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + ADD TO BAG ]</>}
                                 </motion.button>
                             </div>
                         </motion.div>
                     </div>
                 )}
-
-            </AnimatePresence>
+                
+      </AnimatePresence>
 
             {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
             <LightboxViewer
@@ -1362,10 +1370,12 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                 cardStyle={activeTheme.layout?.card_style}
             />
         </>
-    );
-}
+        );
+    }
+
 // =========================================================================
-// 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP MODAL)
+  // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP MODAL)
+
 if (activeTheme.layout?.card_style === 'food_menu') {
     return (
         <>
@@ -1427,7 +1437,7 @@ if (activeTheme.layout?.card_style === 'food_menu') {
                                                 {product?.name}
                                             </h2>
 
-                                            <div className="flex items-baseline gap-3 mt-3">
+                                           <div className="flex items-baseline gap-3 mt-3">
                                                 {pricing.isPromo && (
                                                     <span className="text-sm font-bold text-[var(--store-surface-text)] line-through">
                                                         ${pricing.compareAt.toFixed(2)}
@@ -1440,6 +1450,16 @@ if (activeTheme.layout?.card_style === 'food_menu') {
                                                     Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
                                                 </span>
                                             </div>
+
+                                            {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo App) */}
+                                            {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-[var(--store-incentive)]">
+                                                    <div className="bg-[var(--store-incentive)]/10 p-1 rounded-full">
+                                                        <Flame size={12} className="fill-current shrink-0" />
+                                                    </div>
+                                                    Paga en USD y ahorra ${pricing.exactSavings.toFixed(2)}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Opciones / Variantes en Píldoras */}

@@ -173,6 +173,9 @@ export default function CheckoutProcess({
     const payments = storeConfig?.payment_config || {};
     const shipping = storeConfig?.shipping_config || {};
     const receiptConfig = storeConfig?.receipt_config || { strict_mode: false };
+    const activeTheme = storeConfig?.theme || {
+        layout: { card_style: 'default' },
+    };
     const wholesale = storeConfig?.wholesale_config || {
         active: false,
         min_items: 6,
@@ -2383,22 +2386,22 @@ export default function CheckoutProcess({
                 </div>
             </div>{" "}
             {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */}
-            {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
+        {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
             {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
             <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
                     {/* Total a la izquierda */}
                     <div className="flex flex-col shrink-0">
-                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
+                        <span className={`uppercase leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-mono font-bold text-[var(--store-surface-text)] tracking-[0.2em] mb-1' : 'text-[9px] font-black text-[var(--store-surface-text)] tracking-widest mb-1.5'}`}>
                             Total Final
                         </span>
                         <div className="flex items-end gap-2">
-                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">
+                            <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'text-3xl font-mono font-bold text-[var(--store-text-main)] tracking-widest' : 'text-2xl md:text-3xl font-black text-[var(--store-text-main)] tracking-tighter'}`}>
                                 {currencySymbol}
                                 {grandTotalUSD.toFixed(2)}
                             </span>
                         </div>
-                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1.5">
+                        <span className={`font-mono font-bold text-[var(--store-surface-text)] ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs tracking-widest mt-1' : 'text-[10px] mt-1.5'}`}>
                             Bs{" "}
                             {grandTotalBs.toLocaleString("es-VE", {
                                 maximumFractionDigits: 2,
@@ -2407,7 +2410,7 @@ export default function CheckoutProcess({
                     </div>
 
 
-                    {/* 🚀 EL MORPHING SUBMIT BUTTON (Aislado de Layout Thrashing) */}
+                  {/* 🚀 EL MORPHING SUBMIT BUTTON (Aislado de Layout Thrashing) */}
                     <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
                         <div className="w-full h-[52px] relative flex justify-end md:justify-center">
                             <motion.button
@@ -2415,7 +2418,7 @@ export default function CheckoutProcess({
                                 onClick={handleCheckout}
                                 // 🚀 CORREGIDO: Bloqueo inteligente condicionado a isStoreCreditActive
                                 disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full font-black text-xs rounded-full md:text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${
+                                className={`h-full uppercase transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${activeTheme.layout?.card_style === 'brutalist' ? 'font-mono font-bold text-sm tracking-[0.2em] rounded-none border-2 border-black shadow-[4px_4px_0px_#000]' : 'font-black text-xs md:text-sm tracking-widest rounded-full'} ${
                                     checkoutState !== 'idle'
                                         ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
                                         : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)

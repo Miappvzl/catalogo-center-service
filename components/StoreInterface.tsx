@@ -1029,8 +1029,42 @@ useEffect(() => {
                   );
               }
 
+          // ==========================================
+              // 🏴‍☠️ VARIANTE 3: STREETWEAR BRUTALIST (The Archive Ticket)
               // ==========================================
-              // 🌟 VARIANTE 3: UNIVERSAL (El Bloque Comercial)
+              if (cardStyle === 'brutalist') {
+                  return (
+                      <div key={promo.id}
+                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
+                          className={`w-full shrink-0 snap-center cursor-pointer transition-transform duration-500 ease-out relative group overflow-hidden border border-[var(--store-border)]/50 ${isActive ? 'opacity-100 ring-1 ring-[var(--store-text-main)]' : 'opacity-90 hover:opacity-100 hover:-translate-y-1'}`}
+                          style={{ backgroundColor: promo.bg_color || 'var(--store-surface)' }}>
+                          
+                          <div className="max-w-[1500px] mx-auto p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 relative z-10">
+                              {promo.image_url && (
+                                  <div className="w-full md:w-28 h-32 md:h-28 shrink-0 relative flex items-center justify-center overflow-hidden border border-[var(--store-border)]/20" style={{ backgroundColor: `${promo.text_color}05` }}>
+                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="(max-width: 768px) 100vw, 150px" className="object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                                  </div>
+                              )}
+                              
+                              <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left w-full min-w-0">
+                                  {promo.tagline && <span className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.25em] mb-1.5" style={{ color: promo.text_color || 'var(--store-text-main)', opacity: 0.6 }}>// {promo.tagline}</span>}
+                                  <h4 className="font-heading font-bold text-xl md:text-3xl uppercase tracking-[0.1em] leading-tight mb-3 line-clamp-2" style={{ color: promo.text_color || 'var(--store-text-main)' }}>{promo.title}</h4>
+                                  
+                                  {promo.expires_at && <div className="mb-2"><PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || 'var(--store-text-main)'} variant="industrial" /></div>}
+                              </div>
+                              
+                              <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-center md:justify-end border-t border-[var(--store-border)]/20 md:border-0 pt-4 md:pt-0">
+                                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
+                                      {isActive ? '[ CLEAR_FILTER ] ✕' : '[ EXPLORE_ARCHIVE ] ↗'}
+                                  </span>
+                              </div>
+                          </div>
+                      </div>
+                  );
+              }
+
+              // ==========================================
+              // 🌟 VARIANTE 4: UNIVERSAL (El Bloque Comercial)
               // ==========================================
               return (
                 <div key={promo.id}
