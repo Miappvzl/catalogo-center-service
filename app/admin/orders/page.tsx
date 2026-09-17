@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -86,6 +87,7 @@ const getBsAmount = (order: Partial<Order>) => {
 
 export default function OrdersPage() {
     const supabase = getSupabase()
+    const searchParams = useSearchParams()
 
     const [loading, setLoading] = useState(true)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -189,10 +191,32 @@ export default function OrdersPage() {
             setLoadingMore(false)
         }
     }, [supabase, storeId])
-
-    useEffect(() => {
-        if (storeId) { fetchOrders(0, true); fetchKPIs(); }
-    }, [fetchOrders, fetchKPIs, storeId])
+useEffect(() => {
+        if (storeId) { 
+            fetchOrders(0, true); 
+            fetchKPIs(); 
+            
+            // 🚀 MOTOR DE DEEPLINKING (Auto-apertura desde CRM)
+            const targetOrderId = searchParams.get('drawer');
+            if (targetOrderId) {
+                // Buscamos la orden directamente en base de datos por si no está en la página 1 de la memoria local
+                supabase.from('orders')
+                    .select('*, order_items(*)')
+                    .eq('id', targetOrderId)
+                    .single()
+                    .then(({ data }: { data: Order | null }) => {
+                        if (data) {
+                            setSelectedOrder(data as Order);
+                            setTrackingInput(data.tracking_number || '');
+                            setIsDrawerOpen(true);
+                            
+                            // Limpiamos la URL silenciosamente sin recargar la página para mantener la UI limpia
+                            window.history.replaceState(null, '', '/admin/orders');
+                        }
+                    });
+            }
+        }
+    }, [fetchOrders, fetchKPIs, storeId, searchParams, supabase])
 
     useEffect(() => {
         if (!storeId) return

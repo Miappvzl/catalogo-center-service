@@ -6,9 +6,11 @@ import {
   ArrowLeft, Search, User, Wallet, Heart, ShoppingBag, 
   Loader2, Copy, Package, FileText, CheckCircle2, 
   Star, TrendingUp, History, XCircle, AlertCircle,
-  Sparkles, X
+  Sparkles, X,
+  HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Swal from 'sweetalert2';
 import { getOptimizedUrl } from '@/utils/cdn';
@@ -51,7 +53,7 @@ interface CrmCustomer {
   pending_quotes: number;
   converted_quotes: number;
   credit_balance: number;
-  origin_type: 'both' | 'web_only' | 'quotes_only' | 'passport_only';
+  sources: string[]; // 🚀 Ahora guarda exactamente de dónde vienen: ['web', 'pos', 'quote']
   is_registered: boolean;
   registered_customer_id: string | null;
   last_activity: string;
@@ -99,17 +101,21 @@ type FilterCategory = 'all' | 'both' | 'web' | 'quotes' | 'vips' | 'credit';
 
 export default function CustomersPage() {
   const supabase = getSupabase();
+  const router = useRouter(); // 🚀 Añadimos el router para Deeplinking
 
   // Contexto de Tienda
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  // Estados del Directorio
+// Estados del Directorio
   const [roster, setRoster] = useState<CrmCustomer[]>([]);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estado del Modal de Ayuda (Leyenda)
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Estados del Expediente Activo
   const [selectedCustomer, setSelectedCustomer] = useState<CrmCustomer | null>(null);
@@ -219,53 +225,51 @@ export default function CustomersPage() {
             cancelled_orders: 0,
             total_quotes: 0,
             pending_quotes: 0,
-            converted_quotes: 0,
-            credit_balance: creditBal,
-            origin_type: 'web_only',
-            is_registered: !!o.customer_id,
-            registered_customer_id: o.customer_id || null,
-            last_activity: o.created_at
-          };
-          customerMap.set(key, item);
-        }
+          converted_quotes: 0,
+          credit_balance: creditBal,
+          sources: [], // Inicializamos vacío
+          is_registered: !!o.customer_id,
+          registered_customer_id: o.customer_id || null,
+          last_activity: o.created_at
+        };
+        customerMap.set(key, item);
+      }
 
-        if (new Date(o.created_at) > new Date(item.last_activity)) {
-          item.last_activity = o.created_at;
-        }
+      if (new Date(o.created_at) > new Date(item.last_activity)) {
+        item.last_activity = o.created_at;
+      }
 
-        if (o.is_quote) {
-          item.total_quotes++;
-          const isExpired = o.expires_at ? new Date(o.expires_at) < new Date() : false;
-          if (o.status === 'converted' || o.converted_at) {
-            item.converted_quotes++;
-          } else if (o.status === 'pending' && !isExpired) {
-            item.pending_quotes++;
-          }
+      // 🚀 CAPTURA EXACTA DEL ORIGEN
+      const currentSource = o.is_quote ? 'quote' : (o.source || 'web').toLowerCase();
+      if (!item.sources.includes(currentSource)) {
+        item.sources.push(currentSource);
+      }
+
+      if (o.is_quote) {
+        item.total_quotes++;
+        const isExpired = o.expires_at ? new Date(o.expires_at) < new Date() : false;
+        if (o.status === 'converted' || o.converted_at) {
+          item.converted_quotes++;
+        } else if (o.status === 'pending' && !isExpired) {
+          item.pending_quotes++;
+        }
+      } else {
+        item.total_orders++;
+        if (o.status === 'pending') {
+          item.pending_orders++;
+          item.pipeline_usd += Number(o.total_usd || 0);
+        } else if (o.status === 'paid' || o.status === 'completed') {
+          item.paid_orders++;
+          item.ltv_usd += Number(o.total_usd || 0);
+        } else if (o.status === 'cancelled') {
+          item.cancelled_orders++;
         } else {
-          item.total_orders++;
-          if (o.status === 'pending') {
-            item.pending_orders++;
-            item.pipeline_usd += Number(o.total_usd || 0);
-          } else if (o.status === 'paid' || o.status === 'completed') {
-            item.paid_orders++;
-            item.ltv_usd += Number(o.total_usd || 0);
-          } else if (o.status === 'cancelled') {
-            item.cancelled_orders++;
-          } else {
-            item.ltv_usd += Number(o.total_usd || 0);
-          }
+          item.ltv_usd += Number(o.total_usd || 0);
         }
+      }
+    });
 
-        if (item.total_orders > 0 && item.total_quotes > 0) {
-          item.origin_type = 'both';
-        } else if (item.total_orders > 0) {
-          item.origin_type = 'web_only';
-        } else if (item.total_quotes > 0) {
-          item.origin_type = 'quotes_only';
-        }
-      });
-
-      rawCredits.forEach((cr: any) => {
+    rawCredits.forEach((cr: any) => {
         if (!cr.customer_id) return;
         const regProfile = customerProfileMap.get(cr.customer_id);
         const cleanPhone = regProfile?.phone ? regProfile.phone.replace(/\D/g, '') : null;
@@ -287,7 +291,7 @@ export default function CustomersPage() {
             pending_quotes: 0,
             converted_quotes: 0,
             credit_balance: Number(cr.balance_usd || 0),
-            origin_type: 'passport_only',
+            sources: ['passport'],
             is_registered: true,
             registered_customer_id: cr.customer_id,
             last_activity: cr.updated_at || new Date().toISOString()
@@ -334,16 +338,15 @@ export default function CustomersPage() {
         `)
         .eq('store_id', storeId);
 
-      if (regId && cleanPhone) {
-        ordersQuery = ordersQuery.or(`customer_id.eq.${regId},customer_phone.ilike.%${cleanPhone.slice(-8)}%`);
-      } else if (regId) {
-        ordersQuery = ordersQuery.eq('customer_id', regId);
-      } else if (cleanPhone) {
-        ordersQuery = ordersQuery.ilike('customer_phone', `%${cleanPhone.slice(-8)}%`);
-      } else {
-        ordersQuery = ordersQuery.eq('customer_name', customer.full_name);
-      }
+      // 🚀 MOTOR DE BÚSQUEDA TRIDIMENSIONAL (Cero clientes omitidos)
+      const orConditions = [];
+      if (regId) orConditions.push(`customer_id.eq.${regId}`);
+      if (cleanPhone && cleanPhone.length >= 7) orConditions.push(`customer_phone.ilike.%${cleanPhone.slice(-7)}%`);
+      if (customer.full_name && customer.full_name !== 'Cliente sin nombre') orConditions.push(`customer_name.ilike.%${customer.full_name}%`);
 
+      if (orConditions.length > 0) {
+        ordersQuery = ordersQuery.or(orConditions.join(','));
+      }
       const [ordersRes, favsRes, creditRes] = await Promise.all([
         ordersQuery.order('created_at', { ascending: false }),
         regId 
@@ -394,9 +397,9 @@ export default function CustomersPage() {
       if (!matchesSearch) return false;
 
       switch (activeFilter) {
-        case 'both': return c.origin_type === 'both';
-        case 'web': return c.origin_type === 'web_only' || c.origin_type === 'both';
-        case 'quotes': return c.origin_type === 'quotes_only' || c.origin_type === 'both';
+        case 'both': return c.sources.length > 1; // Híbrido/Multicanal
+        case 'web': return c.sources.includes('web');
+        case 'quotes': return c.sources.includes('quote');
         case 'vips': return c.ltv_usd >= 100 || c.pipeline_usd >= 100;
         case 'credit': return c.credit_balance > 0;
         default: return true;
@@ -404,36 +407,11 @@ export default function CustomersPage() {
     }).sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime());
   }, [roster, search, activeFilter]);
 
-  // Navegación por teclado (↑ / ↓ o J / K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
-      if (filteredRoster.length === 0) return;
-
-      const currentIndex = filteredRoster.findIndex(
-        c => c.customer_key === selectedCustomer?.customer_key
-      );
-
-      if (e.key === 'ArrowDown' || e.key === 'j') {
-        e.preventDefault();
-        const next = currentIndex < filteredRoster.length - 1 ? currentIndex + 1 : 0;
-        setSelectedCustomer(filteredRoster[next]);
-      } else if (e.key === 'ArrowUp' || e.key === 'k') {
-        e.preventDefault();
-        const prev = currentIndex > 0 ? currentIndex - 1 : filteredRoster.length - 1;
-        setSelectedCustomer(filteredRoster[prev]);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filteredRoster, selectedCustomer]);
-
   const counts = useMemo(() => ({
     all: roster.length,
-    both: roster.filter(c => c.origin_type === 'both').length,
-    web: roster.filter(c => c.origin_type === 'web_only' || c.origin_type === 'both').length,
-    quotes: roster.filter(c => c.origin_type === 'quotes_only' || c.origin_type === 'both').length,
+    both: roster.filter(c => c.sources.length > 1).length,
+    web: roster.filter(c => c.sources.includes('web')).length,
+    quotes: roster.filter(c => c.sources.includes('quote')).length,
     vips: roster.filter(c => c.ltv_usd >= 100 || c.pipeline_usd >= 100).length,
     credit: roster.filter(c => c.credit_balance > 0).length,
   }), [roster]);
@@ -472,12 +450,12 @@ export default function CustomersPage() {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
-  return (
-    <div className="h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-[#FAFAFC] font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
+return (
+    <div className="h-dvh max-h-dvh w-full max-w-[100vw] overflow-hidden bg-[#FAFAFC] font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
       
       {/* CABECERA PRINCIPAL FIJA */}
       <div className="bg-[#FAFAFC]/95 backdrop-blur-md shrink-0 z-30 px-4 md:px-8 py-3 flex justify-between items-center border-b border-neutral-200/50">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 min-w-0">
           <Link 
             href="/admin" 
             className="w-8 h-8 bg-white rounded-lg flex items-center justify-center border border-neutral-200/60 hover:border-neutral-400 transition-all shrink-0 shadow-xs active:scale-[0.98]"
@@ -485,28 +463,119 @@ export default function CustomersPage() {
           >
             <ArrowLeft size={15} className="text-neutral-500 hover:text-neutral-900" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-bold text-sm md:text-base tracking-tight leading-none text-neutral-900">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-bold text-sm md:text-base tracking-tight leading-none text-neutral-900 truncate">
                 Directorio de Clientes
               </h1>
-              <span className="bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
+              <span className="bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0">
                 {roster.length} Registros
               </span>
             </div>
-            <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">
+            <p className="text-[9px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono truncate">
               CRM Omnicanal • Navegación por teclado [ ↑ / ↓ ] activa
             </p>
           </div>
         </div>
+
+        {/* 🚀 BOTÓN DE LEYENDA (AYUDA) */}
+        <button
+          onClick={() => setIsHelpOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-200/60 rounded-lg text-neutral-500 hover:text-neutral-950 hover:border-neutral-400 transition-colors shadow-xs active:scale-95 shrink-0"
+        >
+          <HelpCircle size={14} />
+          <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Leyenda</span>
+        </button>
       </div>
      
-      {/* CONTENEDOR PRINCIPAL: CADENA FLEXBOX CERRADA (100% INMUNE A DESBORDES) */}
-      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full px-3.5 sm:px-4 md:px-8 py-3 md:py-4 flex flex-col lg:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden">
+     {/* CONTENEDOR MAESTRO (Admite el Banner Superior Inline) */}
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full px-3.5 sm:px-4 md:px-8 py-3 md:py-4 flex flex-col min-w-0 overflow-hidden">
         
-        {/* =================================================================== */}
-        {/* COLUMNA IZQUIERDA: SMART ROSTER                                    */}
-        {/* =================================================================== */}
+        {/* 🚀 BANNER INLINE DE LEYENDA (REEMPLAZA AL MODAL FLOTANTE) */}
+        <AnimatePresence>
+          {isHelpOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden shrink-0"
+            >
+              <div className="bg-neutral-950 rounded-2xl border border-neutral-800 p-4 md:p-5 shadow-sm relative">
+                <button 
+                  onClick={() => setIsHelpOpen(false)}
+                  className="absolute top-4 right-4 p-1.5 text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors active:scale-95"
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
+                    <HelpCircle size={13} className="text-white" />
+                  </div>
+                  <h3 className="text-[11px] md:text-xs font-bold text-white uppercase tracking-wider">
+                    Leyenda del CRM Omnicanal
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {/* Híbrido */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2">
+                     <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border inline-flex items-center gap-1 bg-neutral-800 text-white border-neutral-700 shadow-xs">
+                        <Sparkles size={8} className="text-zinc-300 fill-zinc-200/50" /> Híbrido
+                     </span>
+                     <p className="text-[10px] text-neutral-400 leading-relaxed font-medium">
+                        <strong className="text-neutral-200">Alto valor.</strong> Concreta compras en la web y además solicita cotizaciones formales.
+                     </p>
+                  </div>
+                  {/* Tienda Web */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2">
+                     <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border inline-flex bg-neutral-100 text-neutral-800 border-neutral-300">
+                        Tienda Web
+                     </span>
+                     <p className="text-[10px] text-neutral-400 leading-relaxed font-medium">
+                        Interactúa exclusivamente realizando pedidos directos en la tienda online.
+                     </p>
+                  </div>
+                  {/* Cotización */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2">
+                     <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border inline-flex bg-purple-500/20 text-purple-300 border-purple-400/30">
+                        Cotización
+                     </span>
+                     <p className="text-[10px] text-neutral-400 leading-relaxed font-medium">
+                        Prospecto que únicamente solicita presupuestos sin concretar compra directa.
+                     </p>
+                  </div>
+                  {/* VIP */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2">
+                     <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border inline-flex items-center gap-0.5 bg-amber-500/20 text-amber-300 border-amber-400/30 font-mono">
+                        <Star size={8} className="fill-amber-400 text-amber-400" /> VIP
+                     </span>
+                     <p className="text-[10px] text-neutral-400 leading-relaxed font-medium">
+                        Volumen de dinero facturado o en tránsito superior a los $100.
+                     </p>
+                  </div>
+                  {/* Passport */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2">
+                     <span className="text-[8px] font-mono font-semibold uppercase tracking-wider inline-flex bg-blue-500/20 text-blue-400 border border-blue-400/30 px-2 py-0.5 rounded-full">
+                        Passport
+                     </span>
+                     <p className="text-[10px] text-neutral-400 leading-relaxed font-medium">
+                        Cuenta oficial. Acumula vuelto en su billetera y guarda favoritos.
+                     </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      
+
+        {/* CONTENEDOR DE COLUMNAS (Conserva el Scroll Aislado Perfecto) */}
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 md:gap-6 min-w-0 overflow-hidden">
+          
+          {/* =================================================================== */}
+          {/* COLUMNA IZQUIERDA: SMART ROSTER                                    */}
         <div className={`w-full lg:w-[360px] xl:w-[390px] h-full flex flex-col gap-2.5 shrink-0 min-w-0 ${selectedCustomer ? 'hidden lg:flex' : 'flex'}`}>
           
           {/* THE COMMAND CAPSULE BUSCADOR */}
@@ -674,23 +743,28 @@ export default function CustomersPage() {
                           )}
                         </div>
                       </div>
-
-                      {/* BADGES SEMÁNTICOS CON CHISPA TITANIUM */}
+{/* BADGES SEMÁNTICOS CON CHISPA TITANIUM */}
                       <div className="flex flex-wrap items-center gap-1.5 pl-10.5">
-                        {customer.origin_type === 'both' && (
+                        {customer.sources.length > 1 && (
                           <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex items-center gap-1 bg-neutral-950 text-white border-neutral-800 shadow-2xs">
                             <Sparkles size={8} className="text-zinc-300 fill-zinc-200/50" /> Híbrido
                           </span>
                         )}
 
-                        {customer.origin_type === 'web_only' && (
+                        {customer.sources.length === 1 && customer.sources.includes('web') && (
                           <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-neutral-100 text-neutral-600 border-neutral-200/50">
                             Tienda Web
                           </span>
                         )}
 
-                        {customer.origin_type === 'quotes_only' && (
-                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700">
+                        {customer.sources.length === 1 && customer.sources.includes('pos') && (
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-cyan-50 text-cyan-700 border-cyan-200/60">
+                            Punto de Venta
+                          </span>
+                        )}
+
+                        {customer.sources.length === 1 && customer.sources.includes('quote') && (
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-200/60">
                             Cotización
                           </span>
                         )}
@@ -726,6 +800,7 @@ export default function CustomersPage() {
             )}
           </div>
         </div>
+         
 
         {/* =================================================================== */}
         {/* COLUMNA DERECHA: CUSTOMER 360 (EXPEDIENTE)                         */}
@@ -942,41 +1017,40 @@ export default function CustomersPage() {
                             </div>
                           ) : (
                             <div className="divide-y divide-neutral-100/80">
-                              {customerPurchases.map((order) => {
-                                const isPending = order.status === 'pending';
+                             {customerPurchases.map((order) => {
+                           const isPending = order.status === 'pending';
                                 const isPaid = order.status === 'paid' || order.status === 'completed';
                                 const isCancelled = order.status === 'cancelled';
-                                const items = order.order_items || [];
+                                const isFailed = order.status === 'failed';
+                                const items = order.order_items || []; // 🚀 CORRECCIÓN: Restauramos la variable de las miniaturas
 
-                                return (
-                                  <div key={order.id} className="py-3 flex justify-between items-center group hover:bg-neutral-50/50 px-2 rounded-lg transition-colors min-w-0">
+                               return (
+                                  <div 
+                                    key={order.id} 
+                                    onClick={() => router.push(`/admin/orders?drawer=${order.id}`)}
+                                    className="py-3 flex justify-between items-center group hover:bg-neutral-50/40 px-2 rounded-lg transition-colors min-w-0 cursor-pointer active:scale-[0.99]"
+                                  >
                                     <div className="min-w-0 pr-4 space-y-1 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <p className="font-mono font-bold text-xs text-neutral-900">
                                           Pedido #{order.order_number}
                                         </p>
                                         
-                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-semibold uppercase tracking-wider${
-                                          isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' :
-                                          isPending ? 'bg-amber-50 text-amber-700 border-amber-200/60' :
-                                          isCancelled ? 'bg-rose-50 text-rose-700 border-rose-200/60' :
-                                          'bg-neutral-100 text-neutral-600 border-neutral-200/40'
+                                        {/* 🚀 BADGE UNIFICADO DE ALTA GAMA: ESTADO + CANAL */}
+                                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-mono font-bold uppercase tracking-widest border ${
+                                          isPaid ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' :
+                                          isPending ? 'bg-amber-50 text-amber-800 border-amber-200/70' :
+                                          (isCancelled || isFailed) ? 'bg-rose-50 text-rose-800 border-rose-200/70' :
+                                          'bg-neutral-100 text-neutral-700 border-neutral-200/60'
                                         }`}>
-                                          {isPending ? 'por despachar' : isPaid ? 'pagado' : isCancelled ? 'cancelado' : order.status}
+                                          {isPending ? 'POR DESPACHAR' : isPaid ? 'PAGADO' : isCancelled ? 'CANCELADO' : isFailed ? 'PAGO FALLIDO' : order.status} • {(order.source || 'WEB')}
                                         </span>
-                                        
-                                        {order.source && (
-                                          <span className="text-[8px] font-mono font-semibold uppercase text-neutral-400 bg-neutral-100 px-1 rounded">
-                                            {order.source}
-                                          </span>
-                                        )}
-
                                         {/* Miniaturas de Ítems */}
                                         {items.length > 0 && (
-                                          <div className="flex items-center -space-x-1.5 overflow-hidden pl-1">
-                                            {items.slice(0, 3).map((it, idx) => (
+                                       <div className="flex items-center -space-x-1.5 overflow-hidden pl-1">
+                                            {items.slice(0, 3).map((it: any, idx: number) => (
                                               <div 
-                                                key={idx} 
+                                                key={idx}
                                                 className="w-5 h-5 rounded-full border border-white bg-neutral-100 overflow-hidden relative shadow-2xs shrink-0" 
                                                 title={`${it.quantity}x ${it.product_name}`}
                                               >
@@ -1047,8 +1121,12 @@ export default function CustomersPage() {
                                 const isConverted = quote.status === 'converted' || !!quote.converted_at;
                                 const isExpired = quote.expires_at ? new Date(quote.expires_at) < new Date() : false;
 
-                                return (
-                                  <div key={quote.id} className="py-2.5 flex justify-between items-center group hover:bg-neutral-50/50 px-2 rounded-lg transition-colors min-w-0">
+                             return (
+                                  <div 
+                                    key={quote.id} 
+                                    onClick={() => router.push(`/admin/orders?drawer=${quote.id}`)}
+                                    className="py-2.5 flex justify-between items-center group hover:bg-neutral-50/40 px-2 rounded-lg transition-colors min-w-0 cursor-pointer active:scale-[0.99]"
+                                  >
                                     <div className="min-w-0 pr-4 space-y-0.5 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <p className="font-mono font-bold text-xs text-neutral-900">
@@ -1177,12 +1255,15 @@ export default function CustomersPage() {
                   )}
                 </div>
 
-              </motion.div>
+            </motion.div>
             )}
           </AnimatePresence>
         </div>
 
       </div>
+      {/* FIN DEL CONTENEDOR DE COLUMNAS */}
+
     </div>
+     </div>
   );
 }
