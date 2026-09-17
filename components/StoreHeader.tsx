@@ -546,19 +546,15 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
                         className="flex items-center gap-12 whitespace-nowrap text-[9px] md:text-[10px] font-mono uppercase tracking-[0.25em] opacity-90 font-medium"
                     >
-                        <span>LIMITED DROP ARCHIVE</span>
+                        <span>COMPRA SEGURA</span>
                         <span className="opacity-40">/</span>
-                        <span>WORLDWIDE SHIPPING AVAILABLE</span>
-                        <span className="opacity-40">/</span>
-                        <span>EXCLUSIVE GARMENTS</span>
+                        <span>ENVIO NACIONAL DISPONIBLE</span>
                         <span className="opacity-40">/</span>
                         <span>TASA OFICIAL BCV: BS. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                         <span className="opacity-40">/</span>
-                        <span>LIMITED DROP ARCHIVE</span>
+                        <span>COMPRA SEGURA</span>
                         <span className="opacity-40">/</span>
-                        <span>WORLDWIDE SHIPPING AVAILABLE</span>
-                        <span className="opacity-40">/</span>
-                        <span>EXCLUSIVE GARMENTS</span>
+                        <span>ENVIO NACIONAL DISPONIBLE</span>
                         <span className="opacity-40">/</span>
                         <span>TASA OFICIAL BCV: BS. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                     </motion.div>
@@ -578,7 +574,7 @@ const renderSearchBlock = (isDense: boolean = false) => (
                                 <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
                                 <input
                                     type="text"
-                                    placeholder="SEARCH ARCHIVE..."
+                                    placeholder="BUSCAR..."
                                     value={props.search}
                                     onChange={(e) => props.setSearch(e.target.value)}
                                     className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
@@ -603,7 +599,7 @@ const renderSearchBlock = (isDense: boolean = false) => (
                             <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
                             <input
                                 type="text"
-                                placeholder="SEARCH ARCHIVE..."
+                                placeholder="BUSCAR..."
                                 value={props.search}
                                 onChange={(e) => props.setSearch(e.target.value)}
                                 className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"

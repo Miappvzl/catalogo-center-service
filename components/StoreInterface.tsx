@@ -1054,8 +1054,8 @@ useEffect(() => {
                               </div>
                               
                               <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-center md:justify-end border-t border-[var(--store-border)]/20 md:border-0 pt-4 md:pt-0">
-                                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
-                                      {isActive ? '[ CLEAR_FILTER ] ✕' : '[ EXPLORE_ARCHIVE ] ↗'}
+                                  <span className="text-[12px] font-mono font-bold uppercase tracking-[0.2em] flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
+                                      {isActive ? '[ QUITAR_FILTRO ] ✕' : '[ EXPLORAR ] ↗'}
                                   </span>
                               </div>
                           </div>
