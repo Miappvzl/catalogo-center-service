@@ -1245,7 +1245,7 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                         className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
                                                     >
                                                         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-3">
-                                                            SIZE
+                                                                TALLA: <strong className="text-[var(--store-text-main)] font-medium">{selectedSize || 'PENDIENTE'}</strong>
                                                         </span>
                                                         <div className="flex flex-wrap gap-2">
                                                             {availableSizes.map((v, idx) => (
@@ -1272,15 +1272,15 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                     {activeTheme.shapes.info_layout === 'expanded' ? (
                                                         <div>
                                                             <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // DETAILS
+                                                                // DETALLES
                                                             </span>
                                                             <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line">{product.description}</p>
                                                         </div>
                                                     ) : (
                                                         <>
                                                             <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em]">// DETAILS</span>
-                                                                <span className="text-[10px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// DETALLES</span>
+                                                                <span className="text-[12px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
                                                             </button>
                                                             <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
                                                                 <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line pt-2 pb-4">{product.description}</p>
@@ -1296,7 +1296,7 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                     {activeTheme.shapes.info_layout === 'expanded' ? (
                                                         <div>
                                                             <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // SHIPPING
+                                                                // ENVÍO
                                                             </span>
                                                             <div className="flex flex-col gap-1 px-3 border-l border-[var(--store-text-main)]/30">
                                                                 <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
@@ -1306,8 +1306,8 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                     ) : (
                                                         <>
                                                             <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em]">// SHIPPING</span>
-                                                                <span className="text-[10px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// ENVÍO</span>
+                                                                <span className="text-[12px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
                                                             </button>
                                                             <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
                                                                 <div className="flex flex-col gap-1 pt-2 pb-4 px-3 border-l border-[var(--store-text-main)]/30">
@@ -1351,7 +1351,7 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                     disabled={isCompletelyOutOfStock || isAdding}
                                     className={`flex-1 h-12 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
                                 >
-                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + ADD TO BAG ]</>}
+                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + LLEVAR ]</>}
                                 </motion.button>
                             </div>
                         </motion.div>
