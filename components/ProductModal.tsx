@@ -1617,7 +1617,7 @@ if (activeTheme.layout?.card_style === 'food_menu') {
                             <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
                                 <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
                                     <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
-                                    <span className="font-black text-sm w-7 text-center">{quantity}</span>
+                                    <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
                                     <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
                                 </div>
 
