@@ -1,16 +1,18 @@
 // components/StoreHeader.tsx
 'use client'
 
-import { useState } from 'react'
-import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils, LayoutGrid, ShieldCheck, Truck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Package, Star, Lock } from 'lucide-react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 
 interface StoreHeaderProps {
-    layoutStyle: 'classic' | 'minimal' | 'dense_search' | 'brutalist' | 'pill_nav';
+    layoutStyle: 'classic' | 'minimal' | 'dense_search' | 'brutalist' | 'pill_nav' | 'modular_tech';
     store: any;
+    products?: any[]; // 🚀 Fallback determinista para miniaturas de categorías
+    promotions?: any[]; // 🚀 NECESARIO PARA BENTO GRID
     activeRate: number;
     isEur: boolean;
     search: string;
@@ -49,12 +51,55 @@ const CategoryPill = ({ label, active, onClick, isMinimal = false }: { label: st
     </button>
 );
 
+const TrustIcon = ({ name, className }: { name: string, className?: string }) => {
+    switch (name) {
+        case 'Truck': return <Truck className={className} />;
+        case 'ShieldCheck': return <ShieldCheck className={className} />;
+        case 'Award': return <Award className={className} />;
+        case 'Headset': return <Headset className={className} />;
+        case 'Clock': return <Clock className={className} />;
+        case 'RefreshCcw': return <RefreshCcw className={className} />;
+        case 'CreditCard': return <CreditCard className={className} />;
+        case 'ThumbsUp': return <ThumbsUp className={className} />;
+        case 'Zap': return <Zap className={className} />;
+        case 'Package': return <Package className={className} />;
+        case 'Star': return <Star className={className} />;
+        case 'Lock': return <Lock className={className} />;
+        default: return <ShieldCheck className={className} />;
+    }
+};
+
 export default function StoreHeader(props: StoreHeaderProps) {
     const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     // 🚀 DEFINICIÓN GLOBAL: Resuelve el error de Scope TS2304 en cascada y normaliza los heros duales
     const liveTheme = normalizeThemeConfig(props.store.theme_config);
+
+  // 🚀 RESOLUCIÓN DETERMINISTA DE IMÁGENES DE CATEGORÍA (Admin custom > 1er Producto)
+    const categoryImages = useMemo(() => {
+        const customImages = props.store?.category_images || {};
+        const map: Record<string, string> = { ...customImages };
+        const productList = props.products;
+
+        if (productList && Array.isArray(productList)) {
+            props.categories.forEach((cat) => {
+                if (cat === 'Todos' || map[cat]) return;
+                const catClean = cat.trim().toLowerCase();
+                const catProducts = productList.filter(
+                    (p: any) => p.category?.trim().toLowerCase() === catClean
+                );
+                const sorted = [...catProducts].sort(
+                    (a: any, b: any) => (a.display_order || 0) - (b.display_order || 0)
+                );
+                const productWithImage = sorted.find((p: any) => p.image_url);
+                if (productWithImage?.image_url) {
+                    map[cat] = productWithImage.image_url;
+                }
+            });
+        }
+        return map;
+    }, [props.store?.category_images, props.categories, props.products]);
 
     // ==========================================
     // COMPONENTES REUTILIZABLES (DRY)
@@ -727,7 +772,263 @@ const renderSearchBlock = (isDense: boolean = false) => (
             </>
         );
     }
+// ==========================================
+    // 💻 RENDERIZADO: TEMA 6 - MODULAR TECH (BENTO GRID & PERFORMANCE)
+    // ==========================================
+    if (props.layoutStyle === 'modular_tech') {
+        const bentoPromos = (props.promotions || []).filter(p => p.is_active).slice(0, 2); // Tomamos máx 2 promos para el grid derecho
+        const trustBadges = liveTheme.layout?.trust_badges || [];
 
+        return (
+            <div className="bg-[var(--store-bg)] border-b border-[var(--store-border)]">
+                
+                {/* 1. TOP BAR UTILITARIA (Alta Confianza B2C) */}
+                <div className="hidden md:flex items-center justify-between px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
+                    <div className="flex items-center gap-6 opacity-90">
+                        <span className="flex items-center gap-1.5"><Zap size={12} /> Despacho Inmediato</span>
+                        <span className="flex items-center gap-1.5"><ShieldCheck size={12} /> Transacción 100% Segura</span>
+                    </div>
+                    <div className="opacity-90">
+                        <span>Tasa BCV: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                    </div>
+                </div>
+
+                {/* 2. MAIN HEADER ESTRUCTURADO (Rendimiento 60FPS, Cero Glass) */}
+                <div className={`sticky top-0 z-40 bg-[var(--store-surface)] border-b border-[var(--store-border)] transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-col md:flex-row items-center gap-3 md:gap-8">
+                        
+                        <div className="flex items-center justify-between w-full md:w-auto">
+                            <LogoBlock />
+                            <div className="flex md:hidden items-center gap-3">
+                                <RateBlock />
+                                <IconsBlock />
+                            </div>
+                        </div>
+
+                        {/* Buscador Técnico Robusto */}
+                        <div className="w-full md:flex-1">
+                            <div className="relative w-full group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2.5} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar modelo o especificación..."
+                                    value={props.search}
+                                    onChange={(e) => props.setSearch(e.target.value)}
+                                    style={{ borderRadius: 'var(--radius-search)', borderWidth: 'var(--border-width-ui)' }}
+                                    className="w-full bg-[var(--store-bg)] focus:bg-white border-[var(--store-border)] focus:border-[var(--store-primary)] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none transition-all shadow-[var(--shadow-ui)]"
+                                />
+                                {props.search && (
+                                    <button onClick={() => props.setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
+                                        <X size={16} strokeWidth={2.5} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-4 shrink-0">
+                            <IconsBlock />
+                        </div>
+                    </div>
+                </div>
+
+                <MobileMenu />
+
+                {/* 3. HERO & BENTO PROMO GRID */}
+                <div className="w-full bg-[var(--store-bg)] flex justify-center py-4 md:py-8 px-4 md:px-8 border-b border-[var(--store-border)]">
+                    <div className="w-full max-w-[1500px]">
+                        
+                      {/* Desktop Bento Grid */}
+                <div className={`hidden md:grid gap-4 items-stretch ${bentoPromos.length > 0 ? 'grid-cols-12' : 'grid-cols-1'}`}>
+                    {/* Main Hero (Proporción exacta 16:5 / 1920x600 para cero recortes laterales) */}
+                    <div 
+                        className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] ${bentoPromos.length > 0 ? 'col-span-8 aspect-[16/5]' : 'col-span-full aspect-[16/5]'}`}
+                        style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
+                    >
+                        <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Hero" fill className="object-cover object-center" priority />
+                    </div>
+
+                     
+                           {/* Promos Laterales (Bento Boxes Adaptativos) */}
+                {bentoPromos.length > 0 && (
+                    <div className={`col-span-4 h-full ${bentoPromos.length === 1 ? 'flex flex-col' : 'grid grid-rows-2 gap-4'}`}>
+                        {bentoPromos.map((promo: any) => {
+                            const isSinglePromo = bentoPromos.length === 1;
+                            const textColor = promo.text_color || '#ffffff';
+
+                            return (
+                                <div 
+                                    key={promo.id} 
+                                    className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] flex flex-col justify-between group cursor-pointer transition-all duration-300 ${isSinglePromo ? 'flex-1 p-6 lg:p-8' : 'p-5 lg:p-6 h-full'}`}
+                                    style={{ 
+                                        borderRadius: 'var(--radius-card)', 
+                                        borderWidth: 'var(--border-width-ui)', 
+                                        boxShadow: 'var(--shadow-ui)', 
+                                        backgroundColor: promo.bg_color || 'var(--store-surface)' 
+                                    }}
+                                    onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
+                                >
+                                    {isSinglePromo ? (
+                                        /* 🚀 LAYOUT PARA 1 PROMO: Altura total balanceada verticalmente */
+                                        <>
+                                            <div className="relative z-10">
+                                                {promo.tagline && (
+                                                    <span className="text-[10px] lg:text-xs font-bold uppercase tracking-widest mb-1.5 block" style={{ color: textColor, opacity: 0.85 }}>
+                                                        {promo.tagline}
+                                                    </span>
+                                                )}
+                                                <h4 className="text-2xl lg:text-3xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
+                                                    {promo.title}
+                                                </h4>
+                                            </div>
+
+                                         {/* Imagen 100% contenida y matemáticamente centrada en ambos ejes */}
+                                            {promo.image_url && (
+                                                <div className="relative flex-1 w-full h-full min-h-[180px] my-auto flex items-center justify-center overflow-hidden">
+                                                    <div className="relative w-full h-full flex items-center justify-center">
+                                                        <Image 
+                                                            src={getOptimizedUrl(promo.image_url)} 
+                                                            alt={promo.title} 
+                                                            fill 
+                                                            sizes="(max-width: 1024px) 33vw, 25vw"
+                                                            className="object-contain object-center inset-0 m-auto p-2 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-xl" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div 
+                                                className="relative z-10 self-start px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 border transition-all duration-300 backdrop-blur-md hover:scale-105"
+                                                style={{ 
+                                                    color: textColor, 
+                                                    borderColor: `${textColor}40`, 
+                                                    backgroundColor: `${textColor}15` 
+                                                }}
+                                            >
+                                                Explorar <ArrowRight size={12} />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        /* 🚀 LAYOUT PARA 2 PROMOS: Distribución horizontal con producto al lateral */
+                                        <div className="flex items-center justify-between gap-4 h-full relative z-10">
+                                            <div className="flex flex-col justify-between h-full flex-1 min-w-0">
+                                                <div>
+                                                    {promo.tagline && (
+                                                        <span className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1 block truncate" style={{ color: textColor, opacity: 0.85 }}>
+                                                            {promo.tagline}
+                                                        </span>
+                                                    )}
+                                                    <h4 className="text-base lg:text-xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
+                                                        {promo.title}
+                                                    </h4>
+                                                </div>
+                                                <div 
+                                                    className="mt-3 self-start px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 border transition-all duration-300 backdrop-blur-md"
+                                                    style={{ 
+                                                        color: textColor, 
+                                                        borderColor: `${textColor}40`, 
+                                                        backgroundColor: `${textColor}15` 
+                                                    }}
+                                                >
+                                                    Explorar <ArrowRight size={11} />
+                                                </div>
+                                            </div>
+
+                                          {promo.image_url && (
+                                                <div className="relative w-28 h-full min-h-[90px] shrink-0 flex items-center justify-center overflow-hidden">
+                                                    <Image 
+                                                        src={getOptimizedUrl(promo.image_url)} 
+                                                        alt={promo.title} 
+                                                        fill 
+                                                        sizes="140px"
+                                                        className="object-contain object-center inset-0 m-auto p-1 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-md" 
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                        </div>
+
+                        {/* Mobile Hero (Fallback simple) */}
+                        <div className="block md:hidden w-full relative aspect-[4/5] max-h-[420px] overflow-hidden bg-[var(--store-surface)]" style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
+                            <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover" priority />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. CINTILLO DE INSIGNIAS DE CONFIANZA (Trust Badges) */}
+                {trustBadges.length > 0 && (
+                    <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]">
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                            {trustBadges.map((badge: any) => (
+                                <div key={badge.id} className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
+                                    <div className="p-2.5 bg-[var(--store-bg)] rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 shrink-0">
+                                        <TrustIcon name={badge.icon} className="w-5 h-5 md:w-6 md:h-6" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h4 className="font-bold text-[var(--store-text-main)] text-xs md:text-sm tracking-tight">{badge.title}</h4>
+                                        <p className="text-[10px] md:text-xs text-[var(--store-surface-text)] font-medium leading-snug mt-0.5">{badge.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 5. DIRECTORIO DE CATEGORÍAS (BENTO THUMBNAILS & VARIABLES) */}
+                {liveTheme.layout?.category_style === 'thumbnails' ? (
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-8 md:py-10">
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-lg md:text-xl font-black text-[var(--store-text-main)] tracking-tight">Comprar por Categoría</h3>
+                        </div>
+                        <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory px-1">
+                            {props.categories.map((cat) => {
+                                const isAll = cat === 'Todos';
+                                const imgUrl = categoryImages[cat];
+                                const isActive = props.selectedCategory === cat;
+
+                                return (
+                                    <button
+                                        key={cat}
+                                        onClick={() => { props.setSelectedCategory(cat); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                                        className="shrink-0 snap-start flex flex-col items-center gap-3 group outline-none"
+                                    >
+                                        <div 
+                                            className={`w-20 h-20 md:w-28 md:h-28 flex items-center justify-center overflow-hidden transition-all duration-300 bg-[var(--store-surface)] border-[var(--store-border)] ${isActive ? 'ring-2 ring-[var(--store-primary)] ring-offset-2 ring-offset-[var(--store-bg)]' : 'hover:border-[var(--store-primary)]/50'}`} 
+                                            style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
+                                        >
+                                            {isAll ? (
+                                                <LayoutGrid size={32} className="text-[var(--store-text-main)] opacity-70 group-hover:opacity-100 transition-opacity" />
+                                            ) : imgUrl ? (
+                                                <div className="relative w-full h-full">
+                                                    <Image src={getOptimizedUrl(imgUrl)} alt={cat} fill sizes="120px" className={`object-cover transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                                                    {/* Halo oscuro suave en hover para enfocar la imagen */}
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                                                </div>
+                                            ) : (
+                                                <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
+                                            )}
+                                        </div>
+                                        <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
+                                            {cat}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="px-4 md:px-8 py-4 border-b border-[var(--store-border)] bg-[var(--store-surface)]">
+                        <CategoriesBlock />
+                    </div>
+                )}
+            </div>
+        );
+    }
     // ==========================================
     // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
     // ==========================================

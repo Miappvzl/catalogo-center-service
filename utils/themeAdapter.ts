@@ -37,13 +37,19 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
         body_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
         price_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
     },
-   layout: {
+layout: {
         header_style: 'classic',
         card_style: 'standard',
         logo_type: 'standard',
         hero_desktop_url: '',
         hero_mobile_url: '',
-        hero_subtitle: '— Diseños atemporales y fragancias exclusivas creadas para perdurar —', // 🚀 Default
+        hero_subtitle: '— Diseños atemporales y fragancias exclusivas creadas para perdurar —',
+        trust_badges: [
+            { id: 'tb_1', title: 'Envío Gratis', description: 'En órdenes sobre $100', icon: 'Truck' },
+            { id: 'tb_2', title: 'Pago Seguro', description: 'Transacciones encriptadas', icon: 'ShieldCheck' },
+            { id: 'tb_3', title: 'Garantía Total', description: 'Protección al comprador', icon: 'Award' },
+            { id: 'tb_4', title: 'Soporte 24/7', description: 'Atención personalizada', icon: 'Headset' },
+        ], // 🚀 INSIGNIAS POR DEFECTO
     }
 };
 
@@ -154,10 +160,12 @@ const layout: ThemeConfig['layout'] = {
         header_style: rawLayout.header_style || DEFAULT_THEME_CONFIG.layout.header_style,
         card_style: rawLayout.card_style || DEFAULT_THEME_CONFIG.layout.card_style,
         logo_type: rawLayout.logo_type || 'standard',
+       category_style: rawLayout.category_style || 'pills', 
         hero_desktop_url: rawLayout.hero_desktop_url || '',
         hero_mobile_url: rawLayout.hero_mobile_url || '',
         logo_url: rawLayout.logo_url || '',
-        hero_subtitle: rawLayout.hero_subtitle || DEFAULT_THEME_CONFIG.layout.hero_subtitle, // 🚀 Normalización segura
+        hero_subtitle: rawLayout.hero_subtitle || DEFAULT_THEME_CONFIG.layout.hero_subtitle, 
+        trust_badges: rawLayout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges, // 🚀 NORMALIZACIÓN SEGURA
     };
 
     return {

@@ -1,9 +1,9 @@
 // app/admin/customization/page.tsx
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { ArrowLeft, Save, Loader2, Palette, MonitorSmartphone, RotateCcw, Type, ExternalLink, Check, Sliders, Store, Search as SearchIcon, Image as ImageIcon, Upload, CheckCircle2, AlertCircle, Sparkles, Lock, Eye, SlidersHorizontal } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion' 
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { ArrowLeft, Save, Loader2, Palette, MonitorSmartphone, RotateCcw, Type, ExternalLink, Check, Sliders, Store, Search as SearchIcon, Image as ImageIcon, Upload, CheckCircle2, AlertCircle, Sparkles, Lock, Eye, SlidersHorizontal, BadgeCheck, Truck, ShieldCheck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Zap, Package, Star, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner' // 🚀 SILENT DELIGHT: Notificaciones Awwwards
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -25,7 +25,7 @@ const ColorInputRow = ({ label, valueKey, value, description, onChange }: { labe
                 <p className="text-[10px] font-mono text-neutral-400 mt-0.5 uppercase font-semibold">{value}</p>
             )}
         </div>
-        <motion.div 
+        <motion.div
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(0,0,0,0.2)] shrink-0 cursor-pointer transition-shadow"
@@ -64,7 +64,7 @@ const BorderColorRow = ({ label, value, description, onChange }: { label: string
                     )}
                 </div>
 
-               <motion.div
+                <motion.div
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(0,0,0,0.2)] shrink-0 cursor-pointer"
@@ -84,7 +84,7 @@ const BorderColorRow = ({ label, value, description, onChange }: { label: string
                 </motion.div>
             </div>
 
-            <div className="pt-2.5 border-t border-neutral-100 flex items-center gap-3">
+           <div className="pt-2.5 border-t border-neutral-100 flex items-center gap-3">
                 <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 shrink-0">
                     Transparencia
                 </span>
@@ -105,6 +105,33 @@ const BorderColorRow = ({ label, value, description, onChange }: { label: string
     );
 };
 
+// 🚀 CATÁLOGO DE ICONOS VECTORIALES PROFESIONALES (A nivel de módulo)
+const TRUST_BADGE_ICONS = [
+    { id: 'Truck', label: 'Envío', icon: Truck },
+    { id: 'ShieldCheck', label: 'Seguridad', icon: ShieldCheck },
+    { id: 'Award', label: 'Garantía', icon: Award },
+    { id: 'Headset', label: 'Soporte', icon: Headset },
+    { id: 'Zap', label: 'Inmediato', icon: Zap },
+    { id: 'Package', label: 'Empaque', icon: Package },
+    { id: 'RefreshCcw', label: 'Devolución', icon: RefreshCcw },
+    { id: 'CreditCard', label: 'Pagos', icon: CreditCard },
+    { id: 'Lock', label: 'Cifrado', icon: Lock },
+    { id: 'Clock', label: 'Horario', icon: Clock },
+    { id: 'ThumbsUp', label: 'Confianza', icon: ThumbsUp },
+    { id: 'Star', label: 'Calidad', icon: Star },
+] as const;
+
+// 🚀 ARQUITECTURA DE NAVEGACIÓN BASE (A nivel de módulo: Cero TDZ)
+const ALL_STUDIO_TABS = [
+    { id: 'marketplace', icon: Store, label: 'Arquetipos' },
+    { id: 'multimedia', icon: ImageIcon, label: 'Multimedia' },
+    { id: 'colors', icon: Palette, label: 'Colores' },
+    { id: 'shapes', icon: Sliders, label: 'Geometría' },
+    { id: 'search', icon: SearchIcon, label: 'Buscador' },
+    { id: 'typography', icon: Type, label: 'Tipografía' },
+    { id: 'badges', icon: BadgeCheck, label: 'Insignias' },
+] as const;
+
 export default function CustomizationPage() {
     const supabase = getSupabase()
     const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -114,24 +141,31 @@ export default function CustomizationPage() {
 
     const [config, setConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
     const [originalConfig, setOriginalConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
-    const [activeTab, setActiveTab] = useState<'marketplace' | 'colors' | 'shapes' | 'search' | 'typography' | 'multimedia'>('marketplace')
-  const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
+    const [activeTab, setActiveTab] = useState<'marketplace' | 'colors' | 'shapes' | 'search' | 'typography' | 'multimedia' | 'badges'>('marketplace')
+const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
     const [selectedNicheFilter, setSelectedNicheFilter] = useState<string>('all')
-   const [mobileViewMode, setMobileViewMode] = useState<'editor' | 'preview'>('editor')
+    const [mobileViewMode, setMobileViewMode] = useState<'editor' | 'preview'>('editor')
+    const [openIconPickerIdx, setOpenIconPickerIdx] = useState<number | null>(null)
 
-  // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
-    const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast']
+    // 🚀 FILTRO INTELIGENTE DE PESTAÑAS (Solo muestra lo que la plantilla soporta)
+    const activeTabs = useMemo(() => {
+        return ALL_STUDIO_TABS.filter(tab => {
+            if (tab.id === 'badges') {
+                return config.template_id === 'modular_tech';
+            }
+            return true;
+        });
+    }, [config.template_id]);
 
-    // 🚀 ARQUITECTURA DE NAVEGACIÓN (Reutilizable)
-    const STUDIO_TABS = [
-        { id: 'marketplace', icon: Store, label: 'Arquetipos' },
-        { id: 'multimedia', icon: ImageIcon, label: 'Multimedia' },
-        { id: 'colors', icon: Palette, label: 'Colores' },
-        { id: 'shapes', icon: Sliders, label: 'Geometría' },
-        { id: 'search', icon: SearchIcon, label: 'Buscador' },
-        { id: 'typography', icon: Type, label: 'Tipografía' },
-    ] as const;
+    // Escape seguro: Si la pestaña activa desaparece por cambio de plantilla, vuelve a arquetipos
+    useEffect(() => {
+        if (activeTab === 'badges' && config.template_id !== 'modular_tech') {
+            setActiveTab('marketplace');
+        }
+    }, [config.template_id, activeTab]);
 
+ // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
+    const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast', 'modular_tech']
 
     // Estados para subidas del Studio
     const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -142,7 +176,7 @@ export default function CustomizationPage() {
     const heroDInputRef = useRef<HTMLInputElement>(null)
     const heroMInputRef = useRef<HTMLInputElement>(null)
 
-   useEffect(() => {
+    useEffect(() => {
         const initData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
@@ -150,7 +184,7 @@ export default function CustomizationPage() {
                 if (store) {
                     setStoreData(store)
                     const loadedConfig = normalizeThemeConfig(store.theme_config)
-                    
+
                     // 🚀 SINCRONIZACIÓN DE SEGURIDAD: Inyectar datos legacy si el JSONB no los tenía
                     if (!loadedConfig.layout.logo_url && store.logo_url) {
                         loadedConfig.layout.logo_url = store.logo_url;
@@ -344,7 +378,7 @@ export default function CustomizationPage() {
                 ...prev,
                 layout: { ...prev.layout, logo_url: publicUrl }
             }))
-toast.success('Logo oficial actualizado');
+            toast.success('Logo oficial actualizado');
         } catch (error) {
             Swal.fire('Error', 'Fallo de red al comprimir logotipo', 'error')
         } finally {
@@ -430,7 +464,7 @@ toast.success('Logo oficial actualizado');
         }
     }
 
-   const handleApplyTemplate = (template: TemplateDefinition) => {
+    const handleApplyTemplate = (template: TemplateDefinition) => {
         // 🚀 PRESERVACIÓN MULTIMEDIA: Cambia el diseño pero conserva el logo y banners del usuario
         const newConfig = normalizeThemeConfig({
             ...template.default_config,
@@ -500,7 +534,7 @@ toast.success('Logo oficial actualizado');
         })
     }
 
-   const handleSave = async () => {
+    const handleSave = async () => {
         if (!storeData?.id) return
 
         // 🚀 GUARDRAIL DE PRODUCCIÓN: Confirmación explícita
@@ -528,7 +562,7 @@ toast.success('Logo oficial actualizado');
             if (error) throw error
             setOriginalConfig(config)
             await revalidateStoreCache()
-         toast.success('Diseño publicado con éxito en la tienda en vivo');
+            toast.success('Diseño publicado con éxito en la tienda en vivo');
         } catch (error) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el diseño.', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
         } finally {
@@ -550,7 +584,7 @@ toast.success('Logo oficial actualizado');
 
     const previewUrl = storeData ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview` : '';
 
-return (
+    return (
         <div className="min-h-screen w-full max-w-[100vw] bg-[#f4f4f5] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] flex font-sans overflow-hidden antialiased selection:bg-neutral-900 selection:text-white">
 
             {/* 🖥️ VERTICAL RAIL (Figma Style - Desktop Only) */}
@@ -560,11 +594,11 @@ return (
                         <ArrowLeft size={18} className="text-neutral-600 group-hover:text-neutral-900" />
                     </Link>
                     <div className="w-8 h-px bg-neutral-200/60" />
-                    <div className="flex flex-col items-center gap-3 w-full px-2">
-                        {STUDIO_TABS.map(tab => (
-                            <button 
-                                key={tab.id} 
-                                onClick={() => setActiveTab(tab.id as any)} 
+<div className="flex flex-col items-center gap-3 w-full px-2">
+                        {activeTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
                                 className={`relative p-3 rounded-md transition-all group w-full flex justify-center ${activeTab === tab.id ? 'bg-neutral-200/70 text-black/70 ' : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900'}`}
                             >
                                 <tab.icon size={18} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
@@ -576,7 +610,7 @@ return (
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Controles de Guardado en el Rail */}
                 <div className="flex flex-col items-center gap-4 w-full px-2">
                     {hasChanges && (
@@ -584,9 +618,9 @@ return (
                             <RotateCcw size={18} />
                         </button>
                     )}
-                    <button 
-                        onClick={handleSave} 
-                        disabled={saving || !hasChanges} 
+                    <button
+                        onClick={handleSave}
+                        disabled={saving || !hasChanges}
                         className="p-3 bg-black/90 text-white rounded-md  disabled:opacity-40 disabled:shadow-none transition-all active:scale-95"
                         title="Publicar Diseño"
                     >
@@ -595,13 +629,13 @@ return (
                 </div>
             </nav>
 
-            {/* 📱 FLOATING BOTTOM BAR (Dynamic Island - Mobile Only) */}
+           {/* 📱 FLOATING BOTTOM BAR (Dynamic Island - Mobile Only) */}
             <div className="lg:hidden fixed bottom-6 left-4 right-4 z-50 flex items-center justify-between bg-white/90 backdrop-blur-xl border border-neutral-200/60 p-2 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 px-1">
-                    {STUDIO_TABS.map(tab => (
-                        <button 
-                            key={tab.id} 
-                            onClick={() => { setActiveTab(tab.id as any); setMobileViewMode('editor'); }} 
+                    {activeTabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => { setActiveTab(tab.id as any); setMobileViewMode('editor'); }}
                             className={`p-2.5 rounded-xl shrink-0 transition-all ${activeTab === tab.id && mobileViewMode === 'editor' ? 'bg-neutral-900 text-white shadow-md' : 'text-neutral-500 hover:bg-neutral-100'}`}
                         >
                             <tab.icon size={18} strokeWidth={activeTab === tab.id && mobileViewMode === 'editor' ? 2.5 : 2} />
@@ -609,15 +643,15 @@ return (
                     ))}
                 </div>
                 <div className="w-px h-8 bg-neutral-200/60 mx-2 shrink-0" />
-                <button 
-                    onClick={() => setMobileViewMode(prev => prev === 'editor' ? 'preview' : 'editor')} 
+                <button
+                    onClick={() => setMobileViewMode(prev => prev === 'editor' ? 'preview' : 'editor')}
                     className="px-3 py-2.5 bg-neutral-100 text-neutral-900 rounded-xl shrink-0 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-transform"
                 >
-                    {mobileViewMode === 'editor' ? <><Eye size={14}/> Vista</> : <><SlidersHorizontal size={14}/> Editor</>}
+                    {mobileViewMode === 'editor' ? <><Eye size={14} /> Vista</> : <><SlidersHorizontal size={14} /> Editor</>}
                 </button>
-                <button 
-                    onClick={handleSave} 
-                    disabled={saving || !hasChanges} 
+                <button
+                    onClick={handleSave}
+                    disabled={saving || !hasChanges}
                     className="p-2.5 bg-black/70 text-white rounded-md shrink-0 ml-2  disabled:opacity-40 disabled:shadow-none active:scale-95 transition-all"
                 >
                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -626,9 +660,9 @@ return (
 
             {/* 🎛️ THE CREATOR STUDIO (Main Content Area) */}
             <div className="flex-1 flex flex-col lg:flex-row h-[100dvh] overflow-hidden relative">
-                
+
                 {/* PANEL FLOTANTE (EDITOR) */}
-                <motion.div 
+                <motion.div
                     layout
                     className={`w-full lg:w-[400px] xl:w-[440px] h-full lg:h-[calc(100vh-48px)] lg:my-6 lg:ml-6 bg-white/95 backdrop-blur-2xl lg:rounded-[2rem] lg:border border-neutral-200/60 lg:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] flex-col z-20 overflow-hidden ${mobileViewMode === 'editor' ? 'flex' : 'hidden lg:flex'}`}
                 >
@@ -636,7 +670,7 @@ return (
                     <div className="px-6 py-5 border-b border-neutral-100 bg-white/50 flex items-center justify-between shrink-0">
                         <div>
                             <h2 className="text-sm font-black text-neutral-900 uppercase tracking-widest">
-                                {STUDIO_TABS.find(t => t.id === activeTab)?.label}
+                                {ALL_STUDIO_TABS.find((t) => t.id === activeTab)?.label}
                             </h2>
                             <p className="text-[10px] font-medium text-neutral-500 mt-0.5">Personaliza tu experiencia</p>
                         </div>
@@ -657,7 +691,7 @@ return (
                                     <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Arquetipos Comerciales</h3>
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
-<div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0">
+                                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0">
                                     {[
                                         { id: 'all', label: 'Todas' },
                                         { id: 'hardware', label: 'Ferretería' },
@@ -676,18 +710,17 @@ return (
                                     ))}
                                 </div>
 
-                             <div className="space-y-3">
+                                <div className="space-y-3">
                                     {filteredTemplates.map(template => {
                                         const isCurrent = config.template_id === template.id;
 
                                         return (
                                             <div
                                                 key={template.id}
-                                                className={`relative p-4 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${
-                                                    isCurrent
-                                                        ? 'bg-white border-neutral-900 ring-2 ring-neutral-900/10 shadow-sm'
-                                                        : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
-                                                }`}
+                                                className={`relative p-4 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${isCurrent
+                                                    ? 'bg-white border-neutral-900 ring-2 ring-neutral-900/10 shadow-sm'
+                                                    : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
+                                                    }`}
                                             >
                                                 <div className="flex items-center justify-between gap-3 w-full">
                                                     <div className="min-w-0 flex-1">
@@ -709,11 +742,10 @@ return (
                                                     <button
                                                         type="button"
                                                         onClick={() => handleApplyTemplate(template)}
-                                                        className={`shrink-0 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border active:scale-95 ${
-                                                            isCurrent 
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs cursor-default' 
-                                                                : 'bg-neutral-900 text-white border-neutral-900 hover:bg-black shadow-xs'
-                                                        }`}
+                                                        className={`shrink-0 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border active:scale-95 ${isCurrent
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs cursor-default'
+                                                            : 'bg-neutral-900 text-white border-neutral-900 hover:bg-black shadow-xs'
+                                                            }`}
                                                     >
                                                         {isCurrent ? 'Activa' : 'Aplicar'}
                                                     </button>
@@ -729,10 +761,10 @@ return (
                             </div>
                         )}
 
-                       {/* TAB 2: MULTIMEDIA & LOGOTIPO (DISEÑO PROGRESIVO DE ALTO NIVEL) */}
+                        {/* TAB 2: MULTIMEDIA & LOGOTIPO (DISEÑO PROGRESIVO DE ALTO NIVEL) */}
                         {activeTab === 'multimedia' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
-                                
+
                                 {/* SECCIÓN LOGO */}
                                 <div className="space-y-5">
                                     <div>
@@ -782,7 +814,7 @@ return (
 
                                         <div className="flex items-center gap-4 p-4 bg-white border border-neutral-200/60 rounded-xl shadow-xs">
                                             <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                                            <div 
+                                            <div
                                                 onClick={() => logoInputRef.current?.click()}
                                                 className="w-14 h-14 rounded-lg bg-neutral-50 border border-neutral-200/60 flex items-center justify-center overflow-hidden relative cursor-pointer hover:border-neutral-400 transition-colors shadow-xs"
                                             >
@@ -831,7 +863,7 @@ return (
                                                 <span className="font-mono text-neutral-400">1920x600 px</span>
                                             </label>
                                             <input type="file" ref={heroDInputRef} className="hidden" accept="image/*" onChange={handleHeroDesktopUpload} />
-                                            
+
                                             {(config.layout.hero_desktop_url || storeData?.hero_url) ? (
                                                 <div className="relative w-full h-24 rounded-xl border border-neutral-200 bg-white overflow-hidden group cursor-pointer" onClick={() => heroDInputRef.current?.click()}>
                                                     <Image src={getOptimizedUrl(config.layout.hero_desktop_url || storeData.hero_url)} alt="Desktop" fill className="object-cover" />
@@ -870,7 +902,7 @@ return (
                                             )}
                                         </div>
                                     </div>
-                                    
+
                                     {/* 🚀 EDITOR DE FRASE EDITORIAL (Solo para Minimal Luxury) */}
                                     {config.template_id === 'minimal_luxury' && (
                                         <div className="space-y-2 pt-4 border-t border-neutral-200/60 animate-in fade-in duration-200">
@@ -891,41 +923,41 @@ return (
                                         </div>
                                     )}
                                 </div>
-                                    {/* 🚀 EL BOTÓN DE GUARDADO DE SEGURIDAD & RECARGA DE PREVIEW */}
-                                    <div className="pt-6 border-t border-neutral-200/50 flex flex-col gap-3">
-                                        <button
-                                            onClick={async () => {
-                                                setSaving(true);
-                                                try {
-                                                    // 1. Guardamos la configuración en la Base de Datos
-                                                    const { error } = await supabase.from('stores').update({ theme_config: config }).eq('id', storeData.id);
-                                                    if (error) throw error;
-                                                    setOriginalConfig(config);
+                                {/* 🚀 EL BOTÓN DE GUARDADO DE SEGURIDAD & RECARGA DE PREVIEW */}
+                                <div className="pt-6 border-t border-neutral-200/50 flex flex-col gap-3">
+                                    <button
+                                        onClick={async () => {
+                                            setSaving(true);
+                                            try {
+                                                // 1. Guardamos la configuración en la Base de Datos
+                                                const { error } = await supabase.from('stores').update({ theme_config: config }).eq('id', storeData.id);
+                                                if (error) throw error;
+                                                setOriginalConfig(config);
 
-                                                    // 2. Limpiamos la caché del servidor en Next.js
-                                                    await revalidateStoreCache();
+                                                // 2. Limpiamos la caché del servidor en Next.js
+                                                await revalidateStoreCache();
 
-                                                    // 3. 🚀 FORCE RELOAD DEL IFRAME (Garantía absoluta de renderizado)
-                                                    if (iframeRef.current) {
-                                                        iframeRef.current.src = iframeRef.current.src;
-                                                    }
-
-                                                   toast.success('Identidad y Multimedia publicada');
-                                                } catch (e) {
-                                                    Swal.fire('Error', 'Fallo de conexión al guardar cambios', 'error');
-                                                } finally {
-                                                    setSaving(false);
+                                                // 3. 🚀 FORCE RELOAD DEL IFRAME (Garantía absoluta de renderizado)
+                                                if (iframeRef.current) {
+                                                    iframeRef.current.src = iframeRef.current.src;
                                                 }
-                                            }}
-                                            disabled={saving}
-                                            className="w-full bg-neutral-950 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                                        >
-                                            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                            <span>Guardar Identidad & Recargar Tienda</span>
-                                        </button>
-                                    </div>
+
+                                                toast.success('Identidad y Multimedia publicada');
+                                            } catch (e) {
+                                                Swal.fire('Error', 'Fallo de conexión al guardar cambios', 'error');
+                                            } finally {
+                                                setSaving(false);
+                                            }
+                                        }}
+                                        disabled={saving}
+                                        className="w-full bg-neutral-950 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        <span>Guardar Identidad & Recargar Tienda</span>
+                                    </button>
                                 </div>
-                          
+                            </div>
+
                         )}
 
 
@@ -993,11 +1025,11 @@ return (
                                         )}
                                     </div>
 
-                               <div className={`grid gap-4 ${['minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast'].includes(config.template_id) ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                   <div className="grid grid-cols-2 gap-3">
                                         {[
-                                            ...(config.template_id !== 'bistro_fast' ? [{ id: 'sharp', label: 'Cuadrado', radius: '0px' }] : []),
-                                            { id: 'rounded', label: 'Suave', radius: '10px' },
-                                            ...(!['hardware_dense', 'minimal_luxury', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'pill', label: 'Píldora', radius: '999px' }] : [])
+                                            ...(!['bistro_fast', 'classic', 'modular_tech'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrado (0px)', radius: '0px' }] : []),
+                                            { id: 'rounded', label: 'Suave (10px)', radius: '10px' },
+                                            ...(!['hardware_dense', 'minimal_luxury', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'pill', label: 'Píldora (999px)', radius: '999px' }] : [])
                                         ].map(item => {
                                             const isActive = config.shapes.button_shape === item.id;
                                             return (
@@ -1015,17 +1047,16 @@ return (
                                         })}
                                     </div>
                                 </div>
-
-                                {/* 2. GROSOR DE LÍNEAS */}
+{/* 2. GROSOR DE LÍNEAS */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         2. Grosor de Líneas y Bordes
                                     </label>
-                               <div className={`grid gap-1.5 ${['hardware_dense', 'streetwear_bold'].includes(config.template_id) ? 'grid-cols-2' : ['minimal_luxury', 'bistro_fast'].includes(config.template_id) ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                                    <div className="grid grid-cols-3 gap-1.5">
                                         {[
                                             ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'none', label: 'Sin Borde' }, { id: 'hairline', label: '0.5px' }] : []),
                                             { id: 'thin', label: '1px Fino' },
-                                            ...(!['minimal_luxury', 'bistro_fast'].includes(config.template_id) ? [{ id: 'bold', label: '2px Bold' }] : []),
+                                            ...(!['minimal_luxury', 'bistro_fast', 'modular_tech'].includes(config.template_id) ? [{ id: 'bold', label: '2px Bold' }] : []),
                                         ].map(item => (
                                             <button
                                                 key={item.id}
@@ -1037,34 +1068,35 @@ return (
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* 3. SOMBRAS CON GUARDRAIL */}
+{/* 3. SOMBRAS CON GUARDRAIL */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         3. Sombras de Cajas e Inputs
                                     </label>
 
                                     {config.template_id === 'classic' ? (
-                                        <div className="p-3.5 rounded-xl border border-neutral-200/50 bg-neutral-50 flex items-center justify-between">
-                                            <div className="flex flex-col">
+                                        <div className="p-3.5 rounded-xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                            <div className="flex flex-col pr-3">
                                                 <span className="text-xs font-bold text-neutral-800">Estética Flat (Sin Sombras)</span>
-                                                <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Universal utiliza arquitectura plana de alta velocidad.</span>
+                                                <span className="text-[10px] text-neutral-500 font-medium mt-0.5">El tema Universal prioriza la velocidad de conversión pura sin sombras.</span>
                                             </div>
-                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
+                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500 shrink-0">Fijo</span>
+                                        </div>
+                                    ) : config.template_id === 'minimal_luxury' ? (
+                                        <div className="p-3.5 rounded-xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                            <div className="flex flex-col pr-3">
+                                                <span className="text-xs font-bold text-neutral-800">Invisible UI (Sin Sombras)</span>
+                                                <span className="text-[10px] text-neutral-500 font-medium mt-0.5">El lujo editorial basa su jerarquía en espacios en blanco y líneas puras.</span>
+                                            </div>
+                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500 shrink-0">Fijo</span>
                                         </div>
                                     ) : (
-                                <div className="grid grid-cols-2 gap-5 pt-2">
+                                        <div className="grid grid-cols-2 gap-3 pt-1">
                                             {[
                                                 { id: 'none', label: 'Plano', shadow: 'none' },
                                                 ...(config.template_id === 'hardware_dense' || config.template_id === 'streetwear_bold'
-                                                    ? [{ id: 'hard_brutalist', label: 'Sólida', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
-                                                    : config.template_id === 'minimal_luxury' || config.template_id === 'bistro_fast'
-                                                        ? [{ id: 'soft', label: 'Sutil', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
-                                                        : [
-                                                            { id: 'soft', label: 'Sutil', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' },
-                                                            { id: 'medium', label: 'Elevada', shadow: '0 16px 40px -8px rgba(0,0,0,0.15)' },
-                                                            { id: 'hard_brutalist', label: 'Sólida', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' },
-                                                        ]
+                                                    ? [{ id: 'hard_brutalist', label: 'Sólida (Brutal)', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
+                                                    : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
                                                 )
                                             ].map(item => {
                                                 const isActive = config.shapes.ui_shadows === item.id;
@@ -1080,7 +1112,7 @@ return (
                                                         <span className={`text-xs font-bold ${isActive ? 'text-neutral-900' : 'text-neutral-600'}`}>{item.label}</span>
                                                     </motion.button>
                                                 )
-                                        })}
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -1114,20 +1146,69 @@ return (
                             </div>
                         )}
 
-                        {/* TAB 4: PASO 3 (FORMA DEL BUSCADOR CON GUARDRAILS) */}
+                       {/* TAB 5: BUSCADOR Y NAVEGACIÓN */}
                         {activeTab === 'search' && (
-                            <div className="space-y-4 animate-in fade-in pb-10">
+                            <div className="space-y-8 animate-in fade-in pb-10">
+                                
+                                {/* Estilo de Directorio de Categorías */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                                        Directorio de Categorías
+                                    </label>
+                                    <p className="text-[11px] text-neutral-500 font-medium mb-3">Presentación de las familias de productos en la tienda.</p>
+                                    
+                                    {config.template_id === 'modular_tech' ? (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { id: 'thumbnails', label: 'Tarjetas con Foto', desc: 'Cuadrícula Bento' },
+                                                { id: 'pills', label: 'Píldoras de Texto', desc: 'Línea Compacta' },
+                                            ].map(item => {
+                                                const isActive = config.layout.category_style === item.id || (!config.layout.category_style && item.id === 'thumbnails');
+                                                return (
+                                                    <motion.button
+                                                        key={item.id}
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => handleLayoutChange('category_style', item.id)}
+                                                        className={`relative h-16 flex flex-col items-center justify-center rounded-2xl border transition-all overflow-hidden ${isActive ? 'border-neutral-900 bg-neutral-900 shadow-sm' : 'border-neutral-200/60 bg-white hover:border-neutral-300'}`}
+                                                    >
+                                                        <span className={`relative z-10 text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>{item.label}</span>
+                                                        <span className={`relative z-10 text-[9px] font-medium mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-500'}`}>{item.desc}</span>
+                                                    </motion.button>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="p-3.5 rounded-xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                            <div className="flex flex-col pr-3">
+                                                <span className="text-xs font-bold text-neutral-800">Píldoras Horizontales Fluidas</span>
+                                                <span className="text-[10px] text-neutral-500 font-medium mt-0.5">Este arquetipo utiliza navegación horizontal continua para agilizar el scroll.</span>
+                                            </div>
+                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500 shrink-0">Estándar</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Forma de Barra de Búsqueda */}
+                                <div className="pt-2 border-t border-neutral-100">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1 mt-4">
                                         Forma de la Barra de Búsqueda
                                     </label>
-                                    <p className="text-[11px] text-neutral-500 font-medium mb-3">Define la geometría del buscador en el catálogo.</p>
                                 </div>
-{config.template_id === 'minimal_luxury' ? (
+
+                                {config.template_id === 'minimal_luxury' ? (
                                     <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
                                         <div className="flex flex-col">
                                             <span className="text-xs font-bold text-neutral-800">Línea Inferior (Boutique)</span>
                                             <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Minimal Luxury utiliza un buscador editorial fijo.</span>
+                                        </div>
+                                        <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
+                                    </div>
+                                ) : config.template_id === 'aero_glass' ? (
+                                    <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-neutral-800">Píldora Flotante (Tech)</span>
+                                            <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Aero Tech utiliza un buscador integrado en el Command Center.</span>
                                         </div>
                                         <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
                                     </div>
@@ -1208,7 +1289,123 @@ return (
                             </div>
                         )}
 
-                     {/* RESET */}
+                     {/* TAB 6: INSIGNIAS (TRUST BADGES CON ICON PICKER VECTORIAL) */}
+                        {activeTab === 'badges' && (
+                            <div className="space-y-6 animate-in fade-in pb-10">
+                                <div>
+                                    <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Insignias de Confianza</h3>
+                                    <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Define los pilares de tu servicio. Estas insignias se muestran debajo del banner principal en plantillas tecnológicas.</p>
+                                </div>
+
+                                {/* Backdrop para cerrar el popover al hacer clic afuera */}
+                                {openIconPickerIdx !== null && (
+                                    <div 
+                                        className="fixed inset-0 z-40" 
+                                        onClick={() => setOpenIconPickerIdx(null)} 
+                                    />
+                                )}
+
+                                <div className="space-y-4">
+                                  {(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || []).map((badge, idx) => {
+                                        const ActiveIconObj = TRUST_BADGE_ICONS.find(item => item.id === badge.icon) || TRUST_BADGE_ICONS[0];
+                                        const ActiveIconComponent = ActiveIconObj.icon;
+                                        const isOpen = openIconPickerIdx === idx;
+
+                                        return (
+                                            <div 
+                                                key={badge.id} 
+                                                className={`p-4 bg-white border border-neutral-200/60 rounded-2xl shadow-sm flex flex-col gap-3 relative transition-all ${
+                                                    isOpen ? 'z-50 ring-2 ring-neutral-900/10' : 'z-0'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    
+                                                    {/* Gatillo del Selector de Iconos */}
+                                                    <div className="relative">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOpenIconPickerIdx(openIconPickerIdx === idx ? null : idx)}
+                                                            className="w-12 h-12 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 rounded-xl flex items-center justify-center text-neutral-800 transition-all active:scale-95 shadow-2xs group relative shrink-0"
+                                                            title="Cambiar icono vectorial"
+                                                        >
+                                                            <ActiveIconComponent size={20} strokeWidth={2} className="text-neutral-700 group-hover:text-neutral-900 transition-colors" />
+                                                            <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-neutral-900 text-white rounded-full flex items-center justify-center shadow-xs">
+                                                                <ChevronDown size={9} strokeWidth={3} />
+                                                            </span>
+                                                        </button>
+
+                                                     {/* Cuadrícula Popover Flotante de Iconos React (Lucide) */}
+                                                        <AnimatePresence>
+                                                            {openIconPickerIdx === idx && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                                                                    transition={{ duration: 0.15, ease: "easeOut" }}
+                                                                    className="absolute left-0 top-14 z-50 p-2.5 bg-white border border-neutral-200 rounded-2xl shadow-xl grid grid-cols-4 gap-1.5 w-52"
+                                                                >
+                                                                    {TRUST_BADGE_ICONS.map(item => {
+                                                                        const IconCmp = item.icon;
+                                                                        const isSelected = badge.icon === item.id;
+                                                                        return (
+                                                                            <button
+                                                                                key={item.id}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const newBadges = [...(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || [])];
+                                                                                    newBadges[idx] = { ...newBadges[idx], icon: item.id };
+                                                                                    handleLayoutChange('trust_badges', newBadges);
+                                                                                    setOpenIconPickerIdx(null);
+                                                                                }}
+                                                                                className={`p-2.5 rounded-xl flex flex-col items-center justify-center transition-all ${
+                                                                                    isSelected 
+                                                                                        ? 'bg-neutral-900 text-white shadow-xs scale-95' 
+                                                                                        : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 active:scale-90'
+                                                                                }`}
+                                                                                title={item.label}
+                                                                            >
+                                                                                <IconCmp size={18} strokeWidth={2} />
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+
+                                                    <div className="flex-1 flex flex-col gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            value={badge.title}
+                                                            onChange={(e) => {
+                                                                const newBadges = [...(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || [])];
+                                                                newBadges[idx] = { ...newBadges[idx], title: e.target.value };
+                                                                handleLayoutChange('trust_badges', newBadges);
+                                                            }}
+                                                            placeholder="Título (Ej: Envío Gratis)"
+                                                            className="w-full bg-transparent border-b border-neutral-200 py-1 text-xs font-bold text-neutral-900 focus:border-neutral-900 outline-none transition-colors"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={badge.description}
+                                                            onChange={(e) => {
+                                                                const newBadges = [...(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || [])];
+                                                                newBadges[idx] = { ...newBadges[idx], description: e.target.value };
+                                                                handleLayoutChange('trust_badges', newBadges);
+                                                            }}
+                                                            placeholder="Descripción corta"
+                                                            className="w-full bg-transparent border-b border-neutral-200 py-1 text-[10px] text-neutral-500 focus:border-neutral-900 outline-none transition-colors"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* RESET */}
                         <div className="pt-6 border-t border-neutral-100 flex justify-center">
                             <button
                                 onClick={handleResetToDefault}
@@ -1222,17 +1419,17 @@ return (
 
                 {/* 📱 EL ESCENARIO (PREVIEW AREA CON DEVICE MOCKUPS) */}
                 <div className={`flex-1 relative flex-col items-center justify-center overflow-hidden p-4 lg:p-12 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
-                    
+
                     {/* Viewport Toggle (Desktop Only) */}
                     <div className="absolute top-8 right-8 bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-neutral-200/60 flex items-center gap-1 z-30 hidden lg:flex">
-                        <button 
-                            onClick={() => setViewport('mobile')} 
+                        <button
+                            onClick={() => setViewport('mobile')}
                             className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewport === 'mobile' ? 'bg-neutral-900 text-white shadow-md' : 'text-neutral-500 hover:bg-neutral-100'}`}
                         >
                             <MonitorSmartphone size={14} /> Móvil
                         </button>
-                        <button 
-                            onClick={() => setViewport('desktop')} 
+                        <button
+                            onClick={() => setViewport('desktop')}
                             className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewport === 'desktop' ? 'bg-neutral-900 text-white shadow-md' : 'text-neutral-500 hover:bg-neutral-100'}`}
                         >
                             <MonitorSmartphone size={14} className="rotate-90" /> PC
@@ -1240,16 +1437,15 @@ return (
                     </div>
 
                     {/* Device Mockup Engine */}
-                    <motion.div 
+                    <motion.div
                         layout
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className={`relative bg-white overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 ${
-                            viewport === 'mobile' 
-                                ? 'w-full max-w-[375px] h-[812px] rounded-[3.5rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50' 
-                                : 'w-full max-w-[1024px] h-[720px] rounded-2xl border border-neutral-200/60'
-                        }`}
+                        className={`relative bg-white overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 ${viewport === 'mobile'
+                            ? 'w-full max-w-[375px] h-[812px] rounded-[3.5rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50'
+                            : 'w-full max-w-[1024px] h-[720px] rounded-2xl border border-neutral-200/60'
+                            }`}
                     >
-                       
+
 
                         {/* macOS Header (Desktop Style) */}
                         {viewport === 'desktop' && (

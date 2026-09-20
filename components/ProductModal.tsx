@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowUpRight, ArrowDownRight, ChevronDown } from 'lucide-react'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowUpRight, ArrowDownRight, ChevronDown, Settings, ShieldCheck, ShoppingCart } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
@@ -922,7 +922,7 @@ Mi duda es la siguiente: `;
                                                                         }
                                                                     }}
                                                                     disabled={!c.isAvailable}
-                                                                   className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
+                                                                    className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
                                                                     style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
                                                                 >
                                                                     {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
@@ -930,278 +930,560 @@ Mi duda es la siguiente: `;
                                                                 </button>
                                                             ))}
                                                         </div>
-                                                </motion.div>
+                                                    </motion.div>
 
                                                     {availableSizes.length > 1 && (
                                                         <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className="scroll-mt-24">
-                                                    <div className="flex justify-between items-end mb-3">
-                                                        <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Talla</span>
-                                                        {selectedSize && currentMaxStock > 0 && <span className="text-[9px] text-[var(--store-surface-text)]">Quedan {currentMaxStock}</span>}
-                                                    </div>
-                                                    {!selectedColor ? (
-                                                        <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona un color primero</div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-4">
-                                                            {availableSizes.map((v, idx) => (
-                                                                <button
-                                                                    key={v.id || v.size || `luxury-size-${idx}`}
-                                                                    onClick={() => { if (v.stock > 0) { setSelectedSize(v.size); setErrorShake(null); } }}
-                                                                    disabled={v.stock <= 0}
-                                                                    className={`text-xs md:text-sm font-medium pb-1 border-b transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : v.stock <= 0 ? 'border-transparent text-[var(--store-surface-text)] opacity-40 cursor-not-allowed line-through' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}
-                                                                >
-                                                                    {v.size}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </motion.div>
-                                            )}
-                                        </div>
-                                            )}
-
-                                        {/* Acordeones / Desplegados */}
-                                        <div className="mt-8">
-                                            {product?.description && (
-                                                <div className="border-t border-[var(--store-border)]/30 py-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">Descripción</span>
-                                                            <p className="text-xs text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">{product.description}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Descripción</span>
-                                                                <motion.div animate={{ rotate: isDescriptionOpen ? -135 : 0 }}><ArrowDownRight size={14} strokeWidth={1.5} /></motion.div>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <p className="text-xs text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pt-4">{product.description}</p>
-                                                            </motion.div>
-                                                        </>
+                                                            <div className="flex justify-between items-end mb-3">
+                                                                <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Talla</span>
+                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[9px] text-[var(--store-surface-text)]">Quedan {currentMaxStock}</span>}
+                                                            </div>
+                                                            {!selectedColor ? (
+                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona un color primero</div>
+                                                            ) : (
+                                                                <div className="flex flex-wrap gap-4">
+                                                                    {availableSizes.map((v, idx) => (
+                                                                        <button
+                                                                            key={v.id || v.size || `luxury-size-${idx}`}
+                                                                            onClick={() => { if (v.stock > 0) { setSelectedSize(v.size); setErrorShake(null); } }}
+                                                                            disabled={v.stock <= 0}
+                                                                            className={`text-xs md:text-sm font-medium pb-1 border-b transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : v.stock <= 0 ? 'border-transparent text-[var(--store-surface-text)] opacity-40 cursor-not-allowed line-through' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`}
+                                                                        >
+                                                                            {v.size}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </motion.div>
                                                     )}
                                                 </div>
                                             )}
-                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="border-y border-[var(--store-border)]/30 py-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">Envío & Entregas</span>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}</span>
-                                                                <span className="text-xs text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}</span>
+
+                                            {/* Acordeones / Desplegados */}
+                                            <div className="mt-8">
+                                                {product?.description && (
+                                                    <div className="border-t border-[var(--store-border)]/30 py-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">Descripción</span>
+                                                                <p className="text-xs text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">{product.description}</p>
                                                             </div>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Envío & Entregas</span>
-                                                                <motion.div animate={{ rotate: isShippingOpen ? -135 : 0 }}><ArrowDownRight size={14} strokeWidth={1.5} /></motion.div>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <div className="pt-4 flex flex-col gap-1">
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Descripción</span>
+                                                                    <motion.div animate={{ rotate: isDescriptionOpen ? -135 : 0 }}><ArrowDownRight size={14} strokeWidth={1.5} /></motion.div>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <p className="text-xs text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pt-4">{product.description}</p>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                                    <div className="border-y border-[var(--store-border)]/30 py-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">Envío & Entregas</span>
+                                                                <div className="flex flex-col gap-1">
                                                                     <span className="text-xs font-bold text-[var(--store-text-main)]">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}</span>
                                                                     <span className="text-xs text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}</span>
                                                                 </div>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Envío & Entregas</span>
+                                                                    <motion.div animate={{ rotate: isShippingOpen ? -135 : 0 }}><ArrowDownRight size={14} strokeWidth={1.5} /></motion.div>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <div className="pt-4 flex flex-col gap-1">
+                                                                        <span className="text-xs font-bold text-[var(--store-text-main)]">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}</span>
+                                                                        <span className="text-xs text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}</span>
+                                                                    </div>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                        </div>
-                                
+
                                 {/* 3. PROYECCIÓN DESKTOP & FOOTER */}
-                    <AnimatePresence>
-                        {zoomData.show && currentGallery.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
-                            >
-                                <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
-                                <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
-                                <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
-                                <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
-                            </div>
-
-                            <motion.button
-                                whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
-                                onClick={handleAddToCart}
-                                disabled={isCompletelyOutOfStock || isAdding}
-                                className={`flex-1 h-[46px] rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-text-main)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 border-neutral-200 cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-transparent text-[var(--store-text-main)]' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:bg-transparent hover:text-[var(--store-text-main)]'}`}
-                            >
-                                <AnimatePresence mode="wait">
-                                    {isAdding ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Loader2 size={16} className="animate-spin" /></motion.div> : <motion.span key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2"><ShoppingBag size={16} strokeWidth={1.5} className="mb-0.5" /> {buttonText === 'Agregar' ? 'Añadir a la bolsa' : buttonText}</motion.span>}
+                                <AnimatePresence>
+                                    {zoomData.show && currentGallery.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
+                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                        >
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                        </motion.div>
+                                    )}
                                 </AnimatePresence>
-                            </motion.button>
-                        </div>
-                    </div>
-                </motion.div>
-            </div >
+
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
+                                            <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
+                                            <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
+                                            <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
+                                        </div>
+
+                                        <motion.button
+                                            whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
+                                            onClick={handleAddToCart}
+                                            disabled={isCompletelyOutOfStock || isAdding}
+                                            className={`flex-1 h-[46px] rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-text-main)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 border-neutral-200 cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-transparent text-[var(--store-text-main)]' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:bg-transparent hover:text-[var(--store-text-main)]'}`}
+                                        >
+                                            <AnimatePresence mode="wait">
+                                                {isAdding ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Loader2 size={16} className="animate-spin" /></motion.div> : <motion.span key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2"><ShoppingBag size={16} strokeWidth={1.5} className="mb-0.5" /> {buttonText === 'Agregar' ? 'Añadir a la bolsa' : buttonText}</motion.span>}
+                                            </AnimatePresence>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div >
                     )
-    }
+                    }
                 </AnimatePresence >
 
-        {/* LIGHTBOX AISLADO */ }
-        < LightboxViewer
-    isOpen = { isLightboxOpen }
-    onClose = {() => setIsLightboxOpen(false)
-}
-images = { currentGallery }
-currentIndex = { lightboxIndex }
-setIndex = { setLightboxIndex }
-cardStyle = { activeTheme.layout?.card_style }
-    />
+                {/* LIGHTBOX AISLADO */}
+                < LightboxViewer
+                    isOpen={isLightboxOpen}
+                    onClose={() => setIsLightboxOpen(false)
+                    }
+                    images={currentGallery}
+                    currentIndex={lightboxIndex}
+                    setIndex={setLightboxIndex}
+                    cardStyle={activeTheme.layout?.card_style}
+                />
             </>
         );
     }
 
-// =========================================================================
-// 🏴‍☠️ VARIANTE: TEMA 4 (TECHNICAL LUXURY STREETWEAR MODAL)
-// =========================================================================
-if (activeTheme.layout?.card_style === 'brutalist') {
-    return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                    <div key="modal-brutalist-root" className="fixed inset-0 z-[60] flex items-end md:items-stretch justify-end">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-                            exit={{ opacity: 0 }}
-                            className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
-                            onClick={onClose}
-                        />
-
-                        <motion.div
-                            variants={modalVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                        >
-                            {/* Botón de Cerrar (Clean Look) */}
-                            <button
+    // =========================================================================
+    // 🏴‍☠️ VARIANTE: TEMA 4 (TECHNICAL LUXURY STREETWEAR MODAL)
+    // =========================================================================
+    if (activeTheme.layout?.card_style === 'brutalist') {
+        return (
+            <>
+                <AnimatePresence>
+                    {isOpen && (
+                        <div key="modal-brutalist-root" className="fixed inset-0 z-[60] flex items-end md:items-stretch justify-end">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1, transition: { duration: 0.3 } }}
+                                exit={{ opacity: 0 }}
+                                className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
                                 onClick={onClose}
-                                className="absolute top-4 right-4 z-50 p-2.5 rounded-full hover:bg-black/5 transition-colors text-[var(--store-text-main)] active:scale-95"
-                            >
-                                <X size={20} strokeWidth={1.5} />
-                            </button>
+                            />
 
-                            {/* Botón de Favorito */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }}
-                                className={`absolute top-4 left-4 z-50 p-2.5 rounded-full transition-colors active:scale-95 ${isFavorite ? 'text-[var(--store-action-favorite)]' : 'text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)] hover:bg-black/5'}`}
+                            <motion.div
+                                variants={modalVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                             >
-                                <Heart size={20} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
-                            </button>
-
-                            <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
-                                
-                                {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
-                                <div
-                                    className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-surface)] relative flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/20 overflow-hidden group cursor-zoom-in"
-                                    onMouseMove={handleZoomMove}
-                                    onMouseEnter={handleZoomEnter}
-                                    onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                    onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                {/* Botón de Cerrar (Clean Look) */}
+                                <button
+                                    onClick={onClose}
+                                    className="absolute top-4 right-4 z-50 p-2.5 rounded-full hover:bg-black/5 transition-colors text-[var(--store-text-main)] active:scale-95"
                                 >
-                                    {currentGallery.length > 0 ? (
-                                        <>
-                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
-                                            {zoomData.show && (
-                                                <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/20 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
-                                            )}
-                                        </>
-                                    ) : (
-                                        <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
-                                    )}
+                                    <X size={20} strokeWidth={1.5} />
+                                </button>
 
-                                    {currentGallery.length > 1 && (
-                                        <>
-                                            <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronLeft size={20} strokeWidth={1.5} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronRight size={20} strokeWidth={1.5} /></button>
-                                        </>
-                                    )}
+                                {/* Botón de Favorito */}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }}
+                                    className={`absolute top-4 left-4 z-50 p-2.5 rounded-full transition-colors active:scale-95 ${isFavorite ? 'text-[var(--store-action-favorite)]' : 'text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)] hover:bg-black/5'}`}
+                                >
+                                    <Heart size={20} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
+                                </button>
+
+                                <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
+
+                                    {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
+                                    <div
+                                        className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-surface)] relative flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/20 overflow-hidden group cursor-zoom-in"
+                                        onMouseMove={handleZoomMove}
+                                        onMouseEnter={handleZoomEnter}
+                                        onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                        onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                    >
+                                        {currentGallery.length > 0 ? (
+                                            <>
+                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
+                                                {zoomData.show && (
+                                                    <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/20 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
+                                        )}
+
+                                        {currentGallery.length > 1 && (
+                                            <>
+                                                <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronLeft size={20} strokeWidth={1.5} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronRight size={20} strokeWidth={1.5} /></button>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* 2. DETALLES TÉCNICOS */}
+                                    <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
+                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[130px]">
+                                            <div>
+                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-2">
+                                                // {product?.category || 'ARCHIVE'}
+                                                </span>
+                                                <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-[0.1em] text-[var(--store-text-main)] font-sans leading-tight mb-3">
+                                                    {product?.name}
+                                                </h2>
+
+                                                {pricing.promoBadgeText && (
+                                                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-mono uppercase tracking-[0.2em] shadow-sm">
+                                                        <Tag size={12} strokeWidth={1.5} /> {pricing.promoBadgeText}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-baseline gap-4 mt-5">
+                                                    {pricing.isPromo && (
+                                                        <span className="text-sm font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
+                                                            ${pricing.compareAt.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-3xl md:text-4xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
+                                                        ${pricing.listPrice.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-2">
+                                                    <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
+                                                        Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                                    </span>
+                                                </div>
+
+                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                    <div className="mt-3 inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
+                                                        <Flame size={12} className="fill-current shrink-0" /> PAGA EN USD: ${pricing.cashPrice.toFixed(2)}
+                                                    </div>
+                                                )}
+
+                                                {isCompletelyOutOfStock && (
+                                                    <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.2em] text-white bg-black/80 backdrop-blur-md px-3 py-1.5 w-fit">
+                                                        [ SOLD OUT ]
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Selector de Variantes Minimalista/Técnico */}
+                                            {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
+                                                <div className="space-y-6 pt-6 border-t border-[var(--store-border)]/20">
+                                                    {/* Colores */}
+                                                    <motion.div
+                                                        ref={colorSectionRef}
+                                                        animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                                        transition={{ duration: 0.4 }}
+                                                        className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
+                                                                COLOR: <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
+                                                            </span>
+                                                            {!selectedColor && (
+                                                                <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
+                                                                    [ SELECT ]_
+                                                                </motion.span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {availableColors.map((c: any) => (
+                                                                <button
+                                                                    key={c.name}
+                                                                    onClick={() => {
+                                                                        if (c.isAvailable) {
+                                                                            setSelectedColor(c.name);
+                                                                            const sizes = variants.filter(v => v.color_name === c.name);
+                                                                            if (sizes.length === 1) setSelectedSize(sizes[0].size);
+                                                                            else setSelectedSize(null);
+                                                                        }
+                                                                    }}
+                                                                    disabled={!c.isAvailable}
+                                                                    className={`relative flex items-center justify-center transition-all overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
+                                                                            ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
+                                                                            : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
+                                                                        } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
+                                                                    title={c.name}
+                                                                >
+                                                                    {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
+                                                                        <>
+                                                                            {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
+                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <span>{c.name}</span>
+                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </motion.div>
+
+                                                    {/* Tallas */}
+                                                    {availableSizes.length > 1 && (
+                                                        <motion.div
+                                                            ref={sizeSectionRef}
+                                                            animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                                            transition={{ duration: 0.4 }}
+                                                            className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
+                                                        >
+                                                            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-3">
+                                                                TALLA: <strong className="text-[var(--store-text-main)] font-medium">{selectedSize || 'PENDIENTE'}</strong>
+                                                            </span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {availableSizes.map((v, idx) => (
+                                                                    <button
+                                                                        key={v.id || v.size || `brutalist-size-${idx}`}
+                                                                        onClick={() => { if (v.stock > 0) setSelectedSize(v.size); }}
+                                                                        disabled={v.stock <= 0}
+                                                                        className={`min-w-[3rem] px-4 py-2 border text-[10px] font-mono uppercase tracking-widest transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'} ${v.stock <= 0 ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
+                                                                    >
+                                                                        {v.size}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* 🚀 ACORDEÓN / DESPLEGADO TÉCNICO */}
+                                            <div className="mt-8 space-y-2">
+                                                {/* Descripción */}
+                                                {product?.description && (
+                                                    <div className="border-t border-[var(--store-border)]/20 pt-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
+                                                                // DETALLES
+                                                                </span>
+                                                                <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line">{product.description}</p>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
+                                                                    <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// DETALLES</span>
+                                                                    <span className="text-[12px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line pt-2 pb-4">{product.description}</p>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Envío */}
+                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                                    <div className="border-t border-[var(--store-border)]/20 pt-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
+                                                                // ENVÍO
+                                                                </span>
+                                                                <div className="flex flex-col gap-1 px-3 border-l border-[var(--store-text-main)]/30">
+                                                                    <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
+                                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
+                                                                    <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// ENVÍO</span>
+                                                                    <span className="text-[12px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <div className="flex flex-col gap-1 pt-2 pb-4 px-3 border-l border-[var(--store-text-main)]/30">
+                                                                        <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
+                                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
+                                                                    </div>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* 2. DETALLES TÉCNICOS */}
-                                <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
-                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[130px]">
-                                        <div>
-                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-2">
-                                                // {product?.category || 'ARCHIVE'}
-                                            </span>
-                                            <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-[0.1em] text-[var(--store-text-main)] font-sans leading-tight mb-3">
-                                                {product?.name}
-                                            </h2>
+                                {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
+                                <AnimatePresence>
+                                    {zoomData.show && currentGallery.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
+                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/20"
+                                        >
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
-                                            {pricing.promoBadgeText && (
-                                                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-mono uppercase tracking-[0.2em] shadow-sm">
-                                                    <Tag size={12} strokeWidth={1.5} /> {pricing.promoBadgeText}
-                                                </div>
-                                            )}
+                                {/* FOOTER CLEAN LOOK DE COMPRA */}
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                    <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-full bg-transparent">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
+                                        <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
+                                    </div>
 
-                                            <div className="flex items-baseline gap-4 mt-5">
-                                                {pricing.isPromo && (
-                                                    <span className="text-sm font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
-                                                        ${pricing.compareAt.toFixed(2)}
-                                                    </span>
+                                    <motion.button
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
+                                        onClick={handleAddToCart}
+                                        disabled={isCompletelyOutOfStock || isAdding}
+                                        className={`flex-1 h-12 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
+                                    >
+                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + LLEVAR ]</>}
+                                    </motion.button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
+                </AnimatePresence>
+
+                {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
+                <LightboxViewer
+                    isOpen={isLightboxOpen}
+                    onClose={() => setIsLightboxOpen(false)}
+                    images={currentGallery}
+                    currentIndex={lightboxIndex}
+                    setIndex={setLightboxIndex}
+                    cardStyle={activeTheme.layout?.card_style}
+                />
+            </>
+        );
+    }
+
+    // =========================================================================
+    // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP MODAL)
+
+    if (activeTheme.layout?.card_style === 'food_menu') {
+        return (
+            <>
+                <AnimatePresence>
+                    {isOpen && (
+                        <div key="modal-food-root" className="fixed inset-0 z-[60] flex items-end md:items-stretch justify-end">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
+                                onClick={onClose}
+                            />
+
+                            <motion.div
+                                variants={modalVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className={`relative bg-[var(--store-bg)] w-full md:w-[580px] lg:w-[780px] h-[95vh] md:h-full rounded-t-[32px] md:rounded-l-3xl md:rounded-r-none flex flex-col md:flex-row overflow-hidden shadow-2xl will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            >
+                                <button
+                                    onClick={onClose}
+                                    className="absolute top-4 right-4 z-50 p-2.5 bg-white/90 rounded-full shadow-md text-neutral-800 hover:bg-white active:scale-90 transition-all"
+                                >
+                                    <X size={18} strokeWidth={2.5} />
+                                </button>
+
+                                <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
+
+                                    {/* 1. IMAGEN DE APETITO (Side-Zoom & Lightbox) */}
+                                    <div
+                                        className="w-full h-auto aspect-[4/3] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center shrink-0 overflow-hidden group cursor-zoom-in"
+                                        onMouseMove={handleZoomMove}
+                                        onMouseEnter={handleZoomEnter}
+                                        onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                        onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                    >
+                                        {currentGallery.length > 0 ? (
+                                            <>
+                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Plato'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-500 ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+                                                {zoomData.show && (
+                                                    <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/30 rounded-full backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.2)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
                                                 )}
-                                                <span className="text-3xl md:text-4xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
-                                                    ${pricing.listPrice.toFixed(2)}
+                                            </>
+                                        ) : (
+                                            <span className="text-4xl font-bold text-[var(--store-border)]">🍔</span>
+                                        )}
+                                    </div>
+
+                                    {/* 2. DETALLE GASTRONÓMICO */}
+                                    <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
+                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
+                                            <div>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--store-primary)] block mb-1">
+                                                    {product?.category || 'Especialidad'}
                                                 </span>
-                                            </div>
-                                            <div className="mt-2">
-                                                <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
-                                                    Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
-                                                </span>
-                                            </div>
+                                                <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] font-heading leading-tight tracking-tight">
+                                                    {product?.name}
+                                                </h2>
 
-                                            {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                <div className="mt-3 inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
-                                                    <Flame size={12} className="fill-current shrink-0" /> PAGA EN USD: ${pricing.cashPrice.toFixed(2)}
+                                                <div className="flex items-baseline gap-3 mt-3">
+                                                    {pricing.isPromo && (
+                                                        <span className="text-sm font-bold text-[var(--store-surface-text)] line-through">
+                                                            ${pricing.compareAt.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-3xl font-black font-price text-[var(--store-text-main)] leading-none">
+                                                        ${pricing.listPrice.toFixed(2)}
+                                                    </span>
+                                                    <span className="text-xs font-mono font-bold text-[var(--store-surface-text)]">
+                                                        Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                                    </span>
                                                 </div>
-                                            )}
 
-                                            {isCompletelyOutOfStock && (
-                                                <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.2em] text-white bg-black/80 backdrop-blur-md px-3 py-1.5 w-fit">
-                                                    [ SOLD OUT ]
-                                                </div>
-                                            )}
-                                        </div>
+                                                {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo App) */}
+                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                    <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-[var(--store-incentive)]">
+                                                        <div className="bg-[var(--store-incentive)]/10 p-1 rounded-full">
+                                                            <Flame size={12} className="fill-current shrink-0" />
+                                                        </div>
+                                                        Paga en USD y ahorra ${pricing.exactSavings.toFixed(2)}
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                        {/* Selector de Variantes Minimalista/Técnico */}
-                                        {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
-                                            <div className="space-y-6 pt-6 border-t border-[var(--store-border)]/20">
-                                                {/* Colores */}
+                                            {/* Opciones / Variantes en Píldoras */}
+                                            {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <motion.div
                                                     ref={colorSectionRef}
-                                                    animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                                    animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0] } : {}}
                                                     transition={{ duration: 0.4 }}
-                                                    className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
+                                                    className={`space-y-4 pt-4 border-t border-[var(--store-border)]/40 p-3 -mx-3 rounded-2xl transition-colors duration-300 ${!selectedColor ? 'bg-[var(--store-primary)]/5' : 'bg-transparent'}`}
                                                 >
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                            COLOR: <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
+                                                            Elige tu opción
                                                         </span>
                                                         {!selectedColor && (
-                                                            <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
-                                                                [ SELECT ]_
-                                                            </motion.span>
+                                                            <span className="text-[10px] font-bold text-[var(--store-primary)] tracking-wide animate-pulse">
+                                                                Requerido *
+                                                            </span>
                                                         )}
                                                     </div>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {availableColors.map((c: any) => (
-                                                            <button
+                                                        {availableColors.map((c: any, idx: number) => (
+                                                            <motion.button
+                                                                animate={!selectedColor ? { y: [0, -3, 0] } : {}}
+                                                                transition={{ repeat: Infinity, duration: 1.5, delay: idx * 0.1 }}
                                                                 key={c.name}
                                                                 onClick={() => {
                                                                     if (c.isAvailable) {
@@ -1212,696 +1494,43 @@ if (activeTheme.layout?.card_style === 'brutalist') {
                                                                     }
                                                                 }}
                                                                 disabled={!c.isAvailable}
-                                                                className={`relative flex items-center justify-center transition-all overflow-hidden ${
-                                                                    c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                        ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
-                                                                        : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
-                                                                } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                                                                style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
-                                                                title={c.name}
+                                                                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'}`}
                                                             >
-                                                                {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
-                                                                    <>
-                                                                        {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
-                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <span>{c.name}</span>
-                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
-                                                                    </>
-                                                                )}
-                                                            </button>
+                                                                {c.name}
+                                                            </motion.button>
                                                         ))}
                                                     </div>
-                                                </motion.div>
 
-                                                {/* Tallas */}
-                                                {availableSizes.length > 1 && (
-                                                    <motion.div
-                                                        ref={sizeSectionRef}
-                                                        animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}}
-                                                        transition={{ duration: 0.4 }}
-                                                        className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
-                                                    >
-                                                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-3">
-                                                                TALLA: <strong className="text-[var(--store-text-main)] font-medium">{selectedSize || 'PENDIENTE'}</strong>
-                                                        </span>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {availableSizes.map((v, idx) => (
-                                                                <button
-                                                                    key={v.id || v.size || `brutalist-size-${idx}`}
-                                                                    onClick={() => { if (v.stock > 0) setSelectedSize(v.size); }}
-                                                                    disabled={v.stock <= 0}
-                                                                    className={`min-w-[3rem] px-4 py-2 border text-[10px] font-mono uppercase tracking-widest transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'} ${v.stock <= 0 ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
-                                                                >
-                                                                    {v.size}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* 🚀 ACORDEÓN / DESPLEGADO TÉCNICO */}
-                                        <div className="mt-8 space-y-2">
-                                            {/* Descripción */}
-                                            {product?.description && (
-                                                <div className="border-t border-[var(--store-border)]/20 pt-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // DETALLES
-                                                            </span>
-                                                            <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line">{product.description}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// DETALLES</span>
-                                                                <span className="text-[12px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line pt-2 pb-4">{product.description}</p>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Envío */}
-                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="border-t border-[var(--store-border)]/20 pt-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // ENVÍO
-                                                            </span>
-                                                            <div className="flex flex-col gap-1 px-3 border-l border-[var(--store-text-main)]/30">
-                                                                <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
-                                                                <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// ENVÍO</span>
-                                                                <span className="text-[12px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <div className="flex flex-col gap-1 pt-2 pb-4 px-3 border-l border-[var(--store-text-main)]/30">
-                                                                    <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
-                                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
-                                                                </div>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                          {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
-                            <AnimatePresence>
-                                {zoomData.show && currentGallery.length > 0 && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/20"
-                                    >
-                                        <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* FOOTER CLEAN LOOK DE COMPRA */}
-                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
-                                <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-full bg-transparent">
-                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
-                                    <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center">{quantity}</span>
-                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
-                                </div>
-
-                                <motion.button
-                                    whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
-                                    onClick={handleAddToCart}
-                                    disabled={isCompletelyOutOfStock || isAdding}
-                                    className={`flex-1 h-12 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
-                                >
-                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + LLEVAR ]</>}
-                                </motion.button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-                
-      </AnimatePresence>
-
-            {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
-            <LightboxViewer
-                isOpen={isLightboxOpen}
-                onClose={() => setIsLightboxOpen(false)}
-                images={currentGallery}
-                currentIndex={lightboxIndex}
-                setIndex={setLightboxIndex}
-                cardStyle={activeTheme.layout?.card_style}
-            />
-        </>
-        );
-    }
-
-// =========================================================================
-  // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP MODAL)
-
-if (activeTheme.layout?.card_style === 'food_menu') {
-    return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                    <div key="modal-food-root" className="fixed inset-0 z-[60] flex items-end md:items-stretch justify-end">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
-                            onClick={onClose}
-                        />
-
-                        <motion.div
-                            variants={modalVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            className={`relative bg-[var(--store-bg)] w-full md:w-[580px] lg:w-[780px] h-[95vh] md:h-full rounded-t-[32px] md:rounded-l-3xl md:rounded-r-none flex flex-col md:flex-row overflow-hidden shadow-2xl will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                        >
-                            <button
-                                onClick={onClose}
-                                className="absolute top-4 right-4 z-50 p-2.5 bg-white/90 rounded-full shadow-md text-neutral-800 hover:bg-white active:scale-90 transition-all"
-                            >
-                                <X size={18} strokeWidth={2.5} />
-                            </button>
-
-                            <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
-
-                              {/* 1. IMAGEN DE APETITO (Side-Zoom & Lightbox) */}
-                                <div 
-                                    className="w-full h-auto aspect-[4/3] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center shrink-0 overflow-hidden group cursor-zoom-in"
-                                    onMouseMove={handleZoomMove}
-                                    onMouseEnter={handleZoomEnter}
-                                    onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                    onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                >
-                                    {currentGallery.length > 0 ? (
-                                        <>
-                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Plato'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-500 ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                            {zoomData.show && (
-                                                <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/30 rounded-full backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.2)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
-                                            )}
-                                        </>
-                                    ) : (
-                                        <span className="text-4xl font-bold text-[var(--store-border)]">🍔</span>
-                                    )}
-                                </div>
-
-                                {/* 2. DETALLE GASTRONÓMICO */}
-                                <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
-                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--store-primary)] block mb-1">
-                                                {product?.category || 'Especialidad'}
-                                            </span>
-                                            <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] font-heading leading-tight tracking-tight">
-                                                {product?.name}
-                                            </h2>
-
-                                           <div className="flex items-baseline gap-3 mt-3">
-                                                {pricing.isPromo && (
-                                                    <span className="text-sm font-bold text-[var(--store-surface-text)] line-through">
-                                                        ${pricing.compareAt.toFixed(2)}
-                                                    </span>
-                                                )}
-                                                <span className="text-3xl font-black font-price text-[var(--store-text-main)] leading-none">
-                                                    ${pricing.listPrice.toFixed(2)}
-                                                </span>
-                                                <span className="text-xs font-mono font-bold text-[var(--store-surface-text)]">
-                                                    Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
-                                                </span>
-                                            </div>
-
-                                            {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo App) */}
-                                            {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-[var(--store-incentive)]">
-                                                    <div className="bg-[var(--store-incentive)]/10 p-1 rounded-full">
-                                                        <Flame size={12} className="fill-current shrink-0" />
-                                                    </div>
-                                                    Paga en USD y ahorra ${pricing.exactSavings.toFixed(2)}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Opciones / Variantes en Píldoras */}
-                                        {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
-                                            <motion.div
-                                                ref={colorSectionRef}
-                                                animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0] } : {}}
-                                                transition={{ duration: 0.4 }}
-                                                className={`space-y-4 pt-4 border-t border-[var(--store-border)]/40 p-3 -mx-3 rounded-2xl transition-colors duration-300 ${!selectedColor ? 'bg-[var(--store-primary)]/5' : 'bg-transparent'}`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
-                                                        Elige tu opción
-                                                    </span>
-                                                    {!selectedColor && (
-                                                        <span className="text-[10px] font-bold text-[var(--store-primary)] tracking-wide animate-pulse">
-                                                            Requerido *
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {availableColors.map((c: any, idx: number) => (
-                                                        <motion.button
-                                                            animate={!selectedColor ? { y: [0, -3, 0] } : {}}
-                                                            transition={{ repeat: Infinity, duration: 1.5, delay: idx * 0.1 }}
-                                                            key={c.name}
-                                                            onClick={() => {
-                                                                if (c.isAvailable) {
-                                                                    setSelectedColor(c.name);
-                                                                    const sizes = variants.filter(v => v.color_name === c.name);
-                                                                    if (sizes.length === 1) setSelectedSize(sizes[0].size);
-                                                                    else setSelectedSize(null);
-                                                                }
-                                                            }}
-                                                            disabled={!c.isAvailable}
-                                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'}`}
-                                                        >
-                                                            {c.name}
-                                                        </motion.button>
-                                                    ))}
-                                                </div>
-
-                                                {/* 🚀 TALLAS / PORCIONES GASTRONÓMICAS */}
-                                                {availableSizes.length > 1 && (
-                                                    <motion.div 
-                                                        ref={sizeSectionRef}
-                                                        animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0] } : {}}
-                                                        transition={{ duration: 0.4 }}
-                                                        className={`pt-4 mt-4 border-t border-[var(--store-border)]/40 transition-colors duration-300 ${!selectedSize && selectedColor ? 'bg-[var(--store-primary)]/5 p-3 -mx-3 rounded-2xl' : ''}`}
-                                                    >
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
-                                                                Tamaño / Porción
-                                                            </span>
-                                                            {selectedSize && currentMaxStock > 0 && (
-                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)]">
-                                                                    Disp: {currentMaxStock}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {!selectedColor ? (
-                                                            <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona tu opción primero</div>
-                                                        ) : (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {availableSizes.map((v, idx) => {
-                                                                    const isOutOfStock = v.stock <= 0;
-                                                                    return (
-                                                                        <button
-                                                                            key={v.id || v.size || `food-size-${idx}`}
-                                                                            onClick={() => { if (!isOutOfStock) { setSelectedSize(v.size); setErrorShake(null); } }}
-                                                                            disabled={isOutOfStock}
-                                                                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedSize === v.size ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : isOutOfStock ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 opacity-50 cursor-not-allowed line-through' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'}`}
-                                                                        >
-                                                                            {v.size}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </motion.div>
-                                                )}
-                                            </motion.div>
-                                        )}
-
-                                     {/* 🚀 ACORDEÓN / DESPLEGADO GASTRONÓMICO */}
-                                        <div className="mt-8 space-y-2">
-                                            {product?.description && (
-                                                <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div className="p-4">
-                                                            <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] block mb-2">Ingredientes y Detalle</span>
-                                                            <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">{product.description}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
-                                                                <span className="text-[11px] font-black uppercase tracking-wider">Ingredientes y Detalle</span>
-                                                                <motion.div animate={{ rotate: isDescriptionOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line px-4 pb-4">{product.description}</p>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div className="p-4 flex items-center gap-3">
-                                                            <div className="bg-[var(--store-surface)] p-2.5 rounded-full shadow-sm shrink-0 text-[var(--store-primary)]"><Truck size={16} /></div>
-                                                            <div className="flex flex-col">
-                                                                <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
-                                                                <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Truck size={14} className="text-[var(--store-primary)]" />
-                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Delivery & Retiro</span>
-                                                                </div>
-                                                                <motion.div animate={{ rotate: isShippingOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
-                                                            </button>
-                                                            <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                <div className="px-4 pb-4 pt-1 flex flex-col gap-1">
-                                                                    <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
-                                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
-                                                                </div>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
-                            <AnimatePresence>
-                                {zoomData.show && currentGallery.length > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/40"
-                                    >
-                                        <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* FOOTER GASTRONÓMICO CON STEPPER TÁCTIL */}
-                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
-                                <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
-                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
-                                    <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
-                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
-                                </div>
-
-                                <motion.button
-                                    whileTap={{ scale: 0.96 }}
-                                    onClick={handleAddToCart}
-                                    disabled={isCompletelyOutOfStock || isAdding}
-                                    className={`flex-1 h-12 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
-                                >
-                                    {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
-                                </motion.button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-
-            </AnimatePresence>
-
-            {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
-            <LightboxViewer
-                isOpen={isLightboxOpen}
-                onClose={() => setIsLightboxOpen(false)}
-                images={currentGallery}
-                currentIndex={lightboxIndex}
-                setIndex={setLightboxIndex}
-                cardStyle={activeTheme.layout?.card_style}
-            />
-        </>
-    );
-}
-
-// =========================================================================
-// 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO MODAL)
-// =========================================================================
-return (
-    <>
-        <AnimatePresence>
-            {isOpen && (
-                <div key="modal-universal-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
-                        exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
-                        className={`absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity] transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
-                    />
-
-                    <motion.div
-                        variants={modalVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                    >
-                        <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
-                            <X size={20} strokeWidth={2} />
-                        </button>
-
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
-                            }}
-                            className={`absolute top-4 left-4 z-50 p-2 rounded-full transition-colors backdrop-blur border active:scale-95 ${isFavorite
-                                ? 'text-[var(--store-action-favorite)] border-transparent'
-                                : 'bg-[var(--store-surface)]/90 border-[var(--store-border)] text-[var(--store-surface-text)] hover:bg-[var(--store-bg)] hover:text-[var(--store-action-favorite)]'
-                                }`}
-                            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--store-action-favorite) 30%, transparent)' } : {}}
-                        >
-                            <Heart size={20} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
-                        </button>
-
-                        {/* SCROLL CONTAINER */}
-                        <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[140px] md:pb-0 no-scrollbar">
-
-                            {/* 1. IMAGEN (Side-Zoom & Lightbox) */}
-                            <div
-                                className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden cursor-zoom-in"
-                                onMouseMove={handleZoomMove}
-                                onMouseEnter={handleZoomEnter}
-                                onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                            >
-                                {currentGallery.length > 0 ? (
-                                    <>
-                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                        {zoomData.show && (
-                                            <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-2xl" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
-                                        )}
-                                    </>
-                                ) : (
-                                    <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
-                                )}
-
-                                {currentGallery.length > 1 && (
-                                    <>
-                                        <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronLeft size={20} strokeWidth={2} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronRight size={20} strokeWidth={2} /></button>
-                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-30">
-                                            {currentGallery.map((_, idx) => (<div key={`universal-dot-${idx}`} className={`h-1.5 rounded-full transition-all duration-300 ${idx === galleryIndex ? 'bg-[var(--store-primary)] w-4' : 'bg-[var(--store-border)] w-1.5'}`} />))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* 2. DETALLES */}
-                            <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
-                                <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-6 md:pb-[140px]">
-                                    <div>
-                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
-                                        <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
-
-                                        <AnimatePresence>
-                                            {pricing.promoBadgeText && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -10 }}
-                                                    animate={{ opacity: 1, y: 0, transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } }}
-                                                    exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
-                                                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)]/10 text-[var(--store-text-main)]/85 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-primary)]/20 shadow-[var(--shadow-ui)] text-xs font-black tracking-wide transition-all origin-bottom"
-                                                >
-                                                    <Tag size={14} className="text-[var(--store-main-text)]/85 shrink-0" /> {pricing.promoBadgeText}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-
-                                        <div className="flex flex-wrap gap-1.5 mt-3">
-                                            {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                <span className="text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2.5 py-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] font-bold tracking-wide flex items-center gap-1.5">
-                                                    <Flame size={14} className="text-[var(--store-incentive)]" />
-                                                    Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
-                                                </span>
-                                            )}
-                                            {isCompletelyOutOfStock && (
-                                                <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-badge-soldout-bg)] shadow-[var(--shadow-ui)] flex items-center">
-                                                    Agotado Temporalmente
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-end gap-3 md:gap-4 mt-6">
-                                            <div className="flex flex-col">
-                                                {pricing.isPromo && (
-                                                    <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] mb-0.5">
-                                                        ${pricing.compareAt.toFixed(2)}
-                                                    </span>
-                                                )}
-                                                <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
-                                                    ${pricing.listPrice.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1">
-                                                Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-
-                                        {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
-                                            <div className="mt-3">
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[10px] font-black uppercase tracking-widest">
-                                                    <Receipt size={12} /> + ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA ({(storeConfig?.default_tax_percentage || 16)}%)
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
-                                            <div className="mt-6 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] overflow-hidden bg-[var(--store-bg)]">
-                                                <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--store-border)]/50 bg-[var(--store-surface)]/50">
-                                                    <span className="text-[11px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                        Al Detalle (1 a {product.wholesale_min_qty - 1} und)
-                                                    </span>
-                                                    <span className="text-sm font-black text-[var(--store-surface-text)]">
-                                                        ${(pricing.isPromo ? pricing.compareAt : pricing.listPrice).toFixed(2)} c/u
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between items-center px-4 py-3 bg-[#1b1b1b] text-white">
-                                                    <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-white/90">
-                                                        <Zap size={13} className="fill-white" />
-                                                        Al Mayor ({product.wholesale_min_qty}+ und)
-                                                    </span>
-                                                    <span className="text-base font-black text-white">
-                                                        ${((pricing.isPromo ? pricing.compareAt : pricing.listPrice) * (1 - product.wholesale_discount_pct / 100)).toFixed(2)} c/u
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Variantes */}
-                                    {loading ? (
-                                        <div className="flex items-center justify-center py-10">
-                                            <Loader2 className="animate-spin text-[var(--store-surface-text)]" size={32} />
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-6 pb-4">
-                                            {variants.length > 0 && !isCompletelyOutOfStock && (
-                                                <>
-                                                 <motion.div
-                                                            ref={colorSectionRef}
-                                                            animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                            className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
-                                                        >
-                                                        <div className="flex justify-between items-center">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                                    1. {isModelOption ? 'Modelo / Opción' : 'Color'}
-                                                                </span>
-                                                                {!selectedColor && (
-                                                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] bg-[var(--store-primary)]/10 px-2 py-0.5 rounded-full border border-[var(--store-primary)]/20">
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" />
-                                                                        Seleccionar
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-3">
-                                                            {availableColors.map((c: any, idx: number) => (
-                                                                <button
-                                                                    key={c.name || `universal-col-${idx}`}
-                                                                    onClick={() => {
-                                                                        if (c.isAvailable) {
-                                                                            setSelectedColor(c.name);
-                                                                            const sizesForColor = variants.filter(v => v.color_name === c.name);
-                                                                            if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
-                                                                            else setSelectedSize(null);
-                                                                            setErrorShake(null);
-                                                                        }
-                                                                    }}
-                                                                    disabled={!c.isAvailable}
-                                                                    className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                            ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
-                                                                            : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
-                                                                            } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
-                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
-                                                                    title={!c.isAvailable ? 'Agotado' : c.name}
-                                                                >
-                                                                    {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
-                                                                        <>
-                                                                            {selectedColor === c.name && <Check size={16} className="text-white/80 mix-blend-difference" strokeWidth={3} />}
-                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-45" />}
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <span>{c.name}</span>
-                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-20" />}
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </motion.div>
-
+                                                    {/* 🚀 TALLAS / PORCIONES GASTRONÓMICAS */}
                                                     {availableSizes.length > 1 && (
-                                                      <motion.div
+                                                        <motion.div
                                                             ref={sizeSectionRef}
-                                                            animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                            className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : (!selectedSize && selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
+                                                            animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0] } : {}}
+                                                            transition={{ duration: 0.4 }}
+                                                            className={`pt-4 mt-4 border-t border-[var(--store-border)]/40 transition-colors duration-300 ${!selectedSize && selectedColor ? 'bg-[var(--store-primary)]/5 p-3 -mx-3 rounded-2xl' : ''}`}
                                                         >
-                                                            <div className="flex justify-between items-end">
-                                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">2. Talla</span>
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
+                                                                    Tamaño / Porción
+                                                                </span>
                                                                 {selectedSize && currentMaxStock > 0 && (
-                                                                    <span className="text-[10px] font-bold text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2 py-0.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] border-[var(--store-incentive)]/20">
-                                                                        Quedan {currentMaxStock} und.
+                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)]">
+                                                                        Disp: {currentMaxStock}
                                                                     </span>
                                                                 )}
                                                             </div>
-
                                                             {!selectedColor ? (
-                                                                <div className="flex items-center gap-2 text-xs font-bold text-[var(--store-surface-text)] bg-[var(--store-bg)] p-3 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]">
-                                                                    <AlertCircle size={16} /> Selecciona {isModelOption ? 'una opción' : 'un color'} primero
-                                                                </div>
+                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona tu opción primero</div>
                                                             ) : (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {availableSizes.map((v, idx) => {
                                                                         const isOutOfStock = v.stock <= 0;
                                                                         return (
                                                                             <button
-                                                                                key={v.id || v.size || `univ-size-${idx}`}
+                                                                                key={v.id || v.size || `food-size-${idx}`}
                                                                                 onClick={() => { if (!isOutOfStock) { setSelectedSize(v.size); setErrorShake(null); } }}
                                                                                 disabled={isOutOfStock}
-                                                                                className={`relative min-w-12 px-3 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] transition-all overflow-hidden ${selectedSize === v.size
-                                                                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
-                                                                                    : isOutOfStock
-                                                                                        ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border-[var(--store-border)] cursor-not-allowed opacity-60'
-                                                                                        : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]'
-                                                                                    }`}
+                                                                                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedSize === v.size ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : isOutOfStock ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 opacity-50 cursor-not-allowed line-through' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'}`}
                                                                             >
                                                                                 {v.size}
                                                                             </button>
@@ -1911,106 +1540,683 @@ return (
                                                             )}
                                                         </motion.div>
                                                     )}
-                                                </>
+                                                </motion.div>
                                             )}
 
-                                            {/* Acordeones / Desplegados */}
-                                            {product?.description && (
-                                                <div className="border-t border-[var(--store-border)]/40 mt-6 pt-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <div className="flex items-center gap-2.5 mb-3">
-                                                                <Eye size={16} className="text-[var(--store-surface-text)]" />
-                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Descripción</span>
+                                            {/* 🚀 ACORDEÓN / DESPLEGADO GASTRONÓMICO */}
+                                            <div className="mt-8 space-y-2">
+                                                {product?.description && (
+                                                    <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div className="p-4">
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] block mb-2">Ingredientes y Detalle</span>
+                                                                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">{product.description}</p>
                                                             </div>
-                                                            <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pb-4">
-                                                                {product.description}
-                                                            </p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                                                                className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
-                                                            >
-                                                                <div className="flex items-center gap-2.5">
-                                                                    <Eye size={16} className="text-[var(--store-surface-text)] transition-colors" />
-                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Descripción</span>
-                                                                </div>
-                                                                <motion.div
-                                                                    animate={{ rotate: isDescriptionOpen ? (activeTheme.layout?.card_style === 'dense_hardware' ? 180 : 45) : 0 }}
-                                                                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                                                                    className="text-[var(--store-surface-text)] shrink-0"
-                                                                >
-                                                                    {activeTheme.layout?.card_style === 'dense_hardware' ? <ChevronDown size={16} /> : <Plus size={16} />}
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
+                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Ingredientes y Detalle</span>
+                                                                    <motion.div animate={{ rotate: isDescriptionOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line px-4 pb-4">{product.description}</p>
                                                                 </motion.div>
-                                                            </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
 
-                                                            <motion.div
-                                                                initial={false}
-                                                                animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }}
-                                                                transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-                                                                className="overflow-hidden"
-                                                            >
-                                                                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pb-4 pt-2">
-                                                                    {product.description}
-                                                                </p>
-                                                            </motion.div>
-                                                        </>
+                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                                    <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div className="p-4 flex items-center gap-3">
+                                                                <div className="bg-[var(--store-surface)] p-2.5 rounded-full shadow-sm shrink-0 text-[var(--store-primary)]"><Truck size={16} /></div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
+                                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Truck size={14} className="text-[var(--store-primary)]" />
+                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Delivery & Retiro</span>
+                                                                    </div>
+                                                                    <motion.div animate={{ rotate: isShippingOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
+                                                                </button>
+                                                                <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
+                                                                    <div className="px-4 pb-4 pt-1 flex flex-col gap-1">
+                                                                        <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
+                                                                        <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
+                                                                    </div>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
+                                <AnimatePresence>
+                                    {zoomData.show && currentGallery.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
+                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/40"
+                                        >
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                {/* FOOTER GASTRONÓMICO CON STEPPER TÁCTIL */}
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                    <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
+                                        <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
+                                    </div>
+
+                                    <motion.button
+                                        whileTap={{ scale: 0.96 }}
+                                        onClick={handleAddToCart}
+                                        disabled={isCompletelyOutOfStock || isAdding}
+                                        className={`flex-1 h-12 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
+                                    >
+                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
+                                    </motion.button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
+                </AnimatePresence>
+
+                {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
+                <LightboxViewer
+                    isOpen={isLightboxOpen}
+                    onClose={() => setIsLightboxOpen(false)}
+                    images={currentGallery}
+                    currentIndex={lightboxIndex}
+                    setIndex={setLightboxIndex}
+                    cardStyle={activeTheme.layout?.card_style}
+                />
+            </>
+        );
+    }
+
+// =========================================================================
+    // 💻 VARIANTE: TEMA 6 (MODULAR TECH / BENTO GRID MODAL)
+    // =========================================================================
+    if (activeTheme.layout?.card_style === 'modular_tech') {
+        
+        // 🚀 THE SPEC-SHEET PARSER: Transforma texto con "X: Y" en una cuadrícula técnica
+        const rawDescription = product?.description || '';
+        const specLines = rawDescription.split('\n').filter((l: string) => l.trim() !== '');
+        const hasSpecs = specLines.some((l: string) => l.includes(':'));
+
+        return (
+            <>
+                <AnimatePresence>
+                    {isOpen && (
+                        <div key="modal-tech-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }} exit={{ opacity: 0 }} className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity ${isHiding ? 'opacity-0' : 'opacity-100'}`} onClick={onClose} />
+
+                            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`relative bg-[var(--store-bg)] w-full md:w-[680px] lg:w-[900px] h-[98vh] md:h-full md:rounded-l-[2rem] rounded-t-[2rem] flex flex-col md:flex-row overflow-hidden shadow-2xl border-l border-[var(--store-border)]/50 will-change-transform ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                                
+                                <button onClick={onClose} className="absolute top-4 right-4 z-50 p-2.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 rounded-full hover:bg-[var(--store-border)]/20 transition-all text-[var(--store-text-main)] shadow-sm active:scale-95">
+                                    <X size={18} strokeWidth={2.5} />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }} className={`absolute top-4 left-4 z-50 p-2.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 rounded-full transition-all active:scale-95 shadow-sm ${isFavorite ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)]/30' : 'text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`}>
+                                    <Heart size={18} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
+                                </button>
+
+                                <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[100px] md:pb-0 no-scrollbar">
+                                    
+                                    {/* 1. STUDIO GALLERY (Fondo neutral técnico) */}
+                                    <div 
+                                        className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-[45%] bg-[var(--store-surface)]/30 relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/40 shrink-0 group overflow-hidden cursor-zoom-in"
+                                        onMouseMove={handleZoomMove} onMouseEnter={handleZoomEnter} onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))} onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                    >
+                                        {currentGallery.length > 0 ? (
+                                            <>
+                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Device"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-8 md:p-14 transition-transform duration-500 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+                                                {zoomData.show && <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 shadow-sm z-20 rounded-xl" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />}
+                                            </>
+                                        ) : (
+                                            <span className="text-sm font-bold text-[var(--store-surface-text)]">Sin imagen</span>
+                                        )}
+
+                                        {currentGallery.length > 1 && (
+                                            <div className="absolute bottom-6 w-full flex justify-center z-30">
+                                                <div className="flex items-center gap-1.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 px-3 py-2 rounded-full shadow-sm">
+                                                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronLeft size={16} strokeWidth={2.5}/></button>
+                                                    <div className="flex gap-1.5 px-2 border-x border-[var(--store-border)]/40">
+                                                        {currentGallery.map((_, idx) => (<div key={`tech-dot-${idx}`} className={`h-1.5 transition-all duration-300 rounded-full ${idx === galleryIndex ? 'bg-[var(--store-text-main)] w-3' : 'bg-[var(--store-border)] w-1.5'}`} />))}
+                                                    </div>
+                                                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronRight size={16} strokeWidth={2.5}/></button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 2. SPEC SHEET PANEL */}
+                                    <div className="w-full h-auto md:h-full md:w-[55%] flex flex-col relative bg-[var(--store-bg)]">
+                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-6 no-scrollbar pb-6 md:pb-[140px]">
+                                            
+                                            {/* Header del Producto */}
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-wider">{product?.category || 'Hardware'}</span>
+                                                    {isCompletelyOutOfStock && <span className="bg-neutral-800 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded shadow-sm">Agotado</span>}
+                                                </div>
+                                                <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight mb-4">{product?.name}</h2>
+
+                                                {pricing.promoBadgeText && (
+                                                    <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)]/10 text-[var(--store-badge-discount-bg)] rounded-md border border-[var(--store-badge-discount-bg)]/20 text-[10px] font-bold tracking-wide">
+                                                        <Tag size={12} /> {pricing.promoBadgeText}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-baseline gap-3">
+                                                    <span className="text-4xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">${pricing.listPrice.toFixed(2)}</span>
+                                                    {pricing.isPromo && <span className="text-sm font-medium text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">${pricing.compareAt.toFixed(2)}</span>}
+                                                </div>
+                                             <div className="mt-1 flex items-center justify-between border-b border-[var(--store-border)]/40 pb-5">
+                                                    <span className="text-xs font-medium text-[var(--store-surface-text)] tabular-nums tracking-wide">Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                                                    {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
+                                                        <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">+ ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA</span>
+                                                    )}
+                                                </div>
+
+                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                    <div className="mt-4 flex items-center gap-2 p-3 bg-[var(--store-incentive)]/5 border border-[var(--store-incentive)]/20 rounded-xl text-[var(--store-incentive)] text-[11px] font-bold shadow-sm">
+                                                        <Zap size={14} className="fill-[var(--store-incentive)] shrink-0" />
+                                                        Ahorro de ${pricing.exactSavings.toFixed(2)} USD aplicable pagando en divisa.
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Selector de Variantes (Botones Capacitivos Sólidos) */}
+                                            {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
+                                                <div className="space-y-5">
+                                                    <motion.div ref={colorSectionRef} animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <span className="text-xs font-bold text-[var(--store-text-main)]">
+                                                                {isModelOption ? 'Configuración' : 'Color'} <span className="text-[var(--store-surface-text)] font-medium ml-1">{selectedColor}</span>
+                                                            </span>
+                                                            {!selectedColor && <span className="text-[10px] font-bold text-[var(--store-primary)] animate-pulse">Requerido</span>}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2.5">
+                                                            {availableColors.map((c: any) => (
+                                                                <button
+                                                                    key={c.name}
+                                                                    onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); const s = variants.filter(v => v.color_name === c.name); setSelectedSize(s.length === 1 ? s[0].size : null); setErrorShake(null); } }}
+                                                                    disabled={!c.isAvailable}
+                                                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${selectedColor === c.name ? 'bg-[var(--store-surface)] border-[var(--store-primary)] shadow-[0_0_0_1px_var(--store-primary)] text-[var(--store-text-main)]' : 'bg-[var(--store-surface)] border-[var(--store-border)]/60 text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/40 hover:text-[var(--store-text-main)]'} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                >
+                                                                    {c.name}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </motion.div>
+
+                                                    {availableSizes.length > 1 && (
+                                                        <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
+                                                            <div className="flex justify-between items-center mb-3">
+                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">Especificación</span>
+                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[10px] font-medium text-[var(--store-surface-text)]">Stock: {currentMaxStock}</span>}
+                                                            </div>
+                                                            {!selectedColor ? (
+                                                                <div className="text-xs text-[var(--store-surface-text)] flex items-center gap-2 bg-[var(--store-surface)] p-3 rounded-lg border border-[var(--store-border)]/40"><AlertCircle size={14}/> Selecciona la configuración primero</div>
+                                                            ) : (
+                                                                <div className="flex flex-wrap gap-2.5">
+                                                                    {availableSizes.map((v) => (
+                                                                        <button
+                                                                            key={v.id || v.size}
+                                                                            onClick={() => { if (v.stock > 0) { setSelectedSize(v.size); setErrorShake(null); } }}
+                                                                            disabled={v.stock <= 0}
+                                                                            className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${selectedSize === v.size ? 'bg-[var(--store-surface)] border-[var(--store-primary)] shadow-[0_0_0_1px_var(--store-primary)] text-[var(--store-text-main)]' : v.stock <= 0 ? 'opacity-30 cursor-not-allowed border-[var(--store-border)]' : 'bg-[var(--store-surface)] border-[var(--store-border)]/60 text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/40 hover:text-[var(--store-text-main)]'}`}
+                                                                        >
+                                                                            {v.size}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </motion.div>
                                                     )}
                                                 </div>
                                             )}
 
-                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="border-t border-[var(--store-border)]/40 pt-4">
-                                                    {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                        <div>
-                                                            <div className="flex items-center gap-2.5 mb-3">
-                                                                <Truck size={16} className="text-[var(--store-surface-text)]" />
-                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Envío</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mb-4">
-                                                                <div className="bg-[var(--store-surface)] p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0">
-                                                                    <Truck size={14} className="text-[var(--store-text-main)]" />
-                                                                </div>
-                                                                <div className="flex flex-col min-w-0">
-                                                                    <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
-                                                                        {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
-                                                                    </span>
-                                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
-                                                                        {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
+                                          {/* 🚀 THE SPEC-SHEET PARSER (Lista Limpia sin Cajas) */}
+                                            {rawDescription && (
+                                                <div className="mt-8 pt-8 border-t border-[var(--store-border)]/30">
+                                                    <h3 className="text-xl md:text-2xl font-black tracking-tight text-[var(--store-text-main)] mb-6">Especificaciones.</h3>
+                                                    
+                                                    {hasSpecs ? (
+                                                        <div className="flex flex-col gap-4">
+                                                            {specLines.map((line: string, i: number) => {
+                                                                const separatorIdx = line.indexOf(':');
+                                                                if (separatorIdx !== -1) {
+                                                                    const key = line.slice(0, separatorIdx).trim();
+                                                                    const val = line.slice(separatorIdx + 1).trim();
+                                                                    return (
+                                                                        <div key={i} className="flex items-start gap-3">
+                                                                            <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
+                                                                            <div className="flex flex-col sm:flex-row sm:items-start sm:gap-2 flex-1">
+                                                                                <span className="text-sm font-bold text-[var(--store-text-main)]">{key}:</span>
+                                                                                <span className="text-sm font-medium text-[var(--store-surface-text)]">{val}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                // Línea sin dos puntos (párrafo normal)
+                                                                return (
+                                                                    <div key={i} className="flex items-start gap-3">
+                                                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
+                                                                        <span className="text-sm font-medium text-[var(--store-surface-text)] leading-relaxed">{line}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     ) : (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setIsShippingOpen(!isShippingOpen)}
-                                                                className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
-                                                            >
-                                                                <div className="flex items-center gap-2.5">
-                                                                    <Truck size={16} className="text-[var(--store-surface-text)] transition-colors" />
-                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Envío</span>
-                                                                </div>
-                                                                <motion.div
-                                                                    animate={{ rotate: isShippingOpen ? (activeTheme.layout?.card_style === 'dense_hardware' ? 180 : 45) : 0 }}
-                                                                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                                                                    className="text-[var(--store-surface-text)] shrink-0"
-                                                                >
-                                                                    {activeTheme.layout?.card_style === 'dense_hardware' ? <ChevronDown size={16} /> : <Plus size={16} />}
-                                                                </motion.div>
-                                                            </button>
+                                                        <p className="text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">
+                                                            {rawDescription}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
 
+                                        {/* Bento Logística (Dinámico desde Base de Datos) */}
+                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                                <div className="mt-6 bg-[var(--store-surface)] border border-[var(--store-border)]/60 p-4 md:p-5 rounded-2xl flex flex-col gap-2 shadow-sm">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Truck size={16} className="text-[var(--store-primary)]" />
+                                                        <span className="text-xs md:text-sm font-bold text-[var(--store-text-main)]">
+                                                            {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)] leading-snug">
+                                                        {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. PROYECCIÓN DESKTOP & FIXED CHECKOUT BAR */}
+                                <AnimatePresence>
+                                    {zoomData.show && currentGallery.length > 0 && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
+                                            className="hidden md:block absolute inset-y-0 right-0 w-[55%] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                        >
+                                            <div className="w-full h-full bg-[var(--store-surface)]" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                    <div className="flex items-center rounded-xl p-1 border border-[var(--store-border)]/60 bg-[var(--store-surface)] shadow-sm shrink-0">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 rounded-lg flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Minus size={16} strokeWidth={2} /></button>
+                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 rounded-lg flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Plus size={16} strokeWidth={2} /></button>
+                                    </div>
+
+                                    <motion.button
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
+                                        onClick={handleAddToCart}
+                                        disabled={isCompletelyOutOfStock || isAdding}
+                                        className={`flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed border border-neutral-300' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:opacity-90'}`}
+                                    >
+                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingCart size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR' : buttonText}</>}
+                                    </motion.button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                {/* LIGHTBOX AISLADO */}
+                <LightboxViewer
+                    isOpen={isLightboxOpen}
+                    onClose={() => setIsLightboxOpen(false)}
+                    images={currentGallery}
+                    currentIndex={lightboxIndex}
+                    setIndex={setLightboxIndex}
+                    cardStyle={activeTheme.layout?.card_style}
+                />
+            </>
+        );
+    }
+
+
+    // =========================================================================
+    // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO MODAL)
+    // =========================================================================
+    return (
+        <>
+            <AnimatePresence>
+                {isOpen && (
+                    <div key="modal-universal-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
+                            exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
+                            className={`absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity] transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
+                        />
+
+                        <motion.div
+                            variants={modalVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                        >
+                            <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
+                                <X size={20} strokeWidth={2} />
+                            </button>
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product }));
+                                }}
+                                className={`absolute top-4 left-4 z-50 p-2 rounded-full transition-colors backdrop-blur border active:scale-95 ${isFavorite
+                                    ? 'text-[var(--store-action-favorite)] border-transparent'
+                                    : 'bg-[var(--store-surface)]/90 border-[var(--store-border)] text-[var(--store-surface-text)] hover:bg-[var(--store-bg)] hover:text-[var(--store-action-favorite)]'
+                                    }`}
+                                style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--store-action-favorite) 30%, transparent)' } : {}}
+                            >
+                                <Heart size={20} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
+                            </button>
+
+                            {/* SCROLL CONTAINER */}
+                            <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[140px] md:pb-0 no-scrollbar">
+
+                                {/* 1. IMAGEN (Side-Zoom & Lightbox) */}
+                                <div
+                                    className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden cursor-zoom-in"
+                                    onMouseMove={handleZoomMove}
+                                    onMouseEnter={handleZoomEnter}
+                                    onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                    onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                >
+                                    {currentGallery.length > 0 ? (
+                                        <>
+                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+                                            {zoomData.show && (
+                                                <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-2xl" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
+                                    )}
+
+                                    {currentGallery.length > 1 && (
+                                        <>
+                                            <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronLeft size={20} strokeWidth={2} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronRight size={20} strokeWidth={2} /></button>
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-30">
+                                                {currentGallery.map((_, idx) => (<div key={`universal-dot-${idx}`} className={`h-1.5 rounded-full transition-all duration-300 ${idx === galleryIndex ? 'bg-[var(--store-primary)] w-4' : 'bg-[var(--store-border)] w-1.5'}`} />))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* 2. DETALLES */}
+                                <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
+                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-6 md:pb-[140px]">
+                                        <div>
+                                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
+                                            <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
+
+                                            <AnimatePresence>
+                                                {pricing.promoBadgeText && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0, transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 } }}
+                                                        exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                                                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)]/10 text-[var(--store-text-main)]/85 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-primary)]/20 shadow-[var(--shadow-ui)] text-xs font-black tracking-wide transition-all origin-bottom"
+                                                    >
+                                                        <Tag size={14} className="text-[var(--store-main-text)]/85 shrink-0" /> {pricing.promoBadgeText}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+
+                                            <div className="flex flex-wrap gap-1.5 mt-3">
+                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                    <span className="text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2.5 py-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] font-bold tracking-wide flex items-center gap-1.5">
+                                                        <Flame size={14} className="text-[var(--store-incentive)]" />
+                                                        Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
+                                                    </span>
+                                                )}
+                                                {isCompletelyOutOfStock && (
+                                                    <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-badge-soldout-bg)] shadow-[var(--shadow-ui)] flex items-center">
+                                                        Agotado Temporalmente
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-end gap-3 md:gap-4 mt-6">
+                                                <div className="flex flex-col">
+                                                    {pricing.isPromo && (
+                                                        <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] mb-0.5">
+                                                            ${pricing.compareAt.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
+                                                        ${pricing.listPrice.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1">
+                                                    Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+
+                                            {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
+                                                <div className="mt-3">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[10px] font-black uppercase tracking-widest">
+                                                        <Receipt size={12} /> + ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA ({(storeConfig?.default_tax_percentage || 16)}%)
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
+                                                <div className="mt-6 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] overflow-hidden bg-[var(--store-bg)]">
+                                                    <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--store-border)]/50 bg-[var(--store-surface)]/50">
+                                                        <span className="text-[11px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                            Al Detalle (1 a {product.wholesale_min_qty - 1} und)
+                                                        </span>
+                                                        <span className="text-sm font-black text-[var(--store-surface-text)]">
+                                                            ${(pricing.isPromo ? pricing.compareAt : pricing.listPrice).toFixed(2)} c/u
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center px-4 py-3 bg-[#1b1b1b] text-white">
+                                                        <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-white/90">
+                                                            <Zap size={13} className="fill-white" />
+                                                            Al Mayor ({product.wholesale_min_qty}+ und)
+                                                        </span>
+                                                        <span className="text-base font-black text-white">
+                                                            ${((pricing.isPromo ? pricing.compareAt : pricing.listPrice) * (1 - product.wholesale_discount_pct / 100)).toFixed(2)} c/u
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Variantes */}
+                                        {loading ? (
+                                            <div className="flex items-center justify-center py-10">
+                                                <Loader2 className="animate-spin text-[var(--store-surface-text)]" size={32} />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6 pb-4">
+                                                {variants.length > 0 && !isCompletelyOutOfStock && (
+                                                    <>
+                                                        <motion.div
+                                                            ref={colorSectionRef}
+                                                            animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                            className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
+                                                        >
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                                        1. {isModelOption ? 'Modelo / Opción' : 'Color'}
+                                                                    </span>
+                                                                    {!selectedColor && (
+                                                                        <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] bg-[var(--store-primary)]/10 px-2 py-0.5 rounded-full border border-[var(--store-primary)]/20">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" />
+                                                                            Seleccionar
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-3">
+                                                                {availableColors.map((c: any, idx: number) => (
+                                                                    <button
+                                                                        key={c.name || `universal-col-${idx}`}
+                                                                        onClick={() => {
+                                                                            if (c.isAvailable) {
+                                                                                setSelectedColor(c.name);
+                                                                                const sizesForColor = variants.filter(v => v.color_name === c.name);
+                                                                                if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
+                                                                                else setSelectedSize(null);
+                                                                                setErrorShake(null);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!c.isAvailable}
+                                                                        className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
+                                                                            ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
+                                                                            : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
+                                                                            } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
+                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
+                                                                        title={!c.isAvailable ? 'Agotado' : c.name}
+                                                                    >
+                                                                        {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
+                                                                            <>
+                                                                                {selectedColor === c.name && <Check size={16} className="text-white/80 mix-blend-difference" strokeWidth={3} />}
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-45" />}
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <span>{c.name}</span>
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-20" />}
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+
+                                                        {availableSizes.length > 1 && (
                                                             <motion.div
-                                                                initial={false}
-                                                                animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }}
-                                                                transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-                                                                className="overflow-hidden"
+                                                                ref={sizeSectionRef}
+                                                                animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : (!selectedSize && selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
                                                             >
-                                                                <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mt-2 mb-4">
+                                                                <div className="flex justify-between items-end">
+                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">2. Talla</span>
+                                                                    {selectedSize && currentMaxStock > 0 && (
+                                                                        <span className="text-[10px] font-bold text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2 py-0.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] border-[var(--store-incentive)]/20">
+                                                                            Quedan {currentMaxStock} und.
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {!selectedColor ? (
+                                                                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--store-surface-text)] bg-[var(--store-bg)] p-3 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]">
+                                                                        <AlertCircle size={16} /> Selecciona {isModelOption ? 'una opción' : 'un color'} primero
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {availableSizes.map((v, idx) => {
+                                                                            const isOutOfStock = v.stock <= 0;
+                                                                            return (
+                                                                                <button
+                                                                                    key={v.id || v.size || `univ-size-${idx}`}
+                                                                                    onClick={() => { if (!isOutOfStock) { setSelectedSize(v.size); setErrorShake(null); } }}
+                                                                                    disabled={isOutOfStock}
+                                                                                    className={`relative min-w-12 px-3 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] transition-all overflow-hidden ${selectedSize === v.size
+                                                                                        ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
+                                                                                        : isOutOfStock
+                                                                                            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border-[var(--store-border)] cursor-not-allowed opacity-60'
+                                                                                            : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]'
+                                                                                        }`}
+                                                                                >
+                                                                                    {v.size}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </motion.div>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {/* Acordeones / Desplegados */}
+                                                {product?.description && (
+                                                    <div className="border-t border-[var(--store-border)]/40 mt-6 pt-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <div className="flex items-center gap-2.5 mb-3">
+                                                                    <Eye size={16} className="text-[var(--store-surface-text)]" />
+                                                                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Descripción</span>
+                                                                </div>
+                                                                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pb-4">
+                                                                    {product.description}
+                                                                </p>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                                                                    className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
+                                                                >
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <Eye size={16} className="text-[var(--store-surface-text)] transition-colors" />
+                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Descripción</span>
+                                                                    </div>
+                                                                    <motion.div
+                                                                        animate={{ rotate: isDescriptionOpen ? (activeTheme.layout?.card_style === 'dense_hardware' ? 180 : 45) : 0 }}
+                                                                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                                        className="text-[var(--store-surface-text)] shrink-0"
+                                                                    >
+                                                                        {activeTheme.layout?.card_style === 'dense_hardware' ? <ChevronDown size={16} /> : <Plus size={16} />}
+                                                                    </motion.div>
+                                                                </button>
+
+                                                                <motion.div
+                                                                    initial={false}
+                                                                    animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }}
+                                                                    transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                                                                    className="overflow-hidden"
+                                                                >
+                                                                    <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line pb-4 pt-2">
+                                                                        {product.description}
+                                                                    </p>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                                    <div className="border-t border-[var(--store-border)]/40 pt-4">
+                                                        {activeTheme.shapes.info_layout === 'expanded' ? (
+                                                            <div>
+                                                                <div className="flex items-center gap-2.5 mb-3">
+                                                                    <Truck size={16} className="text-[var(--store-surface-text)]" />
+                                                                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Envío</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mb-4">
                                                                     <div className="bg-[var(--store-surface)] p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0">
                                                                         <Truck size={14} className="text-[var(--store-text-main)]" />
                                                                     </div>
@@ -2023,102 +2229,142 @@ return (
                                                                         </span>
                                                                     </div>
                                                                 </div>
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsShippingOpen(!isShippingOpen)}
+                                                                    className="w-full flex items-center justify-between py-2 text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-colors text-left"
+                                                                >
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <Truck size={16} className="text-[var(--store-surface-text)] transition-colors" />
+                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Envío</span>
+                                                                    </div>
+                                                                    <motion.div
+                                                                        animate={{ rotate: isShippingOpen ? (activeTheme.layout?.card_style === 'dense_hardware' ? 180 : 45) : 0 }}
+                                                                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                                        className="text-[var(--store-surface-text)] shrink-0"
+                                                                    >
+                                                                        {activeTheme.layout?.card_style === 'dense_hardware' ? <ChevronDown size={16} /> : <Plus size={16} />}
+                                                                    </motion.div>
+                                                                </button>
 
-                        {/* 3. PROYECCIÓN DESKTOP & FOOTER */}
-                        <AnimatePresence>
-                            {zoomData.show && currentGallery.length > 0 && (
-                                <motion.div
-                                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                    className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
-                                >
-                                    <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
-                            <div className="flex gap-3 md:gap-4">
-                                <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-bg)]/50">
-                                    <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
-                                        <Minus size={16} strokeWidth={2.5} />
-                                    </button>
-                                    <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
-                                    <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
-                                        <Plus size={16} strokeWidth={2.5} />
-                                    </button>
-                                </div>
-
-                                <motion.button
-                                    whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.95 } : {}}
-                                    onClick={handleAddToCart}
-                                    disabled={isCompletelyOutOfStock || isAdding}
-                                    className={`flex-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
-                                        ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
-                                        : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                            ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
-                                            : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-lg shadow-[var(--store-primary)]/20'
-                                        }`}
-                                >
-                                    <AnimatePresence mode="wait">
-                                        {isAdding ? (
-                                            <motion.div
-                                                key="loading"
-                                                initial={{ opacity: 0, y: 15 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -15 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="absolute inset-0 flex items-center justify-center"
-                                            >
-                                                <Loader2 size={18} className="animate-spin" />
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key="content"
-                                                initial={{ opacity: 0, y: 15 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -15 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
-                                                <span className="block whitespace-nowrap">{buttonText}</span>
-                                            </motion.div>
+                                                                <motion.div
+                                                                    initial={false}
+                                                                    animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }}
+                                                                    transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                                                                    className="overflow-hidden"
+                                                                >
+                                                                    <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mt-2 mb-4">
+                                                                        <div className="bg-[var(--store-surface)] p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0">
+                                                                            <Truck size={14} className="text-[var(--store-text-main)]" />
+                                                                        </div>
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
+                                                                                {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
+                                                                            </span>
+                                                                            <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
+                                                                                {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </motion.div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
-                                    </AnimatePresence>
-                                </motion.button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <button
-                                onClick={handleInquiryWhatsApp}
-                                className="w-full py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
-                            >
-                                <MessageCircle size={14} /> Tengo una duda sobre este artículo
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </AnimatePresence>
+                            {/* 3. PROYECCIÓN DESKTOP & FOOTER */}
+                            <AnimatePresence>
+                                {zoomData.show && currentGallery.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
+                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                    >
+                                        <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-        {/* LIGHTBOX AISLADO */}
-        <LightboxViewer
-            isOpen={isLightboxOpen}
-            onClose={() => setIsLightboxOpen(false)}
-            images={currentGallery}
-            currentIndex={lightboxIndex}
-            setIndex={setLightboxIndex}
-            cardStyle={activeTheme.layout?.card_style}
-        />
-    </>
-);
+                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                <div className="flex gap-3 md:gap-4">
+                                    <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-bg)]/50">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
+                                            <Minus size={16} strokeWidth={2.5} />
+                                        </button>
+                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
+                                            <Plus size={16} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+
+                                    <motion.button
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.95 } : {}}
+                                        onClick={handleAddToCart}
+                                        disabled={isCompletelyOutOfStock || isAdding}
+                                        className={`flex-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
+                                            ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
+                                            : (variants.length > 0 && (!selectedColor || !selectedSize))
+                                                ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
+                                                : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-lg shadow-[var(--store-primary)]/20'
+                                            }`}
+                                    >
+                                        <AnimatePresence mode="wait">
+                                            {isAdding ? (
+                                                <motion.div
+                                                    key="loading"
+                                                    initial={{ opacity: 0, y: 15 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -15 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="absolute inset-0 flex items-center justify-center"
+                                                >
+                                                    <Loader2 size={18} className="animate-spin" />
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    key="content"
+                                                    initial={{ opacity: 0, y: 15 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -15 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <ShoppingBag size={18} className="pointer-events-none mb-0.5 shrink-0" />
+                                                    <span className="block whitespace-nowrap">{buttonText}</span>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </motion.button>
+                                </div>
+
+                                <button
+                                    onClick={handleInquiryWhatsApp}
+                                    className="w-full py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <MessageCircle size={14} /> Tengo una duda sobre este artículo
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* LIGHTBOX AISLADO */}
+            <LightboxViewer
+                isOpen={isLightboxOpen}
+                onClose={() => setIsLightboxOpen(false)}
+                images={currentGallery}
+                currentIndex={lightboxIndex}
+                setIndex={setLightboxIndex}
+                cardStyle={activeTheme.layout?.card_style}
+            />
+        </>
+    );
 }

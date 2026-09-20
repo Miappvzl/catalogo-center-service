@@ -354,7 +354,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
             exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
             layout
-            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
+            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : activeTheme.layout?.card_style === 'aero_glass' ? 'bottom-5 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
         >
             {activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
@@ -453,8 +453,55 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                             </motion.button>
                         </div>
                     )}
+          
                 </div>
 
+           
+
+
+            ) : activeTheme.layout?.card_style === 'aero_glass' ? (
+                /* 🛸 VARIANTE TECH: "El Terminal Flotante" (Aero Glass) */
+                <div className="w-full backdrop-blur-3xl bg-[var(--store-surface)]/80 border border-[var(--store-border)]/40 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.2)] flex items-stretch p-1.5 h-[68px]">
+                    {items.length > 0 ? (
+                        <>
+                            <div className="flex flex-col justify-center px-4 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
+                                <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-lg font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.96 }}
+                                onClick={() => setIsOpen(true)} 
+                                className="px-5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[1.5rem] flex items-center justify-center gap-1.5 shadow-md hover:opacity-90 transition-opacity"
+                            >
+                                <ShoppingBag size={16} strokeWidth={2} />
+                                <span className="font-bold text-[10px] uppercase tracking-wider">Bolsa</span>
+                                <div className="ml-1 bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">
+                                    {totalItemsCount}
+                                </div>
+                            </motion.button>
+                        </>
+                    ) : (
+                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
+                            <div className="flex flex-col justify-center px-5 flex-1">
+                                <span className="text-[9px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
+                                <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">
+                                    Orden #{generatedOrderNumber}
+                                </span>
+                            </div>
+                            <motion.button 
+                                whileTap={{ scale: 0.96 }} 
+                                className="px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[1.5rem] flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-opacity"
+                            >
+                                <MessageCircle size={16} strokeWidth={2} />
+                                <span className="font-bold text-[10px] uppercase tracking-wider">Enviar</span>
+                            </motion.button>
+                        </div>
+                    )}
+                </div>
             ) : (
                 /* 🌟 VARIANTE UNIVERSAL: Diseño Original Intacto */
                 <div className="w-full backdrop-blur-2xl flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--store-surface)]/85 border-t border-[var(--store-border)]/30">

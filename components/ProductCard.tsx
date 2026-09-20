@@ -2,7 +2,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState, memo, useCallback } from 'react'
 
@@ -24,7 +24,8 @@ interface ProductCardProps {
   isCriticalStock?: boolean;
   showTaxIndicator?: boolean;
   taxPercentage?: number;
-  cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
+  cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech';
+  isFeatured?: boolean; // 🚀 NUEVO: Detector de producto destacado
 }
 
 function ProductCardComponent({
@@ -37,7 +38,8 @@ function ProductCardComponent({
   showTaxIndicator = false,
   taxPercentage = 16,
   cardStyle = 'standard',
-  index = 99
+  index = 99,
+  isFeatured = false // 🚀 Inyección del prop
 }: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
@@ -496,11 +498,103 @@ function ProductCardComponent({
       </div>
     );
   }
-
 // =========================================================================
+  // 💻 VARIANTE: TEMA 6 (MODULAR TECH / APP STYLE CARD)
+  // =========================================================================
+  if (cardStyle === 'modular_tech') {
+    return (
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] transition-all duration-300 relative overflow-hidden hover:border-[var(--store-primary)]/60 ${isOutOfStock ? 'opacity-50 grayscale-[20%]' : ''}`}
+        style={{ 
+          borderRadius: 'var(--radius-card)', 
+          borderWidth: 'var(--border-width-ui)', 
+          borderColor: 'var(--store-border)', 
+          boxShadow: 'var(--shadow-ui)' 
+        }}
+        onClick={handleOpenCard}
+      >
+        {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
+        <div className="relative aspect-[4/5] w-full p-6 flex items-center justify-center">
+          {product.image_url ? (
+            <Image 
+              src={getOptimizedUrl(product.image_url)} 
+              alt={product.name} 
+              fill 
+              priority={isPriorityImage} 
+              loading={isPriorityImage ? undefined : 'lazy'} 
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" 
+              onLoad={() => setIsImageLoaded(true)} 
+              className={`object-contain p-4 md:p-6 transition-transform duration-500 ease-out group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] opacity-30"><ImageIcon size={32} strokeWidth={1.5} /></div>
+          )}
+
+          {/* Badges de Estado */}
+          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 pointer-events-none">
+            {isOutOfStock ? (
+              <span className="bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold uppercase px-2.5 py-1 rounded-full shadow-sm">
+                Agotado
+              </span>
+            ) : isPromo ? (
+              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm tracking-wide">
+                -{promoPercent}%
+              </span>
+            ) : null}
+            {isCriticalStock && !isOutOfStock && (
+              <span className="bg-[var(--store-surface)] border border-[var(--store-border)] text-[var(--store-text-main)] text-[9px] font-bold uppercase px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                 Quedan {product.stock}
+              </span>
+            )}
+          </div>
+
+          {/* Botón de Favorito */}
+          <button 
+            onClick={handleToggleFav} 
+            className={`absolute top-4 right-4 z-20 p-2 rounded-full transition-colors duration-200 active:scale-90 ${isFavorite ? 'bg-white text-[var(--store-action-favorite)] shadow-sm' : 'bg-transparent text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`} 
+            aria-label="Favorito"
+          >
+            <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
+          </button>
+        </div>
+
+        {/* 2. DATOS DEL PRODUCTO (App Layout) */}
+        <div className="px-5 pb-5 md:px-6 md:pb-6 flex flex-col flex-1 z-10">
+          <span className="text-[10px] font-semibold text-[var(--store-surface-text)] uppercase tracking-wider mb-1 line-clamp-1">{product.category || 'Categoría'}</span>
+          <h3 className="text-sm md:text-base font-bold text-[var(--store-text-main)] leading-snug line-clamp-2 group-hover:text-[var(--store-primary)] transition-colors">{product.name}</h3>
+
+          <div className="mt-auto pt-3 flex flex-col min-w-0 pr-12 relative z-10">
+            {isPromo && <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through mb-0.5">${activeCompareAt.toFixed(2)}</span>}
+            <div className="flex items-baseline gap-1">
+                <span className="text-xl md:text-2xl font-black text-[var(--store-text-main)] leading-none tracking-tight">${listPrice.toFixed(2)}</span>
+            </div>
+            <span className="text-[11px] font-medium text-[var(--store-surface-text)] mt-1 tabular-nums">Bs {formattedBs}</span>
+            
+            {penalty > 0 && !isOutOfStock && (
+              <div className="mt-1.5 text-[9px] font-bold text-[var(--store-incentive)] flex items-center gap-1">
+                <Flame size={10} className="fill-current shrink-0" /> Paga ${cashPrice.toFixed(2)} en Divisa
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* BOTÓN CIRCULAR DE ACCIÓN ABSOLUTO */}
+        <button 
+          disabled={isOutOfStock} 
+          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90 ${isOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-bg)]  text-[var(--store-primary-text)]  hover:scale-105 shadow-[var(--store-primary)]/20' }`}
+          aria-label="Añadir al Carrito"
+        >
+          {isOutOfStock ? <X size={16} strokeWidth={3}/> : <Plus size={20} strokeWidth={3}/>}
+        </button>
+      </div>
+    );
+  }
+
+  // =========================================================================
   // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO CARD)
   // =========================================================================
   return (
+
     <div
       className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-200 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={handleOpenCard}
@@ -641,14 +735,14 @@ function areProductCardPropsEqual(prev: ProductCardProps, next: ProductCardProps
 
   // 2. Si el producto no cambió, validamos únicamente los estados externos de UI
   if (!isProductIdentical) return false;
-
-  return (
+return (
     prev.isFavorite === next.isFavorite &&
     prev.isOutOfStock === next.isOutOfStock &&
     prev.isCriticalStock === next.isCriticalStock &&
     prev.showTaxIndicator === next.showTaxIndicator &&
     prev.taxPercentage === next.taxPercentage &&
     prev.cardStyle === next.cardStyle &&
+    prev.isFeatured === next.isFeatured && // 🚀 Optimizador actualizado
     // Validamos pricing porque los padres suelen pasarlo como objeto literal
     prev.pricing.priceInBs === next.pricing.priceInBs &&
     prev.pricing.cashPrice === next.pricing.cashPrice &&

@@ -43,14 +43,23 @@ export interface ThemeTypography {
 // types/theme.ts
 // (Modifica únicamente la interfaz ThemeLayout agregando esta propiedad)
 
+export interface TrustBadge {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+}
+
 export interface ThemeLayout {
-    header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav';
-    card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu';
+    header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav' | 'modular_tech';
+    card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech';
     logo_type?: 'standard' | 'png_transparent';
+    category_style?: 'pills' | 'thumbnails'; 
     hero_desktop_url?: string;
     hero_mobile_url?: string;
     logo_url?: string;
     hero_subtitle?: string;
+    trust_badges?: TrustBadge[]; // 🚀 NUEVO: Insignias de confianza
 }
 
 export interface ThemeConfig {

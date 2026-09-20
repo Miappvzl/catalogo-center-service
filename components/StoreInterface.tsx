@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
+import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
@@ -230,22 +230,27 @@ export default function StoreInterface({ store: initialStore, products: initialP
       const resolvedHeroDesktop = baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
       const resolvedHeroMobile = baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
 
-      if (isMockMode) {
-          const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
-          const niche = template ? template.niche : 'general';
-          const mockData = MOCK_DATA[niche];
-          
-          if (mockData) {
-              baseTheme.layout = {
-                  ...baseTheme.layout,
-                  logo_type: baseTheme.layout?.logo_type || 'png_transparent',
-                  // Si el usuario subió un logo (incluso en preview), lo respetamos. Si no hay nada, entra el mock.
-                  logo_url: resolvedLogoUrl || mockData.logo,
-                  hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
-                  hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
-              };
-          }
-      } else {
+if (isMockMode) {
+            const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
+            const niche = template ? template.niche : 'general';
+            const mockData = MOCK_DATA[niche];
+            
+            if (mockData) {
+                // 🚀 Detección autónoma de fondo oscuro (evita dependencias circulares con hooks inferiores)
+                const bg = (baseTheme.colors?.background || '#ffffff').toLowerCase();
+                const isDarkTheme = bg === '#000000' || bg === '#0d0d0d' || bg === '#1f1f1f' || bg === '#171717' || baseTheme.template_id === 'hardware_dense' || baseTheme.template_id === 'streetwear_bold';
+
+                // 🚀 EN LAS PLANTILLAS DE EJEMPLO (MOCK HYDRATION):
+                // Mostramos el ejemplo con logo PNG transparente flotante (sin cápsula circular y sin el nombre al lado)
+                baseTheme.layout = {
+                    ...baseTheme.layout,
+                    logo_type: 'png_transparent',
+                    logo_url: mockData.logo || (isDarkTheme ? '/tu-logo-transparente-claro.webp' : '/tu-logo-transparente-oscuro.webp'),
+                    hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
+                    hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
+                };
+            }
+        } else {
           baseTheme.layout = {
               ...baseTheme.layout,
               logo_url: resolvedLogoUrl || '',
@@ -917,10 +922,11 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-      {/* 🚀 3. ENCABEZADO PROTAGÓNICO (AHORA MANEJA EL HERO INTERNAMENTE) */}
-      <StoreHeader
+<StoreHeader
         layoutStyle={activeTheme.layout?.header_style || 'classic'}
         store={store}
+        products={products} // 🚀 Extracción determinista de portadas de categoría
+        promotions={displayPromotions} // 🚀 INYECTADO PARA BENTO GRID
         activeRate={activeRate}
         isEur={isEur}
         search={search}
@@ -1127,8 +1133,11 @@ useEffect(() => {
         </div>
       )}
 
-      <main className="max-w-[1500px] mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-24">
-
+   <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${
+        activeTheme.layout?.card_style === 'modular_tech' 
+          ? 'px-2 md:px-8' 
+          : 'px-4 md:px-8'
+      }`}>
         <>
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
@@ -1159,11 +1168,10 @@ useEffect(() => {
                   <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
                 </button>
 
-                {/* Carrusel Horizontal */}
-                <div
-                  ref={featuredCarouselRef} // 🚀 CONECTAMOS LA REFERENCIA
-                  onScroll={checkFeaturedScrollStatus} // 🚀 DETECTA EL MOVIMIENTO REACTIVAMENTE
-                  className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth"
+         <div
+                  ref={featuredCarouselRef} 
+                  onScroll={checkFeaturedScrollStatus} 
+                  className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth items-stretch"
                 >
                   {featuredProducts.map((product: any, idx: number) => {
                     const pricing = getProductPricing(product)
@@ -1172,7 +1180,7 @@ useEffect(() => {
                       : (product.stock || 0) <= 0;
 
                     return (
-                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start flex">
+                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start flex flex-col h-auto">
                         <ProductCard
                           product={product}
                           pricing={pricing}
@@ -1182,7 +1190,8 @@ useEffect(() => {
                           isFavorite={favoriteIds.has(String(product.id))}
                           showTaxIndicator={showTaxInCatalog}
                           taxPercentage={taxPercentage}
-                          cardStyle={activeTheme.layout?.card_style || 'standard'} // 🚀 AÑADIR ESTA LÍNEA
+                          cardStyle={activeTheme.layout?.card_style || 'standard'} 
+                          isFeatured={true} // 🚀 INYECCIÓN DEL PROP PARA DISEÑO ESPECIAL
                         />
                       </div>
                     )
@@ -1244,9 +1253,12 @@ useEffect(() => {
                   )}
               </div>
           ) : (
-              <div className={`grid min-h-[40vh] ${activeTheme.layout?.card_style === 'dense_hardware'
-                  ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
-                  : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8'
+    <div className={`grid min-h-[40vh] ${
+                  activeTheme.layout?.card_style === 'dense_hardware'
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+                    : activeTheme.layout?.card_style === 'modular_tech'
+                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
+                      : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
                 }`}>
                 {paginatedProducts.map((product: any, index: number) => {
               const pricing = getProductPricing(product)
@@ -1369,7 +1381,7 @@ useEffect(() => {
                       Explorar Colecciones
                     </h3>
                   </div>
-                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-8 ml-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
                     {explorableCategories.map((cat: any) => (
                       <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group relative shrink-0 w-[220px] md:w-[300px] aspect-[3/4] overflow-hidden snap-start flex flex-col justify-center items-center text-center active:scale-[0.98] transition-transform duration-700 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 shadow-[var(--shadow-ui)]">
                         {cat.coverUrl && !cat.useSolidColor ? (
@@ -1392,7 +1404,7 @@ useEffect(() => {
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
                     <h3 className="text-sm md:text-base font-black tracking-tight text-[var(--store-text-main)] uppercase">Explora más categorías</h3>
                   </div>
-                  <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                  <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar ml-2 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
                     {explorableCategories.map((cat: any) => (
                       <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group relative shrink-0 w-[140px] h-[140px] md:w-[170px] md:h-[170px] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] overflow-hidden snap-start flex flex-col justify-end text-left active:scale-95 transition-transform duration-300 border border-[var(--store-border)]/30" style={{ backgroundColor: cat.useSolidColor ? 'var(--store-primary)' : 'var(--store-surface)' }}>
                         {!cat.useSolidColor && cat.coverUrl && <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="170px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-110" loading="lazy" />}

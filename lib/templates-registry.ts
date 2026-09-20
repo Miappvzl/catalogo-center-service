@@ -243,10 +243,58 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 body_font: 'var(--font-montserrat), system-ui, sans-serif',
                 price_font: 'var(--font-outfit), sans-serif',
             },
-         layout: {
+        layout: {
                 header_style: 'minimal',
                 card_style: 'editorial',
                 logo_type: 'png_transparent',
+            },
+        },
+    },
+{
+        id: 'modular_tech',
+        name: 'Tech Bento',
+        niche: 'tech',
+        niche_label: 'Tecnología & Gadgets',
+        description: 'Diseño modular de alto rendimiento (Zero-Lag). Cuadrículas visuales, cero desenfoques y enfoque absoluto en especificaciones.',
+        badge: 'Premium',
+        is_premium: false,
+        thumbnail_url: '/tech-bento.webp',
+        tags: ['tech', 'tecnologia', 'moderno', 'grid', 'bento', 'apple'],
+     default_config: {
+            template_id: 'modular_tech',
+            version: 3,
+            colors: {
+                primary: '#5438f5', // Blue-600 vibrante
+                primary_text: '#FFFFFF',
+                background: '#F8FAFC', // Slate-50 muy claro
+                text_main: '#0F172A', // Slate-900 casi negro
+                surface: '#FFFFFF', // Blanco puro
+                surface_text: '#64748B', // Slate-500
+                border: 'transparent', // Bordes invisibles nativos (Zero Layout Shift)
+                incentive: '#000604', // Emerald-600
+                badge_discount_bg: '#EF4444', // Red-500
+                badge_discount_text: '#FFFFFF',
+                badge_soldout_bg: '#1E293B', // Slate-800
+                badge_soldout_text: '#FFFFFF',
+                action_favorite: '#EF4444',
+            },
+            shapes: {
+                button_shape: 'rounded',
+                search_bar_shape: 'rounded',
+                line_weight: 'thin',
+                ui_shadows: 'none',
+                info_layout: 'expanded',
+            },
+            typography: {
+                heading_font: 'var(--font-inter), sans-serif',
+                body_font: 'var(--font-inter), sans-serif',
+                price_font: 'var(--font-inter), sans-serif',
+            },
+            layout: {
+                header_style: 'modular_tech',
+                card_style: 'modular_tech',
+                logo_type: 'png_transparent',
+                category_style: 'thumbnails',
             },
         },
     },

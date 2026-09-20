@@ -49,16 +49,28 @@ hardware: {
             { id: 'f4', name: 'Cheesecake de Nutella', category: 'Postres', usd_cash_price: 7, usd_penalty: 0, stock: 5, image_url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&q=80' },
         ]
     },
-    streetwear: {
-        logo: '/tu-logo-transparente-claro.webp', // 👈 REEMPLAZA AQUÍ
+  streetwear: {
+        logo: '/tu-logo-transparente-oscuro.webp', // 👈 REEMPLAZA AQUÍ
         hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
         hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ
         promotion: { title: 'DROP EXCLUSIVO', tagline: 'CANTIDADES LIMITADAS', bg_color: '#0D0D0D', text_color: '#F5F5F5' },
         products: [
             { id: 's1', name: 'Hoodie Oversize Heavyweight', category: 'Sudaderas', usd_cash_price: 55, usd_penalty: 5, stock: 15, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&q=80' },
             { id: 's2', name: 'Cargo Pants Multi-Pocket', category: 'Pantalones', usd_cash_price: 65, usd_penalty: 0, stock: 3, image_url: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&q=80' },
-            { id: 's3', name: 'Sneakers Chunky Retro', category: 'Calzado', usd_cash_price: 110, usd_penalty: 0, stock: 0, image_url: 'https://images.unsplash.com/photo-1523398002811-999aa8d9512e?w=600&q=80' },
+            { id: 's3', name: 'Sneakers Chunky Retro', category: 'Calzado', usd_cash_price: 110, usd_penalty: 0, stock: 0, image_url: 'https://images.unsplash.com/photo-1657194002304-ecc87a34340a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fFNuZWFrZXJzJTIwQ2h1bmt5JTIwUmV0cm98ZW58MHx8MHx8fDA%3D' },
             { id: 's4', name: 'Beanie Logo Bordado', category: 'Accesorios', usd_cash_price: 25, usd_penalty: 0, stock: 8, image_url: 'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=600&q=80' },
+        ]
+    },
+    tech: {
+        logo: '/tu-logo-transparente-claro.webp', // 👈 REEMPLAZA AQUÍ
+        hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
+        hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ
+        promotion: { title: 'TECH DEALS DE LA SEMANA', tagline: 'ENVÍO GRATIS APLICADO', bg_color: '#111827', text_color: '#FFFFFF' },
+        products: [
+            { id: 't1', name: 'Laptop Pro 14" M3 Chip 512GB', category: 'Laptops', usd_cash_price: 1299, usd_penalty: 0, stock: 5, image_url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&q=80', description: 'Procesador: Chip M3\nMemoria: 16GB Unificada\nAlmacenamiento: 512GB SSD\nPantalla: Liquid Retina XDR' },
+            { id: 't2', name: 'Auriculares Inalámbricos Noise Cancelling Max', category: 'Audio', usd_cash_price: 349, usd_penalty: 15, stock: 12, image_url: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=600&q=80', description: 'Autonomía: 30 Horas\nCancelación de ruido: Activa (ANC)\nConectividad: Bluetooth 5.3' },
+            { id: 't3', name: 'Smartphone Serie 15 Pro Titanium', category: 'Smartphones', usd_cash_price: 999, usd_penalty: 0, stock: 2, image_url: 'https://images.unsplash.com/photo-1695048132854-8d9e119f957b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fFNtYXJ0cGhvbmUlMjBTZXJpZSUyMDE1JTIwUHJvJTIwVGl0YW5pdW18ZW58MHx8MHx8fDA%3D', description: 'Material: Titanio Grado 5\nPantalla: 6.1" ProMotion 120Hz\nCámara: Triple 48MP\nCapacidad: 256GB' },
+            { id: 't4', name: 'Smartwatch Series 9 Aluminio', category: 'Wearables', usd_cash_price: 399, usd_penalty: 10, stock: 0, image_url: 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&q=80', description: 'Caja: 45mm Aluminio\nResistencia al agua: 50m\nSensores: ECG, Oxígeno, Temperatura' },
         ]
     }
 };
