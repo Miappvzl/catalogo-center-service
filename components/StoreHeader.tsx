@@ -134,7 +134,7 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
                 
                 {/* 🚀 ELIMINACIÓN DE REDUNDANCIA: Ocultamos el nombre de la tienda si el logo es un PNG transparente */}
                 {!isPng && (
-                    <h1 className={`text-base md:text-lg font-black text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px] ${centered ? 'hidden md:block' : ''}`}>
+                    <h1 className={`text-base md:text-lg font-semibold text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px] ${centered ? 'hidden md:block' : ''}`}>
                         {props.store.name}
                     </h1>
                 )}

@@ -354,7 +354,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
             exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
             layout
-            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : activeTheme.layout?.card_style === 'aero_glass' ? 'bottom-5 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
+            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : activeTheme.layout?.card_style === 'modular_tech' ? 'bottom-5 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
         >
             {activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
@@ -459,8 +459,8 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
            
 
 
-            ) : activeTheme.layout?.card_style === 'aero_glass' ? (
-                /* 🛸 VARIANTE TECH: "El Terminal Flotante" (Aero Glass) */
+           ) : activeTheme.layout?.card_style === 'modular_tech' ? (
+                /* 🛸 VARIANTE TECH: "El Terminal Flotante" (Modular Tech) */
                 <div className="w-full backdrop-blur-3xl bg-[var(--store-surface)]/80 border border-[var(--store-border)]/40 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.2)] flex items-stretch p-1.5 h-[68px]">
                     {items.length > 0 ? (
                         <>

@@ -2418,7 +2418,7 @@ export default function CheckoutProcess({
                                 onClick={handleCheckout}
                                 // 🚀 CORREGIDO: Bloqueo inteligente condicionado a isStoreCreditActive
                                 disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full uppercase transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${activeTheme.layout?.card_style === 'brutalist' ? 'font-mono font-bold text-sm tracking-[0.2em] rounded-none border-2 border-black shadow-[4px_4px_0px_#000]' : activeTheme.layout?.card_style === 'aero_glass' ? 'font-bold text-xs md:text-sm tracking-wider rounded-2xl' : 'font-black text-xs md:text-sm tracking-widest rounded-full'} ${
+                                className={`h-full uppercase transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${activeTheme.layout?.card_style === 'brutalist' ? 'font-mono font-bold text-sm tracking-[0.2em] rounded-none border-2 border-black shadow-[4px_4px_0px_#000]' : activeTheme.layout?.card_style === 'modular_tech' ? 'font-bold text-xs md:text-sm tracking-wider rounded-2xl' : 'font-black text-xs md:text-sm tracking-widest rounded-full'} ${
                                     checkoutState !== 'idle'
                                         ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
                                         : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
