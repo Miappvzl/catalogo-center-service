@@ -1135,7 +1135,7 @@ Mi duda es la siguiente: `;
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
+                                   {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
                                     <div
                                         className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-surface)] relative flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/20 overflow-hidden group cursor-zoom-in"
                                         onMouseMove={handleZoomMove}
@@ -1143,9 +1143,9 @@ Mi duda es la siguiente: `;
                                         onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
                                         onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
                                     >
-                                        {currentGallery.length > 0 ? (
+                                    {currentGallery.length > 0 ? (
                                             <>
-                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
+                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-4 md:p-6 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
                                                 {zoomData.show && (
                                                     <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/20 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
                                                 )}
@@ -1185,12 +1185,12 @@ Mi duda es la siguiente: `;
                                                             ${pricing.compareAt.toFixed(2)}
                                                         </span>
                                                     )}
-                                                    <span className="text-3xl md:text-4xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
+                                                    <span className="text-4xl md:text-5xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
                                                         ${pricing.listPrice.toFixed(2)}
                                                     </span>
                                                 </div>
                                                 <div className="mt-2">
-                                                    <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
+                                                    <span className="text-[0.9rem] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
                                                         Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
                                                     </span>
                                                 </div>
@@ -1203,7 +1203,7 @@ Mi duda es la siguiente: `;
 
                                                 {isCompletelyOutOfStock && (
                                                     <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.2em] text-white bg-black/80 backdrop-blur-md px-3 py-1.5 w-fit">
-                                                        [ SOLD OUT ]
+                                                        [ AGOTADO ]
                                                     </div>
                                                 )}
                                             </div>
