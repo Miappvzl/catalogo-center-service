@@ -873,7 +873,7 @@ const renderSearchBlock = (isDense: boolean = false) => (
         const trustBadges = liveTheme.layout?.trust_badges || [];
 
         return (
-            <div className="bg-[var(--store-bg)] border-b border-[var(--store-border)]">
+            <>
                 
                 {/* 1. TOP BAR UTILITARIA (Alta Confianza B2C) */}
                 <div className="hidden md:flex items-center justify-between px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
@@ -1109,20 +1109,23 @@ const renderSearchBlock = (isDense: boolean = false) => (
                                                 <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
                                             )}
                                         </div>
-                                        <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
-                                            {cat}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                                       <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
+                                                {cat}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className="px-4 md:px-8 py-4 border-b border-[var(--store-border)] bg-[var(--store-surface)]">
-                        <CategoriesBlock />
-                    </div>
-                )}
-            </div>
+                    ) : (
+                        <div className="px-4 md:px-8 py-4 bg-[var(--store-surface)]">
+                            <CategoriesBlock />
+                        </div>
+                    )}
+
+                {/* Línea divisoria inferior para cerrar el bloque estructural */}
+                <div className="w-full h-px bg-[var(--store-border)]" />
+            </>
         );
     }
     // ==========================================

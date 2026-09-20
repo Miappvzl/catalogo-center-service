@@ -357,10 +357,11 @@ if (isMockMode) {
 
 
   
-  const [isModalOpen, setIsModalOpen] = useState(false)
+const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
-const [isStickyVisible, setIsStickyVisible] = useState(true)
+  const [isStickyVisible, setIsStickyVisible] = useState(true)
   const lastScrollYRef = useRef(0) // 🚀 CERO RE-RENDERS EN SCROLL
+  const forceHeaderVisibleRef = useRef(0) // 🚀 NUEVO: Escudo magnético anti-scroll
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1) // 🚀 NUEVO ESTADO DE PAGINACIÓN
   const [isMobile, setIsMobile] = useState(true) // 🚀 NUEVO ESTADO RESPONSIVO
@@ -590,7 +591,10 @@ const [isStickyVisible, setIsStickyVisible] = useState(true)
       });
     };
   const handleFly = (e: any) => {
-      setIsStickyVisible(true); // 🚀 CABECERA MAGNÉTICA: Forzamos la cabecera a bajar para recibir la animación
+      // 🚀 INYECCIÓN MAGNÉTICA: Forzamos la bajada de la cabecera instantáneamente y la bloqueamos por 3 segundos
+      setIsStickyVisible(true);
+      forceHeaderVisibleRef.current = Date.now() + 3000;
+
       const targets = document.querySelectorAll('[data-cart-target="true"]');
       let destNode = targets[0];
       for (let i = 0; i < targets.length; i++) {
@@ -604,6 +608,10 @@ const [isStickyVisible, setIsStickyVisible] = useState(true)
       const size = Math.min(startRect.width, startRect.height);
       const offsetX = (startRect.width - size) / 2;
       const offsetY = (startRect.height - size) / 2;
+
+      // 🚀 MATEMÁTICA PREDICTIVA: Si la cabecera está escondida (top negativo), predecimos dónde caerá 
+      // para que la imagen vuele hacia el punto visible correcto en la pantalla, no hacia el éter.
+      const adjustedDestTop = destRect.top < 0 ? 25 : destRect.top;
 
       const wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
@@ -626,11 +634,10 @@ const [isStickyVisible, setIsStickyVisible] = useState(true)
 
       wrapper.appendChild(img);
       document.body.appendChild(wrapper);
-
-      const startCenterX = startRect.left + offsetX + size / 2;
+const startCenterX = startRect.left + offsetX + size / 2;
       const startCenterY = startRect.top + offsetY + size / 2;
       const destCenterX = destRect.left + destRect.width / 2;
-      const destCenterY = destRect.top + destRect.height / 2;
+      const destCenterY = adjustedDestTop + destRect.height / 2; // 🚀 Usa la Y ajustada matemáticamente
       const deltaX = destCenterX - startCenterX;
       const deltaY = destCenterY - startCenterY;
 
@@ -704,6 +711,14 @@ const [isStickyVisible, setIsStickyVisible] = useState(true)
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
+          
+          // 🚀 ESCUDO MAGNÉTICO: Si acabamos de añadir un producto, ignoramos el scroll para no esconder la cabecera
+          if (Date.now() < forceHeaderVisibleRef.current) {
+              lastScrollYRef.current = currentScrollY;
+              ticking = false;
+              return;
+          }
+
           if (currentScrollY < 250) {
             setIsStickyVisible(true);
           } else {
