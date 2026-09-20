@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils, LayoutGrid, ShieldCheck, Truck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Package, Star, Lock } from 'lucide-react'
+import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils, LayoutGrid, ShieldCheck, Truck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Package, Star, Lock, SearchX } from 'lucide-react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -69,7 +69,78 @@ const TrustIcon = ({ name, className }: { name: string, className?: string }) =>
     }
 };
 
+// 🚀 COMPONENTE AISLADO: BUSCADOR PREDICTIVO (Live Search Popover)
+const LiveSearchPopover = ({ search, products, activeRate, isFocused, setIsFocused, setSearch }: any) => {
+    const searchResults = useMemo(() => {
+        if (!search.trim() || !products) return [];
+        const term = search.toLowerCase().trim();
+        return products
+            .filter((p: any) => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term))
+            .slice(0, 5); // 🚀 Límite de 5 para no colapsar la pantalla
+    }, [search, products]);
+
+    return (
+        <AnimatePresence>
+            {isFocused && search.trim().length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-2xl rounded-[var(--radius-card)] overflow-hidden z-[100] flex flex-col"
+                >
+                    {searchResults.length > 0 ? (
+                        <div className="flex flex-col max-h-[300px] overflow-y-auto no-scrollbar py-2">
+                            {searchResults.map((product: any) => {
+                                const cashPrice = Number(product.usd_cash_price || 0);
+                                const penalty = Number(product.usd_penalty || 0);
+                                const listPrice = cashPrice + penalty;
+
+                                return (
+                                    <div
+                                        key={product.id}
+                                        onMouseDown={(e) => {
+                                            // 🚀 onMouseDown dispara antes que onBlur, evitando que se cierre el modal accidentalmente
+                                            e.preventDefault();
+                                            document.dispatchEvent(new CustomEvent('openProductModal', { detail: product }));
+                                            setIsFocused(false);
+                                            setSearch(""); 
+                                        }}
+                                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--store-bg)] cursor-pointer transition-colors border-b border-[var(--store-border)]/30 last:border-0"
+                                    >
+                                        <div className="w-10 h-10 shrink-0 bg-[var(--store-bg)] rounded-md border border-[var(--store-border)]/50 relative overflow-hidden flex items-center justify-center">
+                                            {product.image_url ? (
+                                                <Image src={getOptimizedUrl(product.image_url)} alt={product.name} fill sizes="40px" className="object-cover" />
+                                            ) : (
+                                                <ShoppingBag size={14} className="text-[var(--store-surface-text)]" />
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-[11px] font-bold text-[var(--store-text-main)] truncate">{product.name}</span>
+                                            <span className="text-[9px] font-medium text-[var(--store-surface-text)] uppercase tracking-wider truncate">{product.category}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0">
+                                            <span className="text-xs font-black text-[var(--store-text-main)]">${listPrice.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    ) : (
+                        <div className="px-4 py-8 flex flex-col items-center justify-center text-center">
+                            <SearchX size={24} className="text-[var(--store-surface-text)] opacity-50 mb-2" />
+                            <span className="text-xs font-bold text-[var(--store-text-main)]">Sin resultados</span>
+                            <span className="text-[10px] text-[var(--store-surface-text)]">No hay coincidencias para "{search}"</span>
+                        </div>
+                    )}
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 export default function StoreHeader(props: StoreHeaderProps) {
+    const [isSearchFocused, setIsSearchFocused] = useState(false); // 🚀 NUEVO ESTADO DE FOCO
     const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
@@ -162,19 +233,22 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
 const renderSearchBlock = (isDense: boolean = false) => (
         <div className={`relative flex-1 group min-w-0 ${isDense ? 'w-full' : 'w-full md:max-w-sm'}`}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
-            <input
-                type="text"
-                placeholder={isDense ? "Buscar repuesto, producto o marca..." : "Buscar producto..."}
-                value={props.search}
-                onChange={(e) => props.setSearch(e.target.value)}
-                className={`w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] pl-11 pr-4 py-2.5 text-sm font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-primary)] transition-all rounded-[var(--radius-search)]`}
-            />
-            {props.search && (
-                <button onClick={() => props.setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
-                    <X size={16} />
-                </button>
-            )}
-        </div>
+           <input
+                    type="text"
+                    placeholder={isDense ? "Buscar repuesto, producto o marca..." : "Buscar producto..."}
+                    value={props.search}
+                    onChange={(e) => props.setSearch(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    className={`w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] pl-11 pr-4 py-2.5 text-sm font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-primary)] transition-all rounded-[var(--radius-search)]`}
+                />
+                {props.search && (
+                    <button onClick={() => props.setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-primary)] transition-colors">
+                        <X size={16} />
+                    </button>
+                )}
+                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+            </div>
     );
 
     const IconsBlock = () => (
@@ -501,19 +575,28 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         </div>
                     </div>
 
-                {/* Buscador Desplegable */}
+              {/* Buscador Desplegable */}
                     <AnimatePresence>
                         {isMinimalSearchOpen && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex justify-center bg-[var(--store-bg)] border-t border-[var(--store-border)]/30">
-                                <div className="w-full max-w-2xl relative my-6 px-4">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={18} strokeWidth={1} />
-                                    <input
+                            <motion.div 
+                                initial={{ height: 0, opacity: 0 }} 
+                                animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: "visible" } }} 
+                                exit={{ height: 0, opacity: 0, overflow: "hidden" }} 
+                                style={{ overflow: "hidden" }}
+                                className="flex justify-center bg-[var(--store-bg)] border-t border-[var(--store-border)]/30"
+                            >
+                                <div className="w-full m-2 max-w-2xl relative my-6 px-1">
+                                    <Search className=" absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={18} strokeWidth={1} />
+                                   <input
                                         type="text"
                                         placeholder="Buscar piezas, colecciones o fragancias..."
                                         value={props.search}
                                         onChange={(e) => props.setSearch(e.target.value)}
-                                        className="w-full bg-transparent border-0 border-b-[length:var(--border-width-ui)] border-[var(--store-border)] py-4 pl-12 pr-4 text-base font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-0 focus:border-[var(--text-main)] transition-colors font-heading italic"
+                                        onFocus={() => setIsSearchFocused(true)}
+                                        onBlur={() => setIsSearchFocused(false)}
+                                        className="w-full bg-transparent border-0 border-b-[length:var(--border-width-ui)] border-[var(--store-border)] py-4 pl-12 pr-4 text-base font-medium text-[var(--store-text-main)]  placeholder:text-[var(--store-surface-text)] outline-none focus:ring-0 focus:border-[var(--text-main)] transition-colors font-heading italic"
                                     />
+                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                                 </div>
                             </motion.div>
                         )}
@@ -617,13 +700,16 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         <div className="hidden md:flex flex-1 max-w-md justify-center">
                             <div className="relative w-full max-w-sm group">
                                 <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
-                                <input
+                              <input
                                     type="text"
                                     placeholder="BUSCAR..."
                                     value={props.search}
                                     onChange={(e) => props.setSearch(e.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => setIsSearchFocused(false)}
                                     className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
                                 />
+                                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                                 {props.search && (
                                     <button onClick={() => props.setSearch("")} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
                                         <X size={14} />
@@ -642,13 +728,16 @@ const renderSearchBlock = (isDense: boolean = false) => (
                     <div className="px-4 pb-4 flex flex-col gap-2 md:hidden">
                         <div className="relative w-full group">
                             <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
-                            <input
-                                type="text"
-                                placeholder="BUSCAR..."
-                                value={props.search}
-                                onChange={(e) => props.setSearch(e.target.value)}
-                                className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
-                            />
+                       <input
+                                    type="text"
+                                    placeholder="BUSCAR..."
+                                    value={props.search}
+                                    onChange={(e) => props.setSearch(e.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => setIsSearchFocused(false)}
+                                    className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
+                                />
+                                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                         </div>
                     </div>
 
@@ -708,13 +797,16 @@ const renderSearchBlock = (isDense: boolean = false) => (
                             <div className="hidden md:flex flex-1 max-w-lg">
                                 <div className="relative w-full">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={16} />
-                                    <input
+                                 <input
                                         type="text"
-                                        placeholder="¿Qué se te antoja hoy?"
+                                        placeholder="Que estas buscando?"
                                         value={props.search}
                                         onChange={(e) => props.setSearch(e.target.value)}
-                                        className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
+                                        onFocus={() => setIsSearchFocused(true)}
+                                        onBlur={() => setIsSearchFocused(false)}
+                                        className="w-full  bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
                                     />
+                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                                 </div>
                             </div>
 
@@ -725,16 +817,17 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         <div className="block md:hidden w-full">
                             <div className="relative w-full">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} />
-                                <input
-                                    type="text"
-                                    placeholder="
-¿Qué se te antoja hoy?
-"
-                                    value={props.search}
-                                    onChange={(e) => props.setSearch(e.target.value)}
-                                    className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-10 pr-4 py-2 text-xs font-medium text-[var(--store-text-main)] outline-none"
-                                />
-                            </div>
+                             <input
+                                        type="text"
+                                        placeholder="¿Qué estas buscando?"
+                                        value={props.search}
+                                        onChange={(e) => props.setSearch(e.target.value)}
+                                        onFocus={() => setIsSearchFocused(true)}
+                                        onBlur={() => setIsSearchFocused(false)}
+                                        className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
+                                    />
+                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                                </div>
                         </div>
 
                         {/* Barra de Menú de Categorías (Píldoras) */}
@@ -809,11 +902,13 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         <div className="w-full md:flex-1">
                             <div className="relative w-full group">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2.5} />
-                                <input
+                              <input
                                     type="text"
                                     placeholder="Buscar modelo o especificación..."
                                     value={props.search}
                                     onChange={(e) => props.setSearch(e.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => setIsSearchFocused(false)}
                                     style={{ borderRadius: 'var(--radius-search)', borderWidth: 'var(--border-width-ui)' }}
                                     className="w-full bg-[var(--store-bg)] focus:bg-white border-[var(--store-border)] focus:border-[var(--store-primary)] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none transition-all shadow-[var(--shadow-ui)]"
                                 />
@@ -822,6 +917,7 @@ const renderSearchBlock = (isDense: boolean = false) => (
                                         <X size={16} strokeWidth={2.5} />
                                     </button>
                                 )}
+                                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                             </div>
                         </div>
 

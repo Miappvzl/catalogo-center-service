@@ -307,7 +307,7 @@ export default function CheckoutProcess({
                     const details = cust.shipping_details || {};
                     
                     // Inyección síncrona en el estado del checkout
-                    setClientData(prev => ({
+                    setClientData((prev: any) => ({
                         ...prev,
                         name: cust.full_name || prev.name,
                         phone: cust.phone || prev.phone,
@@ -417,21 +417,31 @@ export default function CheckoutProcess({
 
         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     };
-
-    // --- ESTADOS LOGÍSTICOS ---
-    const [clientData, setClientData] = useState({
-        name: "",
-        deliveryType: "pickup",
-        courier: "",
-        identityCard: "",
-        phone: "",
-        notes: "",
-        state: "",
-        city: "",
-        addressDetail: "",
-        reference: "",
-        fiscalAddress: "", // 🚀 NUEVO
+// --- ESTADOS LOGÍSTICOS ---
+    const [clientData, setClientData] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem(`pz_checkout_${storeId}`);
+            if (saved) return JSON.parse(saved);
+        }
+        return {
+            name: "",
+            deliveryType: "pickup",
+            courier: "",
+            identityCard: "",
+            phone: "",
+            notes: "",
+            state: "",
+            city: "",
+            addressDetail: "",
+            reference: "",
+            fiscalAddress: "",
+        };
     });
+
+    // 🚀 FASE 2: PERSISTENCIA ANTI-FRUSTRACIÓN (Guarda en caché en tiempo real)
+    useEffect(() => {
+        sessionStorage.setItem(`pz_checkout_${storeId}`, JSON.stringify(clientData));
+    }, [clientData, storeId]);
     // 🚀 NUEVO: LECTOR DEL PERFIL FISCAL (Gatekeeper de Negocio)
     const fiscalProfile = storeConfig?.fiscal_profile || "informal";
     const isStrictTax =
@@ -1027,9 +1037,8 @@ export default function CheckoutProcess({
                     console.error('Error descontando saldo (RPC):', rpcError);
                 }
             }
-
+sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
             clearCart();
-
             // 🚀 3. CONFIRMACIÓN FINAL SENSORIAL (Check verde en el botón)
             setCheckoutState('success');
             // 🚀 HÁPTICA: Doble pulso clásico de éxito (Corto, Pausa, Corto)
@@ -1079,6 +1088,7 @@ export default function CheckoutProcess({
                     console.error('Error descontando saldo en P2P (RPC):', rpcError);
                 }
             }
+          sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
             clearCart();
             const waLink = generateWaMessage(pfTransaction.orderNumber, true);
             onSuccess(pfTransaction.orderNumber, waLink, pfTransaction.orderId);

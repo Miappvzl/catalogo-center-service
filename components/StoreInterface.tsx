@@ -116,12 +116,17 @@ const CartHUDIndicator = () => {
   return (
     <AnimatePresence>
       {hudData.visible && (
-        <motion.div
+       <motion.div
           initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-none flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/80 backdrop-blur-2xl rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/10"
+          onClick={() => {
+              // 🚀 HUD TÁCTIL: Abre la bolsa y destruye el popup inmediatamente
+              document.dispatchEvent(new CustomEvent('toggleCartDrawer'));
+              setHudData({ visible: false, quantity: 0 });
+          }}
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-auto cursor-pointer hover:scale-105 active:scale-95 flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/90 backdrop-blur-2xl rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/20 transition-all"
         >
           <svg className="w-14 h-14 text-[var(--store-primary-text)] mb-2 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }} d="M20 6L9 17l-5-5" />
@@ -584,7 +589,8 @@ const [isStickyVisible, setIsStickyVisible] = useState(true)
         transition: { duration: 0.4, ease: "easeInOut", times: [0, 0.2, 0.6, 1] }
       });
     };
-    const handleFly = (e: any) => {
+  const handleFly = (e: any) => {
+      setIsStickyVisible(true); // 🚀 CABECERA MAGNÉTICA: Forzamos la cabecera a bajar para recibir la animación
       const targets = document.querySelectorAll('[data-cart-target="true"]');
       let destNode = targets[0];
       for (let i = 0; i < targets.length; i++) {

@@ -331,6 +331,24 @@ const LightboxViewer = ({
         </AnimatePresence>
     );
 };
+// 🚀 FASE 3: COMPONENTE MICRO-NUDGE DE INVENTARIO
+const StockNudge = ({ show, max }: { show: boolean, max: number }) => (
+    <AnimatePresence>
+        {show && (
+            <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute -top-14 left-4 md:left-6 z-[100] px-4 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] flex items-center gap-2 whitespace-nowrap border border-[var(--store-border)]"
+            >
+                <AlertCircle size={14} className="text-[var(--store-bg)]" />
+                <span className="text-[10px] font-bold tracking-wide">Límite alcanzado ({max} und)</span>
+            </motion.div>
+        )}
+    </AnimatePresence>
+)
+
+
 interface ProductModalProps {
     isOpen: boolean
     onClose: () => void
@@ -653,10 +671,23 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
     }, [currentMaxStock, quantity])
 
+    const [showStockNudge, setShowStockNudge] = useState(false);
+
     const increaseQty = () => {
-        if (quantity < currentMaxStock) setQuantity(prev => prev + 1)
+        if (quantity < currentMaxStock) {
+            setQuantity(prev => prev + 1);
+            setShowStockNudge(false);
+        } else if (currentMaxStock > 0) {
+            // 🚀 DISPARO DE FEEDBACK
+            setShowStockNudge(true);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([10, 30, 10]); // Háptica leve
+            setTimeout(() => setShowStockNudge(false), 2500);
+        }
     }
-    const decreaseQty = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
+    const decreaseQty = () => {
+        setQuantity(prev => (prev > 1 ? prev - 1 : 1));
+        setShowStockNudge(false);
+    }
 
     const handleAddToCart = async () => {
         // 🚀 VALIDACIONES CON FOCO MAGNÉTICO
@@ -1024,25 +1055,23 @@ Mi duda es la siguiente: `;
                                     )}
                                 </AnimatePresence>
 
-                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
-                                            <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
-                                            <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
-                                            <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
-                                        </div>
-
-                                        <motion.button
-                                            whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
-                                            onClick={handleAddToCart}
-                                            disabled={isCompletelyOutOfStock || isAdding}
-                                            className={`flex-1 h-[46px] rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-text-main)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 border-neutral-200 cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-transparent text-[var(--store-text-main)]' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:bg-transparent hover:text-[var(--store-text-main)]'}`}
-                                        >
-                                            <AnimatePresence mode="wait">
-                                                {isAdding ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Loader2 size={16} className="animate-spin" /></motion.div> : <motion.span key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2"><ShoppingBag size={16} strokeWidth={1.5} className="mb-0.5" /> {buttonText === 'Agregar' ? 'Añadir a la bolsa' : buttonText}</motion.span>}
-                                            </AnimatePresence>
-                                        </motion.button>
+                           <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                    <StockNudge show={showStockNudge} max={currentMaxStock} />
+                                    <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
+                                        <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
+                                    <motion.button
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
+                                        onClick={handleAddToCart}
+                                        disabled={isCompletelyOutOfStock || isAdding}
+                                        className={`flex-1 h-[46px] rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-text-main)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 border-neutral-200 cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-transparent text-[var(--store-text-main)]' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:bg-transparent hover:text-[var(--store-text-main)]'}`}
+                                    >
+                                        <AnimatePresence mode="wait">
+                                            {isAdding ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Loader2 size={16} className="animate-spin" /></motion.div> : <motion.span key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2"><ShoppingBag size={16} strokeWidth={1.5} className="mb-0.5" /> {buttonText === 'Agregar' ? 'Añadir a la bolsa' : buttonText}</motion.span>}
+                                        </AnimatePresence>
+                                    </motion.button>
                                 </div>
                             </motion.div>
                         </div >
@@ -1213,8 +1242,8 @@ Mi duda es la siguiente: `;
                                                                     }}
                                                                     disabled={!c.isAvailable}
                                                                     className={`relative flex items-center justify-center transition-all overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                            ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
-                                                                            : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
+                                                                        ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
+                                                                        : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
                                                                         } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                                                                     style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
                                                                     title={c.name}
@@ -1335,20 +1364,19 @@ Mi duda es la siguiente: `;
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-
-                                {/* FOOTER CLEAN LOOK DE COMPRA */}
-                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
-                                    <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-full bg-transparent">
+                               <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                    <StockNudge show={showStockNudge} max={currentMaxStock} />
+                                    <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-[var(--radius-btn)] h-12 bg-transparent mt-1">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
                                         <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
 
                                     <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-full font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
+                                        className={`flex-1 h-12  rounded-[var(--radius-btn)] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
                                     >
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + LLEVAR ]</>}
                                     </motion.button>
@@ -1612,23 +1640,23 @@ Mi duda es la siguiente: `;
                                     )}
                                 </AnimatePresence>
 
-                                {/* FOOTER GASTRONÓMICO CON STEPPER TÁCTIL */}
-                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                              <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                    <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
                                         <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
                                     </div>
-
                                     <motion.button
                                         whileTap={{ scale: 0.96 }}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-full font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[var(--shadow-ui)] active:scale-95 ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
                                     >
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
                                     </motion.button>
                                 </div>
+                              
                             </motion.div>
                         </div>
                     )}
@@ -1648,11 +1676,11 @@ Mi duda es la siguiente: `;
         );
     }
 
-// =========================================================================
+    // =========================================================================
     // 💻 VARIANTE: TEMA 6 (MODULAR TECH / BENTO GRID MODAL)
     // =========================================================================
     if (activeTheme.layout?.card_style === 'modular_tech') {
-        
+
         // 🚀 THE SPEC-SHEET PARSER: Transforma texto con "X: Y" en una cuadrícula técnica
         const rawDescription = product?.description || '';
         const specLines = rawDescription.split('\n').filter((l: string) => l.trim() !== '');
@@ -1666,7 +1694,7 @@ Mi duda es la siguiente: `;
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3 } }} exit={{ opacity: 0 }} className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity ${isHiding ? 'opacity-0' : 'opacity-100'}`} onClick={onClose} />
 
                             <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`relative bg-[var(--store-bg)] w-full md:w-[680px] lg:w-[900px] h-[98vh] md:h-full md:rounded-l-[2rem] rounded-t-[2rem] flex flex-col md:flex-row overflow-hidden shadow-2xl border-l border-[var(--store-border)]/50 will-change-transform ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                                
+
                                 <button onClick={onClose} className="absolute top-4 right-4 z-50 p-2.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 rounded-full hover:bg-[var(--store-border)]/20 transition-all text-[var(--store-text-main)] shadow-sm active:scale-95">
                                     <X size={18} strokeWidth={2.5} />
                                 </button>
@@ -1675,9 +1703,9 @@ Mi duda es la siguiente: `;
                                 </button>
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[100px] md:pb-0 no-scrollbar">
-                                    
+
                                     {/* 1. STUDIO GALLERY (Fondo neutral técnico) */}
-                                    <div 
+                                    <div
                                         className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-[45%] bg-[var(--store-surface)]/30 relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/40 shrink-0 group overflow-hidden cursor-zoom-in"
                                         onMouseMove={handleZoomMove} onMouseEnter={handleZoomEnter} onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))} onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
                                     >
@@ -1693,11 +1721,11 @@ Mi duda es la siguiente: `;
                                         {currentGallery.length > 1 && (
                                             <div className="absolute bottom-6 w-full flex justify-center z-30">
                                                 <div className="flex items-center gap-1.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 px-3 py-2 rounded-full shadow-sm">
-                                                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronLeft size={16} strokeWidth={2.5}/></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronLeft size={16} strokeWidth={2.5} /></button>
                                                     <div className="flex gap-1.5 px-2 border-x border-[var(--store-border)]/40">
                                                         {currentGallery.map((_, idx) => (<div key={`tech-dot-${idx}`} className={`h-1.5 transition-all duration-300 rounded-full ${idx === galleryIndex ? 'bg-[var(--store-text-main)] w-3' : 'bg-[var(--store-border)] w-1.5'}`} />))}
                                                     </div>
-                                                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronRight size={16} strokeWidth={2.5}/></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronRight size={16} strokeWidth={2.5} /></button>
                                                 </div>
                                             </div>
                                         )}
@@ -1706,7 +1734,7 @@ Mi duda es la siguiente: `;
                                     {/* 2. SPEC SHEET PANEL */}
                                     <div className="w-full h-auto md:h-full md:w-[55%] flex flex-col relative bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-6 no-scrollbar pb-6 md:pb-[140px]">
-                                            
+
                                             {/* Header del Producto */}
                                             <div>
                                                 <div className="flex items-center gap-2 mb-2">
@@ -1725,7 +1753,7 @@ Mi duda es la siguiente: `;
                                                     <span className="text-4xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">${pricing.listPrice.toFixed(2)}</span>
                                                     {pricing.isPromo && <span className="text-sm font-medium text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">${pricing.compareAt.toFixed(2)}</span>}
                                                 </div>
-                                             <div className="mt-1 flex items-center justify-between border-b border-[var(--store-border)]/40 pb-5">
+                                                <div className="mt-1 flex items-center justify-between border-b border-[var(--store-border)]/40 pb-5">
                                                     <span className="text-xs font-medium text-[var(--store-surface-text)] tabular-nums tracking-wide">Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
                                                     {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
                                                         <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">+ ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA</span>
@@ -1771,7 +1799,7 @@ Mi duda es la siguiente: `;
                                                                 {selectedSize && currentMaxStock > 0 && <span className="text-[10px] font-medium text-[var(--store-surface-text)]">Stock: {currentMaxStock}</span>}
                                                             </div>
                                                             {!selectedColor ? (
-                                                                <div className="text-xs text-[var(--store-surface-text)] flex items-center gap-2 bg-[var(--store-surface)] p-3 rounded-lg border border-[var(--store-border)]/40"><AlertCircle size={14}/> Selecciona la configuración primero</div>
+                                                                <div className="text-xs text-[var(--store-surface-text)] flex items-center gap-2 bg-[var(--store-surface)] p-3 rounded-lg border border-[var(--store-border)]/40"><AlertCircle size={14} /> Selecciona la configuración primero</div>
                                                             ) : (
                                                                 <div className="flex flex-wrap gap-2.5">
                                                                     {availableSizes.map((v) => (
@@ -1791,11 +1819,11 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                          {/* 🚀 THE SPEC-SHEET PARSER (Lista Limpia sin Cajas) */}
+                                            {/* 🚀 THE SPEC-SHEET PARSER (Lista Limpia sin Cajas) */}
                                             {rawDescription && (
                                                 <div className="mt-8 pt-8 border-t border-[var(--store-border)]/30">
                                                     <h3 className="text-xl md:text-2xl font-black tracking-tight text-[var(--store-text-main)] mb-6">Especificaciones.</h3>
-                                                    
+
                                                     {hasSpecs ? (
                                                         <div className="flex flex-col gap-4">
                                                             {specLines.map((line: string, i: number) => {
@@ -1830,7 +1858,7 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                        {/* Bento Logística (Dinámico desde Base de Datos) */}
+                                            {/* Bento Logística (Dinámico desde Base de Datos) */}
                                             {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
                                                 <div className="mt-6 bg-[var(--store-surface)] border border-[var(--store-border)]/60 p-4 md:p-5 rounded-2xl flex flex-col gap-2 shadow-sm">
                                                     <div className="flex items-center gap-2 mb-1">
@@ -1851,7 +1879,7 @@ Mi duda es la siguiente: `;
                                 {/* 3. PROYECCIÓN DESKTOP & FIXED CHECKOUT BAR */}
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
-                                        <motion.div 
+                                        <motion.div
                                             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
                                             className="hidden md:block absolute inset-y-0 right-0 w-[55%] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
                                         >
@@ -1860,18 +1888,18 @@ Mi duda es la siguiente: `;
                                     )}
                                 </AnimatePresence>
 
-                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
-                                    <div className="flex items-center rounded-xl p-1 border border-[var(--store-border)]/60 bg-[var(--store-surface)] shadow-sm shrink-0">
-                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 rounded-lg flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Minus size={16} strokeWidth={2} /></button>
+                              <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                    <StockNudge show={showStockNudge} max={currentMaxStock} />
+                                    <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-surface)]">
+                                        <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Minus size={16} strokeWidth={2} /></button>
                                         <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 rounded-lg flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Plus size={16} strokeWidth={2} /></button>
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Plus size={16} strokeWidth={2} /></button>
                                     </div>
-
                                     <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed border border-neutral-300' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:opacity-90'}`}
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--shadow-ui)] hover:opacity-90'}`}
                                     >
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingCart size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR' : buttonText}</>}
                                     </motion.button>
@@ -2292,27 +2320,28 @@ Mi duda es la siguiente: `;
                                 )}
                             </AnimatePresence>
 
-                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                           <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                <StockNudge show={showStockNudge} max={currentMaxStock} />
                                 <div className="flex gap-3 md:gap-4">
                                     <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-bg)]/50">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Minus size={16} strokeWidth={2.5} />
                                         </button>
                                         <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
-                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || quantity >= currentMaxStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
+                                        <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Plus size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
 
                                     <motion.button
-                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.95 } : {}}
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
                                         className={`flex-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
                                             ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
                                             : (variants.length > 0 && (!selectedColor || !selectedSize))
                                                 ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
-                                                : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-lg shadow-[var(--store-primary)]/20'
+                                                : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--store-primary)]/20'
                                             }`}
                                     >
                                         <AnimatePresence mode="wait">
