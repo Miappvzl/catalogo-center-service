@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap } from 'lucide-react'
+import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap, ArrowRight } from 'lucide-react'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
@@ -354,7 +354,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
             exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
             layout
-            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : activeTheme.layout?.card_style === 'modular_tech' ? 'bottom-5 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
+    className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
         >
             {activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
@@ -459,45 +459,68 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
            
 
 
-           ) : activeTheme.layout?.card_style === 'modular_tech' ? (
-                /* 🛸 VARIANTE TECH: "El Terminal Flotante" (Modular Tech) */
-                <div className="w-full backdrop-blur-3xl bg-[var(--store-surface)]/80 border border-[var(--store-border)]/40 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.2)] flex items-stretch p-1.5 h-[68px]">
+        ) : activeTheme.layout?.card_style === 'modular_tech' ? (
+                /* ⚡ VARIANTE MODULAR TECH: Consola Táctica de Checkout (Clean CRO) */
+                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] shadow-[0_-8px_25px_rgba(0,0,0,0.04)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                     {items.length > 0 ? (
-                        <>
-                            <div className="flex flex-col justify-center px-4 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
-                                <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total</span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-lg font-black text-[var(--store-text-main)] leading-none tracking-tight">
-                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                        <div className="flex items-center justify-between gap-4">
+                            {/* Telemetría Financiera Alineada con Notificación Pip */}
+                            <div 
+                                className="flex flex-col justify-center min-w-0 flex-1 cursor-pointer select-none" 
+                                onClick={() => setIsOpen(true)}
+                            >
+                                <div className="flex items-center">
+                                    <div className="relative inline-flex items-center">
+                                        <span className="text-2xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                                            {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                        </span>
+                                        {/* Círculo de Notificación en la esquina del precio */}
+                                        <span className="absolute -top-1.5 -right-4.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-mono font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                                            {totalItemsCount}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none tabular-nums">
+                                        Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
+                                    {step1FxSavings > 0 && (
+                                        <span className="text-[9px] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-wider leading-none">
+                                            -${step1FxSavings.toFixed(2)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* Botón Compacto de Conversión */}
                             <motion.button 
-                                whileTap={{ scale: 0.96 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setIsOpen(true)} 
-                                className="px-5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[1.5rem] flex items-center justify-center gap-1.5 shadow-md hover:opacity-90 transition-opacity"
+                                className="h-11 px-5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0"
                             >
-                                <ShoppingBag size={16} strokeWidth={2} />
-                                <span className="font-bold text-[10px] uppercase tracking-wider">Bolsa</span>
-                                <div className="ml-1 bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">
-                                    {totalItemsCount}
-                                </div>
+                                <span>PAGAR</span>
+                                <ArrowRight size={14} strokeWidth={2.5} />
                             </motion.button>
-                        </>
+                        </div>
                     ) : (
-                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
-                            <div className="flex flex-col justify-center px-5 flex-1">
-                                <span className="text-[9px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
-                                <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">
-                                    Orden #{generatedOrderNumber}
+                        <div 
+                            className="flex items-center justify-between w-full cursor-pointer select-none gap-3" 
+                            onClick={() => setIsOpen(true)}
+                        >
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className="text-[9px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest leading-none mb-1">
+                                    [ PENDIENTE ]
+                                </span>
+                                <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate leading-none">
+                                    Pedido #{generatedOrderNumber}
                                 </span>
                             </div>
                             <motion.button 
-                                whileTap={{ scale: 0.96 }} 
-                                className="px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[1.5rem] flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-opacity"
+                                whileTap={{ scale: 0.95 }} 
+                                className="h-10 px-4 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider shadow-sm shrink-0"
                             >
-                                <MessageCircle size={16} strokeWidth={2} />
-                                <span className="font-bold text-[10px] uppercase tracking-wider">Enviar</span>
+                                <MessageCircle size={14} strokeWidth={2.5} />
+                                <span>ENVIAR</span>
                             </motion.button>
                         </div>
                     )}

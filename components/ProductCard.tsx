@@ -581,10 +581,10 @@ function ProductCardComponent({
         {/* BOTÓN CIRCULAR DE ACCIÓN ABSOLUTO */}
         <button 
           disabled={isOutOfStock} 
-          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90 ${isOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-bg)]  text-[var(--store-primary-text)]  hover:scale-105 shadow-[var(--store-primary)]/20' }`}
+          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90 ${isOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-bg)]  text-[var(--store-primary-text)]  hover:scale-105 shadow-[var(--store-primary)]/20' }`}
           aria-label="Añadir al Carrito"
         >
-          {isOutOfStock ? <X size={16} strokeWidth={3}/> : <Plus size={20} strokeWidth={3}/>}
+          {isOutOfStock ? <X size={14} strokeWidth={2.5}/> : <Plus size={18} strokeWidth={2.5}/>}
         </button>
       </div>
     );

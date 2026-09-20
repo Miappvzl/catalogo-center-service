@@ -1441,7 +1441,7 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                         layout
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         className={`relative bg-white overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 ${viewport === 'mobile'
-                            ? 'w-full max-w-[375px] h-[812px] rounded-[3.5rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50'
+                            ? 'w-full max-w-[375px] h-[812px] rounded-[2.3rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50'
                             : 'w-full max-w-[1024px] h-[720px] rounded-2xl border border-neutral-200/60'
                             }`}
                     >
