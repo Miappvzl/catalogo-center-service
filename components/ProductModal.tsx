@@ -2339,7 +2339,7 @@ Mi duda es la siguiente: `;
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
+                                        className={`flex-1 rounded-[var(--radius-btn)] border border-[var(--store-border)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
                                             ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
                                             : (variants.length > 0 && (!selectedColor || !selectedSize))
                                                 ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'

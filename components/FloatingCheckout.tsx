@@ -983,7 +983,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     </div>
                                                 <button 
                                                     onClick={() => changeStep(2)} 
-                                                    className="w-full bg-[var(--store-text-main)] text-[var(--store-bg)] h-12 px-6 rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[var(--store-border)]/40 shadow-sm"
+                                                    className="w-full bg-[var(--store-primary)] text-[var(--store-bg)] h-12 px-6 rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[var(--store-border)]/40 shadow-sm"
                                                 >
                                                     <span>IR AL CHECKOUT</span>
                                                     <ChevronRight size={15} strokeWidth={2.5} />
