@@ -606,7 +606,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                     </span>
                                 </div>
                             </motion.div>
-                            <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
+                            <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
                                 Pagar
                             </button>
                         </>
