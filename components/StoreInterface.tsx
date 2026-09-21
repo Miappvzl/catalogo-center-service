@@ -1687,7 +1687,7 @@ useEffect(() => {
  hover:border-[var(--store-text-main)]/30 hover:shadow-md transition-all active:scale-95 group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="bg-[var(--store-bg)] p-2.5 rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] transition-colors">
+                      <div className="bg-[var(--store-bg)] p-2.5 rounded-full text-[var(--store-text-main)] border border-[var(--store-border)]/50 group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] transition-colors">
                         <FileText size={18} strokeWidth={2} />
                       </div>
                       <div className="flex flex-col">

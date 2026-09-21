@@ -254,28 +254,28 @@ const renderSearchBlock = (isDense: boolean = false) => (
     const IconsBlock = () => (
         <div className="flex items-center gap-1">
             {/* Perfil - Siempre visible */}
-            <button onClick={props.onProfileClick} className="relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300 active:scale-95">
+            <button onClick={props.onProfileClick} className="relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
                 <UserCircle size={24} strokeWidth={1.5} />
             </button>
             
             {/* Mis Pedidos - Oculto en Mobile (Se mueve al menú hamburguesa si aplica) */}
             {props.orderHistory && props.orderHistory.length > 0 && (
-                <button onClick={() => props.setIsHistoryModalOpen(true)} className="hidden md:flex relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300 active:scale-95">
+                <button onClick={() => props.setIsHistoryModalOpen(true)} className="hidden md:flex relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
                     <Receipt size={24} strokeWidth={1.5} />
-                    <span className="absolute top-1 right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    <span className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                         {props.orderHistory.length}
                     </span>
                 </button>
             )}
             
             {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
-            <button data-cart-target="true" onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-primary)]' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
+            <button data-cart-target="true" onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
                 <motion.div animate={props.cartControls} className="inline-block origin-top">
                     <ShoppingCart size={24} strokeWidth={1.5} />
                 </motion.div>
                 <AnimatePresence>
                     {props.hasItems && (
-                        <motion.span key={props.totalItems} initial={{ scale: 0, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="absolute top-1 right-1 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                        <motion.span key={props.totalItems} initial={{ scale: 0, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                             {props.totalItems}
                         </motion.span>
                     )}

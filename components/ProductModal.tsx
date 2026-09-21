@@ -1181,7 +1181,7 @@ Mi duda es la siguiente: `;
 
                                                 <div className="flex items-baseline gap-4 mt-5">
                                                     {pricing.isPromo && (
-                                                        <span className="text-sm font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
+                                                        <span className="text-[1rem] font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
                                                             ${pricing.compareAt.toFixed(2)}
                                                         </span>
                                                     )}
@@ -1190,13 +1190,13 @@ Mi duda es la siguiente: `;
                                                     </span>
                                                 </div>
                                                 <div className="mt-2">
-                                                    <span className="text-[0.9rem] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
+                                                    <span className="text-[1.2rem] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
                                                         Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
                                                     </span>
                                                 </div>
 
                                                 {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <div className="mt-3 inline-flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
+                                                    <div className="mt-3 inline-flex items-center gap-1.5 text-[0.81rem] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
                                                         <Flame size={12} className="fill-current shrink-0" /> PAGA EN USD: ${pricing.cashPrice.toFixed(2)}
                                                     </div>
                                                 )}

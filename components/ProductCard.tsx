@@ -383,13 +383,13 @@ function ProductCardComponent({
           </div>
 
         <div className="mt-auto pt-2 flex flex-col items-start gap-1">
-  <span className="text-[0.82rem] font-mono text-[var(--store-surface-text)] leading-none tabular-nums tracking-widest">
+  <span className="text-[0.83rem] font-mono text-[var(--store-surface-text)] leading-none tabular-nums tracking-widest">
     Bs {formattedBs}
   </span>
   
   {/* 🚀 INCENTIVO EN DIVISA: Uno debajo del otro, alineación limpia */}
   {penalty > 0 && !isOutOfStock && (
-    <span className="text-[0.65rem] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-[0.2em] leading-none">
+    <span className="text-[0.70rem] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-[0.2em] leading-none">
       PAGA EN USD: ${cashPrice.toFixed(2)}
     </span>
   )}

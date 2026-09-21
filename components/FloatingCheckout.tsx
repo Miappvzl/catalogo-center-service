@@ -598,29 +598,50 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                     </motion.div>
                 )}
             </AnimatePresence>
-            {/* CAJÓN PRINCIPAL */}
+         {/* CAJÓN PRINCIPAL */}
             <AnimatePresence>
                 {isOpen && (
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isWhatsAppInterception ? undefined : handleCloseModal} />
 
-                        <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden">
+                        {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
+                        <motion.div 
+                            variants={modalVariants} 
+                            initial="hidden" 
+                            animate="visible" 
+                            exit="exit" 
+                            className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden"
+                        >
 
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (
                                 <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]/30">
                                     <AnimatePresence mode="wait">
                                         {step === 1 ? (
+                                            /* 🚀 PASO 1: "Tu Bolsa" adopta 100% la fuente del tema activo */
                                             <motion.div key="header-1" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
-                                                <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Tu Bolsa</h2>
+                                                <h2 className={`text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'font-heading uppercase tracking-wider' : ''}`}>
+                                                    Tu Bolsa
+                                                </h2>
                                                 <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Revisa tus items antes de pagar</p>
                                             </motion.div>
                                         ) : (
+                                            /* 🚀 PASO 2: "Checkout" se aísla exclusivamente en Inter */
                                             <motion.div key="header-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex items-center gap-3">
                                                 <button onClick={() => changeStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
                                                 <div>
-                                                    <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none">Checkout</h2>
-                                                    <p className="text-xs text-[var(--store-surface-text)] font-medium mt-1">Completa tu envío y pago</p>
+                                                    <h2 
+                                                        style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                                                        className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none !normal-case"
+                                                    >
+                                                        Checkout
+                                                    </h2>
+                                                    <p 
+                                                        style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                                                        className="text-xs text-[var(--store-surface-text)] font-medium mt-1"
+                                                    >
+                                                        Completa tu envío y pago
+                                                    </p>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -880,7 +901,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                             <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)]/30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                                 <div className="flex justify-between items-end mb-4">
                                                     <div className="flex flex-col gap-1">
-                                                        <p className="text-xs font-bold text-[var(--store-surface-text)] uppercase tracking-widest">Total Final</p>
+                                                        <p className="font-bold text-[var(--store-text-main)] line-clamp-2  text-base uppercase tracking-wider font-heading leading-tight">Total Final</p>
                                                         
                                                         {/* 🚀 INYECCIÓN: INDICADOR DE IVA EN EL TOTAL DE LA BOLSA */}
                                                         {storeConfig?.show_tax_in_catalog && isStrictTax && step1TaxAmountUSD > 0 && (
@@ -900,19 +921,24 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => changeStep(2)} className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 border border-[var(--store-border)]">
+                                                <button onClick={() => changeStep(2)} className="w-full h-12 rounded-[var(--radius-btn)] font-mono text-[0.8rem] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90">
                                                     Ir al Checkout <ChevronRight size={16} />
                                                 </button>
                                             </div>
                                         </motion.div>
                                     )}
-
-                                    {/* --- PASO 2: CAJA REGISTRADORA (HIJO) --- */}
+{/* --- PASO 2: CAJA REGISTRADORA (HIJO - Aislamiento exclusivo de Checkout en Inter) --- */}
 
                                     {step === 2 && (
                                         <motion.div
                                             key="step-2" custom={direction} variants={walletVariants} initial="initial" animate="animate" exit="exit"
-                                            // 🚀 El padre solo anima y corta (overflow-hidden)
+                                            style={{
+                                                '--font-heading': 'var(--font-inter), system-ui, -apple-system, sans-serif',
+                                                '--font-price': 'var(--font-inter), system-ui, -apple-system, sans-serif',
+                                                '--font-body': 'var(--font-inter), system-ui, -apple-system, sans-serif',
+                                                '--font-mono': 'var(--font-inter), system-ui, -apple-system, sans-serif',
+                                                fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif'
+                                            } as React.CSSProperties}
                                             className="absolute inset-0 flex flex-col h-full bg-[var(--store-surface)] w-full z-20 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)] overflow-hidden"
                                         >
                                             {/* 🚀 DELEGAMOS EL SCROLL A FRAMER MOTION */}

@@ -678,13 +678,12 @@ export default function CheckoutProcess({
             splitPayments.map((p) => (p.id === id ? { ...p, receiptFile: file } : p)),
         );
     };
-    // 🚀 ESTÉTICA BRUTALISTA / NEO-EDITORIAL PARA LOS MÉTODOS
+// 🚀 MATRIZ DE CONTRASTE ABSOLUTO: Inmune a primarios blancos o transparentes
     const getPaymentConfig = (pm: string) => {
         const baseSelected =
-            "bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-md transition-all";
+            "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl shadow-sm scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
         const baseIdle =
-            "bg-transparent text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all";
-
+            "bg-[var(--store-surface)] text-[var(--store-text-main)] border-2 border-[var(--store-border)] hover:border-[var(--store-text-main)]/60 hover:bg-[var(--store-text-main)]/[0.02] rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]";
         switch (pm) {
             case "Transferencia":
                 return {
@@ -1123,27 +1122,25 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
         enter: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: -20 },
     };
-
-    return (
+return (
         <motion.div
             key="step-2"
             variants={stepVariants}
             initial="hidden"
             animate="enter"
             exit="exit"
-            className="flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)]"
+            className="checkout-typography-lock flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)] antialiased"
         >
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
-                <div id="field-name" className="w-full">
+             <div id="field-name" className="w-full">
                     <input
                         maxLength={50}
                         value={clientData.name}
                         onChange={(e) => {
                             setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, "") });
-                            // 🚀 Limpieza en tiempo real
                             if (errors.name) setErrors(prev => ({ ...prev, name: "" }));
                         }}
-                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
                         placeholder="Nombre completo *"
                     />
                     <AnimatePresence>
@@ -1151,16 +1148,15 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                     </AnimatePresence>
                 </div>
 
-                <div id="field-phone" className="w-full">
+              <div id="field-phone" className="w-full">
                     <input
                         maxLength={20}
                         value={clientData.phone}
                         onChange={(e) => {
                             setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, "") });
-                            // 🚀 Limpieza en tiempo real
                             if (errors.phone) setErrors(prev => ({ ...prev, phone: "" }));
                         }}
-                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
                         placeholder="Teléfono / WhatsApp *"
                     />
                     <AnimatePresence>
@@ -1266,7 +1262,7 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                         <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
                             Entrega
                         </h2>
-                        {/* 🚀 TARJETAS TÁCTILES (Radio Cards con Checkmark Animado) */}
+                      {/* 🚀 TARJETAS TÁCTILES CON LÍNEAS VISIBLES Y ESTADOS CLAROS */}
                         <div className="grid grid-cols-1 gap-3" id="field-deliveryType">
                             {shipping.methods?.pickup && (
                                 <div
@@ -1277,16 +1273,18 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                             addressDetail: "",
                                         });
                                         setSelectedDeliveryZone("");
-                                        // 🚀 EXORCISMO DE FANTASMAS: Limpiamos errores de otras pestañas
                                         setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
                                     }}
-                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "pickup" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
+                                        clientData.deliveryType === "pickup" 
+                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
+                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                    }`}
                                 >
-                                    {/* 🚀 TACTILE CHECKMARK POP */}
                                     <AnimatePresence>
                                         {clientData.deliveryType === "pickup" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
-                                                <Check size={12} strokeWidth={3} />
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
+                                                <Check size={12} strokeWidth={3.5} />
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1310,16 +1308,18 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                             deliveryType: "local_delivery",
                                             addressDetail: "",
                                         });
-                                        // 🚀 EXORCISMO DE FANTASMAS
                                         setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
                                     }}
-                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "local_delivery" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
+                                        clientData.deliveryType === "local_delivery" 
+                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
+                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                    }`}
                                 >
-                                    {/* 🚀 TACTILE CHECKMARK POP */}
                                     <AnimatePresence>
                                         {clientData.deliveryType === "local_delivery" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
-                                                <Check size={12} strokeWidth={3} />
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
+                                                <Check size={12} strokeWidth={3.5} />
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1344,16 +1344,18 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                             addressDetail: "",
                                         });
                                         setSelectedDeliveryZone("");
-                                        // 🚀 EXORCISMO DE FANTASMAS
                                         setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
                                     }}
-                                    className={`relative cursor-pointer p-5 rounded-md transition-all flex items-start gap-4 border ${clientData.deliveryType === "courier" ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
+                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
+                                        clientData.deliveryType === "courier" 
+                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
+                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                    }`}
                                 >
-                                    {/* 🚀 TACTILE CHECKMARK POP */}
                                     <AnimatePresence>
                                         {clientData.deliveryType === "courier" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2 -right-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-full p-1 shadow-md z-10">
-                                                <Check size={12} strokeWidth={3} />
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
+                                                <Check size={12} strokeWidth={3.5} />
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1370,7 +1372,7 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                             )}
                         </div>
 
-                        {/* Sub-opciones de Logística (Naked Inputs) */}
+                       {/* Sub-opciones de Retiro (Tarjetas estructuradas con indicador óptico) */}
                         {clientData.deliveryType === "pickup" && (
                             <div id="field-pickup" className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
                                 <div>
@@ -1378,90 +1380,87 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                         ¿Dónde lo buscas? *
                                     </label>
                                     <AnimatePresence>
-                                        {errors.pickup && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.pickup}</motion.p>}
+                                        {errors.pickup && (
+                                            <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">
+                                                {errors.pickup}
+                                            </motion.p>
+                                        )}
                                     </AnimatePresence>
                                 </div>
-                                <div className={`grid gap-3 p-1 rounded-lg transition-colors ${errors.pickup ? 'bg-red-50/30 ring-1 ring-red-500/50' : ''}`}>
-                                    {shipping.main_address && (
-                                        <label
-                                            className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === shipping.main_address ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="pickupLocation"
-                                                className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                checked={
-                                                    clientData.addressDetail === shipping.main_address
-                                                }
-                                                onChange={() => {
+
+                                <div className={`grid gap-3 transition-colors ${errors.pickup ? 'p-1 rounded-xl bg-red-50/10 border-2 border-red-500/60' : ''}`}>
+                                    {shipping.main_address && (() => {
+                                        const isSelected = clientData.addressDetail === shipping.main_address;
+                                        return (
+                                            <div
+                                                onClick={() => {
                                                     setClientData({
                                                         ...clientData,
                                                         addressDetail: shipping.main_address,
                                                     });
-                                                    // 🚀 Limpieza instantánea al seleccionar
                                                     if (errors.pickup) setErrors(prev => ({ ...prev, pickup: "" }));
                                                 }}
-                                            />
-                                            <div>
-                                                <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
-                                                    Tienda Física
-                                                </p>
-                                                <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
-                                                    {shipping.main_address}
-                                                </p>
+                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${
+                                                    isSelected 
+                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]" 
+                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                                }`}
+                                            >
+                                                {/* Indicador Óptico Custom (Cero Radios Nativos Deformes) */}
+                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
+                                                    isSelected 
+                                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]" 
+                                                        : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
+                                                }`}>
+                                                    {isSelected && <div className="w-2 h-2 rounded-full bg-[var(--store-surface)]" />}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-sm text-[var(--store-text-main)] leading-tight">
+                                                        Tienda Física
+                                                    </p>
+                                                    <p className="text-xs font-medium text-[var(--store-surface-text)] mt-1 leading-relaxed">
+                                                        {shipping.main_address}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </label>
-                                    )}
-                                    {shipping.pickup_locations?.map((loc: string, idx: number) => (
-                                        <label
-                                            key={idx}
-                                            className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="pickupLocation"
-                                                className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                checked={clientData.addressDetail === loc}
-                                                onChange={() => {
+                                        );
+                                    })()}
+
+                                    {shipping.pickup_locations?.map((loc: string, idx: number) => {
+                                        const isSelected = clientData.addressDetail === loc;
+                                        return (
+                                            <div
+                                                key={idx}
+                                                onClick={() => {
                                                     setClientData({ ...clientData, addressDetail: loc });
-                                                    // 🚀 Limpieza instantánea al seleccionar
                                                     if (errors.pickup) setErrors(prev => ({ ...prev, pickup: "" }));
                                                 }}
-                                            />
-                                            <div>
-                                                <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
-                                                    Punto de Entrega
-                                                </p>
-                                                <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
-                                                    {loc}
-                                                </p>
+                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${
+                                                    isSelected 
+                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]" 
+                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                                }`}
+                                            >
+                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
+                                                    isSelected 
+                                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]" 
+                                                        : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
+                                                }`}>
+                                                    {isSelected && <div className="w-2 h-2 rounded-full bg-[var(--store-surface)]" />}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-sm text-[var(--store-text-main)] leading-tight">
+                                                        Punto de Entrega
+                                                    </p>
+                                                    <p className="text-xs font-medium text-[var(--store-surface-text)] mt-1 leading-relaxed">
+                                                        {loc}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </label>
-                                    ))}
-                                    {shipping.pickup_locations?.map((loc: string, idx: number) => (
-                                        <label
-                                            key={idx}
-                                            className={`flex items-start gap-3 p-4 rounded-md cursor-pointer transition-all border ${clientData.addressDetail === loc ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)]" : "border-[var(--store-border)] hover:border-[var(--store-border)]"}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="pickupLocation"
-                                                className="mt-0.5 accent-[var(--store-primary)] w-4 h-4 border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                checked={clientData.addressDetail === loc}
-                                                onChange={() =>
-                                                    setClientData({ ...clientData, addressDetail: loc })
-                                                }
-                                            />
-                                            <div>
-                                                <p className="font-bold text-sm text-[var(--store-text-main)] leading-none">
-                                                    Punto de Entrega
-                                                </p>
-                                                <p className="text-xs text-[var(--store-surface-text)] mt-1.5">
-                                                    {loc}
-                                                </p>
-                                            </div>
-                                        </label>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -1476,18 +1475,23 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                         {errors.deliveryZone && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.deliveryZone}</motion.p>}
                                     </AnimatePresence>
 
-                                    <div className="grid grid-cols-1 gap-3">
+                                  <div className="grid grid-cols-1 gap-3">
                                         {deliveryZones.map((z: any) => (
                                             <button
                                                 key={z.id}
+                                                type="button"
                                                 onClick={() => {
                                                     setSelectedDeliveryZone(z.id);
                                                     if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
                                                 }}
-                                                className={`flex justify-between items-center px-5 py-4 rounded-md transition-all border ${selectedDeliveryZone === z.id ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]" : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-border)]"} ${errors.deliveryZone && !selectedDeliveryZone ? 'border-red-500/50 bg-red-50/10' : ''}`}
+                                                className={`flex justify-between items-center px-5 py-4 rounded-xl transition-all duration-150 shadow-none font-bold ${
+                                                    selectedDeliveryZone === z.id 
+                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]" 
+                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                } ${errors.deliveryZone && !selectedDeliveryZone ? '!border-red-500/80 bg-red-50/10' : ''}`}
                                             >
-                                                <span className="font-bold text-sm">{z.name}</span>
-                                                <span className="font-black text-sm">
+                                                <span className="text-sm">{z.name}</span>
+                                                <span className="font-black text-sm text-[var(--store-text-main)]">
                                                     +{currencySymbol}{Number(z.cost).toFixed(2)}
                                                 </span>
                                             </button>
@@ -1533,7 +1537,7 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                         {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
                                     </AnimatePresence>
 
-                                    <div className="grid grid-cols-3 gap-3">
+                                 <div className="grid grid-cols-3 gap-3">
                                         {activeCouriers.map((c) => {
                                             const LogoComponent = CourierLogos[c];
                                             const isSelected = clientData.courier === c;
@@ -1541,14 +1545,16 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                             return (
                                                 <button
                                                     key={c}
+                                                    type="button"
                                                     onClick={() => {
                                                         setClientData({ ...clientData, courier: c });
                                                         if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
                                                     }}
-                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-md transition-all border group ${isSelected
-                                                        ? "border-[var(--store-primary)] ring-[var(--store-primary)] ring-1 bg-[var(--store-bg)] text-[var(--store-text-main)]"
-                                                        : "border-[var(--store-border)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)] hover:text-[var(--store-text-main)]"
-                                                        } ${errors.courier && !isSelected ? 'border-red-500/50 bg-red-50/10' : ''}`}
+                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${
+                                                        isSelected
+                                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
+                                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                    } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
                                                 >
                                                     {LogoComponent && (
                                                         <div className="h-6 w-full flex items-center justify-center px-4">
@@ -1861,9 +1867,11 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                             </motion.p>
                                         )}
                                     </AnimatePresence>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
                                         {activePaymentMethods.map((pm) => {
                                             const config = getPaymentConfig(pm);
+                                            const isSelected = activePaymentInput === pm;
+
                                             return (
                                                 <button
                                                     key={pm}
@@ -1872,14 +1880,14 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                                         openPaymentInput(pm);
                                                         if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
                                                     }}
-                                                    className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-md transition-all duration-200 active:scale-[0.98] ${activePaymentInput === pm ? config.btnSelected : config.btnIdle} ${errors.payment && !activePaymentInput ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
+                                                    className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
                                                 >
                                                     <config.icon
                                                         size={20}
                                                         className={
-                                                            activePaymentInput === pm
-                                                                ? "text-[var(--store-primary-text)]"
-                                                                : errors.payment && !activePaymentInput ? "text-red-500" : "text-[var(--store-text-main)]"
+                                                            isSelected
+                                                                ? "text-[var(--store-surface)]"
+                                                                : errors.payment && !isSelected ? "text-red-500" : "text-[var(--store-text-main)]"
                                                         }
                                                     />{" "}
                                                     {pm}
@@ -2240,11 +2248,11 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                                         })()
                                                     )}
 
-                                                    {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
+                                              {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
                                                     {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                        <div className="text-[var(--store-text-main)] border border-[var(--store-border)] hover:border-[var(--store-primary)] rounded-md transition-all rounded-2xl p-5  shadow-[0_4px_20px_rgb(0,0,0,0.02)] mt-4 animate-in fade-in">
-                                                            <div className="flex justify-between items-center mb-3">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-text-main)]">
+                                                        <div className="bg-[var(--store-surface)] border-2 border-[var(--store-border)] rounded-xl p-4.5 shadow-none mt-4 animate-in fade-in">
+                                                            <div className="flex justify-between items-center mb-2.5">
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">
                                                                     {activePaymentInput === 'Efectivo' ? 'Instrucciones de Pago' : 'Datos para Transferir'}
                                                                 </span>
 
@@ -2252,14 +2260,14 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || "")}
-                                                                        className="text-[var(--store-text-main)] hover:text-black transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                                                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60 transition-all active:scale-95 text-[10px] font-mono font-bold uppercase shadow-none"
                                                                     >
-                                                                        {copied ? <Check size={12} /> : <Copy size={12} />}
-                                                                        {copied ? "Copiado" : "Copiar"}
+                                                                        {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                                        <span>{copied ? "Copiado" : "Copiar"}</span>
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                            <p className="text-sm font-medium 0412-9684050, V23719137, BANCRECER leading-relaxed whitespace-pre-wrap">
+                                                         <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
                                                                 {payments[paymentKeysMap[activePaymentInput]]?.details}
                                                             </p>
                                                         </div>
@@ -2375,11 +2383,11 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                         </AnimatePresence>
                     </div>
 
-                    {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
+                 {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
                     {availableCredit > 0 && (
-                        <div className="flex items-center justify-between p-4 bg-gray-50 border border-[var(--store-border)] rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)] transition-colors" onClick={() => setApplyCredit(!applyCredit)}>
+                        <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
                             <div className="flex items-center gap-3">
-                                <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`}>
+                                <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60'}`}>
                                     <Wallet size={18} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex flex-col">
@@ -2387,8 +2395,8 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                                     <span className="text-[11px] font-bold text-[var(--store-surface-text)]">Disponible: ${availableCredit.toFixed(2)}</span>
                                 </div>
                             </div>
-                            <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-gray-300'}`}>
-                                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
+                            <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-[var(--store-border)]'}`}>
+                                <div className={`w-4 h-4 bg-[var(--store-surface)] rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
                             </div>
                         </div>
                     )}
@@ -2400,40 +2408,40 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
             {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
             <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
-                    {/* Total a la izquierda */}
-                    <div className="flex flex-col shrink-0">
-                        <span className={`uppercase leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-mono font-bold text-[var(--store-surface-text)] tracking-[0.2em] mb-1' : 'text-[9px] font-black text-[var(--store-surface-text)] tracking-widest mb-1.5'}`}>
+                {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
+                    <div 
+                        className="flex flex-col shrink-0" 
+                        style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                    >
+                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
                             Total Final
                         </span>
                         <div className="flex items-end gap-2">
-                            <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'text-3xl font-mono font-bold text-[var(--store-text-main)] tracking-widest' : 'text-2xl md:text-3xl font-black text-[var(--store-text-main)] tracking-tighter'}`}>
-                                {currencySymbol}
-                                {grandTotalUSD.toFixed(2)}
+                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                                {currencySymbol}{grandTotalUSD.toFixed(2)}
                             </span>
                         </div>
-                        <span className={`font-mono font-bold text-[var(--store-surface-text)] ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs tracking-widest mt-1' : 'text-[10px] mt-1.5'}`}>
-                            Bs{" "}
-                            {grandTotalBs.toLocaleString("es-VE", {
-                                maximumFractionDigits: 2,
-                            })}
+                        <span 
+                            style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                            className="text-[11px] font-bold text-[var(--store-surface-text)] mt-1.5 leading-none tabular-nums !normal-case"
+                        >
+                            Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
 
-
-                 {/* 🚀 EL MORPHING SUBMIT BUTTON (Aislado de Layout Thrashing) */}
+     {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
                     <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
                         <div className="w-full h-[52px] relative flex justify-end md:justify-center">
                             <motion.button
                                 layout
                                 onClick={handleCheckout}
-                                // 🚀 CORREGIDO: Bloqueo inteligente condicionado a isStoreCreditActive
                                 disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full uppercase transition-colors flex items-center justify-center gap-2 shadow-xl overflow-hidden relative z-10 ${activeTheme.layout?.card_style === 'brutalist' ? 'font-mono font-bold text-sm tracking-[0.2em] rounded-none border-2 border-black shadow-[4px_4px_0px_#000]' : activeTheme.layout?.card_style === 'modular_tech' ? 'font-bold text-xs md:text-sm tracking-wider rounded-2xl' : 'font-black text-xs md:text-sm tracking-widest rounded-full'} ${
+                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-text-main)] shadow-sm active:scale-[0.98] ${
                                     checkoutState !== 'idle'
-                                        ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-bg)] mx-auto shrink-0 shadow-black/10"
+                                        ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-surface)] mx-auto shrink-0"
                                         : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
-                                            ? "w-full bg-gray-100 text-gray-400 border  border-gray-200 cursor-not-allowed shadow-none" // ESTADO GRIS APAGADO
-                                            : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-[0.98] shadow-black/10"
+                                            ? "w-full bg-[var(--store-surface)] text-[var(--store-surface-text)] !border-[var(--store-border)] cursor-not-allowed opacity-50"
+                                            : "w-full bg-[var(--store-text-main)] text-[var(--store-surface)] hover:opacity-90"
                                 }`}
                             >
                                 <AnimatePresence mode="wait">
