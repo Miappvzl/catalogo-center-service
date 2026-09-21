@@ -2,7 +2,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
-import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X } from 'lucide-react'
+import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState, memo, useCallback } from 'react'
 
@@ -337,65 +337,90 @@ function ProductCardComponent({
             )}
           </div>
 
-        <button
-            onClick={handleToggleFav}
-            className={`absolute top-3 right-3 z-20 p-2 transition-colors duration-300 active:scale-90 ${
-              isFavorite
-                ? 'text-[var(--store-action-favorite)]'
-                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
-            }`}
-            aria-label="Favorito"
-          >
-            <Heart size={16} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
-          </button>
-          
-          {/* Quick Add Integrado de Alta Costura */}
-          {!isOutOfStock && (
-            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
-              <button className="w-full bg-[var(--store-text-main)] text-[var(--store-bg)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity">
-                [ + ADD TO BAG ]
+       <button
+                onClick={handleToggleFav}
+                className={`absolute top-3 right-3 z-20 p-2 transition-colors duration-300 active:scale-90 ${
+                  isFavorite
+                    ? 'text-[var(--store-action-favorite)]'
+                    : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
+                }`}
+                aria-label="Favorito"
+              >
+                <Heart size={16} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
               </button>
-            </div>
-          )}
-        </div>
 
-        {/* 2. FICHA TÉCNICA (Debajo de la imagen, sin cajas) */}
-        <div className="flex flex-col flex-1 px-1">
-          <div className="flex justify-between items-start gap-4 mb-2">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-1 truncate">
-                // {product.category || 'ARCHIVE'}
-              </span>
-              <h3 className="text-sm font-bold uppercase text-[var(--store-text-main)] font-sans tracking-[0.1em] line-clamp-2 leading-tight">
-                {product.name}
-              </h3>
-            </div>
-            <div className="flex flex-col items-end shrink-0">
-              {isPromo && (
-                <span className="text-[10px] font-mono text-[var(--store-surface-text)] line-through tracking-widest mb-0.5">
-                  ${activeCompareAt.toFixed(2)}
-                </span>
+              {/* 🚀 BOTÓN DE BOLSA EN LA ESQUINA INFERIOR DERECHA */}
+              {!isOutOfStock && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenCard();
+                  }}
+                  className="absolute bottom-2.5 right-2.5 z-20 w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] border border-[var(--store-border)]/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform duration-150 md:hidden"
+                  aria-label="Ver y añadir a la bolsa"
+                  title="Añadir a la bolsa"
+                >
+                  <ShoppingBag size={14} strokeWidth={2} />
+                </button>
               )}
-              <span className="text-base font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
-                ${listPrice.toFixed(2)}
-              </span>
+              
+              {/* Quick Add Integrado de Alta Costura (Desktop Hover) */}
+              {!isOutOfStock && (
+                <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
+                  <button className="w-full bg-[var(--store-text-main)] text-[var(--store-bg)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity">
+                    [ + ADD TO BAG ]
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
 
-        <div className="mt-auto pt-2 flex flex-col items-start gap-1">
-  <span className="text-[0.83rem] font-mono text-[var(--store-surface-text)] leading-none tabular-nums tracking-widest">
-    Bs {formattedBs}
-  </span>
-  
-  {/* 🚀 INCENTIVO EN DIVISA: Uno debajo del otro, alineación limpia */}
-  {penalty > 0 && !isOutOfStock && (
-    <span className="text-[0.70rem] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-[0.2em] leading-none">
-      PAGA EN USD: ${cashPrice.toFixed(2)}
-    </span>
-  )}
-</div>
+      {/* 2. FICHA TÉCNICA (Jerarquía Vertical Escaneable y Simétrica) */}
+            <div className="flex flex-col flex-1 pt-2.5 pb-1 px-1 justify-between">
+              {/* Bloque Superior: Categoría + Nombre a 100% de Ancho */}
+              <div>
+                <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-wider block mb-1 truncate">
+                  // {product.category || 'COLECCIÓN'}
+                </span>
+                <h3 className="text-xs md:text-sm font-bold text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight uppercase">
+                  {product.name}
+                </h3>
+              </div>
 
-        </div>
+              {/* Bloque Inferior: Datos Financieros Agrupados y Ordenados */}
+              <div className="mt-2.5 pt-2 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
+                {/* Fila 1: Precio USD Principal y Descuento */}
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  {isPromo && (
+                    <span className="text-[10px] font-mono text-[var(--store-surface-text)] line-through">
+                      ${activeCompareAt.toFixed(2)}
+                    </span>
+                  )}
+                  <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-red-500' : 'text-[var(--store-text-main)]'}`}>
+                    ${listPrice.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Fila 2: Conversión a Bolívares */}
+                <span className="text-[10px] font-mono font-semibold text-[var(--store-surface-text)] leading-none tabular-nums">
+                  Bs. {formattedBs}
+                </span>
+
+                {/* Fila 3: Ahorro en Divisas Ordenado */}
+                {penalty > 0 && !isOutOfStock && (
+                  <div className="mt-0.5 inline-flex items-center gap-1.5 text-[9px] font-mono font-bold text-[var(--store-incentive)] leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
+                    <span>EN DIVISAS: ${cashPrice.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Indicador Fiscal si aplica */}
+                {showTaxIndicator && isTaxable && (
+                  <span className="text-[8px] font-mono text-[var(--store-surface-text)]/70 mt-0.5 leading-none">
+                    +${taxAmountUsd.toFixed(2)} IVA
+                  </span>
+                )}
+              </div>
+            </div>
       </div>
     );
   }

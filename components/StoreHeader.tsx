@@ -1074,54 +1074,47 @@ const renderSearchBlock = (isDense: boolean = false) => (
                         </div>
                     </div>
                 )}
+{/* 5. DIRECTORIO DE CATEGORÍAS (BENTO THUMBNAILS FIJO) */}
+                <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-6 md:py-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg md:text-xl font-black text-[var(--store-text-main)] tracking-tight">Comprar por Categoría</h3>
+                    </div>
+                    <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory px-1">
+                        {props.categories.map((cat) => {
+                            const isAll = cat === 'Todos';
+                            const imgUrl = categoryImages[cat];
+                            const isActive = props.selectedCategory === cat;
 
-                {/* 5. DIRECTORIO DE CATEGORÍAS (BENTO THUMBNAILS & VARIABLES) */}
-                {liveTheme.layout?.category_style === 'thumbnails' ? (
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-8 md:py-10">
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-lg md:text-xl font-black text-[var(--store-text-main)] tracking-tight">Comprar por Categoría</h3>
-                        </div>
-                        <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory px-1">
-                            {props.categories.map((cat) => {
-                                const isAll = cat === 'Todos';
-                                const imgUrl = categoryImages[cat];
-                                const isActive = props.selectedCategory === cat;
-
-                                return (
-                                    <button
-                                        key={cat}
-                                        onClick={() => { props.setSelectedCategory(cat); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
-                                        className="shrink-0 snap-start flex flex-col items-center gap-3 group outline-none"
+                            return (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    onClick={() => { props.setSelectedCategory(cat); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                                    className="shrink-0 snap-start flex flex-col items-center gap-2.5 group outline-none cursor-pointer"
+                                >
+                                    <div 
+                                        className={`w-20 h-20 md:w-28 md:h-28 flex items-center justify-center overflow-hidden transition-all duration-300 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] ${isActive ? 'ring-2 ring-[var(--store-primary)] ring-offset-2 ring-offset-[var(--store-bg)]' : 'hover:border-[var(--store-primary)]/50'}`} 
+                                        style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-ui)' }}
                                     >
-                                        <div 
-                                            className={`w-20 h-20 md:w-28 md:h-28 flex items-center justify-center overflow-hidden transition-all duration-300 bg-[var(--store-surface)] border-[var(--store-border)] ${isActive ? 'ring-2 ring-[var(--store-primary)] ring-offset-2 ring-offset-[var(--store-bg)]' : 'hover:border-[var(--store-primary)]/50'}`} 
-                                            style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
-                                        >
-                                            {isAll ? (
-                                                <LayoutGrid size={32} className="text-[var(--store-text-main)] opacity-70 group-hover:opacity-100 transition-opacity" />
-                                            ) : imgUrl ? (
-                                                <div className="relative w-full h-full">
-                                                    <Image src={getOptimizedUrl(imgUrl)} alt={cat} fill sizes="120px" className={`object-cover transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                                    {/* Halo oscuro suave en hover para enfocar la imagen */}
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                                                </div>
-                                            ) : (
-                                                <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
-                                            )}
-                                        </div>
-                                       <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
-                                                {cat}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="px-4 md:px-8 py-4 bg-[var(--store-surface)]">
-                            <CategoriesBlock />
-                        </div>
-                    )}
+                                        {isAll ? (
+                                            <LayoutGrid size={28} className="text-[var(--store-text-main)] opacity-70 group-hover:opacity-100 transition-opacity" />
+                                        ) : imgUrl ? (
+                                            <div className="relative w-full h-full">
+                                                <Image src={getOptimizedUrl(imgUrl)} alt={cat} fill sizes="120px" className={`object-cover transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                                            </div>
+                                        ) : (
+                                            <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
+                                        )}
+                                    </div>
+                                    <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
+                                        {cat}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
 
                 {/* Línea divisoria inferior para cerrar el bloque estructural */}
                 <div className="w-full h-px bg-[var(--store-border)]" />

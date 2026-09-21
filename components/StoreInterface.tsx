@@ -1056,33 +1056,50 @@ useEffect(() => {
                   );
               }
 
-          // ==========================================
-              // 🏴‍☠️ VARIANTE 3: STREETWEAR BRUTALIST (The Archive Ticket)
+       // ==========================================
+              // 🏴‍☠️ VARIANTE 3: STREETWEAR (High-Fashion Archive Banner)
               // ==========================================
               if (cardStyle === 'brutalist') {
                   return (
                       <div key={promo.id}
                           onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
-                          className={`w-full shrink-0 snap-center cursor-pointer transition-transform duration-500 ease-out relative group overflow-hidden border border-[var(--store-border)]/50 ${isActive ? 'opacity-100 ring-1 ring-[var(--store-text-main)]' : 'opacity-90 hover:opacity-100 hover:-translate-y-1'}`}
+                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-300 relative group overflow-hidden border border-[var(--store-border)]/50  rounded-[var(--radius-card)] ${isActive ? 'opacity-100 border border-[var(--store-border)]/50 ' : 'opacity-95 hover:opacity-100'}`}
                           style={{ backgroundColor: promo.bg_color || 'var(--store-surface)' }}>
                           
-                          <div className="max-w-[1500px] mx-auto p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 relative z-10">
+                          <div className="max-w-[1500px] mx-auto p-5 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
                               {promo.image_url && (
-                                  <div className="w-full md:w-28 h-32 md:h-28 shrink-0 relative flex items-center justify-center overflow-hidden border border-[var(--store-border)]/20" style={{ backgroundColor: `${promo.text_color}05` }}>
-                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="(max-width: 768px) 100vw, 150px" className="object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                                  <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 relative flex items-center justify-center overflow-hidden">
+                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500" />
                                   </div>
                               )}
                               
                               <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left w-full min-w-0">
-                                  {promo.tagline && <span className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[0.25em] mb-1.5" style={{ color: promo.text_color || 'var(--store-text-main)', opacity: 0.6 }}>// {promo.tagline}</span>}
-                                  <h4 className="font-heading font-bold text-xl md:text-3xl uppercase tracking-[0.1em] leading-tight mb-3 line-clamp-2" style={{ color: promo.text_color || 'var(--store-text-main)' }}>{promo.title}</h4>
+                                  {promo.tagline && (
+                                      <span className="text-[10px] md:text-xs font-mono font-bold uppercase tracking-wider mb-1.5 block opacity-85" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
+                                          // {promo.tagline}
+                                      </span>
+                                  )}
+                                  <h4 className="font-sans font-extrabold text-2xl md:text-4xl uppercase tracking-tight leading-tight mb-3 line-clamp-2" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
+                                      {promo.title}
+                                  </h4>
                                   
-                                  {promo.expires_at && <div className="mb-2"><PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || 'var(--store-text-main)'} variant="industrial" /></div>}
+                                  {promo.expires_at && (
+                                      <div className="mb-1">
+                                          <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || 'var(--store-text-main)'} variant="standard" />
+                                      </div>
+                                  )}
                               </div>
                               
-                              <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-center md:justify-end border-t border-[var(--store-border)]/20 md:border-0 pt-4 md:pt-0">
-                                  <span className="text-[12px] font-mono font-bold uppercase tracking-[0.2em] flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
-                                      {isActive ? '[ QUITAR_FILTRO ] ✕' : '[ EXPLORAR ] ↗'}
+                              <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-center md:justify-end">
+                                  <span 
+                                      className="px-5 py-2.5 rounded-[var(--radius-btn)] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2  border  border-[var(--store-border)]/50 transition-all duration-200 group-hover:scale-105 shadow-sm"
+                                      style={{
+                                          backgroundColor: isActive ? (promo.text_color || '#fff') : 'transparent',
+                                          color: isActive ? (promo.bg_color || '#000') : (promo.text_color || '#fff'),
+                                          borderColor: promo.text_color || '#fff'
+                                      }}
+                                  >
+                                      {isActive ? 'Cerrar Filtro ✕' : 'Explorar Colección →'}
                                   </span>
                               </div>
                           </div>
@@ -1363,7 +1380,7 @@ useEffect(() => {
           {explorableCategories.length > 0 && (
             <div className="mt-8 md:mt-12 pt-8 border-t border-[var(--store-border)]/40 w-full animate-in fade-in duration-500">
               
-              {activeTheme.layout?.card_style === 'dense_hardware' ? (
+            {activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ TEMA 2 (INDUSTRIAL): Directorio de Partes */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1 border-b border-[var(--store-border)] pb-3">
@@ -1402,7 +1419,7 @@ useEffect(() => {
                       Explorar Colecciones
                     </h3>
                   </div>
-                  <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-8 ml-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                  <div className="flex gap-4 ml-2 md:gap-6 overflow-x-auto no-scrollbar pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
                     {explorableCategories.map((cat: any) => (
                       <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group relative shrink-0 w-[220px] md:w-[300px] aspect-[3/4] overflow-hidden snap-start flex flex-col justify-center items-center text-center active:scale-[0.98] transition-transform duration-700 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 shadow-[var(--shadow-ui)]">
                         {cat.coverUrl && !cat.useSolidColor ? (
@@ -1414,6 +1431,48 @@ useEffect(() => {
                         <div className="relative z-10 p-6 w-full flex flex-col items-center">
                           <span className="block font-heading font-black text-white text-2xl md:text-3xl tracking-wide mb-2 drop-shadow-md">{cat.name}</span>
                           <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/90 border-b border-white/40 pb-1">Ver {cat.count} piezas</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : activeTheme.layout?.card_style === 'brutalist' ? (
+                /* 🏴‍☠️ TEMA 4 (STREETWEAR): Lookbook Urbano Contemporáneo */
+                <>
+                  <div className="flex items-center justify-between mb-4 md:mb-6 px-1 border-b border-[var(--store-border)]/40 pb-3">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-wider mb-0.5">// ARCHIVE DIRECTORY</span>
+                      <h3 className="text-base md:text-lg font-black tracking-tight text-[var(--store-text-main)] uppercase">Categorías Oficiales</h3>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 ml-2 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
+                    {explorableCategories.map((cat: any, idx: number) => (
+                      <button 
+                        key={cat.name} 
+                        onClick={() => handleExploreCategory(cat.name)} 
+                        className="group relative shrink-0 w-[150px] md:w-[190px] aspect-[4/5] rounded-[var(--radius-card)] border border-[var(--store-border)]/60 overflow-hidden snap-start flex flex-col justify-between p-3.5 text-left active:scale-[0.98] transition-all duration-300 bg-[var(--store-surface)] hover:border-[var(--store-text-main)] shadow-sm"
+                      >
+                        {!cat.useSolidColor && cat.coverUrl ? (
+                          <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="200px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" loading="lazy" />
+                        ) : (
+                          <div className="absolute inset-0 bg-[var(--store-surface)]" />
+                        )}
+                        {/* Gradiente cinemático oscuro */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent pointer-events-none" />
+                        
+                        {/* Micro Índice Superior */}
+                        <span className="relative z-10 text-[9px] font-mono font-bold text-white/70 uppercase tracking-widest">
+                          {(idx + 1).toString().padStart(2, '0')} //
+                        </span>
+
+                        {/* Detalle Inferior */}
+                        <div className="relative z-10 w-full">
+                          <span className="block font-bold tracking-tight text-white text-sm md:text-base leading-tight uppercase truncate">
+                            {cat.name}
+                          </span>
+                          <span className="text-[9px] font-mono text-white/70 uppercase tracking-wider block mt-1">
+                            {cat.count} {cat.count === 1 ? 'Pieza' : 'Piezas'}
+                          </span>
                         </div>
                       </button>
                     ))}

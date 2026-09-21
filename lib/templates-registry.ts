@@ -109,16 +109,16 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
             },
         },
     },
-    {
+ {
         id: 'streetwear_bold',
-        name: 'Streetwear Brutalist',
+        name: 'Streetwear Modern',
         niche: 'streetwear',
         niche_label: 'Moda Urbana & Ropa',
-        description: 'Estética oscura, tipografía Bebas Neue pesada y sombras sólidas de alto impacto visual.',
+        description: 'Estética urbana moderna, tipografía geométrica Manrope de alta conversión y contrastes puros.',
         badge: 'Exclusivo',
         is_premium: false,
         thumbnail_url: '/hoodietitanio.webp',
-        tags: ['streetwear', 'moda', 'ropa', 'brutalismo', 'dark'],
+        tags: ['streetwear', 'moda', 'ropa', 'moderno', 'dark'],
         default_config: {
             template_id: 'streetwear_bold',
             version: 3,
@@ -137,17 +137,17 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
                 badge_soldout_text: '#ffffff',
                 action_favorite: '#ef4444',
             },
-           shapes: {
+            shapes: {
                 button_shape: 'sharp',
                 search_bar_shape: 'sharp',
                 line_weight: 'bold',
                 ui_shadows: 'hard_brutalist',
                 info_layout: 'accordion',
             },
-           typography: {
-                heading_font: 'var(--font-bebas-neue), sans-serif',
-                body_font: 'var(--font-manrope), system-ui, sans-serif',
-                price_font: 'var(--font-bebas-neue), sans-serif',
+            typography: {
+                heading_font: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif',
+                body_font: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif',
+                price_font: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif',
             },
             layout: {
                 header_style: 'brutalist',

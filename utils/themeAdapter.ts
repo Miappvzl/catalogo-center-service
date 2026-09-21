@@ -79,14 +79,14 @@ export const SHADOW_MAP: Record<ShadowLevelOption, string> = {
     medium: '0 10px 30px -5px rgba(0, 0, 0, 0.12)',
     hard_brutalist: '3px 3px 0px 0px #000000',
 };
-
 export const AVAILABLE_FONTS = {
     headings: [
+        { label: 'Manrope (Geométrica / Streetwear Pro)', value: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif' },
         { label: 'Inter (Estándar de Oro / Ultra Legible)', value: 'var(--font-inter), sans-serif' },
         { label: 'Montserrat (Geométrica / Universal)', value: 'var(--font-montserrat), sans-serif' },
         { label: 'Outfit (Moderna / Circular)', value: 'var(--font-outfit), sans-serif' },
         { label: 'Space Grotesk (Técnica / Industrial)', value: 'var(--font-space), sans-serif' },
-        { label: 'Bebas Neue (Display / Streetwear)', value: 'var(--font-bebas-neue), sans-serif' },
+        { label: 'Bebas Neue (Display / Streetwear Clásico)', value: 'var(--font-bebas-neue), sans-serif' },
         { label: 'Fredoka (Redondeada / Comida)', value: 'var(--font-fredoka), sans-serif' },
         { label: 'Cormorant (Serifa / Lujo)', value: 'var(--font-cormorant), Georgia, serif' },
     ],
@@ -97,7 +97,8 @@ export const AVAILABLE_FONTS = {
         { label: 'Quicksand (Suave / Amigable)', value: 'var(--font-quicksand), sans-serif' },
         { label: 'DM Sans (Limpia / Minimalista)', value: 'var(--font-dm-sans), sans-serif' },
     ],
-    prices: [
+prices: [
+        { label: 'Manrope (Moderna / Impecable)', value: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif' },
         { label: 'Inter (Neutral / Ultra Clara)', value: 'var(--font-inter), sans-serif' },
         { label: 'Space Grotesk (Tabular / Precisa)', value: 'var(--font-space), monospace, sans-serif' },
         { label: 'Montserrat (Pura / Coherente)', value: 'var(--font-montserrat), sans-serif' },
@@ -117,9 +118,9 @@ export const TYPOGRAPHY_PRESETS: Record<string, { heading: string; body: string;
         body: 'var(--font-inter), sans-serif',
     },
     brutalist: {
-        label: 'Streetwear Brutalist (Bebas Neue + Manrope)',
-        heading: 'var(--font-bebas-neue), sans-serif',
-        body: 'var(--font-manrope), sans-serif',
+        label: 'Streetwear Modern (Manrope Pura)',
+        heading: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif',
+        body: 'var(--font-manrope), "Manrope Fallback", system-ui, sans-serif',
     },
     friendly_rounded: {
         label: 'Bistro Fast Food (Fredoka + Quicksand)',
@@ -160,7 +161,7 @@ const layout: ThemeConfig['layout'] = {
         header_style: rawLayout.header_style || DEFAULT_THEME_CONFIG.layout.header_style,
         card_style: rawLayout.card_style || DEFAULT_THEME_CONFIG.layout.card_style,
         logo_type: rawLayout.logo_type || 'standard',
-       category_style: rawLayout.category_style || 'pills', 
+        category_style: rawLayout.category_style || (raw.template_id === 'modular_tech' ? 'thumbnails' : 'pills'), 
         hero_desktop_url: rawLayout.hero_desktop_url || '',
         hero_mobile_url: rawLayout.hero_mobile_url || '',
         logo_url: rawLayout.logo_url || '',

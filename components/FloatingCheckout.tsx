@@ -23,16 +23,16 @@ interface CheckoutProps {
     products: any[]
     promotions?: any[]
     affiliateCode?: string | null
-       favoriteIds?: Set<string>
+    favoriteIds?: Set<string>
     campaignContext?: string | null // 👈 AÑADE ESTO
 }
 
 export default function FloatingCheckout({ rates, currency, phone, storeName, storeId, storeConfig, products, promotions = [], affiliateCode = null, favoriteIds = new Set(), campaignContext = null }: CheckoutProps) {
-   const activeTheme = useMemo(() => normalizeThemeConfig(storeConfig?.theme_config), [storeConfig?.theme_config])
-   const items = useCart(state => state.items)
-const removeItem = useCart(state => state.removeItem)
-const updateQuantity = useCart(state => state.updateQuantity)
-const addOrderToHistory = useCart(state => state.addOrderToHistory)
+    const activeTheme = useMemo(() => normalizeThemeConfig(storeConfig?.theme_config), [storeConfig?.theme_config])
+    const items = useCart(state => state.items)
+    const removeItem = useCart(state => state.removeItem)
+    const updateQuantity = useCart(state => state.updateQuantity)
+    const addOrderToHistory = useCart(state => state.addOrderToHistory)
     const [isMounted, setIsMounted] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState(1)
@@ -52,7 +52,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
             return newStep;
         });
     };
-// Reemplaza estas variantes:
+    // Reemplaza estas variantes:
     const walletVariants: Variants = {
         initial: (direction: number) => ({
             y: direction > 0 ? "100%" : "-8%",
@@ -303,7 +303,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
 
     // --- 🚀 LÓGICA DE IMPUESTOS PÚBLICOS (SENIAT) ---
 
-  const taxPct = storeConfig?.default_tax_percentage || 16;
+    const taxPct = storeConfig?.default_tax_percentage || 16;
 
     // CÁLCULO DE IVA PROPORCIONAL
     // Determinamos cuánto descuento total se aplicó para bajar la base imponible
@@ -343,7 +343,6 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
 
     return (
         <>
-         
 
 {/* 🚀 GATILLO MOBILE DINÁMICO (Polimorfismo Estructural Awwwards) */}
 <AnimatePresence mode="wait">
@@ -354,9 +353,74 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
             exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
             layout
-    className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
+            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
         >
-            {activeTheme.layout?.card_style === 'dense_hardware' ? (
+            {activeTheme.layout?.card_style === 'brutalist' ? (
+                /* 🏴‍☠️ VARIANTE STREETWEAR MODERNA: Dock Táctico de Alta Conversión */
+                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)]/50 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                    {items.length > 0 ? (
+                        <div className="flex items-center justify-between gap-4">
+                            {/* Gatillo Táctil de Bolsa y Precios */}
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer select-none group flex-1 min-w-0"
+                                onClick={() => setIsOpen(true)}
+                            >
+                                <div className="relative shrink-0" data-cart-target="true">
+                                    <motion.div 
+                                        animate={cartControls} 
+                                        className="w-10 h-10 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center border border-[var(--store-border)]/40 shadow-sm"
+                                    >
+                                        <ShoppingBag size={18} strokeWidth={2} />
+                                    </motion.div>
+                                    <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono text-[9px] font-black min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border border-[var(--store-surface)] shadow-sm">
+                                        {totalItemsCount}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-xl font-bold font-sans text-[var(--store-text-main)] leading-none tracking-tight truncate">
+                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-1 leading-none tabular-nums truncate">
+                                        Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Botón de Acción Directa */}
+                            <motion.button 
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setIsOpen(true)} 
+                                className="h-11 px-6 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-[var(--store-border)]/40 active:scale-95 transition-all shrink-0 shadow-sm"
+                            >
+                                <span>PAGAR</span>
+                                <ArrowRight size={14} strokeWidth={2.5} />
+                            </motion.button>
+                        </div>
+                    ) : (
+                        <div 
+                            className="flex items-center justify-between w-full cursor-pointer select-none gap-3" 
+                            onClick={() => setIsOpen(true)}
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-primary)] font-bold">
+                                        // ORDEN #{generatedOrderNumber}
+                                    </span>
+                                    <span className="text-xs font-sans font-bold text-[var(--store-text-main)] truncate uppercase">
+                                        Confirmar WhatsApp
+                                    </span>
+                                </div>
+                            </div>
+                            <button className="h-10 px-4 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider shadow-sm shrink-0">
+                                <MessageCircle size={14} strokeWidth={2.5} />
+                                <span>ENVIAR</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            ) : activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
                 <div className="w-full bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] h-[72px]">
                     {items.length > 0 ? (
@@ -401,7 +465,6 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                         </div>
                     )}
                 </div>
-
             ) : activeTheme.layout?.card_style === 'editorial' ? (
                 /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
                 <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/75 border-[0.5px] border-[var(--store-border)]/50 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-stretch overflow-hidden h-[64px]">
@@ -453,15 +516,10 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                             </motion.button>
                         </div>
                     )}
-          
                 </div>
-
-           
-
-
-        ) : activeTheme.layout?.card_style === 'modular_tech' ? (
+            ) : activeTheme.layout?.card_style === 'modular_tech' ? (
                 /* ⚡ VARIANTE MODULAR TECH: Consola Táctica de Checkout (Clean CRO) */
-                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] shadow-[0_-8px_25px_rgba(0,0,0,0.04)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] shadow-[0_-8px_25px_rgba(0,0,0,0.04)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                     {items.length > 0 ? (
                         <div className="flex items-center justify-between gap-4">
                             {/* Telemetría Financiera Alineada con Notificación Pip */}
@@ -598,18 +656,18 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                     </motion.div>
                 )}
             </AnimatePresence>
-         {/* CAJÓN PRINCIPAL */}
+            {/* CAJÓN PRINCIPAL */}
             <AnimatePresence>
                 {isOpen && (
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isWhatsAppInterception ? undefined : handleCloseModal} />
 
                         {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
-                        <motion.div 
-                            variants={modalVariants} 
-                            initial="hidden" 
-                            animate="visible" 
-                            exit="exit" 
+                        <motion.div
+                            variants={modalVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
                             className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden"
                         >
 
@@ -630,13 +688,13 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                             <motion.div key="header-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex items-center gap-3">
                                                 <button onClick={() => changeStep(1)} className="p-1.5 -ml-1.5 bg-[var(--store-bg)] hover:bg-[var(--store-bg)] rounded-full text-[var(--store-surface-text)] transition-colors"><ArrowLeft size={18} /></button>
                                                 <div>
-                                                    <h2 
+                                                    <h2
                                                         style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                                                         className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none !normal-case"
                                                     >
                                                         Checkout
                                                     </h2>
-                                                    <p 
+                                                    <p
                                                         style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                                                         className="text-xs text-[var(--store-surface-text)] font-medium mt-1"
                                                     >
@@ -697,108 +755,112 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                             const isExempt = originalItem?.isTaxExempt === true;
 
                                                             return (
-                                                           <motion.div
-                                                                key={item.id}
-                                                                layout="position"
-                                                                initial={{ opacity: 0, height: 0, scale: 0.9 }}
-                                                                animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                                                                // 🚀 Colapsa la altura a 0 y corta el contenido. El resto sube suavemente.
-                                                                exit={{
-                                                                    opacity: 0,
-                                                                    height: 0,
-                                                                    scale: 0.9,
-                                                                    x: -20,
-                                                                    paddingTop: 0,
-                                                                    paddingBottom: 0,
-                                                                    borderWidth: 0,
-                                                                    overflow: 'hidden'
-                                                                }}
-                                                                transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-                                                                className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top"
-                                                            >
-                                                                <div className={`w-20 h-20 bg-[var(--store-surface)] overflow-hidden shrink-0 relative border border-[var(--store-border)]/50 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none' : 'rounded-xl'}`}>
-                                                                    <Image
-                                                                        src={getOptimizedUrl(item.image)}
-                                                                        alt={item.name}
-                                                                        fill
-                                                                        sizes="80px"
-                                                                        className="object-cover"
-                                                                    />
-                                                                </div>
-                                                                {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
-                                                                <div className="flex-1 flex flex-col justify-between py-0.5">
-                                                                    <div>
-                                                                        {item.badge && (
-                                                                            <span className={`inline-flex items-center gap-1 w-fit text-[9px] font-black px-2 py-0.5 rounded-[4px] tracking-widest uppercase mb-1.5 transition-colors ${item.badge.type === 'pending'
-                                                                                ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)] border-dashed shadow-sm'
-                                                                                : 'bg-[#1b1b1b] text-white shadow-sm border border-transparent'
-                                                                                }`}>
-                                                                                {item.badge.text}
-                                                                            </span>
-                                                                        )}
-                                                                 <div className="flex justify-between items-start">
-                                                                            <h3 className={`font-bold text-[var(--store-text-main)] line-clamp-2 pr-2 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-base uppercase tracking-wider font-heading leading-tight' : 'text-sm leading-snug'}`}>{item.name}</h3>
-                                                                            <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 hover:bg-red-50 transition-colors p-1.5 rounded-md active:scale-90"><Trash2 size={14} /></button>
-                                                                        </div>
-                                                                        <p className={`text-[var(--store-surface-text)] mt-1 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-mono font-bold uppercase tracking-widest mt-1.5' : 'text-[11px] font-medium'}`}>{item.variantInfo || 'Estándar'}</p>
-
-                                                                        {item.requiresShipping === false && (
-                                                                            <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded-md uppercase tracking-wider w-fit max-w-full">
-                                                                                <Sparkle size={10} className="shrink-0" />
-                                                                                <span className="truncate">
-                                                                                    {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
-                                                                                </span>
-                                                                            </span>
-                                                                        )}
+                                                                <motion.div
+                                                                    key={item.id}
+                                                                    layout="position"
+                                                                    initial={{ opacity: 0, height: 0, scale: 0.9 }}
+                                                                    animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                                                    // 🚀 Colapsa la altura a 0 y corta el contenido. El resto sube suavemente.
+                                                                    exit={{
+                                                                        opacity: 0,
+                                                                        height: 0,
+                                                                        scale: 0.9,
+                                                                        x: -20,
+                                                                        paddingTop: 0,
+                                                                        paddingBottom: 0,
+                                                                        borderWidth: 0,
+                                                                        overflow: 'hidden'
+                                                                    }}
+                                                                    transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+                                                                    className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top"
+                                                                >
+                                                                    <div className={`w-20 h-20 bg-[var(--store-surface)] overflow-hidden shrink-0 relative border border-[var(--store-border)]/50 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none' : 'rounded-xl'}`}>
+                                                                        <Image
+                                                                            src={getOptimizedUrl(item.image)}
+                                                                            alt={item.name}
+                                                                            fill
+                                                                            sizes="80px"
+                                                                            className="object-cover"
+                                                                        />
                                                                     </div>
+                                                                    {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
+                                                                   <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
+                                        <div>
+                                            {item.badge && (
+                                                <span className={`inline-flex items-center gap-1 w-fit text-[8px] md:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider uppercase mb-1 transition-colors ${item.badge.type === 'pending'
+                                                    ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 border-dashed'
+                                                    : 'bg-[var(--store-text-main)] text-[var(--store-bg)]'
+                                                    }`}>
+                                                    {item.badge.text}
+                                                </span>
+                                            )}
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h3 className="text-xs md:text-[13px] font-bold text-[var(--store-text-main)] line-clamp-2 leading-snug tracking-tight pr-1">
+                                                    {item.name}
+                                                </h3>
+                                                <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors p-1 shrink-0 active:scale-90" title="Eliminar">
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            </div>
+                                            <p className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-0.5 truncate">
+                                                {item.variantInfo || 'Estándar'}
+                                            </p>
 
-                                                                    <div className="flex items-end justify-between mt-2">
-                                                                        <div className="flex flex-col min-w-0">
-                                                                           {item.finalListPrice < item.listPrice ? (
-                                                                                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
-                                                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
-                                                                                    </span>
-                                                                                    <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'font-bold text-xl font-price tracking-widest text-red-600' : 'font-black text-base text-red-600'}`}>
-                                                                                        {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
-                                                                                    </span>
-                                                                                </div>
-                                                                          ) : (
-                                                                                <span className={`leading-none ${activeTheme.layout?.card_style === 'brutalist' ? 'font-bold text-xl font-price tracking-widest text-[var(--store-text-main)]' : 'font-black text-base text-[var(--store-text-main)]'}`}>
-                                                                                    {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
-                                                                                </span>
-                                                                            )}
-                                                                            <span className={`font-mono font-bold text-[var(--store-surface-text)] mt-1 ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs tracking-widest mt-1.5' : 'text-[10px]'}`}>
-                                                                                Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                                                            </span>
-                                                                            
-                                                                            {/* 🚀 INYECCIÓN: IVA POR PRODUCTO (RESPETANDO EXENCIÓN FISCAL) */}
-                                                                            {storeConfig?.show_tax_in_catalog && isStrictTax && !isExempt && (
-                                                                                <div className="mt-1.5">
-                                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[8px] font-black uppercase tracking-widest">
-                                                                                        <Receipt size={10} /> + {currencySymbol}{((item.finalListPrice * item.quantity) * (taxPct / 100)).toFixed(2)} IVA
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
+                                            {item.requiresShipping === false && (
+                                                <span className="inline-flex items-center gap-1 mt-1 text-[8px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
+                                                    <Sparkle size={9} className="shrink-0" />
+                                                    <span className="truncate">
+                                                        {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </div>
 
-                                                                     <div className={`flex items-center p-1 gap-3 border bg-[var(--store-bg)] ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none border-[var(--store-border)]/40' : 'rounded-full border-[var(--store-border)]/60'}`}>
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className={`w-6 h-6 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none hover:border hover:border-[var(--store-border)]' : 'rounded-full hover:border hover:border-[var(--store-border)]'}`}>
-                                                                                <Minus size={14} strokeWidth={activeTheme.layout?.card_style === 'brutalist' ? 2 : 3} />
-                                                                            </button>
-                                                                            <span className={`text-center text-[var(--store-text-main)] ${activeTheme.layout?.card_style === 'brutalist' ? 'text-xs font-bold font-mono w-4' : 'text-xs font-bold w-3'}`}>{item.quantity}</span>
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className={`w-6 h-6 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 ${activeTheme.layout?.card_style === 'brutalist' ? 'rounded-none hover:border hover:border-[var(--store-border)]' : 'rounded-full hover:border hover:border-[var(--store-border)]'}`}>
-                                                                                <Plus size={14} strokeWidth={activeTheme.layout?.card_style === 'brutalist' ? 2 : 3} />
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </motion.div>
+                                        <div className="flex items-end justify-between gap-2 mt-2 pt-1.5 border-t border-[var(--store-border)]/20">
+                                            <div className="flex flex-col min-w-0">
+                                               {item.finalListPrice < item.listPrice ? (
+                                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
+                                                            {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-red-500">
+                                                            {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                              ) : (
+                                                    <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
+                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
+                                                    Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                                
+                                                {/* 🚀 INYECCIÓN: IVA POR PRODUCTO */}
+                                                {storeConfig?.show_tax_in_catalog && isStrictTax && !isExempt && (
+                                                    <span className="text-[8px] font-mono text-[var(--store-surface-text)]/70 mt-0.5">
+                                                        + {currencySymbol}{((item.finalListPrice * item.quantity) * (taxPct / 100)).toFixed(2)} IVA
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                         <div className="flex items-center p-0.5 gap-2 border border-[var(--store-border)]/60 bg-[var(--store-bg)] rounded-[var(--radius-btn)] shrink-0">
+                                                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
+                                                    <Minus size={12} strokeWidth={2.5} />
+                                                </button>
+                                                <span className="text-center font-mono font-bold text-xs text-[var(--store-text-main)] w-3.5 leading-none">{item.quantity}</span>
+                                                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
+                                                    <Plus size={12} strokeWidth={2.5} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                                                </motion.div>
                                                             ); // 🚀 FIX: Cerramos el return
-                                                        })} 
+                                                        })}
                                                     </AnimatePresence>
                                                 </div>
-                                            {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
+                                                {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
                                                 {recommendedProducts.length > 0 && (
                                                     <div className={`mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]`}>
                                                         {activeTheme.layout?.card_style === 'brutalist' ? (
@@ -847,7 +909,7 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                                         : (product.stock || 0) <= 0;
 
                                                                     return (
-                                                                                 <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
+                                                                        <div key={product.id} className="w-[calc(45%-6px)] md:w-[calc(40%-12px)] shrink-0 snap-start flex flex-col [&>div]:h-full">
                                                                             <ProductCard
                                                                                 product={product}
                                                                                 pricing={pricing}
@@ -896,38 +958,40 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                 )}
                                             </motion.div>
 
-                                           // ... código existente ...
-                                            {/* 2. FOOTER ABSOLUTO: Lo anclamos al fondo absoluto del motion.div para que el contenedor superior pase literalmente por debajo */}
-                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/85 backdrop-blur-2xl px-5 py-5 z-20 border-t border-[var(--store-border)]/30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
-                                                <div className="flex justify-between items-end mb-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        <p className="font-bold text-[var(--store-text-main)] line-clamp-2  text-base uppercase tracking-wider font-heading leading-tight">Total Final</p>
-                                                        
-                                                        {/* 🚀 INYECCIÓN: INDICADOR DE IVA EN EL TOTAL DE LA BOLSA */}
+                                       {/* 2. FOOTER ABSOLUTO DE LA BOLSA (Línea Base Plana & Simétrica) */}
+                                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 py-4 z-20 border-t border-[var(--store-border)]/40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <div className="flex flex-col">
+                                                        <p className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-wider">Total Final</p>
                                                         {storeConfig?.show_tax_in_catalog && isStrictTax && step1TaxAmountUSD > 0 && (
-                                                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                                <Receipt size={10} /> Inc. ${step1TaxAmountUSD.toFixed(2)} IVA
+                                                            <span className="text-[8px] font-mono text-[var(--store-surface-text)]/70 uppercase">
+                                                                Inc. ${step1TaxAmountUSD.toFixed(2)} IVA
                                                             </span>
                                                         )}
                                                     </div>
                                                     
-                                                    {/* 🚀 Alineamos los números a la derecha (items-end) para mayor elegancia financiera */}
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none flex items-center">
-                                                            {currencySymbol}<NumberTicker value={step1GrandTotalUSD} />
+                                                   <div className="flex flex-col items-end">
+                                                        <span className="text-lg md:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight flex items-center">
+                                                            <span>{currencySymbol}</span>
+                                                            <NumberTicker value={step1GrandTotalUSD} />
                                                         </span>
-                                                        <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none flex items-center gap-1">
-                                                            Bs <NumberTicker value={step1GrandTotalBs} />
+                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-0.5 leading-none flex items-center gap-1">
+                                                            <span>Bs.</span>
+                                                            <NumberTicker value={step1GrandTotalBs} />
                                                         </span>
                                                     </div>
-                                                </div>
-                                                <button onClick={() => changeStep(2)} className="w-full h-12 rounded-[var(--radius-btn)] font-mono text-[0.8rem] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90">
-                                                    Ir al Checkout <ChevronRight size={16} />
+                                                    </div>
+                                                <button 
+                                                    onClick={() => changeStep(2)} 
+                                                    className="w-full bg-[var(--store-text-main)] text-[var(--store-bg)] h-12 px-6 rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[var(--store-border)]/40 shadow-sm"
+                                                >
+                                                    <span>IR AL CHECKOUT</span>
+                                                    <ChevronRight size={15} strokeWidth={2.5} />
                                                 </button>
                                             </div>
                                         </motion.div>
                                     )}
-{/* --- PASO 2: CAJA REGISTRADORA (HIJO - Aislamiento exclusivo de Checkout en Inter) --- */}
+                                    {/* --- PASO 2: CAJA REGISTRADORA (HIJO - Aislamiento exclusivo de Checkout en Inter) --- */}
 
                                     {step === 2 && (
                                         <motion.div
@@ -960,18 +1024,18 @@ const addOrderToHistory = useCart(state => state.addOrderToHistory)
                                                     affiliateDiscountList={affiliateDiscountList}
                                                     affiliateDiscountCash={affiliateDiscountCash}
                                                     // 2. Intercepta la URL en el onSuccess de CheckoutProcess
-onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
-    let finalWaUrl = waUrl;
-    if (campaignContext) {
-        try {
-            const urlObj = new URL(waUrl);
-            let text = urlObj.searchParams.get('text') || '';
-            const campaignName = campaignContext.charAt(0).toUpperCase() + campaignContext.slice(1).replace(/-/g, ' ');
-            text += `\n\n📊 *Origen:* Campaña VIP (${campaignName})`;
-            urlObj.searchParams.set('text', text);
-            finalWaUrl = urlObj.toString();
-        } catch (e) { console.error(e); }
-    }
+                                                    onSuccess={(orderNumber: number, waUrl: string, orderId: string) => {
+                                                        let finalWaUrl = waUrl;
+                                                        if (campaignContext) {
+                                                            try {
+                                                                const urlObj = new URL(waUrl);
+                                                                let text = urlObj.searchParams.get('text') || '';
+                                                                const campaignName = campaignContext.charAt(0).toUpperCase() + campaignContext.slice(1).replace(/-/g, ' ');
+                                                                text += `\n\n📊 *Origen:* Campaña VIP (${campaignName})`;
+                                                                urlObj.searchParams.set('text', text);
+                                                                finalWaUrl = urlObj.toString();
+                                                            } catch (e) { console.error(e); }
+                                                        }
 
                                                         setGeneratedOrderNumber(orderNumber);
                                                         setWhatsappUrl(finalWaUrl); // 👈 Guardamos la URL mutada

@@ -1162,50 +1162,52 @@ Mi duda es la siguiente: `;
                                         )}
                                     </div>
 
-                                    {/* 2. DETALLES TÉCNICOS */}
+                                   {/* 2. DETALLES TÉCNICOS (Jerarquía Escaneable & Alta Conversión) */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
-                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[130px]">
+                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
                                             <div>
-                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-2">
-                                                // {product?.category || 'ARCHIVE'}
+                                                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--store-surface-text)] block mb-1.5">
+                                                    // {product?.category || 'COLECCIÓN'}
                                                 </span>
-                                                <h2 className="text-2xl md:text-4xl font-bold uppercase tracking-[0.1em] text-[var(--store-text-main)] font-sans leading-tight mb-3">
+                                                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold uppercase tracking-tight text-[var(--store-text-main)] font-sans leading-tight mb-2.5">
                                                     {product?.name}
                                                 </h2>
 
                                                 {pricing.promoBadgeText && (
-                                                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-mono uppercase tracking-[0.2em] shadow-sm">
-                                                        <Tag size={12} strokeWidth={1.5} /> {pricing.promoBadgeText}
+                                                    <div className="mt-1 mb-2 inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-mono font-bold uppercase tracking-wider rounded">
+                                                        <Tag size={12} /> {pricing.promoBadgeText}
                                                     </div>
                                                 )}
 
-                                                <div className="flex items-baseline gap-4 mt-5">
-                                                    {pricing.isPromo && (
-                                                        <span className="text-[1rem] font-mono font-medium text-[var(--store-surface-text)] line-through tracking-widest">
-                                                            ${pricing.compareAt.toFixed(2)}
+                                                {/* Bloque Financiero Compacto */}
+                                                <div className="mt-3 pt-3 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
+                                                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                                                        <span className="text-3xl md:text-4xl font-black font-mono text-[var(--store-text-main)] leading-none tracking-tight">
+                                                            ${pricing.listPrice.toFixed(2)}
                                                         </span>
+                                                        {pricing.isPromo && (
+                                                            <span className="text-sm font-mono font-semibold text-[var(--store-surface-text)] line-through">
+                                                                ${pricing.compareAt.toFixed(2)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-mono font-bold text-[var(--store-surface-text)] leading-none tabular-nums mt-0.5">
+                                                        Bs. {new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                                    </span>
+
+                                                    {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
+                                                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--store-incentive)]/10 text-[var(--store-incentive)] text-[10px] font-mono font-bold uppercase tracking-wider w-fit">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
+                                                            <span>USD Cash: ${pricing.cashPrice.toFixed(2)}</span>
+                                                        </div>
                                                     )}
-                                                    <span className="text-4xl md:text-5xl font-medium font-mono text-[var(--store-text-main)] leading-none tracking-widest">
-                                                        ${pricing.listPrice.toFixed(2)}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-2">
-                                                    <span className="text-[1.2rem] font-mono font-medium text-[var(--store-surface-text)] tracking-widest tabular-nums">
-                                                        Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
-                                                    </span>
-                                                </div>
 
-                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <div className="mt-3 inline-flex items-center gap-1.5 text-[0.81rem] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)]">
-                                                        <Flame size={12} className="fill-current shrink-0" /> PAGA EN USD: ${pricing.cashPrice.toFixed(2)}
-                                                    </div>
-                                                )}
-
-                                                {isCompletelyOutOfStock && (
-                                                    <div className="mt-4 text-[10px] font-mono uppercase tracking-[0.2em] text-white bg-black/80 backdrop-blur-md px-3 py-1.5 w-fit">
-                                                        [ AGOTADO ]
-                                                    </div>
-                                                )}
+                                                    {isCompletelyOutOfStock && (
+                                                        <div className="mt-3 text-[10px] font-mono font-bold uppercase tracking-widest text-white bg-neutral-900 px-3 py-1.5 rounded w-fit">
+                                                            [ AGOTADO ]
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Selector de Variantes Minimalista/Técnico */}
