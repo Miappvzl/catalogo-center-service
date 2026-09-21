@@ -479,7 +479,11 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
         });
         setConfig(newConfig);
 
-        toast.success(`Plantilla "${template.name}" aplicada`);
+        // 🚀 AWWWARDS TOUCH: Notificación ultra-rápida (1.2s) arriba al centro, sin bloquear botones abajo
+        toast.success(`Tema ${template.name} activo`, { 
+            position: 'top-center',
+            duration: 1200 
+        });
     }
 
     const handleColorChange = (key: string, value: string) => {
@@ -683,14 +687,15 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
 
                     {/* Contenido scrolleable */}
                     <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 lg:pb-6 no-scrollbar">
-
-                        {/* TAB 1: MARKETPLACE */}
+{/* TAB 1: MARKETPLACE */}
                         {activeTab === 'marketplace' && (
-                            <div className="space-y-4 animate-in fade-in pb-10">
+                            <div className="space-y-5 animate-in fade-in pb-10">
                                 <div>
                                     <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Arquetipos Comerciales</h3>
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
+
+                                {/* Filtros por Nicho */}
                                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0">
                                     {[
                                         { id: 'all', label: 'Todas' },
@@ -703,13 +708,18 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                             key={chip.id}
                                             type="button"
                                             onClick={() => setSelectedNicheFilter(chip.id)}
-                                            className={`shrink-0 px-3 py-1.5 rounded-md text-[10px] font-semibold whitespace-nowrap transition-colors border ${selectedNicheFilter === chip.id ? 'bg-neutral-900 border-neutral-900 text-white shadow-xs' : 'bg-white border-neutral-200/50 text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'}`}
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border active:scale-95 ${
+                                                selectedNicheFilter === chip.id 
+                                                    ? 'bg-neutral-950 border-neutral-950 text-white shadow-xs' 
+                                                    : 'bg-white border-neutral-200/60 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
+                                            }`}
                                         >
                                             {chip.label}
                                         </button>
                                     ))}
                                 </div>
 
+                                {/* Listado de Tarjetas Reestructuradas */}
                                 <div className="space-y-3">
                                     {filteredTemplates.map(template => {
                                         const isCurrent = config.template_id === template.id;
@@ -717,45 +727,72 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                         return (
                                             <div
                                                 key={template.id}
-                                                className={`relative p-4 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${isCurrent
-                                                    ? 'bg-white border-neutral-900 ring-2 ring-neutral-900/10 shadow-sm'
-                                                    : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
-                                                    }`}
+                                                className={`relative p-4.5 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${
+                                                    isCurrent
+                                                        ? 'bg-white border-neutral-950 ring-1 ring-neutral-950/10 shadow-xs'
+                                                        : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
+                                                }`}
                                             >
-                                                <div className="flex items-center justify-between gap-3 w-full">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                            <h4 className="font-bold text-xs text-neutral-900 truncate">
-                                                                {template.name}
-                                                            </h4>
-                                                            {template.badge && (
-                                                                <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 text-[8px] font-mono font-bold uppercase text-neutral-600 rounded">
-                                                                    {template.badge}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-[9px] font-mono text-neutral-400 uppercase font-semibold block truncate">
-                                                            {template.niche_label}
-                                                        </span>
+                                           {/* FILA PRINCIPAL: BADGE ARRIBA EN MÓVIL / AL LADO EN DESKTOP */}
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex flex-col lg:flex-row lg:items-center items-start gap-1 lg:gap-2 min-w-0">
+                                                        {/* Badge: Primero arriba en móvil (order-1), a la derecha en desktop (lg:order-2) */}
+                                                        {template.badge && (
+                                                            <span className="order-1 lg:order-2 px-2 py-0.5 bg-neutral-100  text-[8px] font-mono font-bold uppercase tracking-wider text-neutral-600 rounded-md shrink-0">
+                                                                {template.badge}
+                                                            </span>
+                                                        )}
+
+                                                        {/* Título: Segundo en móvil (order-2), primero en desktop (lg:order-1) */}
+                                                        <h4 className="order-2 lg:order-1 font-bold text-sm text-neutral-950 tracking-tight truncate w-full lg:w-auto">
+                                                            {template.name}
+                                                        </h4>
                                                     </div>
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleApplyTemplate(template)}
-                                                        className={`shrink-0 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border active:scale-95 ${isCurrent
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs cursor-default'
-                                                            : 'bg-neutral-900 text-white border-neutral-900 hover:bg-black shadow-xs'
+                                                   <div className="flex items-center gap-1.5 shrink-0">
+                                                        {/* BOTÓN OJITO (PREVIEW TÁCTIL) */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (!isCurrent) handleApplyTemplate(template);
+                                                                setMobileViewMode('preview');
+                                                            }}
+                                                            className="lg:hidden p-2 rounded-[4.3px] bg-neutral-100/90 hover:bg-neutral-200 text-neutral-600 hover:text-neutral-950 active:scale-90 transition-all "
+                                                            title="Ver en mockup de tienda"
+                                                            aria-label="Ver mockup"
+                                                        >
+                                                            <Eye size={14} strokeWidth={2.2} />
+                                                        </button>
+
+                                                        {/* 🚀 BOTÓN APLICAR ELEGANTE (CERO DISRUPCIÓN, CERO VERDE MENTA) */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleApplyTemplate(template)}
+                                                            disabled={isCurrent}
+                                                            className={`px-3.5 py-1.5 rounded-[4.3px] text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
+                                                                isCurrent
+                                                                    ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-default'
+                                                                    : 'bg-white hover:bg-neutral-100/80 text-neutral-700 hover:text-neutral-950 border-neutral-200/80 active:scale-95 shadow-2xs'
                                                             }`}
-                                                    >
-                                                        {isCurrent ? 'Activa' : 'Aplicar'}
-                                                    </button>
+                                                        >
+                                                            {isCurrent ? (
+                                                                <>
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-200 shrink-0" />
+                                                                    <span>Activa</span>
+                                                                </>
+                                                            ) : (
+                                                                'Aplicar'
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </div>
 
-                                                <p className="text-[11px] leading-relaxed font-medium text-neutral-500">
+                                                {/* DESCRIPCIÓN DIRECTA Y AGNOSTICA */}
+                                                <p className="text-xs leading-relaxed font-normal text-neutral-500">
                                                     {template.description}
                                                 </p>
                                             </div>
-                                        )
+                                        );
                                     })}
                                 </div>
                             </div>
@@ -1417,8 +1454,9 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                     </div>
                 </motion.div>
 
-                {/* 📱 EL ESCENARIO (PREVIEW AREA CON DEVICE MOCKUPS) */}
-                <div className={`flex-1 relative flex-col items-center justify-center overflow-hidden p-4 lg:p-12 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
+         {/* 📱 EL ESCENARIO (PREVIEW AREA CON DEVICE MOCKUPS) */}
+                {/* 🚀 AISLAMIENTO MÓVIL: Contenedor con altura fija para evitar scroll doble */}
+                <div className={`flex-1 relative flex-col items-center justify-center overflow-hidden p-0 lg:p-12 w-full h-[calc(100dvh-70px)] lg:h-full ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
 
                     {/* Viewport Toggle (Desktop Only) */}
                     <div className="absolute top-8 right-8 bg-white/80 backdrop-blur-xl p-1.5 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-neutral-200/60 flex items-center gap-1 z-30 hidden lg:flex">
@@ -1436,12 +1474,12 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                         </button>
                     </div>
 
-                    {/* Device Mockup Engine */}
+                    {/* Device Mockup Engine con Escalado Dinámico */}
                     <motion.div
                         layout
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className={`relative bg-white overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 ${viewport === 'mobile'
-                            ? 'w-full max-w-[375px] h-[812px] rounded-[2.3rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50'
+                        className={`relative bg-white overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-500 origin-center ${viewport === 'mobile'
+                            ? 'w-full max-w-[375px] h-[812px] rounded-[2.3rem] border-[6px] border-neutral-950 ring-1 ring-neutral-800/50 scale-[0.80] sm:scale-[0.85] lg:scale-100'
                             : 'w-full max-w-[1024px] h-[720px] rounded-2xl border border-neutral-200/60'
                             }`}
                     >
