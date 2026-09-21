@@ -700,8 +700,9 @@ const MobileBottomBar = ({ pathname, store, seenPulses }: { pathname: string, st
     normalLinks[3]
   ].filter(Boolean)
 
-  // 🚀 MEJORA: La barra se oculta si la pantalla se desplaza hacia abajo, si hay un tour activo, o si hay un modal abierto.
-  const shouldRenderBar = isVisible && !isTourActive && !isModalActive;
+// 🚀 MEJORA DE INMERSIÓN: Ocultamos la barra si hay scroll, un modal, un tour, o si estamos en el Diseñador de Temas (Modo Inmersivo)
+  const isCustomizerRoute = pathname === '/admin/customization';
+  const shouldRenderBar = isVisible && !isTourActive && !isModalActive && !isCustomizerRoute;
 
   return (
     <div
