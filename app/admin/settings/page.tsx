@@ -664,7 +664,19 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                         </div>
                    </section>
 
-                    {/* 🚀 SEGURIDAD Y ACCESO (CAMBIO DE CONTRASEÑA SEGURO) */}
+                  
+                </div>
+
+          {/* COMPONENTES SECUNDARIOS */}
+                <PayPalSetupCard storeId={store.id} />
+                <PaymentSettings storeId={store.id} initialData={store.payment_config} />
+                
+            
+
+                <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
+                <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
+
+                  {/* 🚀 SEGURIDAD Y ACCESO (CAMBIO DE CONTRASEÑA SEGURO) */}
                     <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
                         <div>
                             <div className="flex items-center gap-2 text-neutral-900">
@@ -752,16 +764,6 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                             </div>
                         </form>
                     </section>
-                </div>
-
-          {/* COMPONENTES SECUNDARIOS */}
-                <PayPalSetupCard storeId={store.id} />
-                <PaymentSettings storeId={store.id} initialData={store.payment_config} />
-                
-            
-
-                <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
-                <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
 
                 {/* BOTÓN CERRAR SESIÓN */}
                 <button 
