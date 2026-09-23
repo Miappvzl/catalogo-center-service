@@ -12,11 +12,19 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import IssueVirtualChangeModal from '@/components/admin/IssueVirtualChangeModal'
 import WhatsAppIcon from '@/components/icons/WhatsAppIcon'
 
+interface SelectedModifier {
+    optionId?: string
+    name: string
+    priceAdjustment?: number
+}
+
 interface OrderItem {
     id: string
     product_name: string
     variant_info: string | null
     quantity: number
+    modifiers_selected?: SelectedModifier[] | null
+    customer_notes?: string | null
 }
 
 interface Order {
@@ -48,6 +56,9 @@ interface Order {
     liquid_amount_usd?: number;
     customer_id?: string | null;
     vuelto_processed?: boolean;
+     fulfillment_type?: string | null;
+    table_number?: string | null;
+    tip_amount_usd?: number;
 }
 
 // 🚀 CLEANLOOK: Badges con colores Muted y bordes ultra-finos
@@ -443,6 +454,20 @@ useEffect(() => {
                                                     {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span> :
                                                         order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span> :
                                                             <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>}
+
+                                                            {order.fulfillment_type === 'dine_in' ? (
+    <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+        Mesa {order.table_number || 'N/A'}
+    </span>
+) : order.fulfillment_type === 'pickup' ? (
+    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+        Para Llevar
+    </span>
+) : order.fulfillment_type === 'local_delivery' || order.fulfillment_type === 'delivery' ? (
+    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+        Delivery
+    </span>
+) : null}
                                                     
                                                     {order.payment_method && (
                                                         <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/50 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
@@ -704,7 +729,7 @@ useEffect(() => {
                                     </div>
                                 )}
 
-                                {/* Resumen Financiero y Cliente */}
+                               {/* Resumen Financiero y Cliente */}
                                 <div className={`flex justify-between items-start pt-5 border-t border-neutral-200/50 ${selectedOrder.status === 'quote' && 'mt-5'}`}>
                                     <div className="min-w-0 pr-4 space-y-1">
                                         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Cliente</p>
@@ -725,6 +750,26 @@ useEffect(() => {
                                             ${Number(selectedOrder?.total_usd || 0).toFixed(2)}
                                         </p>
 
+                                     {/* 🚀 DESGLOSE DE PROPINA AISLADO Y LIMPIO */}
+                                        {Number(selectedOrder?.tip_amount_usd || 0) > 0 && (
+                                            <div className="mt-1.5 mb-1.5 flex flex-col items-end">
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <span className="text-neutral-400 uppercase tracking-wider font-semibold">
+                                                        Propina de Servicio:
+                                                    </span>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="font-mono font-bold text-emerald-600">
+                                                            +${Number(selectedOrder?.tip_amount_usd).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-[9px] font-mono font-medium text-emerald-600/70">
+                                                            (Bs. {(Number(selectedOrder?.tip_amount_usd) * Number(selectedOrder?.exchange_rate || 0)).toLocaleString('es-VE', { maximumFractionDigits: 2 })})
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Lógica de Impuestos / Retenciones */}
                                         {Number(selectedOrder?.iva_retention_usd || 0) > 0 && (
                                             <div className="mt-2 text-right animate-in fade-in slide-in-from-top-2">
                                                 <p className="text-[9px] font-semibold text-rose-500 uppercase tracking-wider mb-0.5">Retenido ({selectedOrder?.iva_retention_pct}%)</p>
@@ -739,18 +784,39 @@ useEffect(() => {
                                     </div>
                                 </div>
 
-                                {/* Dirección y Vuelto Virtual */}
+                            {/* MODALIDAD DE ENTREGA / SERVICIO EN SALA */}
                                 <div className="bg-white rounded-xl p-5 space-y-4 border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Dirección de Entrega</p>
-                                        <div className="flex items-start gap-2.5 bg-neutral-50/50 p-3 rounded-lg border border-neutral-200/50">
-                                            <MapPin size={14} className="text-neutral-400 shrink-0 mt-0.5" />
-                                            <p className="text-xs font-medium text-neutral-700 leading-snug flex-1 wrap-break-word">
-                                                {selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Retiro en Tienda'}
-                                            </p>
+                                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                            {selectedOrder.fulfillment_type === 'dine_in' ? 'Servicio en Sala' : 
+                                             selectedOrder.fulfillment_type === 'pickup' ? 'Para Llevar' : 'Destino de Entrega'}
+                                        </p>
+                                        <div className="flex items-start gap-3 bg-neutral-50/50 p-3.5 rounded-lg border border-neutral-200/50">
+                                            {/* Icono Dinámico */}
+                                            <div className="p-2 bg-white rounded-md border border-neutral-200 shadow-xs shrink-0 text-neutral-700">
+                                                {selectedOrder.fulfillment_type === 'dine_in' ? <MapPin size={16} /> : 
+                                                 selectedOrder.fulfillment_type === 'pickup' ? <Package size={16} /> : <Truck size={16} />}
+                                            </div>
+                                            
+                                            <div className="text-xs font-medium text-neutral-700 leading-snug flex-1 wrap-break-word">
+                                                {selectedOrder.fulfillment_type === 'dine_in' ? (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-black text-neutral-900 uppercase tracking-wide">Comer en el Local</span>
+                                                        <span className="text-[11px] text-neutral-500">
+                                                            Llevar a: <strong className="text-neutral-900 font-mono text-xs">Mesa {selectedOrder.table_number || 'Sin indicar'}</strong>
+                                                        </span>
+                                                    </div>
+                                                ) : selectedOrder.fulfillment_type === 'pickup' ? (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-black text-neutral-900 uppercase tracking-wide">Retiro en Barra</span>
+                                                        <span className="text-[11px] text-neutral-500">El cliente pasará buscando el pedido.</span>
+                                                    </div>
+                                                ) : (
+                                                    <p className="mt-1">{selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Detalles en descripción'}</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    
                                     {/* ALERTA INTELIGENTE DE VUELTO VIRTUAL */}
                                     {(() => {
                                         if (selectedOrder.vuelto_processed) {
@@ -802,19 +868,66 @@ useEffect(() => {
                                     })()}
                                 </div>
 
-                                {/* Artículos */}
+                               {/* Artículos / Comanda de Cocina */}
                                 <div>
-                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5">Artículos ({selectedOrder.order_items.length})</p>
-                                    <div className="space-y-1.5 mb-2">
-                                        {selectedOrder.order_items.map((item) => (
-                                            <div key={item.id} className="flex justify-between items-center text-sm bg-white p-2.5 rounded-lg border border-neutral-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                                                <div className="min-w-0 flex-1 pr-3 space-y-0.5">
-                                                    <p className="font-semibold text-xs text-neutral-900 truncate">{item.product_name}</p>
-                                                    {item.variant_info && item.variant_info !== 'N/A' && <p className="text-[10px] text-neutral-500 truncate font-mono">{item.variant_info}</p>}
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5">
+                                        Comanda de Pedido ({selectedOrder.order_items.length})
+                                    </p>
+                                    <div className="space-y-2 mb-2">
+                                        {selectedOrder.order_items.map((item) => {
+                                            const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0;
+                                            const hasCustomerNotes = Boolean(item.customer_notes && item.customer_notes.trim() !== '');
+
+                                            return (
+                                                <div key={item.id} className="bg-white p-3 rounded-lg border border-neutral-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)] space-y-2">
+                                                    {/* Nombre del Plato y Cantidad */}
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="font-bold text-xs text-neutral-900 tracking-tight leading-snug">
+                                                                {item.product_name}
+                                                            </p>
+                                                            {/* Fallback de Variante para tiendas Retail */}
+                                                            {!hasModifiers && item.variant_info && item.variant_info !== 'N/A' && (
+                                                                <p className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                                                                    {item.variant_info}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <span className="font-mono font-bold text-xs text-neutral-900 bg-neutral-100 px-2 py-0.5 rounded border border-neutral-200/60 shrink-0">
+                                                            x{item.quantity}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Desglose de Modificadores (Extras, Términos, Combos) */}
+                                                    {hasModifiers && (
+                                                        <div className="pl-2 border-l-2 border-neutral-200 space-y-1 pt-1">
+                                                            {item.modifiers_selected!.map((mod, mIdx) => (
+                                                                <div key={mIdx} className="flex items-center justify-between text-[11px]">
+                                                                    <span className="text-neutral-700 font-medium leading-tight">
+                                                                        + {mod.name}
+                                                                    </span>
+                                                                    {Number(mod.priceAdjustment || 0) > 0 && (
+                                                                        <span className="text-neutral-400 font-mono text-[10px] shrink-0 ml-2">
+                                                                            +${Number(mod.priceAdjustment).toFixed(2)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Alerta Destacada de Instrucciones de Cocina */}
+                                                    {hasCustomerNotes && (
+                                                        <div className="bg-amber-50/80 border border-amber-200/70 rounded p-2 text-[11px] text-amber-900 font-medium">
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block mb-0.5 font-mono">
+                                                                Instrucción Especial:
+                                                            </span>
+                                                            &quot;{item.customer_notes}&quot;
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p className="font-mono font-bold text-xs text-neutral-700 bg-neutral-50 px-2 py-0.5 rounded border border-neutral-200/50 shrink-0">x{item.quantity}</p>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

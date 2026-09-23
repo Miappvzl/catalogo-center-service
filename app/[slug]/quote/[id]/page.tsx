@@ -153,9 +153,22 @@ export default function QuotePublicPage() {
         };
     }, [store?.id, supabase]);
 
-    const activeCurrency = useMemo(() => store?.currency_type || order?.currency_type || 'usd', [store, order]);
-    const activeRate = useMemo(() => activeCurrency === 'eur' ? rates.eur_rate : rates.usd_rate, [activeCurrency, rates]);
-    const totalBs = useMemo(() => Number(order?.total_usd || 0) * activeRate, [order, activeRate]);
+   const activeCurrency = useMemo(() => store?.currency_type || order?.currency_type || 'usd', [store, order]);
+    
+    // 🚀 LÓGICA DE INMUTABILIDAD FINANCIERA: Si el pedido ya no es una cotización ("quote"), usamos la tasa histórica guardada.
+    const activeRate = useMemo(() => {
+        if (order && order.status !== 'quote' && order.exchange_rate) {
+            return Number(order.exchange_rate);
+        }
+        return activeCurrency === 'eur' ? rates.eur_rate : rates.usd_rate;
+    }, [activeCurrency, rates, order]);
+
+    const totalBs = useMemo(() => {
+        if (order && order.status !== 'quote' && order.total_bs) {
+            return Number(order.total_bs);
+        }
+        return Number(order?.total_usd || 0) * activeRate;
+    }, [order, activeRate]);
 
     const activePaymentMethods = useMemo(() => {
         if (!store?.payment_config) return []
@@ -348,12 +361,29 @@ export default function QuotePublicPage() {
                                 {order.customer_address && <p className="font-sans text-neutral-600 max-w-[280px] leading-tight pt-1">{order.customer_address}</p>}
                             </div>
                         </div>
-                        {order.shipping_method !== 'pickup' && (
+                      {/* 🚀 MODALIDAD DE SERVICIO / DIRECCIÓN (Polimórfico) */}
+                        {(store.store_type === 'restaurant' || order.shipping_method !== 'pickup') && (
                             <div className="flex-1 md:text-right print:text-right print:w-1/2 space-y-1">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Dirección de Despacho:</p>
-                                <p className="text-neutral-600 font-medium leading-relaxed md:ml-auto max-w-[280px] text-[11px] bg-neutral-50/50 p-2.5 rounded-lg border border-neutral-200/40">
-                                    {order.delivery_info}
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">
+                                    {store.store_type === 'restaurant' ? 'Modalidad de Servicio:' : 'Dirección de Despacho:'}
                                 </p>
+                                <div className="text-neutral-600 font-medium leading-relaxed md:ml-auto max-w-[280px] text-[11px] bg-neutral-50/50 p-2.5 rounded-lg border border-neutral-200/40 text-left md:text-right">
+                                    {store.store_type === 'restaurant' ? (
+                                        <>
+                                            {order.fulfillment_type === 'dine_in' && (
+                                                <p><span className="font-bold text-neutral-900">Comer en el Local</span><br/>Mesa: <strong className="font-mono">{order.table_number || 'N/A'}</strong></p>
+                                            )}
+                                            {order.fulfillment_type === 'pickup' && (
+                                                <p className="font-bold text-neutral-900">Para Llevar (Retiro en Barra)</p>
+                                            )}
+                                            {(order.fulfillment_type === 'local_delivery' || order.fulfillment_type === 'delivery') && (
+                                                <p>{order.delivery_info?.split(' | ⚠️ ')[0] || 'Delivery Local'}</p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p>{order.delivery_info?.split(' | ⚠️ ')[0] || order.delivery_info}</p>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -384,14 +414,37 @@ export default function QuotePublicPage() {
                             ) : (
                                 items.map(item => (
                                     <div key={item.id} className="avoid-break grid grid-cols-12 gap-2 py-2.5 items-start text-xs">
+                                       {/* 🚀 DESCRIPCIÓN DEL ARTÍCULO (Soporte FoodTech & Retail) */}
                                         <div className="col-span-6 pr-2">
                                             <p className="font-bold text-neutral-900 leading-snug break-words">
                                                 {item.product_name}
                                             </p>
-                                            {item.variant_info && (
-                                                <p className="text-[10px] text-neutral-500 font-mono mt-0.5 leading-tight">
-                                                    {item.variant_info}
-                                                </p>
+                                            
+                                            {/* Si es comida y tiene modificadores */}
+                                            {item.modifiers_selected && Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0 ? (
+                                                <div className="mt-1 pl-1.5 border-l border-neutral-200 space-y-0.5">
+                                                    {item.modifiers_selected.map((mod: any, mIdx: number) => (
+                                                        <p key={mIdx} className="text-[9px] text-neutral-500 flex items-center justify-between">
+                                                            <span>+ {mod.name}</span>
+                                                            {Number(mod.priceAdjustment) > 0 && <span className="font-mono text-neutral-400">+{Number(mod.priceAdjustment).toFixed(2)}</span>}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                /* Fallback de Retail (Ropa/Tallas) */
+                                                item.variant_info && item.variant_info !== 'N/A' && (
+                                                    <p className="text-[10px] text-neutral-500 font-mono mt-0.5 leading-tight">
+                                                        {item.variant_info}
+                                                    </p>
+                                                )
+                                            )}
+
+                                            {/* Notas de Cocina (Instrucciones Especiales) */}
+                                            {item.customer_notes && (
+                                                <div className="mt-1.5 bg-amber-50/60 border border-amber-200/50 p-1.5 rounded text-[9px] text-amber-800 font-medium">
+                                                    <span className="font-bold uppercase text-amber-700 font-mono tracking-wider mr-1">Nota:</span>
+                                                    &quot;{item.customer_notes}&quot;
+                                                </div>
                                             )}
                                         </div>
                                         <div className="col-span-2 text-center pt-0.5">
@@ -426,11 +479,19 @@ export default function QuotePublicPage() {
 
                         {/* Columna de Cálculos y Totales */}
                         <div className="w-full md:w-[290px] print:w-[290px] space-y-3">
-                            <div className="space-y-1.5 border-b border-neutral-100 pb-3 text-xs">
+                           <div className="space-y-1.5 border-b border-neutral-100 pb-3 text-xs">
                                 <div className="flex justify-between text-neutral-500 font-medium">
                                     <span>Subtotal Base</span>
                                     <span className="font-mono">${Number(order.subtotal_usd || order.total_usd).toFixed(2)}</span>
                                 </div>
+
+                                {/* 🚀 INYECCIÓN DE LA PROPINA */}
+                                {Number(order.tip_amount_usd) > 0 && (
+                                    <div className="flex justify-between text-emerald-600 font-medium pt-0.5">
+                                        <span>Propina de Servicio</span>
+                                        <span className="font-mono">+${Number(order.tip_amount_usd).toFixed(2)}</span>
+                                    </div>
+                                )}
 
                                 {/* DESCUENTOS AUDITABLES */}
                                 {(Number(order.promo_discount_usd) > 0 || Number(order.wholesale_discount_usd) > 0 || Number(order.affiliate_discount_usd) > 0 || Number(order.fx_savings_usd) > 0) && (
