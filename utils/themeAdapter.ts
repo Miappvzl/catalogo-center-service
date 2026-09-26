@@ -10,46 +10,46 @@ import {
 export const DEFAULT_THEME_CONFIG: ThemeConfig = {
     template_id: 'classic',
     version: 3,
-   colors: {
+    colors: {
         primary: '#000000',
         primary_text: '#ffffff',
-        background: '#ffffff',
-        text_main: '#111111',
+        background: '#ffffff', // 🚀 Blanco puro oficial
+        text_main: '#000000',  // 🚀 Negro puro de alto contraste
         surface: '#ffffff',
-        surface_text: '#6b7280',
-        border: '#e5e7eb',
+        surface_text: '#71717a',
+        border: '#e4e4e7',
         incentive: '#059669',
-        badge_discount_bg: '#dc2626', // red-600
+        badge_discount_bg: '#ef4444',
         badge_discount_text: '#ffffff',
-        badge_soldout_bg: '#171717', // neutral-900
+        badge_soldout_bg: '#18181b',
         badge_soldout_text: '#ffffff',
-        action_favorite: '#ef4444', // red-500
+        action_favorite: '#ef4444',
     },
-  shapes: {
-        button_shape: 'pill',
-        search_bar_shape: 'pill',
+    shapes: {
+        button_shape: 'pill',       // 🚀 Botones de pastilla (9999px)
+        search_bar_shape: 'pill',   // 🚀 Buscador de pastilla (9999px)
         line_weight: 'thin',
         ui_shadows: 'none',
-        info_layout: 'accordion', // 🚀 Valor por defecto seguro
+        info_layout: 'accordion',
     },
     typography: {
         heading_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
         body_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
         price_font: 'var(--font-inter), system-ui, -apple-system, sans-serif',
     },
-layout: {
+    layout: {
         header_style: 'classic',
         card_style: 'standard',
         logo_type: 'standard',
         hero_desktop_url: '',
         hero_mobile_url: '',
-        hero_subtitle: '— Diseños atemporales y fragancias exclusivas creadas para perdurar —',
+        hero_subtitle: '— Diseños atemporales y productos seleccionados para perdurar —',
         trust_badges: [
             { id: 'tb_1', title: 'Envío Gratis', description: 'En órdenes sobre $100', icon: 'Truck' },
             { id: 'tb_2', title: 'Pago Seguro', description: 'Transacciones encriptadas', icon: 'ShieldCheck' },
             { id: 'tb_3', title: 'Garantía Total', description: 'Protección al comprador', icon: 'Award' },
             { id: 'tb_4', title: 'Soporte 24/7', description: 'Atención personalizada', icon: 'Headset' },
-        ], // 🚀 INSIGNIAS POR DEFECTO
+        ],
     }
 };
 
@@ -78,6 +78,7 @@ export const SHADOW_MAP: Record<ShadowLevelOption, string> = {
     soft: '0 4px 14px 0 rgba(0, 0, 0, 0.05)',
     medium: '0 10px 30px -5px rgba(0, 0, 0, 0.12)',
     hard_brutalist: '3px 3px 0px 0px #000000',
+    crisp_app: '0px 6px 10px -2px rgba(0,0,0,0.08), 0px 2px 4px -1px rgba(0,0,0,0.04)',
 };
 export const AVAILABLE_FONTS = {
     headings: [
@@ -142,13 +143,30 @@ export function normalizeThemeConfig(raw: any): ThemeConfig {
     const rawShapes = raw.shapes || {};
     const rawTypography = raw.typography || {};
     const rawLayout = raw.layout || {};
+    const rawColors = raw.colors || {};
 
- const shapes: ThemeConfig['shapes'] = {
+    const isGourmet = raw.template_id === 'gourmet_flow';
+    const isClassic = raw.template_id === 'classic' || !raw.template_id;
+
+    // 🚀 SANITIZACIÓN: Si la plantilla es Classic y arrastra el #F6F6F6 legacy, lo convierte en #ffffff puro
+    const resolvedBackground = (isClassic && rawColors.background?.toLowerCase() === '#f6f6f6')
+        ? '#ffffff'
+        : (rawColors.background || (isGourmet ? '#fafafa' : '#ffffff'));
+
+    const colors = {
+        ...DEFAULT_THEME_CONFIG.colors,
+        ...rawColors,
+        background: resolvedBackground,
+    };
+
+    const shapes: ThemeConfig['shapes'] = {
         button_shape: rawShapes.button_shape || 'pill',
         search_bar_shape: rawShapes.search_bar_shape || 'pill',
-        line_weight: rawShapes.line_weight || 'thin',
-        ui_shadows: raw.template_id === 'classic' ? 'none' : (rawShapes.ui_shadows || 'none'),
-        info_layout: rawShapes.info_layout || 'accordion', // 🚀 Normalización segura
+        line_weight: rawShapes.line_weight || (isGourmet ? 'none' : 'thin'),
+        ui_shadows: isClassic 
+            ? 'none' 
+            : (rawShapes.ui_shadows || (isGourmet ? 'crisp_app' : 'none')),
+        info_layout: rawShapes.info_layout || (isGourmet ? 'expanded' : 'accordion'), 
     };
 
     const typography: ThemeConfig['typography'] = {
@@ -157,7 +175,7 @@ export function normalizeThemeConfig(raw: any): ThemeConfig {
         price_font: rawTypography.price_font || DEFAULT_THEME_CONFIG.typography.price_font,
     };
 
-const layout: ThemeConfig['layout'] = {
+    const layout: ThemeConfig['layout'] = {
         header_style: rawLayout.header_style || DEFAULT_THEME_CONFIG.layout.header_style,
         card_style: rawLayout.card_style || DEFAULT_THEME_CONFIG.layout.card_style,
         logo_type: rawLayout.logo_type || 'standard',
@@ -166,21 +184,22 @@ const layout: ThemeConfig['layout'] = {
         hero_mobile_url: rawLayout.hero_mobile_url || '',
         logo_url: rawLayout.logo_url || '',
         hero_subtitle: rawLayout.hero_subtitle || DEFAULT_THEME_CONFIG.layout.hero_subtitle, 
-        trust_badges: rawLayout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges, // 🚀 NORMALIZACIÓN SEGURA
+        trust_badges: rawLayout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges,
+        greeting_text: rawLayout.greeting_text || DEFAULT_THEME_CONFIG.layout.greeting_text,
+        slogan_text: rawLayout.slogan_text || DEFAULT_THEME_CONFIG.layout.slogan_text,
+        hero_button_text: rawLayout.hero_button_text || DEFAULT_THEME_CONFIG.layout.hero_button_text,
     };
 
     return {
         template_id: raw.template_id || DEFAULT_THEME_CONFIG.template_id,
         version: 3,
-        colors: {
-            ...DEFAULT_THEME_CONFIG.colors,
-            ...(raw.colors || {}),
-        },
+        colors,
         shapes,
         typography,
         layout,
     };
 }
+
 
 export function generateCssVariables(config: ThemeConfig): React.CSSProperties {
     const btnRadius = BUTTON_SHAPE_MAP[config.shapes.button_shape] || '9999px';

@@ -27,7 +27,8 @@ interface InventoryItem {
     isTaxExempt: boolean; 
     isFeatured: boolean; 
     displayOrder: number; 
-    requiresShipping: boolean; 
+      requiresShipping: boolean;
+    hasModifiers?: boolean; // 🚀 NUEVO: Detector gastronómico
 }
 
 export default function InventoryPage() {
@@ -41,6 +42,9 @@ export default function InventoryPage() {
     const [reorderList, setReorderList] = useState<any[]>([])
     const [isSavingOrder, setIsSavingOrder] = useState(false)
     const [editingIndex, setEditingIndex] = useState<string | null>(null)
+
+    const [storeType, setStoreType] = useState<'retail' | 'restaurant'>('retail')
+    const isRestaurant = storeType === 'restaurant'
 
     const openReorderModal = () => {
         const allProducts = Array.from(new Map(
@@ -118,14 +122,15 @@ export default function InventoryPage() {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
 
-                const { data: store } = await supabase.from('stores').select('id, fiscal_profile, show_tax_in_catalog').eq('user_id', user.id).single() 
+                const { data: store } = await supabase.from('stores').select('id, fiscal_profile, show_tax_in_catalog, store_type').eq('user_id', user.id).single()
                 if (!store) return
 
                 setStoreId(store.id) 
                 setFiscalProfile(store.fiscal_profile) 
                 setShowTaxInCatalog(store.show_tax_in_catalog || false) 
+                setStoreType(store.store_type || 'retail')
                 
-             const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*)').eq('store_id', store.id).order('created_at', { ascending: false })
+             const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)').eq('store_id', store.id).order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
 
@@ -171,7 +176,8 @@ export default function InventoryPage() {
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
                             displayOrder: dOrder,
-                            requiresShipping: reqShipping
+                            requiresShipping: reqShipping,
+                            hasModifiers: Boolean(prod.product_modifier_groups && prod.product_modifier_groups.length > 0) // 🚀 DETECCIÓN EN VIVO
                         })
                     }
                 })
@@ -403,7 +409,7 @@ export default function InventoryPage() {
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Filtrar por nombre del artículo, talla o color..."
+                                placeholder={isRestaurant ? "Filtrar por plato, ingrediente o categoría..." : "Filtrar por nombre del artículo, talla o color..."}
                                 className="w-full bg-white border-b-2 border-neutral-100  shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-300 transition-all"
                             />
                         </div>
@@ -411,16 +417,18 @@ export default function InventoryPage() {
                        {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
                         <div className="flex items-center gap-2 shrink-0">
                             {/* BOTÓN MATRIZ DE SKUs */}
-                            <Link
-                                href="/admin/inventory/skus"
-                                className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
-                            >
-                                <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
-                                <span>Matriz de SKUs</span>
-                                <span className="bg-neutral-950 text-white text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                                    NUEVO
-                                </span>
-                            </Link>
+                             {!isRestaurant && (
+                                <Link
+                                    href="/admin/inventory/skus"
+                                    className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
+                                >
+                                    <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+                                    <span>Matriz de SKUs</span>
+                                    <span className="bg-neutral-950 text-white text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                                        NUEVO
+                                    </span>
+                                </Link>
+                            )}
 
                             {/* BOTÓN ORGANIZAR ESCAPARATE */}
                             {items.length > 1 && (
@@ -466,8 +474,8 @@ export default function InventoryPage() {
                                     <table className="w-full text-left border-collapse min-w-[700px]">
                                         <thead className="bg-neutral-50/50 border-b border-neutral-200/50 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
                                             <tr>
-                                                <th className="px-4 py-3 md:px-6 md:py-3.5">Producto</th>
-                                                <th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">Variante</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5">{isRestaurant ? 'Plato / Menú' : 'Producto'}</th>
+<th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">{isRestaurant ? 'Personalización' : 'Variante'}</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Gestión Rápida</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Exhibición</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-right">Estado</th>
@@ -531,25 +539,40 @@ export default function InventoryPage() {
                                                                         )}
                                                                     </div>
                                                                     
+                                                                   
                                                                     {/* Variantes & SKU en Móvil */}
-                                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
-                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-                                                                            <span className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" style={{ background: item.hex }}></span>
-                                                                            <span className="truncate max-w-[50px]">{item.color}</span>
+                                                                    {!isRestaurant ? (
+                                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
+                                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                                <span className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" style={{ background: item.hex }}></span>
+                                                                                <span className="truncate max-w-[50px]">{item.color}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                                <span>{item.size}</span>
+                                                                            </div>
+                                                                            {item.sku ? (
+                                                                                <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200/60 rounded text-[8px] font-mono font-bold uppercase tracking-widest text-neutral-600">
+                                                                                    {item.sku}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="px-1 py-0.5 bg-amber-50 border border-amber-200/60 rounded text-[8px] font-mono font-semibold text-amber-700">
+                                                                                    Sin SKU
+                                                                                </span>
+                                                                            )}
                                                                         </div>
-                                                                        <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-                                                                            <span>{item.size}</span>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-1.5 mt-1 md:hidden">
+                                                                            {item.hasModifiers ? (
+                                                                                <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200/60 rounded text-[8px] font-mono font-bold uppercase tracking-wider text-neutral-800">
+                                                                                    Con Modificadores
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/40 rounded text-[8px] font-mono text-neutral-400 uppercase tracking-wider">
+                                                                                    Plato Directo
+                                                                                </span>
+                                                                            )}
                                                                         </div>
-                                                                        {item.sku ? (
-                                                                            <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200/60 rounded text-[8px] font-mono font-bold uppercase tracking-widest text-neutral-600">
-                                                                                {item.sku}
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="px-1 py-0.5 bg-amber-50 border border-amber-200/60 rounded text-[8px] font-mono font-semibold text-amber-700">
-                                                                                Sin SKU
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
+                                                                    )}
                                                                 </div>
                                                             </Link>
                                                         </td>
@@ -605,18 +628,21 @@ export default function InventoryPage() {
                                                                     </button>
                                                                 )}
                                                                 
-                                                                {/* BOTÓN LOGÍSTICO (Muted Purple vs Neutral) */}
-                                                                <button
-                                                                    onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
-                                                                    className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border ${item.requiresShipping ? 'bg-neutral-50 border-neutral-200/50 text-neutral-500 hover:bg-neutral-100' : 'bg-purple-50 border-purple-100/40 text-purple-700 hover:bg-purple-100/60'}`}
-                                                                    title="Toca para cambiar entre Producto Físico o Servicio (Experiencia)"
-                                                                >
-                                                                    {item.requiresShipping ? (
-                                                                        <><Package size={10} /> Físico</>
-                                                                    ) : (
-                                                                        <><Zap size={10} /> Servicio</>
-                                                                    )}
-                                                                </button>
+                                                            
+                                                                {/* BOTÓN LOGÍSTICO (SOLO RETAIL) */}
+                                                                {!isRestaurant && (
+                                                                    <button
+                                                                        onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
+                                                                        className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border ${item.requiresShipping ? 'bg-neutral-50 border-neutral-200/50 text-neutral-500 hover:bg-neutral-100' : 'bg-purple-50 border-purple-100/40 text-purple-700 hover:bg-purple-100/60'}`}
+                                                                        title="Toca para cambiar entre Producto Físico o Servicio (Experiencia)"
+                                                                    >
+                                                                        {item.requiresShipping ? (
+                                                                            <><Package size={10} /> Físico</>
+                                                                        ) : (
+                                                                            <><Zap size={10} /> Servicio</>
+                                                                        )}
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         

@@ -24,7 +24,7 @@ interface ProductCardProps {
   isCriticalStock?: boolean;
   showTaxIndicator?: boolean;
   taxPercentage?: number;
-  cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech';
+  cardStyle?: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech' | 'restaurant_horizontal';
   isFeatured?: boolean; // 🚀 NUEVO: Detector de producto destacado
 }
 

@@ -5,6 +5,7 @@ import StoreTracker from '@/components/StoreTracker'
 import { notFound } from 'next/navigation'
 import { Suspense, cache } from 'react' // 🚀 Importamos cache de React
 import StoreLoadingSkeleton from './StoreLoadingSkeleton'
+import RestaurantInterface from '@/components/restaurant/RestaurantInterface'
 import { Metadata } from 'next'
 import { Rocket, Sparkle } from 'lucide-react'
 
@@ -25,12 +26,12 @@ const getStoreData = cache(async (slug: string) => {
 // ------------------------------------------------------------------
 // 🚀 GENERADOR DINÁMICO DE OPENGRAPH Y METADATOS (SEO)
 // ------------------------------------------------------------------
-export async function generateMetadata({ 
-  params, 
-  searchParams 
-}: { 
-  params: Promise<{ slug: string }>, 
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+export async function generateMetadata({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>,
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }): Promise<Metadata> {
   const { slug } = await params
   const resolvedSearchParams = await searchParams
@@ -78,7 +79,7 @@ export async function generateMetadata({
 
 export default async function StorePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  
+
   // 2. Reutiliza la tienda en 0ms (Cero llamadas adicionales a la BD)
   const store = await getStoreData(slug)
 
@@ -113,15 +114,17 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     )
   }
 
-  // Sistema de color
+   // Sistema de color
   const theme = store.theme_config || {}
   const colors = theme.colors || {}
+  const isRestaurant = store.store_type === 'restaurant'
 
-  const dbBackground = colors.background || '#F8F9FA'
+  // 🚀 FALLBACKS PUROS Y LIMPIOS
+  const dbBackground = colors.background || (isRestaurant ? '#fafafa' : '#ffffff')
   const dbSurface = colors.surface || '#FFFFFF'
-  const dbBorder = colors.border || '#E4E4E7'
-  const dbText = colors.text_main || '#09090B'
-  const dbPrimary = colors.primary || '#00cd61'
+  const dbBorder = colors.border || (isRestaurant ? 'transparent' : '#E4E4E7')
+  const dbText = colors.text_main || '#000000'
+  const dbPrimary = colors.primary || '#000000'
 
   const bgHex = dbBackground.toLowerCase()
   const isDark = bgHex !== '#ffffff' && bgHex !== '#f8f9fa' && bgHex !== '#f9fafb'
@@ -135,15 +138,15 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
   } as React.CSSProperties
 
   return (
-    <div 
+    <div
       style={{
         ...themeVariables,
-        backgroundColor: 'var(--store-background)', 
-      }} 
+        backgroundColor: 'var(--store-background)',
+      }}
       className={`min-h-screen font-sans antialiased ${isDark ? 'dark text-neutral-50' : 'text-neutral-900'}`}
     >
       <StoreTracker storeId={store.id} />
-      
+
       <Suspense fallback={<StoreLoadingSkeleton />}>
         <DeferredStoreContent store={store} />
       </Suspense>
@@ -154,13 +157,24 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
 // ------------------------------------------------------------------
 // 🛡️ COMPONENTE ASÍNCRONO DIFERIDO (Carga pesada en segundo plano)
 // ------------------------------------------------------------------
+// BUSCA DeferredStoreContent AL FINAL DE app/[slug]/page.tsx:
 async function DeferredStoreContent({ store }: { store: any }) {
   const supabaseCached = createPublicCachedClient()
 
   const [productsResponse, ratesResponse, promotionsResponse] = await Promise.all([
     supabaseCached
       .from('products')
-      .select('*, product_variants(*)')
+      .select(`
+        *,
+        product_variants(*),
+        product_modifier_groups(
+          display_order,
+          modifier_groups(
+            id, name, is_required, min_selections, max_selections,
+            modifier_options(id, name, price_adjustment_usd, is_available, display_order)
+          )
+        )
+      `)
       .eq('user_id', store.user_id)
       .eq('status', 'active')
       .order('display_order', { ascending: true })
@@ -183,6 +197,19 @@ async function DeferredStoreContent({ store }: { store: any }) {
   const rates = ratesResponse.data || { usd_rate: 0, eur_rate: 0 }
   const promotions = promotionsResponse.data || []
 
+  // BIFURCACION LIMPIA POR DOMINIO DE NEGOCIO
+  if (store.store_type === 'restaurant') {
+    return (
+      <RestaurantInterface
+        store={store}
+        products={products}
+        rates={rates}
+        promotions={promotions}
+      />
+    )
+  }
+
+  // TIENDAS DE RETAIL (ROPA, HARDWARE, LUJO, GENERAL)
   return (
     <StoreInterface
       store={store}

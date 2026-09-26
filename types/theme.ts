@@ -3,7 +3,7 @@
 export type ButtonShapeOption = 'sharp' | 'rounded' | 'pill';
 export type SearchBarShapeOption = 'sharp' | 'rounded' | 'pill' | 'minimal_underlined';
 export type LineWeightOption = 'none' | 'hairline' | 'thin' | 'bold';
-export type ShadowLevelOption = 'none' | 'soft' | 'medium' | 'hard_brutalist';
+export type ShadowLevelOption = 'none' | 'soft' | 'medium' | 'hard_brutalist' | 'crisp_app';
 export type InfoLayoutOption = 'accordion' | 'expanded'; // 🚀 NUEVO: Densidad de Información
 
 export interface ThemeColors {
@@ -51,15 +51,19 @@ export interface TrustBadge {
 }
 
 export interface ThemeLayout {
-    header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav' | 'modular_tech';
-    card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech';
+    // Se agregan los estilos 'restaurant_flow' y 'restaurant_horizontal'
+    header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav' | 'modular_tech' | 'restaurant_flow';
+    card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech' | 'restaurant_horizontal';
     logo_type?: 'standard' | 'png_transparent';
     category_style?: 'pills' | 'thumbnails'; 
     hero_desktop_url?: string;
     hero_mobile_url?: string;
     logo_url?: string;
     hero_subtitle?: string;
-    trust_badges?: TrustBadge[]; // 🚀 NUEVO: Insignias de confianza
+    trust_badges?: TrustBadge[];
+     greeting_text?: string;
+    slogan_text?: string;
+    hero_button_text?: string;
 }
 
 export interface ThemeConfig {

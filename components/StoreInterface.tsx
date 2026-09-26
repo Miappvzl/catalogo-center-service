@@ -8,6 +8,7 @@ import Link from 'next/link'
 import ProductModal from './ProductModal'
 import FloatingCheckout from './FloatingCheckout'
 import { isValidUUID } from '@/utils/validations'
+import ProductFoodModal from './ui/ProductFoodModal'
 import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -356,8 +357,8 @@ if (isMockMode) {
   })
 
 
-  
 const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isFoodModalOpen, setIsFoodModalOpen] = useState(false) // 🚀 NUEVO ESTADO PARA COMIDA
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
   const [isStickyVisible, setIsStickyVisible] = useState(true)
   const lastScrollYRef = useRef(0) // 🚀 CERO RE-RENDERS EN SCROLL
@@ -775,7 +776,26 @@ useEffect(() => {
     handleCategoryScroll();
   }, []);
 
-  const handleOpenProduct = (product: any) => { setSelectedProductForModal(product); setIsModalOpen(true); }
+  const handleOpenProduct = (product: any) => { 
+    // 🚀 ENRUTADOR INTELIGENTE: Si la tienda es FoodTech O si el producto tiene modificadores asignados
+    if (store?.store_type === 'restaurant' || (product.product_modifier_groups && product.product_modifier_groups.length > 0)) {
+      
+      // Aplanamos la data de Supabase para que ProductFoodModal la consuma limpiamente
+      const foodProduct = {
+        ...product,
+        modifier_groups: product.product_modifier_groups
+          ?.map((pmg: any) => pmg.modifier_groups)
+          .filter(Boolean) || [] // Filtramos nulos
+      };
+      
+      setSelectedProductForModal(foodProduct); 
+      setIsFoodModalOpen(true); 
+    } else {
+      // Comportamiento Clásico (Ropa, Tecnología)
+      setSelectedProductForModal(product); 
+      setIsModalOpen(true); 
+    }
+  }
 
   const getProductPricing = (product: any) => {
     const cashPrice = Number(product.usd_cash_price || 0)
@@ -1712,6 +1732,12 @@ useEffect(() => {
         activePromoContext={activePromo}
        storeConfig={{ ...store, theme_config: activeTheme }}
         isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
+      />
+
+      <ProductFoodModal
+        isOpen={isFoodModalOpen}
+        onClose={() => setIsFoodModalOpen(false)}
+        product={selectedProductForModal}
       />
 
       {/* 🚀 MODAL DE HISTORIAL DE PEDIDOS (CLEAN LOOK) */}

@@ -46,13 +46,13 @@ interface NavItem {
   href: string;
   icon: any;
   category: string;
-  hasPulse?: boolean; // 🚀 Reemplaza a isNew con el pulso vivo rose-500
+  hasPulse?: boolean;
   isLocked?: boolean;
   hideOnBottomBar?: boolean;
   isAction?: boolean;
   allowedPlans: PlanType[];
+  allowedStoreTypes?: ('retail' | 'restaurant' | 'services')[]; // 🚀 Filtro de modelo de negocio
 }
-
 const NAV_LINKS: NavItem[] = [
   // 📌 General
   { name: 'Inicio', href: '/admin', icon: LayoutGrid, category: 'General', allowedPlans: ['retail', 'digital', 'pro'] },
@@ -68,7 +68,7 @@ const NAV_LINKS: NavItem[] = [
 
   // 📌 Catálogo
   { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
-  { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, hasPulse: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, hasPulse: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'], allowedStoreTypes: ['retail'] },
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
 
@@ -158,8 +158,13 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
   }
 
     // 👈 NUEVO: Obtenemos el plan actual
-  const currentPlan = (store?.plan_type || 'retail') as PlanType;
-  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+ const currentPlan = (store?.plan_type || 'retail') as PlanType;
+  const currentStoreType = store?.store_type || 'retail';
+  const allowedLinks = NAV_LINKS.filter(link => {
+    const matchesPlan = link.allowedPlans.includes(currentPlan);
+    const matchesStoreType = !link.allowedStoreTypes || link.allowedStoreTypes.includes(currentStoreType);
+    return matchesPlan && matchesStoreType;
+  });
 
   return (
     <aside
@@ -403,10 +408,14 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo,
   }
 
   // 🚀 Lógica de filtrado de enlaces
-  const currentPlan = (store?.plan_type || 'retail') as PlanType;
-  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+ const currentPlan = (store?.plan_type || 'retail') as PlanType;
+  const currentStoreType = store?.store_type || 'retail';
+  const allowedLinks = NAV_LINKS.filter(link => {
+    const matchesPlan = link.allowedPlans.includes(currentPlan);
+    const matchesStoreType = !link.allowedStoreTypes || link.allowedStoreTypes.includes(currentStoreType);
+    return matchesPlan && matchesStoreType;
+  });
   const CATEGORIES = ['General', 'Ventas', 'Catálogo', 'Academia', 'Negocio'];
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -686,7 +695,12 @@ const MobileBottomBar = ({ pathname, store, seenPulses }: { pathname: string, st
   
   // 👈 NUEVO: Filtramos la barra inferior
   const currentPlan = (store?.plan_type || 'retail') as PlanType;
-  const allowedLinks = NAV_LINKS.filter(link => link.allowedPlans.includes(currentPlan));
+  const currentStoreType = store?.store_type || 'retail';
+  const allowedLinks = NAV_LINKS.filter(link => {
+    const matchesPlan = link.allowedPlans.includes(currentPlan);
+    const matchesStoreType = !link.allowedStoreTypes || link.allowedStoreTypes.includes(currentStoreType);
+    return matchesPlan && matchesStoreType;
+  });
 
   const normalLinks = allowedLinks.filter(link => !link.hideOnBottomBar && !link.isAction)
   const actionLink = allowedLinks.find(link => link.isAction)

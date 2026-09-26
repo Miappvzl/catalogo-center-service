@@ -36,7 +36,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import { compressImage } from '@/utils/imageOptimizer'
 import Swal from 'sweetalert2'
 import { motion } from 'framer-motion'
-import { revalidateStoreCache } from '@/app/admin/actions'
+import { revalidateStoreCache, switchStoreTypeAction } from '@/app/admin/actions'
 import PaymentSettings from '@/components/admin/PaymentSettings'
 import ShippingSettings from '@/components/admin/ShippingSettings'
 import AdminHeader from '@/components/admin/AdminHeader'
@@ -46,7 +46,10 @@ import CategorySorter from '@/components/admin/CategorySorter'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from '@/components/NumberInput'
+import StoreHoursSettings from '@/components/admin/StoreHoursSettings'
 import PayPalSetupCard from '@/components/admin/PayPalSetupCard'
+import SwitchStoreTypeModal from '@/components/admin/SwitchStoreTypeModal' // 🚀 NUEVO MODAL NATIVO
+import { toast } from 'sonner' // Para notificaciones limpias
 
 // Switch Premium con comportamiento elástico ultra-clean (tipo Stripe/Apple)
 const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
@@ -134,6 +137,28 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
         }
         fetchSettings()
     }, [supabase])
+
+  
+    // 🚀 ESTADO DEL MODAL NATIVO DE CAMBIO DE GIRO
+    const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false)
+    const [switchingType, setSwitchingType] = useState(false)
+
+    const handleConfirmSwitchStoreType = async () => {
+        const isCurrentlyRestaurant = store?.store_type === 'restaurant';
+        const targetType = isCurrentlyRestaurant ? 'retail' : 'restaurant';
+
+        setSwitchingType(true);
+        const res = await switchStoreTypeAction(store.id, targetType);
+        setSwitchingType(false);
+
+        if (res.success) {
+            setIsSwitchModalOpen(false);
+            toast.success(res.message);
+            setTimeout(() => window.location.reload(), 600);
+        } else {
+            toast.error(res.message || 'Error al cambiar de modelo');
+        }
+    };
 
     const handleIdentityChange = (field: string, value: string) => {
         const finalValue = field === 'phone' ? value.replace(/\D/g, '') : value
@@ -367,6 +392,66 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                       
                     </section>
 
+                    {/* MODELO DE OPERACIÓN Y ESPECIALIZACIÓN */}
+                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
+                            <div>
+                                <div className="flex items-center gap-2 text-neutral-900">
+                                    <Store size={18} className="text-neutral-500" />
+                                    <h2 className="text-base font-bold tracking-tight">Modelo de Operación</h2>
+                                </div>
+                                <p className="text-xs text-neutral-400 mt-1">
+                                    Define la arquitectura de catálogo, editor de productos y logística de compra.
+                                </p>
+                            </div>
+
+                           <button
+                                type="button"
+                                onClick={() => setIsSwitchModalOpen(true)}
+                                disabled={saving || switchingType}
+                                className="px-4 py-2 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-900 rounded-lg text-xs font-bold tracking-wide transition-all self-start sm:self-auto shrink-0 active:scale-95"
+                            >
+                                {store?.store_type === 'restaurant' 
+                                    ? 'Cambiar a Comercio General' 
+                                    : 'Cambiar a Modo Restaurante'}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                store?.store_type !== 'restaurant' 
+                                    ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs' 
+                                    : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
+                            }`}>
+                                <div>
+                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 opacity-70">
+                                        Modo Actual
+                                    </span>
+                                    <h3 className="text-sm font-bold tracking-tight">Comercio General (Retail)</h3>
+                                    <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
+                                        Optimizado para ropa, calzado, tecnología y artículos con gestión de stock unitario, tallas y envíos por agencias nacionales.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                store?.store_type === 'restaurant' 
+                                    ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs' 
+                                    : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
+                            }`}>
+                                <div>
+                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider block mb-1 opacity-70">
+                                        Modo Especializado
+                                    </span>
+                                    <h3 className="text-sm font-bold tracking-tight">Gastronomía & Restaurantes</h3>
+                                    <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
+                                        Menú líquido vertical continuo, modificadores de platos (términos, extras), control de horarios en vivo, pedidos en mesa y propinas.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     {/* DATOS FISCALES (CON ACENTOS MUTED) */}
                     <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
                         <div>
@@ -462,16 +547,16 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                             )}
                         </div>
                     </section>
-
-                    {/* PERSONALIZACIÓN DE SERVICIOS */}
-                    <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
-                        <div>
-                          <div className="flex items-center gap-2 text-neutral-900">
-                              <Zap size={18} className="text-neutral-500" />
-                              <h2 className="text-base font-bold tracking-tight">Servicios e Intangibles</h2>
-                          </div>
-                          <p className="text-xs text-neutral-400 mt-1">Configure las descripciones y mensajes para productos que no exigen entrega física o logística tradicional.</p>
-                        </div>
+{/* PERSONALIZACIÓN DE SERVICIOS (SOLO RETAIL / COMERCIO GENERAL) */}
+                    {store?.store_type !== 'restaurant' && (
+                        <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                            <div>
+                                <div className="flex items-center gap-2 text-neutral-900">
+                                    <Zap size={18} className="text-neutral-500" />
+                                    <h2 className="text-base font-bold tracking-tight">Servicios e Intangibles</h2>
+                                </div>
+                                <p className="text-xs text-neutral-400 mt-1">Configure las descripciones y mensajes para productos que no exigen entrega física o logística tradicional.</p>
+                            </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
@@ -521,7 +606,8 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                                 />
                             </div>
                         </div>
-                    </section>
+                       </section>
+                    )}
 
                     {/* REGLAS DE NEGOCIO (COLORES DIFERENCIADORES SUTILES) */}
                     <section className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
@@ -581,47 +667,49 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                             )}
                         </div>
 
-                        {/* MAYORISTA (COLOR ACENTO: MUTED SAGE GREEN) */}
-                        <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
-                            <div
-                                className="flex items-center justify-between cursor-pointer"
-                                onClick={() => handleWholesaleChange('active', !wholesale.active)}
-                            >
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-xs text-neutral-900 flex items-center gap-1.5">
-                                        <ShoppingBag size={14} className="text-emerald-600" /> Descuento Mayorista Automático
-                                    </p>
-                                    <p className="text-xs text-neutral-400 pr-4">Aplica reducciones globales inmediatas en el checkout según el volumen de compra.</p>
+                       {/* MAYORISTA (SOLO RETAIL) */}
+                        {store?.store_type !== 'restaurant' && (
+                            <div className="bg-neutral-50 p-4.5 rounded-lg border border-neutral-200/50">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => handleWholesaleChange('active', !wholesale.active)}
+                                >
+                                    <div className="space-y-0.5">
+                                        <p className="font-semibold text-xs text-neutral-900 flex items-center gap-1.5">
+                                            <ShoppingBag size={14} className="text-emerald-600" /> Descuento Mayorista Automático
+                                        </p>
+                                        <p className="text-xs text-neutral-400 pr-4">Aplica reducciones globales inmediatas en el checkout según el volumen de compra.</p>
+                                    </div>
+                                    <AnimatedSwitch active={wholesale.active} activeColor="bg-emerald-600" />
                                 </div>
-                                <AnimatedSwitch active={wholesale.active} activeColor="bg-emerald-600" />
-                            </div>
 
-                            {wholesale.active && (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 pt-4 mt-4 border-t border-neutral-200/60">
-                                    <div>
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Cantidad Mínima</label>
-                                        <div className="max-w-[150px]">
-                                            <NumberInput
-                                                value={wholesale.min_items}
-                                                onChangeValue={(val) => handleWholesaleChange('min_items', val)}
-                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 px-2.5 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
-                                            />
+                                {wholesale.active && (
+                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 pt-4 mt-4 border-t border-neutral-200/60">
+                                        <div>
+                                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Cantidad Mínima</label>
+                                            <div className="max-w-[150px]">
+                                                <NumberInput
+                                                    value={wholesale.min_items}
+                                                    onChangeValue={(val) => handleWholesaleChange('min_items', val)}
+                                                    className="w-full bg-white border border-neutral-200 rounded-md py-1.5 px-2.5 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Tasa de Descuento</label>
+                                            <div className="relative max-w-[150px]">
+                                                <NumberInput
+                                                    value={wholesale.discount_percentage}
+                                                    onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
+                                                    className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
+                                                />
+                                                <Percent size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">Tasa de Descuento</label>
-                                        <div className="relative max-w-[150px]">
-                                            <NumberInput
-                                                value={wholesale.discount_percentage}
-                                                onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
-                                                className="w-full bg-white border border-neutral-200 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-bold text-neutral-900 focus:border-neutral-400 outline-none"
-                                            />
-                                            <Percent size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
 
                    
 
@@ -667,13 +755,13 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                   
                 </div>
 
-          {/* COMPONENTES SECUNDARIOS */}
+      {/* COMPONENTES SECUNDARIOS */}
+                {store?.store_type === 'restaurant' && (
+    <StoreHoursSettings storeId={store.id} initialData={store.store_hours} />
+)}
                 <PayPalSetupCard storeId={store.id} />
                 <PaymentSettings storeId={store.id} initialData={store.payment_config} />
-                
-            
-
-                <ShippingSettings storeId={store.id} initialData={store.shipping_config} />
+                <ShippingSettings storeId={store.id} initialData={store.shipping_config} storeType={store.store_type} />
                 <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
 
                   {/* 🚀 SEGURIDAD Y ACCESO (CAMBIO DE CONTRASEÑA SEGURO) */}
@@ -774,6 +862,14 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                     <span>Finalizar sesión actual</span>
                 </button>
             </div>
+            {/* 🚀 MODAL NATIVO DE CONFIRMACIÓN DE CAMBIO DE MODELO */}
+            <SwitchStoreTypeModal
+                isOpen={isSwitchModalOpen}
+                onClose={() => setIsSwitchModalOpen(false)}
+                onConfirm={handleConfirmSwitchStoreType}
+                currentType={store?.store_type || 'retail'}
+                loading={switchingType}
+            />
         </div>
     )
 }

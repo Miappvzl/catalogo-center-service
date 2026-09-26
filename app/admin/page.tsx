@@ -20,7 +20,7 @@ import RateWidget from "@/components/admin/RateWidget";
 import AdminHeader from "@/components/admin/AdminHeader";
 
 import AnalyticsChart from "@/components/admin/AnalyticsChart";
-
+import FoodTechAnnouncementModal from "@/components/admin/FoodTechAnnouncementModal"; // 🚀 IMPORTACIÓN
 import TopPerformers from "@/components/admin/TopPerformers";
 import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrapper"; // <-- NUEVA IMPORTACIÓN
 import WelcomeModal from "@/components/admin/WelcomeModal";
@@ -270,21 +270,20 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
     ];
     const topBlock = [...blockStats].sort((a, b) => b.pct - a.pct)[0];
 
-    // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
+     // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
     const storeCreatedAt = new Date(store.created_at).getTime();
     const now = new Date().getTime();
     const daysSinceCreation = (now - storeCreatedAt) / (1000 * 60 * 60 * 24);
     const isEligibleForMissions = daysSinceCreation <= 7;
 
-    const missions = store.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false };
-    const completedCount = [missions.mission_1, missions.mission_2, missions.mission_3].filter(Boolean).length;
-    const allMissionsCompleted = completedCount === 3;
+    const missions = store.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false };
+    const completedCount = [missions.mission_1, missions.mission_2, missions.mission_3, missions.mission_4].filter(Boolean).length;
+    const allMissionsCompleted = completedCount === 4;
 
     // Solo mostramos el panel si tiene menos de 7 días y NO ha completado todo
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
     const storeUrl = `${store.slug}.preziso.shop`;
-
-
+    const isRestaurant = store.store_type === 'restaurant';
 
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
@@ -293,20 +292,20 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
             {/* --- MISSION CONTROL BANNER (PLG) --- */}
             {showMissionControl && (
                 <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
-                    <div className="bg-white  rounded-[var(--radius-card)] overflow-hidden ">
+                    <div className="bg-white rounded-[var(--radius-card)] overflow-hidden border border-neutral-200/60 shadow-xs">
                         {/* Header del Panel */}
                         <div className="p-5 md:p-6 border-b border-neutral-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-50/50">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center ">
+                                <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center">
                                     <Trophy size={20} />
                                 </div>
                                 <div>
                                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-900">Academia Preziso</h2>
-                                    <p className="text-xs text-gray-500 font-medium mt-0.5">Completa estas misiones para dominar tu tienda.</p>
+                                    <p className="text-xs text-gray-500 font-medium mt-0.5">Completa estas 4 misiones prácticas para dominar tu plataforma.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-neutral-200 ">
-                                <span className="text-xs font-bold text-gray-900">{completedCount}/3</span>
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-neutral-200">
+                                <span className="text-xs font-bold text-gray-900">{completedCount}/4</span>
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Completadas</span>
                             </div>
                         </div>
@@ -321,8 +320,12 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
                                 <div className="flex items-center gap-4">
                                     {missions.mission_1 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
                                     <div>
-                                        <h3 className={`text-sm font-bold ${missions.mission_1 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>1. Tu Primer Producto</h3>
-                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">Sube un producto básico y mira cómo calculamos los Bolívares.</p>
+                                        <h3 className={`text-sm font-bold ${missions.mission_1 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>
+                                            {isRestaurant ? "1. Tu Primer Plato" : "1. Tu Primer Producto"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+                                            {isRestaurant ? "Registra un plato insignia y observa cómo calculamos los Bolívares en base al BCV." : "Sube un producto básico y mira cómo calculamos los Bolívares."}
+                                        </p>
                                     </div>
                                 </div>
                                 {!missions.mission_1 && (
@@ -340,8 +343,12 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
                                 <div className="flex items-center gap-4">
                                     {missions.mission_2 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
                                     <div>
-                                        <h3 className={`text-sm font-bold ${missions.mission_2 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>2. Tallas y Colores</h3>
-                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">Aprende a usar el generador automático de variantes.</p>
+                                        <h3 className={`text-sm font-bold ${missions.mission_2 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>
+                                            {isRestaurant ? "2. Extras y Modificadores" : "2. Tallas y Colores"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+                                            {isRestaurant ? "Aprende a configurar términos de carne, salsas y adicionales para tus comensales." : "Aprende a usar el generador automático de variantes."}
+                                        </p>
                                     </div>
                                 </div>
                                 {!missions.mission_2 && (
@@ -354,16 +361,43 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
                             {/* Misión 3 */}
                             <Link
                                 href={missions.mission_3 ? "#" : "/admin/product/new?mission=3"}
-                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_3 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'}`}
+                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_3 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'} border-b border-neutral-100`}
                             >
                                 <div className="flex items-center gap-4">
                                     {missions.mission_3 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
                                     <div>
-                                        <h3 className={`text-sm font-bold ${missions.mission_3 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>3. Estrategia de Ventas</h3>
-                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">Aplica descuentos, ventas al mayor y destaca tu producto.</p>
+                                        <h3 className={`text-sm font-bold ${missions.mission_3 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>
+                                            {isRestaurant ? "3. Tiempos de Cocina y Ofertas" : "3. Estrategia de Ventas"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+                                            {isRestaurant ? "Informa tiempos de preparación, aplica precios de oferta y destaca tu plato estrella." : "Aplica descuentos, ventas al mayor y destaca tu producto."}
+                                        </p>
                                     </div>
                                 </div>
                                 {!missions.mission_3 && (
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-black uppercase tracking-widest bg-neutral-100 px-3 py-1.5 rounded-full">
+                                        Iniciar <Play size={12} className="fill-black" />
+                                    </div>
+                                )}
+                            </Link>
+
+                            {/* Misión 4 */}
+                            <Link
+                                href={missions.mission_4 ? "#" : "/admin/product/new?mission=4"}
+                                className={`flex items-center justify-between p-4 md:p-5 transition-all ${missions.mission_4 ? 'bg-neutral-50 opacity-60 cursor-default' : 'hover:bg-neutral-50 cursor-pointer active:bg-neutral-100'}`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    {missions.mission_4 ? <CheckCircle2 className="text-emerald-500 shrink-0" size={24} /> : <Circle className="text-neutral-300 shrink-0" size={24} />}
+                                    <div>
+                                        <h3 className={`text-sm font-bold ${missions.mission_4 ? 'text-neutral-500 line-through' : 'text-gray-900'}`}>
+                                            {isRestaurant ? "4. Margen Cambiario e Incentivo" : "4. Margen e Incentivo Divisas"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+                                            {isRestaurant ? "Protege tus costos contra la inflación y premia a los comensales que paguen en efectivo o divisa." : "Protege tus márgenes contra la inflación y activa descuentos automáticos en divisas."}
+                                        </p>
+                                    </div>
+                                </div>
+                                {!missions.mission_4 && (
                                     <div className="flex items-center gap-2 text-[10px] font-bold text-black uppercase tracking-widest bg-neutral-100 px-3 py-1.5 rounded-full">
                                         Iniciar <Play size={12} className="fill-black" />
                                     </div>
@@ -373,8 +407,6 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
                     </div>
                 </div>
             )}
-
-
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6 relative z-10">
 
@@ -700,6 +732,8 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
 
 
             <WelcomeModal storeName={store.name} />
+           { /* 🚀 MODAL DE ANUNCIO PRODUCT-LED GROWTH (SOLO PARA COMERCIOS RETAIL) */}
+            <FoodTechAnnouncementModal storeType={store.store_type || 'retail'} />
         </div>
     );
 }

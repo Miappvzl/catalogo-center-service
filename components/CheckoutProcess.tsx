@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
+import { evaluateStoreHours } from '@/utils/storeHours'
 import { useCart } from "@/app/store/useCart";
 import Swal from "sweetalert2";
 import { Icon } from "@iconify/react";
@@ -148,6 +149,10 @@ export default function CheckoutProcess({
     affiliateDiscountList,
     affiliateDiscountCash,
 }: CheckoutProcessProps) {
+    const storeHoursStatus = useMemo(() => {
+        if (storeConfig?.store_type !== 'restaurant') return { isOpen: true, detailLabel: '' };
+        return evaluateStoreHours(storeConfig?.store_hours);
+    }, [storeConfig]);
     const { items, clearCart } = useCart();
     const [checkoutState, setCheckoutState] = useState<'idle' | 'validating' | 'processing' | 'success'>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({}); // 🚀 MOTOR DE ERRORES ORGÁNICOS
@@ -170,6 +175,8 @@ export default function CheckoutProcess({
     const currencySymbol = "$";
 
     // --- CONFIGURACIONES ---
+    const isFoodTech = storeConfig?.store_type === 'restaurant';
+    const [tipPercentage, setTipPercentage] = useState<number>(0);
     const payments = storeConfig?.payment_config || {};
     const shipping = storeConfig?.shipping_config || {};
     const receiptConfig = storeConfig?.receipt_config || { strict_mode: false };
@@ -182,7 +189,7 @@ export default function CheckoutProcess({
         discount_percentage: 15,
     };
     const deliveryZones = shipping.delivery_zones || [];
-    
+
     // 🚀 LECTOR DE POLÍTICA DE ENVÍO
     const nationalShippingLabel = shipping.national_shipping_is_free ? "(Envío Gratis)" : "(Cobro en Destino)";
 
@@ -291,7 +298,7 @@ export default function CheckoutProcess({
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 setCurrentUser(user);
-                
+
                 // Consultamos saldo contable y perfil del cliente en paralelo para reducir latencia
                 const [creditRes, customerRes] = await Promise.all([
                     supabase.from('store_credits').select('balance_usd').eq('store_id', storeId).eq('customer_id', user.id).maybeSingle(),
@@ -305,7 +312,7 @@ export default function CheckoutProcess({
                 if (customerRes.data) {
                     const cust = customerRes.data;
                     const details = cust.shipping_details || {};
-                    
+
                     // Inyección síncrona en el estado del checkout
                     setClientData((prev: any) => ({
                         ...prev,
@@ -336,9 +343,23 @@ export default function CheckoutProcess({
 
     // 🚀 HELPER: GENERADOR DE WHATSAPP OMNICANAL (TICKET PREMIUM)
     const generateWaMessage = (orderNum: string | number, isP2P: boolean = false) => {
-    // 1. Lógica de Envíos (Dinámica)
+        // 1. Lógica de Envíos y Modalidad (Blindada)
+        // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
         let deliveryInfoFull = "Servicio en Local / Experiencia";
-        if (needsShipping) {
+        let finalShippingMethod = "service";
+
+        if (isFoodTech) {
+            finalShippingMethod = clientData.deliveryType;
+            if (clientData.deliveryType === "dine_in") {
+                deliveryInfoFull = `📍 COMER EN EL LOCAL - MESA: ${clientData.tableNumber || "No indicada"}`;
+            } else if (clientData.deliveryType === "pickup") {
+                deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Barra)`;
+            } else if (clientData.deliveryType === "local_delivery") {
+                deliveryInfoFull = `🛵 DELIVERY: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
+            }
+        } else if (needsShipping) {
+            // Lógica original de retail
+            finalShippingMethod = clientData.deliveryType;
             if (clientData.deliveryType === "courier") {
                 deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
             } else if (clientData.deliveryType === "local_delivery") {
@@ -347,6 +368,7 @@ export default function CheckoutProcess({
                 deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }
         }
+
 
         // 🚀 INGENIERÍA VISUAL: Generador de Filas Simétricas (Efecto POS Premium)
         // Calcula el relleno exacto ignorando los caracteres de formato de WhatsApp (* y ~)
@@ -371,7 +393,7 @@ export default function CheckoutProcess({
                 ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
                 : `*$${item.listPrice.toFixed(2)}*`;
 
-          const itemName = `${item.quantity}x ${item.name}`;
+            const itemName = `${item.quantity}x ${item.name}`;
             const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : ""; // 🚀 AÑADIDO: SKU Visible
 
             // Si tiene variante, colocamos el nombre limpio y la variante abajo alineada con el precio
@@ -380,6 +402,11 @@ export default function CheckoutProcess({
                 msg += row(`  Var: ${item.variantInfo}`, pt);
             } else {
                 msg += row(`${skuText}${itemName}`, pt);
+            }
+
+            // 🚀 INYECCIÓN DE NOTAS DE COCINA EN WHATSAPP (PAGO FLASH)
+            if (item.foodNotes) {
+                msg += `  ⚠️ Nota: ${item.foodNotes}\n`;
             }
         });
 
@@ -391,6 +418,7 @@ export default function CheckoutProcess({
         if (actualFxSavings > 0) msg += row("BENEFICIO DIVISA", `-$${actualFxSavings.toFixed(2)}`);
         if (applyTax && taxAmountListUSD > 0) msg += row("I.V.A APLICADO", `+$${taxAmountListUSD.toFixed(2)}`);
         if (deliveryCost > 0) msg += row("CARGO DELIVERY", `+$${deliveryCost.toFixed(2)}`);
+        if (isFoodTech && tipAmountUSD > 0) msg += row(`PROPINA (${tipPercentage}%)`, `+$${tipAmountUSD.toFixed(2)}`);
 
         // 🚀 APLICACIÓN DE CRÉDITO EN WHATSAPP
         if (applyCredit && availableCredit > 0) {
@@ -417,7 +445,7 @@ export default function CheckoutProcess({
 
         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     };
-// --- ESTADOS LOGÍSTICOS ---
+    // --- ESTADOS LOGÍSTICOS ---
     const [clientData, setClientData] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = sessionStorage.getItem(`pz_checkout_${storeId}`);
@@ -425,7 +453,8 @@ export default function CheckoutProcess({
         }
         return {
             name: "",
-            deliveryType: "pickup",
+            deliveryType: isFoodTech ? "dine_in" : "pickup", // 🚀 Default adaptado
+            tableNumber: "", // 🚀 NUEVO: Número de Mesa
             courier: "",
             identityCard: "",
             phone: "",
@@ -486,10 +515,13 @@ export default function CheckoutProcess({
         0,
         cartEngine.finalBsModeUSD - totalDiscountsList + deliveryCost,
     );
-     const totalCashUSD_base = Math.max(
+    const totalCashUSD_base = Math.max(
         0,
         cartEngine.finalCashModeUSD - totalDiscountsCash + deliveryCost,
     );
+    // 🚀 NUEVO: CÁLCULO DE PROPINA SOBRE EL SUBTOTAL (Sin impuestos ni delivery)
+    const subtotalForTip = Math.max(0, cartEngine.finalCashModeUSD - totalDiscountsCash);
+    const tipAmountUSD = isFoodTech ? Number((subtotalForTip * (tipPercentage / 100)).toFixed(2)) : 0;
 
     // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
     const safeTaxableSubtotalList = useMemo(() => {
@@ -518,17 +550,15 @@ export default function CheckoutProcess({
     const taxableCashNominal = cartEngine.totalCashNominal * taxableRatio;
 
     // El IVA se calcula EXCLUSIVAMENTE sobre la porción gravable segura
-    const taxAmountListUSD = applyTax
-        ? safeTaxableSubtotalList *
-        listDiscountMultiplier *
-        (taxPercentage / 100)
-        : 0;
-    const taxAmountCashUSD = applyTax
-        ? taxableCashNominal * cashDiscountMultiplier * (taxPercentage / 100)
-        : 0;
+   const taxAmountListUSD = applyTax
+    ? Number((safeTaxableSubtotalList * listDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
+    : 0;
+const taxAmountCashUSD = applyTax
+    ? Number((taxableCashNominal * cashDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
+    : 0;
 
-    const totalListUSD = totalListUSD_base + taxAmountListUSD;
-    const totalCashUSD = totalCashUSD_base + taxAmountCashUSD;
+    const totalListUSD = totalListUSD_base + taxAmountListUSD + tipAmountUSD;
+    const totalCashUSD = totalCashUSD_base + taxAmountCashUSD + tipAmountUSD;
     const fxMultiplier = totalCashUSD > 0 ? totalListUSD / totalCashUSD : 1;
 
     // 🚀 RESTAURACIÓN DE LAS VARIABLES DE PAGO MIXTO
@@ -678,7 +708,7 @@ export default function CheckoutProcess({
             splitPayments.map((p) => (p.id === id ? { ...p, receiptFile: file } : p)),
         );
     };
-// 🚀 MATRIZ DE CONTRASTE ABSOLUTO: Inmune a primarios blancos o transparentes
+    // 🚀 MATRIZ DE CONTRASTE ABSOLUTO: Inmune a primarios blancos o transparentes
     const getPaymentConfig = (pm: string) => {
         const baseSelected =
             "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl shadow-sm scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
@@ -743,14 +773,14 @@ export default function CheckoutProcess({
     };
 
 
-   
+
 
     // 🚀 LÓGICA SMART TENDER Y CÁLCULO DE VUELTO (Anclado a la Verdad Absoluta)
     const isStoreCreditActive = storeConfig?.payment_config?.store_credit_active === true; // 🚀 CONTROL DE ACTIVACIÓN DE VUELTO
 
     const targetCashAmount = Math.round(Math.max(0, totalCashUSD - appliedCreditUSD) * 100) / 100;
     const targetListAmount = Math.round(Math.max(0, totalListUSD - appliedCreditUSD) * 100) / 100;
-    
+
     // Parseo a prueba de balas (Soporta comas y puntos)
     const cleanTenderedStr = tenderedAmountStr.replace(',', '.').replace(/[^0-9.]/g, '');
     const tenderedAmount = Math.round((parseFloat(cleanTenderedStr) || 0) * 100) / 100;
@@ -801,7 +831,7 @@ export default function CheckoutProcess({
         }
     }, [isFullyCoveredByCredit]);
 
-    
+
 
     // --- PROCESAR ORDEN A BASE DE DATOS (CON LABOR ILLUSION) ---
     const handleCheckout = async () => {
@@ -810,9 +840,24 @@ export default function CheckoutProcess({
         if (!clientData.name) newErrors.name = "El nombre es obligatorio";
         if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
+
+        if (isFoodTech && clientData.deliveryType === "dine_in" && !clientData.tableNumber) {
+            newErrors.tableNumber = "Indica el número o nombre de tu mesa";
+        }
         if (isStrictTax && wantsFiscalData) {
             if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
             if (!clientData.fiscalAddress) newErrors.fiscalAddress = "La Dirección Fiscal es obligatoria";
+        }
+
+        if (!storeHoursStatus.isOpen) {
+            Swal.fire({
+                title: 'Local Fuera de Servicio',
+                text: `En este momento no se reciben pedidos. ${storeHoursStatus.detailLabel}.`,
+                icon: 'info',
+                confirmButtonColor: '#000',
+                customClass: { popup: 'rounded-xl' }
+            });
+            return;
         }
 
         if (needsShipping) {
@@ -832,7 +877,7 @@ export default function CheckoutProcess({
             newErrors.payment = "Selecciona un método de pago";
         }
 
-       // 🚀 CANDADO LEGAL: VUELTO VIRTUAL Y KYC (Sincronizado con isStoreCreditActive)
+        // 🚀 CANDADO LEGAL: VUELTO VIRTUAL Y KYC (Sincronizado con isStoreCreditActive)
         if (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single') {
             if (tenderedAmount < targetCashAmount) {
                 newErrors.tendered = "El monto entregado es menor al total a pagar.";
@@ -904,17 +949,26 @@ export default function CheckoutProcess({
                 }),
             );
 
-        // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica)
+          // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
 
-            if (needsShipping) {
+            if (isFoodTech) {
+                finalShippingMethod = clientData.deliveryType;
+                if (clientData.deliveryType === "dine_in") {
+                    deliveryInfoFull = `📍 COMER EN EL LOCAL - MESA: ${clientData.tableNumber || "No indicada"}`;
+                } else if (clientData.deliveryType === "pickup") {
+                    deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Barra)`;
+                } else if (clientData.deliveryType === "local_delivery") {
+                    deliveryInfoFull = `🛵 DELIVERY LOCAL: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
+                }
+            } else if (needsShipping) {
+                // LÓGICA ORIGINAL DE TIENDAS RETAIL
                 finalShippingMethod = clientData.deliveryType;
                 if (clientData.deliveryType === "courier") deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
                 else if (clientData.deliveryType === "local_delivery") deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
                 else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }
-
 
             // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
             if (appliedCreditUSD > 0) {
@@ -936,7 +990,10 @@ export default function CheckoutProcess({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         storeId, clientData,
-                        orderData: { total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull },
+                        orderData: {
+                            total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull, fulfillment_type: isFoodTech ? clientData.deliveryType : finalShippingMethod,
+                            table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
+                        },
                         items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
                     })
                 });
@@ -963,15 +1020,25 @@ export default function CheckoutProcess({
                 const { data: insertedOrder, error: orderError } = await supabase
                     .from("orders")
                     .insert({
-                        store_id: storeId, customer_id: currentUser ? currentUser.id : null, customer_name: clientData.name, customer_phone: clientData.phone, total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, status: "pending", payment_method: finalPaymentMethod, split_payments: uploadedPayments, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull, shipping_cost: Number(deliveryCost.toFixed(2)), discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), affiliate_code: affiliateCode || null, document_type: isStrictTax ? "invoice" : "note", is_tax_applied: applyTax, tax_percentage: applyTax ? taxPercentage : 0, subtotal_usd: Number(totalListUSD_base.toFixed(2)), tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), fx_savings_usd: Number(actualFxSavings.toFixed(2)), customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
+                        store_id: storeId, customer_id: currentUser ? currentUser.id : null, customer_name: clientData.name, customer_phone: clientData.phone, total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, status: "pending", payment_method: finalPaymentMethod, split_payments: uploadedPayments, shipping_method: isFoodTech ? clientData.deliveryType : finalShippingMethod, fulfillment_type: isFoodTech ? clientData.deliveryType : finalShippingMethod, table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
+                        tip_amount_usd: isFoodTech ? Number(tipAmountUSD.toFixed(2)) : 0, delivery_info: deliveryInfoFull, shipping_cost: Number(deliveryCost.toFixed(2)), discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), affiliate_code: affiliateCode || null, document_type: isStrictTax ? "invoice" : "note", is_tax_applied: applyTax, tax_percentage: applyTax ? taxPercentage : 0, subtotal_usd: Number(totalListUSD_base.toFixed(2)), tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), fx_savings_usd: Number(actualFxSavings.toFixed(2)), customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
                     }).select().single();
 
                 if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
                 order = insertedOrder;
             }
 
-        const orderItemsPayload = items.map((item) => ({
-                order_id: order.id, product_id: item.productId, product_name: item.name, variant_info: item.variantInfo || "N/A", quantity: item.quantity, price_at_purchase: item.basePrice, variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null, sku: item.sku || null, // 🚀 AÑADIDO: Congelamos el SKU en la orden histórica
+            const orderItemsPayload = items.map((item) => ({
+                order_id: order.id,
+                product_id: item.productId,
+                product_name: item.name,
+                variant_info: item.variantInfo || "N/A",
+                quantity: item.quantity,
+                price_at_purchase: item.basePrice,
+                variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
+                sku: item.sku || null,
+                modifiers_selected: item.foodModifiers || [], // 🚀 INYECCIÓN FOODTECH: Modificadores a JSONB
+                customer_notes: item.foodNotes || null        // 🚀 INYECCIÓN FOODTECH: Notas
             }));
 
             const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
@@ -991,10 +1058,15 @@ export default function CheckoutProcess({
 
             // Generar WhatsApp (Intacto)
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
-           cartEngine.processedItems.forEach((item: any) => {
+          cartEngine.processedItems.forEach((item: any) => {
                 const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
-                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : ""; // 🚀 AÑADIDO: SKU en fallback
+                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : ""; 
                 message += `🔸 ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
+                
+                // 🚀 INYECCIÓN DE NOTAS DE COCINA EN WHATSAPP (PAGO MANUAL)
+                if (item.foodNotes) {
+                    message += `   ⚠️ *Nota:* ${item.foodNotes}\n`;
+                }
             });
             message += `\n*RESUMEN FINANCIERO:*\nSubtotal Base: $${cartEngine.totalListNominal.toFixed(2)}\n`;
             if (cartEngine.listPromoDiscounts > 0) message += `Desc. Campaña: -$${cartEngine.listPromoDiscounts.toFixed(2)}\n`;
@@ -1003,6 +1075,7 @@ export default function CheckoutProcess({
             if (actualFxSavings > 0) message += `Beneficio Divisa: -$${actualFxSavings.toFixed(2)}\n`;
             if (applyTax && taxAmountListUSD > 0) message += `I.V.A (${taxPercentage}%): +$${taxAmountListUSD.toFixed(2)}\n`;
             if (deliveryCost > 0) message += `Delivery: +$${deliveryCost.toFixed(2)}\n`;
+            if (isFoodTech && tipAmountUSD > 0) message += `Propina (${tipPercentage}%): +$${tipAmountUSD.toFixed(2)}\n`;
             if (appliedCreditUSD > 0) message += `Crédito de Tienda: -$${appliedCreditUSD.toFixed(2)}\n`;
             // 🚀 EL CONTRATO LEGAL EN WHATSAPP
             if (expectedChange > 0 && isVirtualChangeAccepted) {
@@ -1036,7 +1109,7 @@ export default function CheckoutProcess({
                     console.error('Error descontando saldo (RPC):', rpcError);
                 }
             }
-sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
+            sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
             clearCart();
             // 🚀 3. CONFIRMACIÓN FINAL SENSORIAL (Check verde en el botón)
             setCheckoutState('success');
@@ -1087,7 +1160,7 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
                     console.error('Error descontando saldo en P2P (RPC):', rpcError);
                 }
             }
-          sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
+            sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
             clearCart();
             const waLink = generateWaMessage(pfTransaction.orderNumber, true);
             onSuccess(pfTransaction.orderNumber, waLink, pfTransaction.orderId);
@@ -1122,7 +1195,7 @@ sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memori
         enter: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: -20 },
     };
-return (
+    return (
         <motion.div
             key="step-2"
             variants={stepVariants}
@@ -1132,7 +1205,7 @@ return (
             className="checkout-typography-lock flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)] antialiased"
         >
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
-             <div id="field-name" className="w-full">
+                <div id="field-name" className="w-full">
                     <input
                         maxLength={50}
                         value={clientData.name}
@@ -1148,7 +1221,7 @@ return (
                     </AnimatePresence>
                 </div>
 
-              <div id="field-phone" className="w-full">
+                <div id="field-phone" className="w-full">
                     <input
                         maxLength={20}
                         value={clientData.phone}
@@ -1260,119 +1333,156 @@ return (
                 {needsShipping ? (
                     <div className="space-y-6">
                         <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
-                            Entrega
+                            {isFoodTech ? 'Modalidad de Pedido' : 'Entrega'}
                         </h2>
-                      {/* 🚀 TARJETAS TÁCTILES CON LÍNEAS VISIBLES Y ESTADOS CLAROS */}
+
                         <div className="grid grid-cols-1 gap-3" id="field-deliveryType">
-                            {shipping.methods?.pickup && (
-                                <div
-                                    onClick={() => {
-                                        setClientData({
-                                            ...clientData,
-                                            deliveryType: "pickup",
-                                            addressDetail: "",
-                                        });
-                                        setSelectedDeliveryZone("");
-                                        setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
-                                    }}
-                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
-                                        clientData.deliveryType === "pickup" 
-                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
-                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
-                                    }`}
-                                >
-                                    <AnimatePresence>
-                                        {clientData.deliveryType === "pickup" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
-                                                <Check size={12} strokeWidth={3.5} />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    <Store
-                                        size={20}
-                                        className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
-                                    />
-                                    <div>
-                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
-                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
+                            {isFoodTech ? (
+                                // OPCIONES EXCLUSIVAS DE RESTAURANTE
+                                <>
+                                    {/* Opcion: Comer en el Local */}
+                                    <div
+                                        onClick={() => {
+                                            setClientData({ ...clientData, deliveryType: "dine_in", addressDetail: "" });
+                                            setSelectedDeliveryZone("");
+                                            setErrors(prev => ({ ...prev, tableNumber: "", deliveryZone: "", addressDetail: "" }));
+                                        }}
+                                        className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "dine_in"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                            }`}
+                                    >
+                                        <Store size={20} className={clientData.deliveryType === "dine_in" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                        <div>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)]">Comer en el Local</p>
+                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Servicio directo a tu mesa.</p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
 
-                            {shipping.methods?.delivery && deliveryZones.length > 0 && (
-                                <div
-                                    onClick={() => {
-                                        setClientData({
-                                            ...clientData,
-                                            deliveryType: "local_delivery",
-                                            addressDetail: "",
-                                        });
-                                        setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
-                                    }}
-                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
-                                        clientData.deliveryType === "local_delivery" 
-                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
-                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
-                                    }`}
-                                >
-                                    <AnimatePresence>
-                                        {clientData.deliveryType === "local_delivery" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
-                                                <Check size={12} strokeWidth={3.5} />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    <Truck
-                                        size={20}
-                                        className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
-                                    />
-                                    <div>
-                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
-                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Entregas a domicilio.</p>
+                                    {/* Opcion: Para Llevar */}
+                                    <div
+                                        onClick={() => {
+                                            setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
+                                            setSelectedDeliveryZone("");
+                                            setErrors(prev => ({ ...prev, tableNumber: "", deliveryZone: "", addressDetail: "" }));
+                                        }}
+                                        className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                            }`}
+                                    >
+                                        <Package size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                        <div>
+                                            <p className="font-bold text-sm text-[var(--store-text-main)]">Para Llevar (Pick-up)</p>
+                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Retira en barra cuando esté listo.</p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
 
-                            {(shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca) && (
-                                <div
-                                    onClick={() => {
-                                        setClientData({
-                                            ...clientData,
-                                            deliveryType: "courier",
-                                            addressDetail: "",
-                                        });
-                                        setSelectedDeliveryZone("");
-                                        setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
-                                    }}
-                                    className={`relative cursor-pointer p-5 rounded-xl transition-all duration-150 flex items-start gap-4 shadow-none ${
-                                        clientData.deliveryType === "courier" 
-                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" 
-                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
-                                    }`}
-                                >
-                                    <AnimatePresence>
-                                        {clientData.deliveryType === "courier" && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 15 }} className="absolute -top-2.5 -right-2.5 bg-[var(--store-text-main)] text-[var(--store-surface)] rounded-full p-1.5 z-10 shadow-sm">
-                                                <Check size={12} strokeWidth={3.5} />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    {/* Opcion: Delivery Local */}
+                                    {shipping.methods?.delivery && deliveryZones.length > 0 && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
+                                                setErrors(prev => ({ ...prev, tableNumber: "", pickup: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                }`}
+                                        >
+                                            <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu domicilio.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // OPCIONES ORIGINALES DE RETAIL (TIENDA FISICA, DELIVERY, AGENCIAS)
+                                <>
+                                    {shipping.methods?.pickup && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
+                                                setSelectedDeliveryZone("");
+                                                setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
+                                        >
+                                            <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
+                                            </div>
+                                        </div>
+                                    )}
 
-                                    <Package
-                                        size={20}
-                                        className={clientData.deliveryType === "courier" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}
-                                    />
-                                    <div>
-                                        <p className="font-bold text-sm text-[var(--store-text-main)]">Envío Nacional</p>
-                                        <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envíos por agencia.</p>
-                                    </div>
-                                </div>
+                                    {shipping.methods?.delivery && deliveryZones.length > 0 && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
+                                                setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
+                                        >
+                                            <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Entregas a domicilio.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {(shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca) && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "courier", addressDetail: "" });
+                                                setSelectedDeliveryZone("");
+                                                setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "courier" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
+                                        >
+                                            <Package size={20} className={clientData.deliveryType === "courier" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Envío Nacional</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envíos por agencia.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
-                       {/* Sub-opciones de Retiro (Tarjetas estructuradas con indicador óptico) */}
+                        {/* CAMPO DE NUMERO DE MESA (DINE-IN) */}
+                        {isFoodTech && clientData.deliveryType === "dine_in" && (
+                            <div id="field-tableNumber" className="space-y-2 pt-2 animate-in fade-in">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] block">
+                                    Número o Nombre de la Mesa *
+                                </label>
+                                <input
+                                    maxLength={20}
+                                    value={clientData.tableNumber || ""}
+                                    onChange={(e) => {
+                                        setClientData({ ...clientData, tableNumber: e.target.value });
+                                        if (errors.tableNumber) setErrors(prev => ({ ...prev, tableNumber: "" }));
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/60 ${errors.tableNumber
+                                            ? "border-red-500 text-red-600 focus:border-red-500"
+                                            : "border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
+                                        }`}
+                                    placeholder="Ej: Mesa 4, Barra 2, Terraza..."
+                                />
+                                {errors.tableNumber && (
+                                    <p className="text-red-500 text-[10px] font-bold mt-1 px-1">
+                                        {errors.tableNumber}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+
+                        {/* Sub-opciones de Retiro (Tarjetas estructuradas con indicador óptico) */}
                         {clientData.deliveryType === "pickup" && (
                             <div id="field-pickup" className="space-y-3 animate-in fade-in slide-in-from-top-2 pt-4">
                                 <div>
@@ -1400,18 +1510,16 @@ return (
                                                     });
                                                     if (errors.pickup) setErrors(prev => ({ ...prev, pickup: "" }));
                                                 }}
-                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${
-                                                    isSelected 
-                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]" 
-                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
-                                                }`}
+                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${isSelected
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                                    }`}
                                             >
                                                 {/* Indicador Óptico Custom (Cero Radios Nativos Deformes) */}
-                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
-                                                    isSelected 
-                                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]" 
-                                                        : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
-                                                }`}>
+                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${isSelected
+                                                    ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]"
+                                                    : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
+                                                    }`}>
                                                     {isSelected && <div className="w-2 h-2 rounded-full bg-[var(--store-surface)]" />}
                                                 </div>
 
@@ -1436,17 +1544,15 @@ return (
                                                     setClientData({ ...clientData, addressDetail: loc });
                                                     if (errors.pickup) setErrors(prev => ({ ...prev, pickup: "" }));
                                                 }}
-                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${
-                                                    isSelected 
-                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]" 
-                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
-                                                }`}
+                                                className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${isSelected
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                                    }`}
                                             >
-                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
-                                                    isSelected 
-                                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]" 
-                                                        : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
-                                                }`}>
+                                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${isSelected
+                                                    ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]"
+                                                    : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
+                                                    }`}>
                                                     {isSelected && <div className="w-2 h-2 rounded-full bg-[var(--store-surface)]" />}
                                                 </div>
 
@@ -1475,7 +1581,7 @@ return (
                                         {errors.deliveryZone && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.deliveryZone}</motion.p>}
                                     </AnimatePresence>
 
-                                  <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 gap-3">
                                         {deliveryZones.map((z: any) => (
                                             <button
                                                 key={z.id}
@@ -1484,11 +1590,10 @@ return (
                                                     setSelectedDeliveryZone(z.id);
                                                     if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
                                                 }}
-                                                className={`flex justify-between items-center px-5 py-4 rounded-xl transition-all duration-150 shadow-none font-bold ${
-                                                    selectedDeliveryZone === z.id 
-                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]" 
-                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                } ${errors.deliveryZone && !selectedDeliveryZone ? '!border-red-500/80 bg-red-50/10' : ''}`}
+                                                className={`flex justify-between items-center px-5 py-4 rounded-xl transition-all duration-150 shadow-none font-bold ${selectedDeliveryZone === z.id
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                    } ${errors.deliveryZone && !selectedDeliveryZone ? '!border-red-500/80 bg-red-50/10' : ''}`}
                                             >
                                                 <span className="text-sm">{z.name}</span>
                                                 <span className="font-black text-sm text-[var(--store-text-main)]">
@@ -1537,7 +1642,7 @@ return (
                                         {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
                                     </AnimatePresence>
 
-                                 <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         {activeCouriers.map((c) => {
                                             const LogoComponent = CourierLogos[c];
                                             const isSelected = clientData.courier === c;
@@ -1550,11 +1655,10 @@ return (
                                                         setClientData({ ...clientData, courier: c });
                                                         if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
                                                     }}
-                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${
-                                                        isSelected
-                                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
-                                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                    } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
+                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
+                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
+                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                        } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
                                                 >
                                                     {LogoComponent && (
                                                         <div className="h-6 w-full flex items-center justify-center px-4">
@@ -1655,6 +1759,38 @@ return (
                             <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
                                 {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODULO DE PROPINAS (SOLO RESTAURANTES) */}
+                {isFoodTech && (
+                    <div className="space-y-3 pt-2">
+                        <div className="flex justify-between items-baseline border-b border-[var(--store-border)] pb-2">
+                            <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
+                                Propina para el Servicio (Opcional)
+                            </h2>
+                            {tipAmountUSD > 0 && (
+                                <span className="text-xs font-mono font-bold text-[var(--store-text-main)]">
+                                    +${tipAmountUSD.toFixed(2)} USD
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2">
+                            {[0, 5, 10, 15].map((pct) => (
+                                <button
+                                    key={pct}
+                                    type="button"
+                                    onClick={() => setTipPercentage(pct)}
+                                    className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
+                                            ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
+                                            : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
+                                        }`}
+                                >
+                                    {pct === 0 ? "0%" : `${pct}%`}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -1867,7 +2003,7 @@ return (
                                             </motion.p>
                                         )}
                                     </AnimatePresence>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
                                         {activePaymentMethods.map((pm) => {
                                             const config = getPaymentConfig(pm);
                                             const isSelected = activePaymentInput === pm;
@@ -2113,7 +2249,7 @@ return (
                                                                         </div>
                                                                     )}
 
-                                                                   {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
+                                                                    {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
                                                                     {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
                                                                         <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
                                                                             <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
@@ -2248,7 +2384,7 @@ return (
                                                         })()
                                                     )}
 
-                                              {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
+                                                    {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
                                                     {payments[paymentKeysMap[activePaymentInput]]?.details && (
                                                         <div className="bg-[var(--store-surface)] border-2 border-[var(--store-border)] rounded-xl p-4.5 shadow-none mt-4 animate-in fade-in">
                                                             <div className="flex justify-between items-center mb-2.5">
@@ -2267,7 +2403,7 @@ return (
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                         <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
+                                                            <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
                                                                 {payments[paymentKeysMap[activePaymentInput]]?.details}
                                                             </p>
                                                         </div>
@@ -2372,6 +2508,16 @@ return (
                             </div>
                         )}
 
+                        {/* LINEA DE PROPINA EN PANTALLA */}
+                        {isFoodTech && tipAmountUSD > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                                <span>Propina ({tipPercentage}%)</span>
+                                <span className="font-mono">
+                                    +{currencySymbol}{tipAmountUSD.toFixed(2)}
+                                </span>
+                            </div>
+                        )}
+
                         {/* 🚀 TARJETA DE CRÉDITO APLICADO (Dentro de la lista de subtotales) */}
                         <AnimatePresence>
                             {appliedCreditUSD > 0 && (
@@ -2383,7 +2529,7 @@ return (
                         </AnimatePresence>
                     </div>
 
-                 {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
+                    {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
                     {availableCredit > 0 && (
                         <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
                             <div className="flex items-center gap-3">
@@ -2404,13 +2550,13 @@ return (
                 </div>
             </div>{" "}
             {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */}
-        {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
+            {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
             {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
             <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
-                {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
-                    <div 
-                        className="flex flex-col shrink-0" 
+                    {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
+                    <div
+                        className="flex flex-col shrink-0"
                         style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                     >
                         <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
@@ -2421,7 +2567,7 @@ return (
                                 {currencySymbol}{grandTotalUSD.toFixed(2)}
                             </span>
                         </div>
-                        <span 
+                        <span
                             style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                             className="text-[11px] font-bold text-[var(--store-surface-text)] mt-1.5 leading-none tabular-nums !normal-case"
                         >
@@ -2429,55 +2575,57 @@ return (
                         </span>
                     </div>
 
-     {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
+                    {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
                     <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
                         <div className="w-full h-[52px] relative flex justify-end md:justify-center">
                             <motion.button
                                 layout
                                 onClick={handleCheckout}
-                                disabled={checkoutState !== 'idle' || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-text-main)] shadow-sm active:scale-[0.98] ${
-                                    checkoutState !== 'idle'
+                                disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
+                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-text-main)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
+                                    ? "w-full bg-[var(--store-surface)] text-[var(--store-surface-text)] !border-[var(--store-border)] cursor-not-allowed opacity-60"
+                                    : checkoutState !== 'idle'
                                         ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-surface)] mx-auto shrink-0"
-                                        : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)
-                                            ? "w-full bg-[var(--store-surface)] text-[var(--store-surface-text)] !border-[var(--store-border)] cursor-not-allowed opacity-50"
-                                            : "w-full bg-[var(--store-text-main)] text-[var(--store-surface)] hover:opacity-90"
-                                }`}
+                                        : "w-full bg-[var(--store-text-main)] text-[var(--store-surface)] hover:opacity-90"
+                                    }`}
                             >
-                                <AnimatePresence mode="wait">
-                                    {checkoutState === 'validating' ? (
-                                        <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
-                                            <Loader2 className="animate-spin" size={20} />
-                                        </motion.div>
-                                    ) : checkoutState === 'processing' ? (
-                                        <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                            <Loader2 className="animate-spin text-white/50" size={20} />
-                                        </motion.div>
-                                    ) : checkoutState === 'success' ? (
-                                        <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
-                                            <Check className="text-white" size={20} strokeWidth={3} />
-                                        </motion.div>
-                                   ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
-                                        // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
-                                        <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
-                                            <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
-                                        </motion.div>
-                                    ) : missingReceipts && isPaidInFull ? (
-                                        <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                            <Upload size={16} className="mb-0.5" /> Adjunta Recibos
-                                        </motion.div>
-                                    ) : activePaymentInput === "Pago Flash" ? (
-                                        <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                            <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                            <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                {!storeHoursStatus.isOpen ? (
+                                    <span>Cerrado • {storeHoursStatus.detailLabel}</span>
+                                ) : (
+                                    <AnimatePresence mode="wait">
+                                        {checkoutState === 'validating' ? (
+                                            <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
+                                                <Loader2 className="animate-spin" size={20} />
+                                            </motion.div>
+                                        ) : checkoutState === 'processing' ? (
+                                            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                                <Loader2 className="animate-spin text-white/50" size={20} />
+                                            </motion.div>
+                                        ) : checkoutState === 'success' ? (
+                                            <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
+                                                <Check className="text-white" size={20} strokeWidth={3} />
+                                            </motion.div>
+                                        ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
+                                            // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
+                                            <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
+                                                <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
+                                            </motion.div>
+                                        ) : missingReceipts && isPaidInFull ? (
+                                            <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <Upload size={16} className="mb-0.5" /> Adjunta Recibos
+                                            </motion.div>
+                                        ) : activePaymentInput === "Pago Flash" ? (
+                                            <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                )}
                             </motion.button>
-
                             {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
                             <AnimatePresence>
                                 {checkoutState === 'validating' && (

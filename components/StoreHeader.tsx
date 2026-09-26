@@ -7,9 +7,10 @@ import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
+import { evaluateStoreHours } from '@/utils/storeHours'
 
 interface StoreHeaderProps {
-    layoutStyle: 'classic' | 'minimal' | 'dense_search' | 'brutalist' | 'pill_nav' | 'modular_tech';
+    layoutStyle: 'classic' | 'minimal' | 'dense_search' | 'brutalist' | 'pill_nav' | 'modular_tech' | 'restaurant_flow';
     store: any;
     products?: any[]; // 🚀 Fallback determinista para miniaturas de categorías
     promotions?: any[]; // 🚀 NECESARIO PARA BENTO GRID
@@ -50,6 +51,69 @@ const CategoryPill = ({ label, active, onClick, isMinimal = false }: { label: st
         {label}
     </button>
 );
+
+const StoreScheduleBadge = ({ storeHours, storeType }: { storeHours: any, storeType?: string }) => {
+    // 🔒 ESCUDO ESTRICTO DE DOMINIO: Si no es restaurante, jamás se muestra
+    if (storeType !== 'restaurant') return null;
+
+    const scheduleStatus = evaluateStoreHours(storeHours);
+
+    return (
+        <div 
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors shadow-[var(--shadow-ui)] text-[9px] sm:text-[10px] font-bold shrink-0"
+            style={{
+                backgroundColor: scheduleStatus.isOpen 
+                    ? 'color-mix(in srgb, #10b981 12%, var(--store-surface))' 
+                    : 'color-mix(in srgb, #f43f5e 12%, var(--store-surface))',
+                borderColor: scheduleStatus.isOpen 
+                    ? 'color-mix(in srgb, #10b981 35%, var(--store-border))' 
+                    : 'color-mix(in srgb, #f43f5e 35%, var(--store-border))',
+                color: 'var(--store-text-main)'
+            }}
+        >
+            <span 
+                className="w-1.5 h-1.5 rounded-full shrink-0" 
+                style={{ backgroundColor: scheduleStatus.isOpen ? '#10b981' : '#f43f5e' }} 
+            />
+            <span className="leading-none">{scheduleStatus.statusLabel}</span>
+            <span className="text-[var(--store-surface-text)] font-medium leading-none">
+                • {scheduleStatus.detailLabel}
+            </span>
+        </div>
+    );
+};
+const RestaurantScheduleBanner = ({ storeHours, storeType }: { storeHours: any, storeType: string }) => {
+    if (storeType !== 'restaurant') return null;
+    const scheduleStatus = evaluateStoreHours(storeHours);
+
+    return (
+        <div 
+            className="w-full py-1.5 px-4 flex items-center justify-center text-center border-b transition-colors"
+            style={{
+                backgroundColor: scheduleStatus.isOpen 
+                    ? 'color-mix(in srgb, #10b981 8%, var(--store-bg))' 
+                    : 'color-mix(in srgb, #f43f5e 10%, var(--store-bg))',
+                borderColor: scheduleStatus.isOpen 
+                    ? 'color-mix(in srgb, #10b981 20%, var(--store-border))' 
+                    : 'color-mix(in srgb, #f43f5e 25%, var(--store-border))',
+                color: 'var(--store-text-main)'
+            }}
+        >
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-bold tracking-tight">
+                <span 
+                    className="w-2 h-2 rounded-full shrink-0 animate-pulse" 
+                    style={{ backgroundColor: scheduleStatus.isOpen ? '#10b981' : '#f43f5e' }} 
+                />
+                <span>
+                    {scheduleStatus.isOpen ? 'Cocina en servicio' : 'Local fuera de servicio'}
+                </span>
+                <span className="text-[var(--store-surface-text)] font-normal">
+                    — {scheduleStatus.detailLabel}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 const TrustIcon = ({ name, className }: { name: string, className?: string }) => {
     switch (name) {
@@ -212,8 +276,12 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
             </div>
         );
     };
-    const RateBlock = () => (
-        <button onClick={() => props.setIsRateModalOpen(true)} className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-[var(--radius-btn)] active:scale-95 transition-all">
+   const RateBlock = () => (
+        <div className="flex items-center gap-2">
+            {props.store?.store_type === 'restaurant' && (
+                <StoreScheduleBadge storeHours={props.store.store_hours} />
+            )}
+            <button onClick={() => props.setIsRateModalOpen(true)} className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-[var(--radius-btn)] active:scale-95 transition-all">
             <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
                     {props.isEur ? 'Tasa EUR' : 'Tasa BCV'}
@@ -228,6 +296,7 @@ const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
                 <span className="tabular-nums">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
             </div>
         </button>
+        </div>
     );
 
 const renderSearchBlock = (isDense: boolean = false) => (
@@ -772,17 +841,28 @@ const renderSearchBlock = (isDense: boolean = false) => (
         );
     }
 
-    // ==========================================
-    // 🍔 RENDERIZADO: TEMA 5 - BISTRO & FAST FOOD (PILL NAV & APP FEEL)
-    if (props.layoutStyle === 'pill_nav') {
+ if (props.layoutStyle === 'pill_nav') {
         return (
             <>
-                {/* 1. TOP BAR GASTRONÓMICA */}
+                {/* CINTILLO DINAMICO DE HORARIOS (SOLO RESTAURANTES) */}
+                <RestaurantScheduleBanner 
+                    storeHours={props.store.store_hours} 
+                    storeType={props.store.store_type} 
+                />
+
+                {/* 1. TOP BAR */}
                 <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between border-b border-[var(--store-border)]/40 text-xs font-bold">
                     <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-wider uppercase">
-                            <Utensils size={11} /> Cocina Activa & Delivery
-                        </span>
+                        {props.store?.store_type === 'restaurant' ? (
+                            <StoreScheduleBadge storeHours={props.store.store_hours} storeType={props.store.store_type} />
+                        ) : (
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--store-text-main)]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
+                                <span className="uppercase tracking-wider font-mono text-[9px] text-[var(--store-surface-text)]">
+                                   Tienda Oficial
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <RateBlock />
                 </div>
@@ -1121,11 +1201,18 @@ const renderSearchBlock = (isDense: boolean = false) => (
             </>
         );
     }
-    // ==========================================
-    // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
+
+   // ==========================================
+    // RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
     // ==========================================
     return (
         <>
+            {/* CINTILLO DINAMICO DE HORARIOS PARA RESTAURANTES */}
+            <RestaurantScheduleBanner 
+                storeHours={props.store.store_hours} 
+                storeType={props.store.store_type} 
+            />
+
             <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]/30">
                 <LogoBlock />
                 <RateBlock />

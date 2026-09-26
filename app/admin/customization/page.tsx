@@ -180,7 +180,7 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
         const initData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-                const { data: store } = await supabase.from('stores').select('id, name, slug, theme_config, logo_url, hero_url').eq('user_id', user.id).single()
+              const { data: store } = await supabase.from('stores').select('id, name, slug, theme_config, logo_url, hero_url, store_type').eq('user_id', user.id).single()
                 if (store) {
                     setStoreData(store)
                     const loadedConfig = normalizeThemeConfig(store.theme_config)
@@ -431,18 +431,22 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
         if (!e.target.files || e.target.files.length === 0) return
         const file = e.target.files[0]
 
-        // Validación vertical estricta 4:5
-        const isValid = await validateImageDimensions(file, 1080, 1350)
+          const isRestaurantStore = currentStoreType === 'restaurant';
+        const expectedW = 1080;
+        const expectedH = isRestaurantStore ? 720 : 1350;
+
+        const isValid = await validateImageDimensions(file, expectedW, expectedH);
         if (!isValid) {
-            if (heroMInputRef.current) heroMInputRef.current.value = ''
+            if (heroMInputRef.current) heroMInputRef.current.value = '';
             return Swal.fire({
                 title: 'Dimensiones incorrectas',
-                html: `La portada móvil debe medir exactamente <b>1080x1350 px</b> (Proporción vertical 4:5).`,
+                html: isRestaurantStore
+                    ? `La portada móvil gastronómica debe medir exactamente <b>1080x720 px</b> (Proporción 3:2 panorámica).`
+                    : `La portada móvil de comercio debe medir exactamente <b>1080x1350 px</b> (Proporción vertical 4:5).`,
                 icon: 'warning',
                 confirmButtonColor: '#171717'
-            })
+            });
         }
-
         setUploadingHeroMobile(true)
         try {
             const compressed = await compressImage(file, 1080, 0.8)
@@ -517,10 +521,10 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
     const hasChanges = JSON.stringify(config) !== JSON.stringify(originalConfig)
     const handleDiscard = () => setConfig(originalConfig)
 
-    const handleResetToDefault = () => {
+     const handleResetToDefault = () => {
         Swal.fire({
             title: '¿Restablecer diseño?',
-            text: 'Esto devolverá todas las opciones a los valores de fábrica.',
+            text: 'Esto devolverá todas las opciones de estilo a los valores de fábrica de su plantilla.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#171717',
@@ -529,11 +533,28 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
             cancelButtonText: 'Cancelar',
             customClass: {
                 popup: 'rounded-xl font-sans text-xs',
-                cancelButton: 'text-neutral-700'
+                cancelButton: 'text-neutral-700 font-semibold',
+                confirmButton: 'font-semibold'
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                setConfig(DEFAULT_THEME_CONFIG)
+                // 🚀 DETECCIÓN INTELIGENTE DE PLANTILLA: Restablece según sea Restaurante o Retail
+                const targetTemplateId = currentStoreType === 'restaurant' ? 'gourmet_flow' : (config.template_id || 'classic');
+                const templateDef = TEMPLATES_REGISTRY.find(t => t.id === targetTemplateId) || TEMPLATES_REGISTRY[0];
+
+                const resetConfig = normalizeThemeConfig({
+                    ...templateDef.default_config,
+                    layout: {
+                        ...templateDef.default_config.layout,
+                        logo_url: config.layout?.logo_url || storeData?.logo_url || '',
+                        logo_type: config.layout?.logo_type || 'png_transparent',
+                        hero_desktop_url: config.layout?.hero_desktop_url || storeData?.hero_url || '',
+                        hero_mobile_url: config.layout?.hero_mobile_url || '',
+                    }
+                });
+
+                setConfig(resetConfig);
+                toast.success('Valores de fábrica de la plantilla aplicados');
             }
         })
     }
@@ -573,10 +594,41 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
             setSaving(false)
         }
     }
-    const filteredTemplates = TEMPLATES_REGISTRY.filter(t => {
-        if (selectedNicheFilter === 'all') return true;
-        return t.niche === selectedNicheFilter;
-    });
+   // SEGREGACION ESTRICTA POR TIPO DE TIENDA
+    const currentStoreType = storeData?.store_type || 'retail';
+
+    // 1. Filtrar plantillas según el dominio del comercio
+    const availableTemplates = useMemo(() => {
+        return TEMPLATES_REGISTRY.filter(t => {
+            const templateStoreType = t.store_type || 'retail';
+            return templateStoreType === 'all' || templateStoreType === currentStoreType;
+        });
+    }, [currentStoreType]);
+
+    // 2. Filtro secundario por chip seleccionado
+    const filteredTemplates = useMemo(() => {
+        return availableTemplates.filter(t => {
+            if (selectedNicheFilter === 'all') return true;
+            return t.niche === selectedNicheFilter;
+        });
+    }, [availableTemplates, selectedNicheFilter]);
+
+   // 3. Pastillas de filtro contextuales
+    const nicheFilterChips = useMemo(() => {
+        if (currentStoreType === 'restaurant') {
+            return [
+                { id: 'all', label: 'Todas las Plantillas FoodTech' }
+            ];
+        }
+        return [
+            { id: 'all', label: 'Todas' },
+            { id: 'hardware', label: 'Ferretería' },
+            { id: 'streetwear', label: 'Streetwear' },
+            { id: 'beauty', label: 'Belleza' }, // 🚀 ANTES DECÍA 'food' / 'Bodegón'
+            { id: 'luxury', label: 'Lujo' },
+            { id: 'tech', label: 'Tecnología' },
+        ];
+    }, [currentStoreType]);
 
     if (loading) return <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
 
@@ -695,15 +747,9 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
 
-                                {/* Filtros por Nicho */}
+                                {/* Filtros por Nicho Contextuales */}
                                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0">
-                                    {[
-                                        { id: 'all', label: 'Todas' },
-                                        { id: 'hardware', label: 'Ferretería' },
-                                        { id: 'streetwear', label: 'Streetwear' },
-                                        { id: 'food', label: 'Comida' },
-                                        { id: 'luxury', label: 'Lujo' },
-                                    ].map(chip => (
+                                    {nicheFilterChips.map(chip => (
                                         <button
                                             key={chip.id}
                                             type="button"
@@ -920,7 +966,9 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between">
                                                 <span>2. Portada Móvil</span>
-                                                <span className="font-mono text-neutral-400">1080x1350 px (4:5)</span>
+                                                <span className="font-mono text-neutral-400">
+    {currentStoreType === 'restaurant' ? '1080x720 px (3:2)' : '1080x1350 px (4:5)'}
+</span>
                                             </label>
                                             <input type="file" ref={heroMInputRef} className="hidden" accept="image/*" onChange={handleHeroMobileUpload} />
 
@@ -960,6 +1008,63 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                         </div>
                                     )}
                                 </div>
+
+                                {/* EDITOR DE TEXTOS GASTRONÓMICOS */}
+                                    {currentStoreType === 'restaurant' && (
+                                        <div className="space-y-4 pt-4 border-t border-neutral-200/60 animate-in fade-in duration-200">
+                                            <div>
+                                                <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Textos de la Interfaz</h3>
+                                                <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Personaliza los mensajes de la cabecera y el botón del hero.</p>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                        <span>Saludo Superior (Sobre el logo)</span>
+                                                        <span className="font-mono">{config.layout.greeting_text?.length || 0}/30</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        maxLength={30}
+                                                        value={config.layout.greeting_text || ''}
+                                                        onChange={(e) => handleLayoutChange('greeting_text', e.target.value)}
+                                                        placeholder="Ej: Bienvenido a, Hola Foodie"
+                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                        <span>Eslogan / Subtítulo Institucional</span>
+                                                        <span className="font-mono">{config.layout.slogan_text?.length || 0}/60</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        maxLength={60}
+                                                        value={config.layout.slogan_text || ''}
+                                                        onChange={(e) => handleLayoutChange('slogan_text', e.target.value)}
+                                                        placeholder="Ej: Delicioso. Todos los días."
+                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                        <span>Texto del Botón en Hero</span>
+                                                        <span className="font-mono">{config.layout.hero_button_text?.length || 0}/25</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        maxLength={25}
+                                                        value={config.layout.hero_button_text || ''}
+                                                        onChange={(e) => handleLayoutChange('hero_button_text', e.target.value)}
+                                                        placeholder="Ej: Ordenar Ahora, Ver Menú"
+                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 {/* 🚀 EL BOTÓN DE GUARDADO DE SEGURIDAD & RECARGA DE PREVIEW */}
                                 <div className="pt-6 border-t border-neutral-200/50 flex flex-col gap-3">
                                     <button
@@ -1133,6 +1238,8 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
                                                 { id: 'none', label: 'Plano', shadow: 'none' },
                                                 ...(config.template_id === 'hardware_dense' || config.template_id === 'streetwear_bold'
                                                     ? [{ id: 'hard_brutalist', label: 'Sólida (Brutal)', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
+                                                    : config.template_id === 'gourmet_flow' 
+                                                    ? [{ id: 'crisp_app', label: 'App Nativa (Crisp)', shadow: '0px 6px 10px -2px rgba(0,0,0,0.08)' }]
                                                     : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
                                                 )
                                             ].map(item => {

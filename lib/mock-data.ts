@@ -1,7 +1,7 @@
 // lib/mock-data.ts
 
 export const MOCK_DATA: Record<string, { logo: string, hero_desktop: string, hero_mobile: string, products: any[], promotion?: any }> = {
-   general: {
+    general: {
         logo: '/tu-logo-transparente-claro.webp', // 👈 REEMPLAZA AQUÍ
         hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
         hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ
@@ -13,7 +13,7 @@ export const MOCK_DATA: Record<string, { logo: string, hero_desktop: string, her
             { id: 'm4', name: 'Bolso de Cuero Sintético', category: 'Bolsos', usd_cash_price: 65, usd_penalty: 0, stock: 3, image_url: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=600&q=80' },
         ]
     },
-hardware: {
+    hardware: {
         logo: '/tu-logo-transparente-oscuro.webp', // 👈 REEMPLAZA AQUÍ
         hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
         hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ
@@ -25,7 +25,7 @@ hardware: {
             { id: 'h4', name: 'Filtro de Aire Alto Flujo', category: 'Repuestos', usd_cash_price: 15, usd_penalty: 0, stock: 0, image_url: 'https://images.unsplash.com/photo-1688385274085-a009a3c5d4b7?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
         ]
     },
-   luxury: {
+    luxury: {
         logo: '/tu-logo-transparente-claro.webp', // 👈 REEMPLAZA AQUÍ (Preferiblemente blanco/claro para fondos oscuros)
         hero_desktop: '/tu-banner-desktop-montserrat.webp', // 👈 REEMPLAZA AQUÍ
         hero_mobile: '/tu-banner-mobile-montserrat.webp', // 👈 REEMPLAZA AQUÍ
@@ -37,19 +37,57 @@ hardware: {
             { id: 'l4', name: 'Suero Facial Revitalizante', category: 'Skincare', usd_cash_price: 85, usd_penalty: 5, stock: 12, image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&q=80' },
         ]
     },
-   food: {
-        logo: '/tu-logo-transparente-oscuro.webp', // 👈 REEMPLAZA AQUÍ
-        hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
-        hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ
-        promotion: { title: 'COMBO FIN DE SEMANA', tagline: 'AHORRA 20%', bg_color: '#E11D48', text_color: '#ffffff' },
+    beauty: {
+        logo: '/tu-logo-transparente-claro.webp',
+        hero_desktop: '/tu-banner-desktop-roboto.webp',
+        hero_mobile: '/tu-banner-mobile-roboto.webp',
+        promotion: {
+            title: 'GLOW DE TEMPORADA',
+            tagline: 'HASTA 20% OFF',
+            bg_color: '#E11D48',
+            text_color: '#ffffff'
+        },
         products: [
-            { id: 'f1', name: 'Hamburguesa Doble Smash', category: 'Principales', usd_cash_price: 12, usd_penalty: 0, stock: 99, image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80' },
-            { id: 'f2', name: 'Pizza Margherita Artesanal', category: 'Principales', usd_cash_price: 14, usd_penalty: 0, stock: 99, image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80' },
-            { id: 'f3', name: 'Papas Fritas Trufadas', category: 'Acompañantes', usd_cash_price: 6, usd_penalty: 0, stock: 99, image_url: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=600&q=80' },
-            { id: 'f4', name: 'Cheesecake de Nutella', category: 'Postres', usd_cash_price: 7, usd_penalty: 0, stock: 5, image_url: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&q=80' },
+            {
+                id: 'b1',
+                name: 'Lip Oil Hidratante Cherry Glow',
+                category: 'Labios',
+                usd_cash_price: 14,
+                usd_penalty: 0,
+                stock: 25,
+                image_url: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=600&q=80'
+            },
+            {
+                id: 'b2',
+                name: 'Sérum Facial Vitamina C Iluminador',
+                category: 'Cuidado Facial',
+                usd_cash_price: 24,
+                usd_penalty: 0,
+                stock: 15,
+                image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&q=80'
+            },
+             { 
+                id: 'b3', 
+                name: 'Crema Hidratante Velvet Glow', 
+                category: 'Cuidado Facial', 
+                usd_cash_price: 18, 
+                usd_penalty: 0, 
+                stock: 8, 
+                // 🚀 URL ACTIVA DE ALTA DEFINICIÓN (Reemplaza la imagen rota en blanco)
+                image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&q=80' 
+            },
+            {
+                id: 'b4',
+                name: 'Blush Líquido Velvet Berry',
+                category: 'Maquillaje',
+                usd_cash_price: 16,
+                usd_penalty: 0,
+                stock: 12,
+                image_url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80'
+            },
         ]
     },
-  streetwear: {
+    streetwear: {
         logo: '/tu-logo-transparente-oscuro.webp', // 👈 REEMPLAZA AQUÍ
         hero_desktop: '/tu-banner-desktop-roboto.webp', // 👈 REEMPLAZA AQUÍ
         hero_mobile: '/tu-banner-mobile-roboto.webp', // 👈 REEMPLAZA AQUÍ

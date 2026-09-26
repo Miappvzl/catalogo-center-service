@@ -38,17 +38,18 @@ export default function MissionTour({
     const isLastStep = currentStep === totalSteps;
 
     return (
+      
         <AnimatePresence>
-            {/* 1. VELO OSCURO PREMIUM (Más sutil) */}
+            {/* 1. VELO OSCURO CON DESENFOQUE CINEMATOGRÁFICO DE TODA LA PANTALLA */}
             <motion.div 
                 key="velo-oscuro"
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }} 
-                className="fixed inset-0 z-[50] bg-black/25 backdrop-blur-[1px]"
+                className="fixed inset-0 z-[50] bg-black/45 backdrop-blur-[2.5px] pointer-events-auto"
             />
 
-            {/* 2. ISLA DINÁMICA DE APRENDIZAJE (Optimizado para Mobile) */}
+            {/* 2. ISLA DINÁMICA DE APRENDIZAJE */}
             <motion.div 
                 key="isla-dinamica"
                 initial={{ opacity: 0, y: 30, x: '-50%', scale: 0.96 }} 

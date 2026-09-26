@@ -205,6 +205,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const isEurMode = currency === 'eur'
     const activeRate = isEurMode ? rates.eur : rates.usd
     const currencySymbol = '$'
+    const isRestaurant = storeConfig?.store_type === 'restaurant';
 
     const wholesale = storeConfig?.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 }
 
@@ -335,10 +336,25 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
     const modalVariants: Variants = {
-        hidden: { opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0 },
-        visible: { opacity: 1, y: 0, x: 0, transition: { type: "spring", damping: 25, stiffness: 200 } },
-        exit: { opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0, transition: { damping: 25, stiffness: 200 } }
+        hidden: { 
+            opacity: 0, 
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, 
+            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0 
+        },
+        visible: { 
+            opacity: 1, 
+            y: 0, 
+            x: 0, 
+            transition: { duration: 0.35, ease: [0.32, 0.72, 0, 1] } 
+        },
+        exit: { 
+            opacity: 0, 
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, 
+            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0, 
+            transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] } 
+        }
     }
+
 
 
     return (
@@ -347,15 +363,75 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 {/* 🚀 GATILLO MOBILE DINÁMICO (Polimorfismo Estructural Awwwards) */}
 <AnimatePresence mode="wait">
     {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
-        <motion.div
+       <motion.div
+       id="floating-checkout-trigger" // 👈 AÑADE ESTO AQUÍ
             initial={{ y: "120%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "120%", opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 220 }}
             layout
-            className={`fixed z-50 md:hidden ${activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4' : 'bottom-0 left-0 right-0'}`}
+            className={`fixed z-50 ${
+                isRestaurant 
+                    ? 'bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--store-bg)] via-[var(--store-bg)]/90 to-transparent pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))]' 
+                    : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
+            }`}
         >
-            {activeTheme.layout?.card_style === 'brutalist' ? (
+           {isRestaurant ? (
+                /* PÍLDORA FLOTANTE DE ALTA DENSIDAD EN ESCRITORIO (ANCLADA A LA DERECHA) */
+                <div className="hidden md:block fixed bottom-6 right-8 z-50 pointer-events-auto">
+                    {items.length > 0 ? (
+                        <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => setIsOpen(true)}
+                            className="h-14 px-6 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center gap-4 shadow-[0_16px_36px_-6px_rgba(0,0,0,0.35)] border border-white/10 active:opacity-95 transition-all cursor-pointer"
+                        >
+                            <div className="relative flex items-center justify-center shrink-0">
+                                <ShoppingBag size={20} strokeWidth={2.2} />
+                                {totalItemsCount > 0 && (
+                                    <span 
+                                        className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full font-mono text-[9px] font-black flex items-center justify-center border leading-none shadow-xs"
+                                        style={{
+                                            backgroundColor: 'var(--store-primary)',
+                                            color: 'var(--store-primary-text)',
+                                            borderColor: 'var(--store-text-main)'
+                                        }}
+                                    >
+                                        {totalItemsCount}
+                                    </span>
+                                )}
+                            </div>
+
+                            <span className="font-bold text-xs uppercase tracking-wider">Ver Pedido</span>
+
+                            <div className="w-[1px] h-5 bg-white/20 shrink-0" />
+
+                            <div className="flex flex-col items-end leading-none text-right">
+                                <span className="font-mono font-black text-sm tracking-tight">
+                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                </span>
+                                <span className="font-mono text-[9px] font-medium opacity-75 tabular-nums mt-0.5">
+                                    Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </motion.button>
+                    ) : (
+                        <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => setIsOpen(true)}
+                            className="h-12 px-5 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] flex items-center gap-2.5 shadow-xl border border-[var(--store-border)] cursor-pointer"
+                        >
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+                                Pedido #{generatedOrderNumber}
+                            </span>
+                            <span className="text-xs font-bold text-emerald-600">
+                                Confirmar WhatsApp
+                            </span>
+                        </motion.button>
+                    )}
+                </div>
+            ) : activeTheme.layout?.card_style === 'brutalist' ? (
                 /* 🏴‍☠️ VARIANTE STREETWEAR MODERNA: Dock Táctico de Alta Conversión */
                 <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)]/50 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                     {items.length > 0 ? (
@@ -662,15 +738,20 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isWhatsAppInterception ? undefined : handleCloseModal} />
 
-                        {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
+                          {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
                         <motion.div
                             variants={modalVariants}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] rounded-t-[32px] md:rounded-none flex flex-col overflow-hidden"
+                            style={{
+                                borderTopLeftRadius: 'var(--radius-card, 32px)',
+                                borderBottomLeftRadius: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'var(--radius-card, 32px)' : '0px',
+                                borderTopRightRadius: typeof window !== 'undefined' && window.innerWidth < 768 ? 'var(--radius-card, 32px)' : '0px',
+                                borderBottomRightRadius: '0px',
+                            }}
+                            className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] flex flex-col overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/40"
                         >
-
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (
                                 <div className="bg-[var(--store-surface)] px-6 pt-6 pb-4 flex justify-between items-center shrink-0 relative z-20 border-b border-[var(--store-border)]/30">
@@ -709,7 +790,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             )}
 
                             {/* PROGRESS BAR MAYORISTA (Solo Paso 1) */}
-                            {step === 1 && wholesale.active && (
+                            {step === 1 && wholesale.active && !isRestaurant && (
                                 <div className="bg-[var(--store-surface)] px-6 py-3 shrink-0 border-b border-[var(--store-border)]">
                                     <div className="flex justify-between items-end mb-2">
                                         <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest flex items-center gap-1"><Percent size={12} /> {isWholesaleActive ? 'Descuento Global Activado' : 'Ahorra al Mayor (Global)'}</span>
@@ -786,15 +867,15 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                     {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
                                                                    <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
                                         <div>
-                                            {item.badge && (
-                                                <span className={`inline-flex items-center gap-1 w-fit text-[8px] md:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider uppercase mb-1 transition-colors ${item.badge.type === 'pending'
-                                                    ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 border-dashed'
-                                                    : 'bg-[var(--store-text-main)] text-[var(--store-bg)]'
-                                                    }`}>
-                                                    {item.badge.text}
-                                                </span>
-                                            )}
-                                            <div className="flex justify-between items-start gap-2">
+                                          {item.badge && !isRestaurant && (
+    <span className={`inline-flex items-center gap-1 w-fit text-[8px] md:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider uppercase mb-1 transition-colors ${item.badge.type === 'pending'
+        ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 border-dashed'
+        : 'bg-[var(--store-text-main)] text-[var(--store-bg)]'
+        }`}>
+        {item.badge.text}
+    </span>
+)}
+                                           <div className="flex justify-between items-start gap-2">
                                                 <h3 className="text-xs md:text-[13px] font-bold text-[var(--store-text-main)] line-clamp-2 leading-snug tracking-tight pr-1">
                                                     {item.name}
                                                 </h3>
@@ -802,11 +883,34 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     <Trash2 size={13} />
                                                 </button>
                                             </div>
-                                            <p className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-0.5 truncate">
-                                                {item.variantInfo || 'Estándar'}
-                                            </p>
 
-                                            {item.requiresShipping === false && (
+                                            {/* Desglose de Modificadores Gastronómicos */}
+                                            {isRestaurant && item.foodModifiers && Array.isArray(item.foodModifiers) && item.foodModifiers.length > 0 ? (
+                                                <div className="mt-1 pl-2 border-l border-[var(--store-border)]/70 space-y-0.5">
+                                                    {item.foodModifiers.map((mod: any, mIdx: number) => (
+                                                        <p key={mIdx} className="text-[10px] text-[var(--store-surface-text)] font-medium leading-tight">
+                                                            + {mod.name}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                item.variantInfo && item.variantInfo !== 'N/A' && (
+                                                    <p className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-0.5 truncate">
+                                                        {item.variantInfo}
+                                                    </p>
+                                                )
+                                            )}
+
+                                            {/* Instrucción Especial de Cocina (Encapsulada) */}
+                                            {item.foodNotes && (
+                                                <div className="mt-1.5 p-1.5 rounded-md bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-900 font-medium leading-tight">
+                                                    <span className="font-bold font-mono text-[9px] uppercase tracking-wider text-amber-700 mr-1">Nota:</span>
+                                                    &quot;{item.foodNotes}&quot;
+                                                </div>
+                                            )}
+
+                                            {/* Etiqueta de Servicio solo para Retail */}
+                                            {!isRestaurant && item.requiresShipping === false && (
                                                 <span className="inline-flex items-center gap-1 mt-1 text-[8px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
                                                     <Sparkle size={9} className="shrink-0" />
                                                     <span className="truncate">
@@ -861,7 +965,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     </AnimatePresence>
                                                 </div>
                                                 {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
-                                                {recommendedProducts.length > 0 && (
+                                                {recommendedProducts.length > 0 && !isRestaurant && (
                                                     <div className={`mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]`}>
                                                         {activeTheme.layout?.card_style === 'brutalist' ? (
                                                             <div className="flex items-end justify-between mb-5 border-b border-[var(--store-border)]/30 pb-3">
@@ -970,14 +1074,12 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         )}
                                                     </div>
                                                     
-                                                   <div className="flex flex-col items-end">
-                                                        <span className="text-lg md:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight flex items-center">
-                                                            <span>{currencySymbol}</span>
-                                                            <NumberTicker value={step1GrandTotalUSD} />
+                                                      <div className="flex flex-col items-end">
+                                                        <span className="text-lg md:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight tabular-nums">
+                                                            {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
                                                         </span>
-                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-0.5 leading-none flex items-center gap-1">
-                                                            <span>Bs.</span>
-                                                            <NumberTicker value={step1GrandTotalBs} />
+                                                        <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
+                                                            Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
                                                     </div>

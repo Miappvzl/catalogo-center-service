@@ -11,6 +11,7 @@ import { NumberInput } from '../NumberInput'
 interface ShippingSettingsProps {
     storeId: string
     initialData: any
+    storeType?: string
 }
 
 // FlatToggle Premium (Optimizada contra Flexbox Blowout)
@@ -29,7 +30,8 @@ const FlatToggle = ({ active, label, subtitle, onClick }: { active: boolean, lab
     </div>
 )
 
-export default function ShippingSettings({ storeId, initialData }: ShippingSettingsProps) {
+export default function ShippingSettings({ storeId, initialData, storeType = 'retail' }: ShippingSettingsProps) {
+    const isRestaurant = storeType === 'restaurant';
     const [loading, setLoading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
 
@@ -150,6 +152,7 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                 <div className="flex-1 space-y-6">
 
                     {/* 1. MÉTODOS DE ENVÍO NACIONAL */}
+                    {!isRestaurant && (
                     <div className="space-y-3">
                         <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Empresas de Envío Nacional</h4>
 
@@ -182,10 +185,13 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                             <FlatToggle active={config.methods.tealca} label="TEALCA" onClick={() => toggleMethod('tealca')} />
                         </div>
                     </div>
+                    )}
 
-                    {/* 2. DELIVERY & PICKUP */}
-                    <div className="space-y-4 pt-4 border-t border-neutral-100/50">
-                        <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Entrega Local en Ciudad</h4>
+                {/* 2. DELIVERY & PICKUP */}
+                    <div className={`space-y-4 ${!isRestaurant ? 'pt-4 border-t border-neutral-100/50' : ''}`}>
+                        <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                            {isRestaurant ? 'Modalidades de Despacho y Entrega' : 'Entrega Local en Ciudad'}
+                        </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FlatToggle active={config.methods.pickup} label="Retiro Presencial" subtitle="Entrega en tienda (Sin costo)" onClick={() => toggleMethod('pickup')} />
                             <FlatToggle active={config.methods.delivery} label="Delivery Tarifado" subtitle="Costo variable por zona" onClick={() => toggleMethod('delivery')} />
@@ -300,45 +306,48 @@ export default function ShippingSettings({ storeId, initialData }: ShippingSetti
                     </div>
                 </div>
 
-                {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS */}
-                <div className="space-y-3 pt-4 border-t border-neutral-200/50 w-full overflow-hidden">
-                    <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Visualización en Ficha de Producto</h4>
-                    <div className="bg-neutral-50/50 p-4 sm:p-5 rounded-lg border border-neutral-200/50 space-y-4 w-full">
-                        <FlatToggle
-                            active={config.show_badge}
-                            label="Etiqueta Informativa de Envío"
-                            subtitle="Aparece debajo de la línea de precios en el producto."
-                            onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }}
-                        />
+              {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS (SOLO RETAIL) */}
+                {!isRestaurant && (
+                    <div className="space-y-3 pt-4 border-t border-neutral-200/50 w-full overflow-hidden">
+                        <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Visualización en Ficha de Producto</h4>
+                        <div className="bg-neutral-50/50 p-4 sm:p-5 rounded-lg border border-neutral-200/50 space-y-4 w-full">
+                            <FlatToggle
+                                active={config.show_badge}
+                                label="Etiqueta Informativa de Envío"
+                                subtitle="Aparece debajo de la línea de precios en el producto."
+                                onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }}
+                            />
 
-                        {config.show_badge && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 w-full pt-1">
-                                <div className="w-full min-w-0">
-                                    <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Encabezado (Máx 20 caracteres)</label>
-                                    <input
-                                        type="text"
-                                        maxLength={20}
-                                        placeholder="Ej: Entrega Express"
-                                        value={config.global_badge_title}
-                                        onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_title: e.target.value })) }}
-                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
-                                    />
+                            {config.show_badge && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 w-full pt-1">
+                                    <div className="w-full min-w-0">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Encabezado (Máx 20 caracteres)</label>
+                                        <input
+                                            type="text"
+                                            maxLength={20}
+                                            placeholder="Ej: Entrega Express"
+                                            value={config.global_badge_title}
+                                            onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_title: e.target.value })) }}
+                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
+                                        />
+                                    </div>
+                                    <div className="w-full min-w-0">
+                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Descripción (Máx 50 caracteres)</label>
+                                        <input
+                                            type="text"
+                                            maxLength={50}
+                                            placeholder="Ej: Despacho garantizado en 24 horas"
+                                            value={config.global_badge_desc}
+                                            onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
+                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="w-full min-w-0">
-                                    <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Descripción (Máx 50 caracteres)</label>
-                                    <input
-                                        type="text"
-                                        maxLength={50}
-                                        placeholder="Ej: Despacho garantizado en 24 horas"
-                                        value={config.global_badge_desc}
-                                        onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
-                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
-                                    />
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
+
 
                 {/* FOOTER DE ACCIÓN */}
                 <div className="mt-8 pt-5 border-t border-neutral-200/50 flex flex-col sm:flex-row justify-between items-center gap-4">

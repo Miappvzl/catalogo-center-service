@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift } from 'lucide-react'
+import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
@@ -666,13 +666,25 @@ useEffect(() => {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 mt-1">
-                                        <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-2.5 bg-white border border-neutral-200/50 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 text-neutral-700 active:scale-95 shadow-xs">
-                                            {copiedQuote === selectedOrder.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />} Copiar Link
+                                   <div className="flex flex-col gap-2 mt-1">
+                                        <div className="flex gap-2">
+                                            <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-2.5 bg-white border border-neutral-200/50 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 text-neutral-700 active:scale-95 shadow-xs">
+                                                {copiedQuote === selectedOrder.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />} Copiar Link
+                                            </button>
+                                            <a href={getQuoteLink(selectedOrder.id)} target="_blank" rel="noopener noreferrer" className="flex-1 py-2.5 bg-white border border-neutral-200/50 text-neutral-900 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
+                                                Ver PDF <ArrowUpRight size={14} />
+                                            </a>
+                                        </div>
+
+                                        {/* DISPARADOR DE COMANDA TERMICA DE COCINA */}
+                                        <button 
+                                            type="button"
+                                            onClick={() => window.print()}
+                                            className="w-full py-2.5 bg-neutral-950 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+                                        >
+                                            <PrinterCheck size={14} strokeWidth={2.5} />
+                                            <span>Imprimir Comanda Térmica (80mm)</span>
                                         </button>
-                                        <a href={getQuoteLink(selectedOrder.id)} target="_blank" rel="noopener noreferrer" className="flex-1 py-2.5 bg-neutral-950 text-white rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95">
-                                            Ver PDF <ArrowUpRight size={14} />
-                                        </a>
                                     </div>
                                 </div>
 
@@ -1106,6 +1118,154 @@ useEffect(() => {
                     }}
                 />
             )}
+            {/* ========================================================================= */}
+            {/* MOTOR DE IMPRESION TERMICA PARA COMANDAS Y COCINA (80mm / POS-80)        */}
+            {/* ========================================================================= */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @media print {
+                    @page {
+                        size: 80mm auto;
+                        margin: 0mm;
+                    }
+                    body, html {
+                        background: #ffffff !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    /* Oculta toda la interfaz de la aplicacion */
+                    body * {
+                        visibility: hidden !important;
+                    }
+                    /* Muestra unicamente el ticket de comanda */
+                    #thermal-receipt, #thermal-receipt * {
+                        visibility: visible !important;
+                    }
+                    #thermal-receipt {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 74mm !important;
+                        max-width: 74mm !important;
+                        margin: 0 !important;
+                        padding: 2mm 3mm !important;
+                        display: block !important;
+                        background: #ffffff !important;
+                        color: #000000 !important;
+                        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                        font-size: 11px !important;
+                        line-height: 1.25 !important;
+                    }
+                }
+                `
+            }} />
+
+            {selectedOrder && (
+                <div id="thermal-receipt" className="hidden">
+                    {/* Encabezado del Comercio */}
+                    <div className="text-center pb-2 border-b-2 border-black">
+                        <h2 className="text-sm font-black uppercase tracking-wider">{storeSlug || 'RESTAURANTE'}</h2>
+                        <p className="text-[10px] font-bold mt-0.5">COMPROBANTE DE COCINA / DESPACHO</p>
+                    </div>
+
+                    {/* Ficha Destacada del Pedido */}
+                    <div className="text-center py-2 border-b-2 border-dashed border-black my-1">
+                        <p className="text-base font-black tracking-tight">*** ORDEN #{selectedOrder.order_number} ***</p>
+                        <p className="text-[10px] mt-0.5">{new Date(selectedOrder.created_at).toLocaleString('es-VE')}</p>
+                    </div>
+
+                    {/* Modalidad de Servicio (Resaltada para el personal) */}
+                    <div className="py-2 border-b-2 border-black my-1 text-left">
+                        {selectedOrder.fulfillment_type === 'dine_in' ? (
+                            <div>
+                                <p className="text-xs font-black uppercase">SERVICIO EN MESA</p>
+                                <p className="text-sm font-black mt-0.5">UBICACION: MESA {selectedOrder.table_number || 'N/A'}</p>
+                            </div>
+                        ) : selectedOrder.fulfillment_type === 'pickup' ? (
+                            <div>
+                                <p className="text-xs font-black uppercase">MODALIDAD: PARA LLEVAR</p>
+                                <p className="text-[10px] font-bold">RETIRO DIRECTO EN BARRA</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="text-xs font-black uppercase">MODALIDAD: DELIVERY</p>
+                                <p className="text-[10px] leading-tight mt-0.5">{selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Direccion no provista'}</p>
+                            </div>
+                        )}
+                        <p className="text-[10px] mt-1">CLIENTE: {selectedOrder.customer_name}</p>
+                        {selectedOrder.customer_phone && <p className="text-[10px]">TLF: {selectedOrder.customer_phone}</p>}
+                    </div>
+
+                    {/* Desglose de Platos (Comanda Detallada) */}
+                    <div className="py-2 border-b-2 border-black my-1">
+                        <p className="text-[10px] font-black uppercase pb-1 border-b border-black mb-2">PLATOS Y MODIFICADORES</p>
+                        <div className="space-y-2">
+                            {selectedOrder.order_items.map((item) => {
+                                const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0;
+                                return (
+                                    <div key={item.id} className="text-left">
+                                        <div className="flex justify-between items-start font-bold">
+                                            <span className="text-xs">[{item.quantity}x] {item.product_name}</span>
+                                        </div>
+
+                                        {/* Modificadores */}
+                                        {hasModifiers && (
+                                            <div className="pl-3 text-[10px] space-y-0.5 mt-0.5">
+                                                {item.modifiers_selected!.map((mod, mIdx) => (
+                                                    <p key={mIdx}>+ {mod.name}</p>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Notas Especiales de Cocina */}
+                                        {item.customer_notes && (
+                                            <div className="pl-3 mt-1 font-bold text-[10px] uppercase">
+                                                <p>&gt;&gt; NOTA: &quot;{item.customer_notes}&quot;</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Liquidacion Financiera */}
+                    <div className="py-2 border-b-2 border-dashed border-black text-right text-[10px] space-y-1">
+                        <div className="flex justify-between">
+                            <span>SUBTOTAL:</span>
+                            <span className="font-bold">${Number(selectedOrder.total_usd - (selectedOrder.tip_amount_usd || 0)).toFixed(2)}</span>
+                        </div>
+
+                        {Number(selectedOrder.tip_amount_usd || 0) > 0 && (
+                            <div className="flex justify-between font-bold">
+                                <span>PROPINA:</span>
+                                <span>+${Number(selectedOrder.tip_amount_usd).toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
+                            <span>TOTAL USD:</span>
+                            <span>${Number(selectedOrder.total_usd).toFixed(2)}</span>
+                        </div>
+
+                        <div className="flex justify-between text-[10px] pt-0.5">
+                            <span>TOTAL BS ({selectedOrder.exchange_rate?.toFixed(2)}):</span>
+                            <span className="font-bold">Bs {Number(selectedOrder.total_bs || (selectedOrder.total_usd * (selectedOrder.exchange_rate || 0))).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                        </div>
+
+                        <div className="flex justify-between pt-1 border-t border-black/40">
+                            <span>METODO DE PAGO:</span>
+                            <span className="font-bold uppercase">{selectedOrder.payment_method}</span>
+                        </div>
+                    </div>
+
+                    {/* Pie de Comanda */}
+                    <div className="text-center pt-2 text-[9px]">
+                        <p className="font-bold">PREZISO POS - SISTEMA GASTRONOMICO</p>
+                    </div>
+                </div>
+            )}
         </div>
+        
     )
 }
