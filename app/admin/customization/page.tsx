@@ -597,13 +597,15 @@ export default function CustomizationPage() {
         });
 
         if (!result.isConfirmed) return;
-
-        setSaving(true)
+ setSaving(true)
         try {
             const { error } = await supabase.from('stores').update({ theme_config: config }).eq('id', storeData.id)
             if (error) throw error
             setOriginalConfig(config)
-            await revalidateStoreCache()
+            
+            // 🚀 PURGAMOS LA RUTA REAL DEL TENANT
+            await revalidateStoreCache(storeData.slug)
+            
             toast.success('Diseño publicado con éxito en la tienda en vivo');
         } catch (error) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el diseño.', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })

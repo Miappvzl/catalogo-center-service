@@ -89,13 +89,16 @@ export async function checkAndTriggerStockAlert(data: {
   });
 }
 
-// 🚀 NUEVO CACHE BUSTER GENÉRICO
-// Exponemos esta función para que otros componentes puedan matar la caché
-// sin necesidad de enviar formularios ni recargar la moneda.
-export async function revalidateStoreCache() {
+// 🚀 REVALIDADOR PROFUNDO: Invalida el subdominio del tenant además del layout general
+export async function revalidateStoreCache(slug?: string) {
   revalidatePath('/', 'layout')
+  revalidatePath('/[slug]', 'page')
+  revalidatePath('/[slug]', 'layout')
+  if (slug) {
+    revalidatePath(`/${slug}`, 'page')
+    revalidatePath(`/${slug}`, 'layout')
+  }
 }
-
 // 🚀 NUEVA ACCIÓN: Alternar visibilidad del IVA en el catálogo
 export async function toggleCatalogTaxVisibility(storeId: string, showTax: boolean): Promise<ActionState> {
   const cookieStore = await cookies()
@@ -172,9 +175,10 @@ export async function switchStoreTypeAction(
   if (!user) return { success: false, message: 'No autorizado' }
 
   try {
+    // 🚀 OBTENER TAMBIÉN EL SLUG PARA EL PURGADO DE RUTAS
     const { data: currentStore, error: fetchErr } = await supabase
       .from('stores')
-      .select('id, theme_config, store_hours, store_type')
+      .select('id, theme_config, store_hours, store_type, slug')
       .eq('id', storeId)
       .eq('user_id', user.id)
       .single()
@@ -193,12 +197,10 @@ export async function switchStoreTypeAction(
     
     let updatedStoreHours = currentStore.store_hours
 
-    // 🚀 LECTURA DE LA PLANTILLA OBJETIVO DESDE EL REGISTRO MAESTRO
     const targetTemplateId = targetType === 'restaurant' ? 'gourmet_flow' : 'classic'
     const targetTemplateDef = TEMPLATES_REGISTRY.find(t => t.id === targetTemplateId) || TEMPLATES_REGISTRY[0]
     const baseDefaultConfig = targetTemplateDef.default_config
 
-    // 🚀 HERENCIA SELECTIVA: Preservamos 100% los colores del usuario, pero inyectamos la estructura del nuevo modelo
     const updatedThemeConfig = {
       ...baseDefaultConfig,
       colors: currentColors && Object.keys(currentColors).length > 0 ? currentColors : baseDefaultConfig.colors,
@@ -206,7 +208,6 @@ export async function switchStoreTypeAction(
       shapes: baseDefaultConfig.shapes,
       layout: {
         ...baseDefaultConfig.layout,
-        // Preservamos multimedia y textos para no borrar el branding del usuario
         logo_url: currentLayout.logo_url || '',
         logo_type: currentLayout.logo_type || 'png_transparent',
         hero_desktop_url: currentLayout.hero_desktop_url || '',
@@ -248,7 +249,8 @@ export async function switchStoreTypeAction(
 
     if (updateErr) throw updateErr
 
-    revalidatePath('/', 'layout')
+    // 🚀 PURGADO COMPLETO DEL TENANT EN NEXT.JS
+    await revalidateStoreCache(currentStore.slug)
 
     return {
       success: true,
