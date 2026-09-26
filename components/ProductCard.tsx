@@ -81,6 +81,7 @@ function ProductCardComponent({
   const isPriorityImage = index < 4;
   const formattedBs = currencyFormatter.format(pricing.priceInBs);
 
+ 
   // =========================================================================
   // 🛠️ VARIANTE: TEMA 2 (DENSE HARDWARE CARD / ALTA DENSIDAD)
   // =========================================================================
@@ -90,8 +91,8 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-colors duration-150 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
         onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE TÉCNICO 1:1 */}
-        <div className="relative aspect-square w-full bg-white overflow-hidden shrink-0 border-b border-[var(--store-border)]/40">
+        {/* 1. ENCUADRE TÉCNICO 1:1 (Fondo integrado y foto a sangre completa) */}
+        <div className="relative aspect-square w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]/40">
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -101,7 +102,7 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-contain p-4 transition-transform duration-200 group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`object-cover transition-transform duration-300 group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -116,12 +117,12 @@ function ProductCardComponent({
                 Agotado
               </span>
             ) : isCriticalStock ? (
-              <span className="bg-amber-50 text-amber-900 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-amber-300 flex items-center gap-1">
+              <span className="bg-amber-50 text-amber-900 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-amber-300 flex items-center gap-1 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                 Últimas {product.stock}
               </span>
             ) : (
-              <span className="bg-emerald-50 text-emerald-800 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-emerald-200/80 flex items-center gap-1">
+              <span className="bg-emerald-50 text-emerald-800 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-emerald-200/80 flex items-center gap-1 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
                 En Stock
               </span>
@@ -130,7 +131,7 @@ function ProductCardComponent({
 
           {/* BADGE DE DESCUENTO */}
           {isPromo && !isOutOfStock && (
-            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] md:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-discount-bg)]">
+            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] md:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-discount-bg)] shadow-xs">
               -{promoPercent}%
             </div>
           )}
@@ -138,12 +139,11 @@ function ProductCardComponent({
           {/* BOTÓN DE FAVORITO */}
           <button
             onClick={handleToggleFav}
-            className={`absolute bottom-2 right-2 z-20 p-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors active:scale-95 ${
+            className={`absolute bottom-2 right-2 z-20 p-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors active:scale-95 shadow-sm ${
               isFavorite
-                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)]'
-                : 'bg-[var(--store-surface)]/90 text-[var(--store-surface-text)] border-[var(--store-border)] hover:text-[var(--store-action-favorite)] hover:border-[var(--store-action-favorite)]'
+                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-white'
+                : 'bg-black/60 text-white border-white/20 hover:text-[var(--store-action-favorite)] hover:border-[var(--store-action-favorite)] backdrop-blur-xs'
             }`}
-            style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--store-action-favorite) 30%, transparent)' } : undefined}
             aria-label="Favorito"
           >
             <Heart size={14} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
