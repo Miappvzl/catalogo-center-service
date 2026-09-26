@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { TEMPLATES_REGISTRY } from '@/lib/templates-registry' // 🚀 FUENTE ÚNICA DE VERDAD
+import { TEMPLATES_REGISTRY } from '@/lib/templates-registry' // 🚀 IMPORTACIÓN CRÍTICA
 
 export type ActionState = {
   success: boolean
@@ -146,11 +146,11 @@ export async function toggleCatalogTaxVisibility(storeId: string, showTax: boole
 }
 
 export async function switchStoreTypeAction(
-  storeId: string,
+  storeId: string, 
   targetType: 'retail' | 'restaurant'
 ): Promise<ActionState> {
   const cookieStore = await cookies()
-
+  
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -159,21 +159,19 @@ export async function switchStoreTypeAction(
         getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }) => 
               cookieStore.set(name, value, options)
             )
-          } catch { }
+          } catch {}
         },
       },
     }
   )
 
-  // 1. Verificacion de Autorizacion Estricta
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, message: 'No autorizado' }
 
   try {
-    // 2. Obtener estado actual de la tienda
     const { data: currentStore, error: fetchErr } = await supabase
       .from('stores')
       .select('id, theme_config, store_hours, store_type')
@@ -200,20 +198,15 @@ export async function switchStoreTypeAction(
     const targetTemplateDef = TEMPLATES_REGISTRY.find(t => t.id === targetTemplateId) || TEMPLATES_REGISTRY[0]
     const baseDefaultConfig = targetTemplateDef.default_config
 
-   // 🚀 HERENCIA SELECTIVA ESTRICTA: Clonamos la Identidad (Colores/Textos) y aplicamos la Estructura (Shapes/Layout)
+    // 🚀 HERENCIA SELECTIVA: Preservamos 100% los colores del usuario, pero inyectamos la estructura del nuevo modelo
     const updatedThemeConfig = {
       ...baseDefaultConfig,
-      // 1. Clonación absoluta de colores y tipografías actuales
       colors: currentColors && Object.keys(currentColors).length > 0 ? currentColors : baseDefaultConfig.colors,
       typography: currentTheme.typography || baseDefaultConfig.typography,
-      
-      // 2. Inyección de las Formas (Pill, Sin bordes, etc.) obligatorias de la nueva plantilla
       shapes: baseDefaultConfig.shapes,
-      
-      // 3. Fusión Híbrida del Layout
       layout: {
         ...baseDefaultConfig.layout,
-        // Preservamos el branding multimedia e institucional
+        // Preservamos multimedia y textos para no borrar el branding del usuario
         logo_url: currentLayout.logo_url || '',
         logo_type: currentLayout.logo_type || 'png_transparent',
         hero_desktop_url: currentLayout.hero_desktop_url || '',
@@ -224,8 +217,8 @@ export async function switchStoreTypeAction(
         hero_button_text: currentLayout.hero_button_text || baseDefaultConfig.layout.hero_button_text,
       }
     }
+
     if (targetType === 'restaurant') {
-      // Inicializar horarios si no existen
       if (!updatedStoreHours || !updatedStoreHours.schedule) {
         updatedStoreHours = {
           timezone: 'America/Caracas',
@@ -243,7 +236,6 @@ export async function switchStoreTypeAction(
       }
     }
 
-    // 3. Mutacion Atomica en Base de Datos
     const { error: updateErr } = await supabase
       .from('stores')
       .update({
@@ -256,7 +248,6 @@ export async function switchStoreTypeAction(
 
     if (updateErr) throw updateErr
 
-    // 4. Purgar Cache del Servidor en Next.js
     revalidatePath('/', 'layout')
 
     return {
@@ -268,7 +259,6 @@ export async function switchStoreTypeAction(
     }
 
   } catch (error: any) {
-    console.error('Error en switchStoreTypeAction:', error)
     return { success: false, message: error.message || 'Error al cambiar modelo de negocio' }
   }
 }

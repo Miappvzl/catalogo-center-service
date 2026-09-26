@@ -649,17 +649,24 @@ export default function CustomizationPage() {
 
     if (loading) return <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
 
-    const getBaseDomain = () => {
+  
+      const getBaseDomain = () => {
         if (typeof window === 'undefined') return 'preziso.shop';
         if (window.location.hostname.includes('localhost')) return window.location.host;
         return 'preziso.shop';
     }
 
-    const previewUrl = storeData ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview` : '';
+    // 🚀 CACHE BUSTER SIMPLIFICADO: Cero Hooks, cero errores de React. 
+    // Solo recargará el teléfono cuando cambie la variable 'currentStoreType'.
+    const previewUrl = storeData 
+        ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview&t=${currentStoreType}` 
+        : '';
+
+    // 🛑 EARLY RETURN: Siempre abajo, sin afectar a nadie
+    if (loading) return <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
 
     return (
         <div className="min-h-screen w-full max-w-[100vw] bg-[#f4f4f5] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] flex font-sans overflow-hidden antialiased selection:bg-neutral-900 selection:text-white">
-
             {/* 🖥️ VERTICAL RAIL (Figma Style - Desktop Only) */}
             <nav className="hidden lg:flex flex-col items-center py-6 w-[72px] bg-white/80 backdrop-blur-2xl border-r border-neutral-200/60 shrink-0 z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)] justify-between">
                 <div className="flex flex-col items-center gap-6 w-full">
