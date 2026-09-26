@@ -200,26 +200,30 @@ export async function switchStoreTypeAction(
     const targetTemplateDef = TEMPLATES_REGISTRY.find(t => t.id === targetTemplateId) || TEMPLATES_REGISTRY[0]
     const baseDefaultConfig = targetTemplateDef.default_config
 
-    // Fusionamos: Geometría y sombras limpias de la nueva plantilla + preservamos el branding del usuario
+   // 🚀 HERENCIA SELECTIVA ESTRICTA: Clonamos la Identidad (Colores/Textos) y aplicamos la Estructura (Shapes/Layout)
     const updatedThemeConfig = {
       ...baseDefaultConfig,
-      colors: {
-        ...baseDefaultConfig.colors,
-        // Si el usuario tenía un color primario personalizado, lo preservamos
-        ...(currentColors.primary ? { primary: currentColors.primary } : {})
-      },
-      // 🚀 APLICA ESTRICTAMENTE LAS FORMAS DE FÁBRICA (PILL, BORDES Y SOMBRAS NATIVAS)
+      // 1. Clonación absoluta de colores y tipografías actuales
+      colors: currentColors && Object.keys(currentColors).length > 0 ? currentColors : baseDefaultConfig.colors,
+      typography: currentTheme.typography || baseDefaultConfig.typography,
+      
+      // 2. Inyección de las Formas (Pill, Sin bordes, etc.) obligatorias de la nueva plantilla
       shapes: baseDefaultConfig.shapes,
-      typography: baseDefaultConfig.typography,
+      
+      // 3. Fusión Híbrida del Layout
       layout: {
         ...baseDefaultConfig.layout,
+        // Preservamos el branding multimedia e institucional
         logo_url: currentLayout.logo_url || '',
         logo_type: currentLayout.logo_type || 'png_transparent',
         hero_desktop_url: currentLayout.hero_desktop_url || '',
         hero_mobile_url: currentLayout.hero_mobile_url || '',
+        hero_subtitle: currentLayout.hero_subtitle || baseDefaultConfig.layout.hero_subtitle,
+        greeting_text: currentLayout.greeting_text || baseDefaultConfig.layout.greeting_text,
+        slogan_text: currentLayout.slogan_text || baseDefaultConfig.layout.slogan_text,
+        hero_button_text: currentLayout.hero_button_text || baseDefaultConfig.layout.hero_button_text,
       }
     }
-
     if (targetType === 'restaurant') {
       // Inicializar horarios si no existen
       if (!updatedStoreHours || !updatedStoreHours.schedule) {

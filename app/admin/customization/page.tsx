@@ -15,6 +15,17 @@ import { compressImage } from '@/utils/imageOptimizer'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+// 🚀 AÑADIR ESTE COMPONENTE (Solución al error TS2304)
+const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
+    <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 cursor-pointer ${active ? `${activeColor} border-transparent justify-end` : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
+        <motion.div 
+            layout 
+            transition={{ type: "spring", stiffness: 600, damping: 30 }} 
+            className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" 
+        />
+    </div>
+)
+
 const ColorInputRow = ({ label, valueKey, value, description, onChange }: { label: string, valueKey: string, value: string, description?: string, onChange: (k: string, value: string) => void }) => (
     <div className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200/60 hover:border-neutral-300 transition-colors bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] group/row">
         <div className="flex flex-col pr-4">
@@ -140,12 +151,15 @@ export default function CustomizationPage() {
     const [storeData, setStoreData] = useState<any>(null)
 
     const [config, setConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
-    const [originalConfig, setOriginalConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
+     const [originalConfig, setOriginalConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
     const [activeTab, setActiveTab] = useState<'marketplace' | 'colors' | 'shapes' | 'search' | 'typography' | 'multimedia' | 'badges'>('marketplace')
-const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
+    const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
     const [selectedNicheFilter, setSelectedNicheFilter] = useState<string>('all')
     const [mobileViewMode, setMobileViewMode] = useState<'editor' | 'preview'>('editor')
     const [openIconPickerIdx, setOpenIconPickerIdx] = useState<number | null>(null)
+
+    // 🚀 NUEVO ESTADO: Candado protector de marca activado por defecto
+    const [preserveBrand, setPreserveBrand] = useState(true)
 
     // 🚀 FILTRO INTELIGENTE DE PESTAÑAS (Solo muestra lo que la plantilla soporta)
     const activeTabs = useMemo(() => {
@@ -467,29 +481,32 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
             setUploadingHeroMobile(false)
         }
     }
-
-    const handleApplyTemplate = (template: TemplateDefinition) => {
-        // 🚀 PRESERVACIÓN MULTIMEDIA: Cambia el diseño pero conserva el logo y banners del usuario
+  const handleApplyTemplate = (template: TemplateDefinition) => {
+        // 🚀 HERENCIA INTELIGENTE: Si el usuario desea preservar su marca, clonamos colores y tipografías.
         const newConfig = normalizeThemeConfig({
             ...template.default_config,
+            colors: preserveBrand ? config.colors : template.default_config.colors,
+            typography: preserveBrand ? config.typography : template.default_config.typography,
             layout: {
                 ...template.default_config.layout,
+                // Preservación incondicional de multimedia y textos propios
                 logo_url: config.layout?.logo_url || storeData?.logo_url || '',
                 logo_type: config.layout?.logo_type || 'png_transparent',
                 hero_desktop_url: config.layout?.hero_desktop_url || storeData?.hero_url || '',
                 hero_mobile_url: config.layout?.hero_mobile_url || '',
                 hero_subtitle: config.layout?.hero_subtitle || template.default_config.layout?.hero_subtitle,
+                greeting_text: config.layout?.greeting_text || template.default_config.layout?.greeting_text,
+                slogan_text: config.layout?.slogan_text || template.default_config.layout?.slogan_text,
+                hero_button_text: config.layout?.hero_button_text || template.default_config.layout?.hero_button_text,
             }
         });
         setConfig(newConfig);
 
-        // 🚀 AWWWARDS TOUCH: Notificación ultra-rápida (1.2s) arriba al centro, sin bloquear botones abajo
-        toast.success(`Tema ${template.name} activo`, { 
+        toast.success(`Arquetipo estructural ${template.name} aplicado`, { 
             position: 'top-center',
-            duration: 1200 
+            duration: 1500 
         });
     }
-
     const handleColorChange = (key: string, value: string) => {
         setConfig((prev: ThemeConfig) => ({
             ...prev,
@@ -739,16 +756,36 @@ const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
 
                     {/* Contenido scrolleable */}
                     <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 lg:pb-6 no-scrollbar">
-{/* TAB 1: MARKETPLACE */}
-                        {activeTab === 'marketplace' && (
+{activeTab === 'marketplace' && (
                             <div className="space-y-5 animate-in fade-in pb-10">
                                 <div>
                                     <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Arquetipos Comerciales</h3>
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
 
+                                {/* 🚀 UI INTUITIVA: CANDADO DE IDENTIDAD DE MARCA */}
+                                <div 
+                                    onClick={() => setPreserveBrand(!preserveBrand)}
+                                    className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${
+                                        preserveBrand 
+                                            ? 'bg-neutral-900 border-neutral-900 shadow-md' 
+                                            : 'bg-white border-neutral-200 hover:border-neutral-300 shadow-sm'
+                                    }`}
+                                >
+                                    <div className="flex flex-col pr-3">
+                                        <p className={`text-xs font-bold flex items-center gap-1.5 ${preserveBrand ? 'text-white' : 'text-neutral-900'}`}>
+                                            <ShieldCheck size={14} className={preserveBrand ? 'text-emerald-400' : 'text-neutral-400'} />
+                                            Preservar mis colores y fuentes
+                                        </p>
+                                        <p className={`text-[10px] font-medium leading-snug mt-1 ${preserveBrand ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                                            Al cambiar de arquetipo, adoptaremos su estructura (tarjetas, buscador), pero <b>protegeremos tu paleta de colores actual</b>.
+                                        </p>
+                                    </div>
+                                    <AnimatedSwitch active={preserveBrand} activeColor="bg-emerald-500" />
+                                </div>
+
                                 {/* Filtros por Nicho Contextuales */}
-                                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0">
+                                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0 pt-2">
                                     {nicheFilterChips.map(chip => (
                                         <button
                                             key={chip.id}
