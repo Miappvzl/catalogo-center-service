@@ -438,7 +438,7 @@ export default function SuperAdminPage() {
                 
                 {/* 🚀 THE TELEMETRY MONOLITH (Graphite Bento Grid) */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs">
+                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-t-0 border-neutral-800 flex flex-col justify-between shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Inquilinos</span>
                             <Store size={14} className="text-neutral-500" />
@@ -446,7 +446,7 @@ export default function SuperAdminPage() {
                         <span className="text-2xl md:text-3xl font-light tracking-tighter text-white font-mono tabular-nums">{kpis.total}</span>
                     </div>
 
-                    <div className="relative bg-[#1A1A1A] p-5 rounded-md border-t-none border border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(192,222,8,0.2)_0%,_rgba(192,222,8,0.05)_50%,_transparent_100%)] before:pointer-events-none">
+                    <div className="relative bg-[#1A1A1A] p-5 rounded-md  border border-t-0 border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(192,222,8,0.2)_0%,_rgba(192,222,8,0.05)_50%,_transparent_100%)] before:pointer-events-none">
 
                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-[40px] rounded-full pointer-events-none" />
                         <div className="flex items-center justify-between mb-4 relative z-10">
@@ -464,7 +464,7 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-               <div className="relative bg-[#1A1A1A] p-5 rounded-md border-t-none border border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.30)_0%,_rgba(244,63,94,0.06)_50%,_transparent_100%)] before:pointer-events-none">
+               <div className="relative bg-[#1A1A1A] p-5 rounded-md border-t-none border border-t-0 border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.30)_0%,_rgba(244,63,94,0.06)_50%,_transparent_100%)] before:pointer-events-none">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Suspendidas</span>
                             <AlertCircle size={14} className="text-rose-500" />
@@ -472,7 +472,7 @@ export default function SuperAdminPage() {
                         <span className="text-2xl md:text-3xl font-light tracking-tighter text-neutral-400 font-mono tabular-nums">{kpis.expired}</span>
                     </div>
 
-                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs">
+                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 border-t-0 flex flex-col justify-between shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">MRR Real</span>
                             <DollarSign size={14} className="text-white" />
