@@ -413,7 +413,7 @@ export default function SuperAdminPage() {
             <header className="sticky top-0 z-40 bg-[#121212]/95 backdrop-blur-md border-b border-neutral-800 px-4 md:px-8 py-3.5">
                 <div className="max-w-[1400px] mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                        <div className="bg-[#1A1A1A]  w-8 h-8 rounded-lg border-[0.5px] border-gray-800   flex items-center justify-center text-white">
                             <ShieldAlert size={16} strokeWidth={2.5} />
                         </div>
                         <div className="flex items-baseline gap-2">
@@ -438,7 +438,7 @@ export default function SuperAdminPage() {
                 
                 {/* 🚀 THE TELEMETRY MONOLITH (Graphite Bento Grid) */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                    <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between shadow-xs">
+                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Inquilinos</span>
                             <Store size={14} className="text-neutral-500" />
@@ -446,24 +446,25 @@ export default function SuperAdminPage() {
                         <span className="text-2xl md:text-3xl font-light tracking-tighter text-white font-mono tabular-nums">{kpis.total}</span>
                     </div>
 
-                    <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between shadow-xs relative overflow-hidden">
+                    <div className="relative bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(192,222,8,0.2)_0%,_rgba(192,222,8,0.05)_50%,_transparent_100%)] before:pointer-events-none">
+
                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-[40px] rounded-full pointer-events-none" />
                         <div className="flex items-center justify-between mb-4 relative z-10">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Licencias Activas</span>
                             <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#c0de08] animate-puls" />
+                                <CheckCircle2 size={14} className="text-[#c0de08]" />
                             </div>
                         </div>
                         <div className="flex items-baseline justify-between relative z-10">
-                            <span className="text-2xl md:text-3xl font-light tracking-tighter text-emerald-500 font-mono tabular-nums">{kpis.active}</span>
+                            <span className="text-2xl md:text-3xl font-light tracking-tighter text-[#c0de08] font-mono tabular-nums">{kpis.active}</span>
                             <span className="text-[10px] font-bold text-neutral-400 bg-[#121212] px-2 py-0.5 rounded-md border border-neutral-800 font-mono">
                                 {kpis.total > 0 ? `${Math.round((kpis.active / kpis.total) * 100)}%` : '0%'}
                             </span>
                         </div>
                     </div>
 
-                    <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between shadow-xs">
+               <div className="relative bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs overflow-hidden before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.30)_0%,_rgba(244,63,94,0.06)_50%,_transparent_100%)] before:pointer-events-none">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Suspendidas</span>
                             <AlertCircle size={14} className="text-rose-500" />
@@ -471,10 +472,10 @@ export default function SuperAdminPage() {
                         <span className="text-2xl md:text-3xl font-light tracking-tighter text-neutral-400 font-mono tabular-nums">{kpis.expired}</span>
                     </div>
 
-                    <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between shadow-xs">
+                    <div className="bg-[#1A1A1A] p-5 rounded-md border border-neutral-800 flex flex-col justify-between shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">MRR Real</span>
-                            <DollarSign size={14} className="text-blue-400" />
+                            <DollarSign size={14} className="text-white" />
                         </div>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-2xl md:text-3xl font-light tracking-tighter text-white font-mono tabular-nums">${kpis.mrr}</span>
@@ -493,14 +494,14 @@ export default function SuperAdminPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Escriba el nombre, slug o teléfono..."
-                        className="w-full bg-[#1A1A1A] border border-neutral-800 focus:border-neutral-600 rounded-2xl pl-11 pr-4 py-4 text-sm font-semibold text-white placeholder:text-neutral-600 outline-none transition-all shadow-xs"
+                        className="w-full h-[2.5rem] bg-[#1A1A1A] border border-neutral-800 focus:border-neutral-600 rounded-lg border-b-[2.6px] border-t-0 pl-11 pr-4 py-4 text-sm font-semibold text-white placeholder:text-neutral-600 outline-none transition-all shadow-xs"
                     />
                 </section>
 
                 {/* AQUI CORTAMOS EL ARCHIVO PARA LA PARTE 2 */}
 
                 {/* 🚀 THE TENANT MATRIX (Listado de Tiendas) */}
-                <section className="bg-[#1A1A1A] rounded-2xl border border-neutral-800 overflow-hidden shadow-xs">
+                <section className="bg-[#1A1A1A] rounded-md border border-neutral-800 overflow-hidden shadow-xs">
                     {loading ? (
                         <div className="py-24 flex flex-col items-center justify-center gap-3">
                             <Loader2 className="animate-spin text-neutral-600" size={24} />
@@ -591,8 +592,8 @@ export default function SuperAdminPage() {
                                                     <td className="py-4 px-6 align-top">
                                                         <div className="space-y-2">
                                                             <div className="flex items-center gap-2">
-                                                                <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                                                                <span className={`font-bold text-[10px] uppercase tracking-wider ${isExpired ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? 'bg-rose-500' : 'bg-[#c0de08]'}`} />
+                                                                <span className={`font-bold text-[10px] uppercase tracking-wider ${isExpired ? 'text-rose-500' : 'text-[#c0de08]'}`}>
                                                                     {isExpired ? 'Suspendida' : `Activa (${diffDays} días)`}
                                                                 </span>
                                                             </div>
@@ -623,10 +624,10 @@ export default function SuperAdminPage() {
                                                             {/* 🚀 MAGIC LINK WHATSAPP (BOTÓN PRIMARIO) */}
                                                             <button
                                                                 onClick={() => sendMagicLink(store)}
-                                                                className="bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white border border-[#25D366]/20 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all inline-flex items-center gap-1.5 active:scale-95"
+                                                                className="bg-[#000000]/10 hover:bg-[#4d4949aa] text-[#e7ede9] hover:text-white border border-[#fff5]/20 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all inline-flex items-center gap-1.5 active:scale-95"
                                                                 title="Enviar link de cobro"
                                                             >
-                                                                <MessageCircle size={12} className="fill-current" />
+                                                                <MessageCircle size={12} />
                                                                 Cobrar
                                                             </button>
 
@@ -720,7 +721,7 @@ export default function SuperAdminPage() {
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <p className="font-bold text-white text-xs truncate leading-tight">{store.name}</p>
-                                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isExpired ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isExpired ? 'bg-rose-500' : 'bg-[#c0de08]'}`} />
                                                         </div>
                                                         <p className="text-[10px] text-neutral-500 font-mono truncate leading-tight mt-0.5">/{store.slug}</p>
                                                     </div>
@@ -763,9 +764,9 @@ export default function SuperAdminPage() {
                                                         <div className="grid grid-cols-2 gap-2">
                                                             <button
                                                                 onClick={() => sendMagicLink(store)}
-                                                                className="col-span-2 bg-[#25D366] text-white text-[11px] font-bold uppercase tracking-wider py-3 rounded-xl hover:bg-[#20ba59] transition-colors flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
+                                                                className="col-span-2 bg-[#1A1A1A]  border border-[#34373a] text-white text-[11px] font-bold uppercase tracking-wider py-3 rounded-lg hover:bg-[#595e5b] transition-colors flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
                                                             >
-                                                                <MessageCircle size={14} className="fill-white" />
+                                                                <MessageCircle size={14} />
                                                                 <span>Cobrar vía WhatsApp</span>
                                                             </button>
 
