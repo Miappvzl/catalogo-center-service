@@ -18,7 +18,7 @@ export const PREZISO_BILLING = {
     },
     
     // Canal de Soporte y Facturación
-    whatsappContact: "584145811936",
+    whatsappContact: "584248157859",
     
     // 🚀 ACTUALIZADO: Ahora acepta el monto en USD dinámicamente para reflejar descuentos
     generateReportMessage: (storeName: string, storeId: string, amountBs: string | number, amountUsd: number | string = 18.99) => {
