@@ -90,6 +90,48 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     // 🚀 CONTROLADOR IMPERATIVO DEL IMPACTO (Física Squash & Stretch)
     const cartControls = useAnimation()
 
+
+    // 🚀 INTERCEPTOR NATIVO: Evita que el cliente abandone el carrito por error
+    useEffect(() => {
+        if (!isOpen) return;
+        const modalId = `checkout-modal-${Date.now()}`;
+        window.history.pushState({ modalId }, '');
+
+        const handlePopState = () => {
+            // Cierra el cajón del checkout de forma segura y limpia los estados
+            setIsOpen(false);
+            setTimeout(() => {
+                setIsWhatsAppInterception(false);
+                if (step === 3) changeStep(1);
+            }, 300);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            if (window.history.state?.modalId === modalId) {
+                window.history.go(-1);
+            }
+        };
+    }, [isOpen]); // Dependencia única para mantener 1 solo estado en todo el flujo
+
+    // 🚀 CONTROLADOR DEL SCROLL DE FONDO (Evita scroll fantasma debajo del cajón)
+    useEffect(() => {
+        if (isOpen) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     useEffect(() => {
         const handleImpact = () => {
             // Saltamos la cola de renderizado. 
@@ -750,7 +792,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                 borderTopRightRadius: typeof window !== 'undefined' && window.innerWidth < 768 ? 'var(--radius-card, 32px)' : '0px',
                                 borderBottomRightRadius: '0px',
                             }}
-                            className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[98vh] flex flex-col overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/40"
+                            className="relative bg-[var(--store-bg)] w-full md:w-[450px] md:h-full h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/40"
                         >
                             {/* HEADER (Común para Paso 1 y 2) */}
                             {step !== 3 && (

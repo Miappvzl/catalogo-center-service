@@ -71,6 +71,43 @@ export default function ProductFoodModal({
     const [isDesktop, setIsDesktop] = useState(false)
     const modalHeroRef = useRef<HTMLDivElement>(null)
 
+
+// 🚀 INTERCEPTOR NATIVO: Control de gestos móviles
+    useEffect(() => {
+        if (!isOpen) return;
+        const modalId = `food-modal-${Date.now()}`;
+        window.history.pushState({ modalId }, '');
+
+        const handlePopState = () => {
+            onClose();
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            if (window.history.state?.modalId === modalId) {
+                window.history.go(-1);
+            }
+        };
+    }, [isOpen, onClose]);
+
+    // 🚀 CONTROLADOR DEL SCROLL DE FONDO (Bloqueo absoluto de lienzo)
+    useEffect(() => {
+        if (isOpen) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     useEffect(() => {
         const handleResize = () => setIsDesktop(window.innerWidth >= 768)
         handleResize()
@@ -227,7 +264,7 @@ export default function ProductFoodModal({
                         className={`relative bg-[var(--store-surface)] overflow-hidden shadow-2xl z-10 border-l border-[var(--store-border)]/40 will-change-transform ${
                             isDesktop
                                 ? 'w-full md:w-[780px] lg:w-[840px] xl:w-[880px] h-full grid grid-cols-12'
-                                : 'w-full h-[92vh] flex flex-col'
+                                : 'w-full h-[100dvh] max-h-[100dvh] flex flex-col'
                         }`}
                     >
                        {/* ========================================================= */}

@@ -414,6 +414,27 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [isShippingOpen, setIsShippingOpen] = useState(false)
 
+    // 🚀 INTERCEPTOR NATIVO: Controla el botón "Atrás" del teléfono (Ghost State)
+    useEffect(() => {
+        if (!isOpen) return;
+        const modalId = `product-modal-${Date.now()}`;
+        window.history.pushState({ modalId }, '');
+
+        const handlePopState = () => {
+            onClose(); // Cierra el modal en lugar de salir de la tienda
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            // Si se cerró en la 'X' en vez de usar el botón atrás, limpiamos el historial
+            if (window.history.state?.modalId === modalId) {
+                window.history.go(-1);
+            }
+        };
+    }, [isOpen, onClose]);
+
     // 🚀 MOTOR DE ANALÍTICAS: Captura de vistas y tiempo de permanencia en Modal
     useEffect(() => {
         if (!isOpen || !product || !storeConfig?.id) return;
@@ -472,16 +493,18 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     // Resetea el estado al abrir
     useEffect(() => { if (isOpen) setIsHiding(false); }, [isOpen]);
 
-    // 🚀 CONTROLADOR DEL SCROLL DE FONDO: Bloquea el desplazamiento del body al abrir el modal
+  // 🚀 CONTROLADOR DEL SCROLL DE FONDO (BLINDADO CROSS-BROWSER/iOS)
     useEffect(() => {
         if (isOpen) {
+            document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
         } else {
+            document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
         }
 
-        // Cleanup para restaurar el scroll si el componente se desmonta inesperadamente
         return () => {
+            document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
         };
     }, [isOpen]);
@@ -824,7 +847,7 @@ Mi duda es la siguiente: `;
                         <div key="modal-luxury-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.4 } }} exit={{ opacity: 0 }} className={`absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`} onClick={onClose} />
 
-                            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[var(--radius-card)] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                            <motion.div variants={modalVariants} initial="hidden" animate="visible" exit="exit" className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[100dvh] max-h-[100dvh] md:h-full rounded-t-[var(--radius-card)] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
 
                                 <button onClick={onClose} className="absolute top-4 right-4 z-50 p-2 rounded-full hover:bg-black/5 transition-colors text-[var(--store-text-main)] active:scale-95">
                                     <X size={24} strokeWidth={1} />
@@ -1115,7 +1138,7 @@ Mi duda es la siguiente: `;
                                 initial="hidden"
                                 animate="visible"
                                 exit="exit"
-                                className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                                className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[100dvh] max-h-[100dvh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                             >
                                 {/* Botón de Cerrar (Clean Look) */}
                                 <button
@@ -1945,7 +1968,7 @@ Mi duda es la siguiente: `;
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[98vh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[100dvh] max-h-[100dvh] md:h-full rounded-t-[32px] md:rounded-none flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)] will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                         >
                             <button onClick={onClose} className="absolute top-4 right-4 z-50 bg-[var(--store-surface)]/90 p-2 rounded-full hover:bg-[var(--store-bg)] transition-colors backdrop-blur border border-[var(--store-border)] text-[var(--store-text-main)] active:scale-95">
                                 <X size={20} strokeWidth={2} />

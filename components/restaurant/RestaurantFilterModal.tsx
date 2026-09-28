@@ -3,6 +3,7 @@
 
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { X, SlidersHorizontal, RotateCcw } from 'lucide-react'
+import { useEffect } from 'react'
 
 export interface RestaurantFiltersState {
     sortBy: 'default' | 'popular' | 'price_asc' | 'price_desc'
@@ -66,6 +67,42 @@ export default function RestaurantFilterModal({
         setFilters(DEFAULT_FILTERS)
     }
 
+    // 🚀 INTERCEPTOR NATIVO: Evita salir de la tienda al cerrar filtros
+    useEffect(() => {
+        if (!isOpen) return;
+        const modalId = `filter-modal-${Date.now()}`;
+        window.history.pushState({ modalId }, '');
+
+        const handlePopState = () => {
+            onClose();
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            if (window.history.state?.modalId === modalId) {
+                window.history.go(-1);
+            }
+        };
+    }, [isOpen, onClose]);
+
+    // 🚀 CONTROLADOR DEL SCROLL DE FONDO
+    useEffect(() => {
+        if (isOpen) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -85,7 +122,7 @@ export default function RestaurantFilterModal({
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="relative w-full max-w-lg bg-[var(--store-surface)] rounded-t-[32px] overflow-hidden flex flex-col max-h-[85vh] shadow-2xl border-t border-[var(--store-border)]/50 z-10 text-left"
+                        className="relative w-full max-w-lg bg-[var(--store-surface)] rounded-t-[32px] overflow-hidden flex flex-col max-h-[85dvh] shadow-2xl border-t border-[var(--store-border)]/50 z-10 text-left"
                     >
                         {/* Cabecera */}
                         <div className="p-5 border-b border-[var(--store-border)]/40 flex items-center justify-between">
