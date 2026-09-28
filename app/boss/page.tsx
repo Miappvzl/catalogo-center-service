@@ -545,7 +545,7 @@ export default function SuperAdminPage() {
                                                     {/* STORE LOGO, NAMES & PHONE */}
                                                     <td className="py-4 px-6 align-top">
                                                         <div className="flex items-start gap-3.5">
-                                                            <div className="w-10 h-10 rounded-xl bg-[#121212] border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+                                                            <div className="w-10 h-10 rounded-xl bg-none border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
                                                                 {store.logo_url ? (
                                                                     <Image
                                                                         src={getOptimizedUrl(store.logo_url)}
@@ -705,7 +705,7 @@ export default function SuperAdminPage() {
                                                 className="p-4 flex items-center justify-between cursor-pointer active:bg-[#121212] transition-colors"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-8 h-8 rounded-lg bg-[#121212] border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
+                                                    <div className="w-8 h-8 rounded-lg bg-none border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
                                                         {store.logo_url ? (
                                                             <Image
                                                                 src={getOptimizedUrl(store.logo_url)}
@@ -723,7 +723,16 @@ export default function SuperAdminPage() {
                                                             <p className="font-bold text-white text-xs truncate leading-tight">{store.name}</p>
                                                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isExpired ? 'bg-rose-500' : 'bg-[#c0de08]'}`} />
                                                         </div>
-                                                        <p className="text-[10px] text-neutral-500 font-mono truncate leading-tight mt-0.5">/{store.slug}</p>
+                                                        
+                                                                <Link 
+                                                                    href={`/${store.slug}`} 
+                                                                    target="_blank" 
+                                                                    className="inline-flex items-center gap-1 text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors font-mono"
+                                                                >
+                                                                    <Globe size={10} className="opacity-70" />
+                                                                    {store.slug}.preziso.shop
+                                                                    <ExternalLink size={9} className="opacity-50" />
+                                                                </Link>
                                                     </div>
                                                 </div>
 
