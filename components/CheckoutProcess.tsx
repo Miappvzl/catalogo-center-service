@@ -2578,15 +2578,15 @@ const taxAmountCashUSD = applyTax
                     {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
                     <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
                         <div className="w-full h-[52px] relative flex justify-end md:justify-center">
-                            <motion.button
+                         <motion.button
                                 layout
                                 onClick={handleCheckout}
                                 disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-text-main)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
-                                    ? "w-full bg-[var(--store-surface)] text-[var(--store-surface-text)] !border-[var(--store-border)] cursor-not-allowed opacity-60"
+                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-primary)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
+                                    ? "w-full bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] !border-transparent cursor-not-allowed opacity-80"
                                     : checkoutState !== 'idle'
-                                        ? "w-[52px] bg-[var(--store-text-main)] text-[var(--store-surface)] mx-auto shrink-0"
-                                        : "w-full bg-[var(--store-text-main)] text-[var(--store-surface)] hover:opacity-90"
+                                        ? "w-[52px] bg-[var(--store-primary)] text-[var(--store-primary-text)] mx-auto shrink-0"
+                                        : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90"
                                     }`}
                             >
                                 {!storeHoursStatus.isOpen ? (

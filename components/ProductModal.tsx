@@ -1085,11 +1085,11 @@ Mi duda es la siguiente: `;
                                         <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
-                                    <motion.button
+                                 <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-[46px] rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-text-main)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-neutral-200 text-neutral-400 border-neutral-200 cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-transparent text-[var(--store-text-main)]' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:bg-transparent hover:text-[var(--store-text-main)]'}`}
+                                        className={`flex-1 h-[46px] rounded-[var(--radius-btn)] font-bold uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] text-[var(--store-text-main)]' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 border border-transparent'}`}
                                     >
                                         <AnimatePresence mode="wait">
                                             {isAdding ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Loader2 size={16} className="animate-spin" /></motion.div> : <motion.span key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2"><ShoppingBag size={16} strokeWidth={1.5} className="mb-0.5" /> {buttonText === 'Agregar' ? 'Añadir a la bolsa' : buttonText}</motion.span>}
@@ -1672,11 +1672,11 @@ Mi duda es la siguiente: `;
                                         <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
                                     </div>
-                                    <motion.button
-                                        whileTap={{ scale: 0.96 }}
+                                <motion.button
+                                        whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[var(--shadow-ui)] active:scale-95 ${isCompletelyOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95'}`}
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 ${isCompletelyOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] text-[var(--store-text-main)] shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--shadow-ui)] hover:opacity-95'}`}
                                     >
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
                                     </motion.button>
@@ -1920,11 +1920,11 @@ Mi duda es la siguiente: `;
                                         <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Plus size={16} strokeWidth={2} /></button>
                                     </div>
-                                    <motion.button
+                                   <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--shadow-ui)] hover:opacity-90'}`}
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none border-transparent' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] text-[var(--store-text-main)]' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--shadow-ui)] hover:opacity-90 border border-transparent'}`}
                                     >
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingCart size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR' : buttonText}</>}
                                     </motion.button>

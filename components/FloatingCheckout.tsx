@@ -509,7 +509,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                             <motion.button 
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => setIsOpen(true)} 
-                                className="h-11 px-6 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-[var(--store-border)]/40 active:scale-95 transition-all shrink-0 shadow-sm"
+                                className="h-11 px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-[var(--store-border)]/40 active:scale-95 transition-all shrink-0 shadow-sm"
                             >
                                 <span>PAGAR</span>
                                 <ArrowRight size={14} strokeWidth={2.5} />

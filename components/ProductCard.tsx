@@ -182,14 +182,14 @@ function ProductCardComponent({
               </div>
 
               <button
-                disabled={isOutOfStock}
-                className={`w-8 h-8 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors ${
-                  isOutOfStock
-                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-95 shadow-xs'
-                }`}
-                aria-label="Ver detalles"
-              >
+              disabled={isOutOfStock}
+              className={`w-8 h-8 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] flex items-center justify-center shrink-0 transition-colors ${
+                isOutOfStock
+                  ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] border-transparent cursor-not-allowed shadow-none'
+                  : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-95 shadow-xs'
+              }`}
+              aria-label="Ver detalles"
+            >
                 <ShoppingCart size={14} strokeWidth={2.2} />
               </button>
             </div>
@@ -366,13 +366,13 @@ function ProductCardComponent({
           )}
 
           {/* Quick Add Integrado de Alta Costura (Desktop Hover) */}
-          {!isOutOfStock && (
-            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
-              <button className="w-full bg-[var(--store-text-main)] text-[var(--store-bg)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity">
-                [ + ADD TO BAG ]
-              </button>
-            </div>
-          )}
+     {!isOutOfStock && (
+                <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
+                  <button className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity rounded-[var(--radius-btn)]">
+                    [ + ADD TO BAG ]
+                  </button>
+                </div>
+              )}
         </div>
 
         {/* 2. FICHA TÉCNICA (Jerarquía Vertical Escaneable y Simétrica) */}
@@ -609,9 +609,9 @@ function ProductCardComponent({
         </div>
 
         {/* BOTÓN CIRCULAR DE ACCIÓN ABSOLUTO */}
-        <button
-          disabled={isOutOfStock}
-          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-90 ${isOutOfStock ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-bg)]  text-[var(--store-primary-text)]  hover:scale-105 shadow-[var(--store-primary)]/20'}`}
+    <button 
+          disabled={isOutOfStock} 
+          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 ${isOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:scale-105 shadow-md shadow-[var(--store-primary)]/20' }`}
           aria-label="Añadir al Carrito"
         >
           {isOutOfStock ? <X size={14} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2.5} />}
@@ -729,13 +729,12 @@ function ProductCardComponent({
                 Bs {formattedBs}
               </span>
             </div>
-
-            <button
+<button
               disabled={isOutOfStock}
-              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] border-[var(--store-border)] flex items-center justify-center shrink-0 transition-colors ${
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] flex items-center justify-center shrink-0 transition-colors ${
                 isOutOfStock
-                  ? 'bg-[var(--store-border)] text-[var(--store-surface-text)] cursor-not-allowed'
-                  : 'text-[var(--store-surface-text)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90'
+                  ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] border-transparent cursor-not-allowed shadow-none'
+                  : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] shadow-[var(--shadow-ui)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90'
               }`}
               aria-label="Ver producto"
             >
