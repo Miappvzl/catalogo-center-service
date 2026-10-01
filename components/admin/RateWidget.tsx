@@ -2,9 +2,8 @@
 
 import { useOptimistic, useActionState, startTransition, useState } from 'react'
 import { updateStoreCurrency, type ActionState } from '@/app/admin/actions'
-import { RefreshCw, DollarSign, Euro, Wallet, TrendingUp, TrendingDown, Minus, X, ShieldCheck, Activity, Zap } from 'lucide-react'
+import { RefreshCw, DollarSign, Euro, Wallet, TrendingUp, TrendingDown, Minus, X, Activity, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Zain } from 'next/font/google'
 
 interface RateWidgetProps {
   storeCurrency?: 'usd' | 'eur'
@@ -35,7 +34,6 @@ export default function RateWidget({
   const activeRate = optimisticCurrency === 'usd' ? Number(usdRate) : Number(eurRate)
   const activePrevRate = optimisticCurrency === 'usd' ? Number(prevUsdRate) : Number(prevEurRate)
   
-  // 🚀 MATEMÁTICA EXACTA CON BASE DE DATOS
   const deltaBs = activeRate - activePrevRate
   const isUp = deltaBs > 0
   const isDown = deltaBs < 0
@@ -52,7 +50,7 @@ export default function RateWidget({
 
   return (
     <>
-      <section className="bg-white p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full relative group">
+      <section className="bg-white p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between h-full relative group">
           <div>
               <header className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
@@ -144,93 +142,36 @@ export default function RateWidget({
           </div>
       </section>
 
-      {/* MODAL DE AUDITORÍA (Executive Cleanlook) */}
+      {/* Modal de auditoría */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              transition={{ duration: 0.18, ease: 'linear' }}
-              onClick={() => setIsModalOpen(false)} 
-              className="absolute inset-0 bg-neutral-950/30 backdrop-blur-xs will-change-[opacity]" 
-            />
-            
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.97, y: 6 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.98, y: 4 }} 
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-white w-[calc(100vw-2rem)] max-w-[360px] rounded-2xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-neutral-200/50 flex flex-col max-h-[85vh] z-10 transform-gpu will-change-[transform,opacity]"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-neutral-950/30 backdrop-blur-xs" />
+            <motion.div initial={{ opacity: 0, scale: 0.97, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 4 }} className="relative bg-white w-[calc(100vw-2rem)] max-w-[360px] rounded-xl overflow-hidden shadow-lg border border-neutral-200/50 flex flex-col max-h-[85vh] z-10">
               <div className="px-5 py-4 flex justify-between items-center border-b border-neutral-100 bg-neutral-50/50 shrink-0">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-neutral-200/50 flex items-center justify-center text-neutral-900 shadow-xs">
-                    <Activity size={14} />
-                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-white border border-neutral-200/50 flex items-center justify-center text-neutral-900 shadow-xs"><Activity size={14} /></div>
                   <div>
                     <h3 className="font-bold text-xs text-neutral-900 uppercase tracking-wider">Reporte de Fluctuación</h3>
                     <p className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider">Impacto Cambiario</p>
                   </div>
                 </div>
-                
-                <button 
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-white border border-transparent hover:border-neutral-200/50 shadow-none hover:shadow-xs transition-all rounded-md active:scale-95"
-                >
-                  <X size={14} />
-                </button>
+                <button onClick={() => setIsModalOpen(false)} className="p-1.5 text-neutral-400 hover:text-neutral-900 rounded-md transition-colors"><X size={14} /></button>
               </div>
-
-              <div className="p-5 overflow-y-auto no-scrollbar space-y-5">
-                
-                <div className="bg-neutral-50 border border-neutral-200/50 rounded-xl p-4 flex justify-between items-center relative overflow-hidden">
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Dato Anterior</p>
-                        <p className="font-mono font-bold text-neutral-600 text-sm">Bs {activePrevRate.toFixed(2)}</p>
+              <div className="p-5 space-y-4">
+                <div className="bg-neutral-50 border border-neutral-200/50 rounded-lg p-3 flex justify-between items-center">
+                    <div>
+                        <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider">Anterior</p>
+                        <p className="font-mono font-bold text-neutral-600 text-xs">Bs {activePrevRate.toFixed(2)}</p>
                     </div>
-                    
-                    <div className="flex flex-col items-center relative z-10 px-2">
-                        <div className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${isUp ? 'text-rose-600 bg-rose-50 border border-rose-100' : isDown ? 'text-emerald-600 bg-emerald-50 border border-emerald-100' : 'text-neutral-600 bg-neutral-200/50 border border-neutral-200'}`}>
-                            {isUp ? <TrendingUp size={10} /> : isDown ? <TrendingDown size={10} /> : <Minus size={10} />} 
-                            {isStable ? '0.00' : `${isUp ? '+' : ''}${deltaBs.toFixed(2)}`}
-                        </div>
-                        <div className="w-16 h-px bg-linear-to-r from-transparent via-neutral-300 to-transparent mt-2" />
-                    </div>
-
-                    <div className="text-right relative z-10">
-                        <p className="text-[10px] font-bold text-neutral-900 uppercase tracking-wider mb-1">Tasa Hoy</p>
-                        <p className="font-mono font-bold text-neutral-900 text-lg tabular-nums">Bs {activeRate.toFixed(2)}</p>
+                    <div className="text-right">
+                        <p className="text-[9px] font-mono font-semibold text-neutral-900 uppercase tracking-wider">Hoy</p>
+                        <p className="font-mono font-bold text-neutral-900 text-sm">Bs {activeRate.toFixed(2)}</p>
                     </div>
                 </div>
-
-                <div className="space-y-3">
-                    <div className="flex items-start gap-2.5">
-                        <Zap size={14} className="text-neutral-900 shrink-0 mt-0.5" />
-                        <p className="text-xs text-neutral-600 leading-relaxed font-medium">
-                            {isStable 
-                                ? "La tasa de cambio se ha mantenido estable respecto a su última medición. No hay impacto financiero." 
-                                : `La tasa oficial sufrió un ${isUp ? 'incremento' : 'descenso'}. Preziso ha re-calculado automáticamente todos los precios de su catálogo para alinear su rentabilidad.`
-                            }
-                        </p>
-                    </div>
-                    {!isStable && (
-                        <p className="text-[10px] text-neutral-400 font-medium pl-6">
-                            No requiere intervención manual. El balance en su Punto de Venta y Cotizaciones pendientes ha sido ajustado a esta nueva realidad.
-                        </p>
-                    )}
-                </div>
-              </div>
-
-              <div className="p-5 pt-0 shrink-0">
-                  <button 
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="w-full bg-neutral-950 hover:bg-black text-white py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
-                  >
-                    Entendido
-                  </button>
+                <p className="text-xs text-neutral-600 leading-relaxed font-normal">
+                    {isStable ? "Tasa estable. No hay impacto financiero." : "Preziso ha recalculado automáticamente los precios en Bolívares según la variación BCV."}
+                </p>
               </div>
             </motion.div>
           </div>

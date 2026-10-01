@@ -233,20 +233,26 @@ export default function SubscriptionBanner({ store }: SubscriptionBannerProps) {
 
   return (
     <>
-      {/* BANNER SUPERIOR IN-APP */}
-      <div className={`${bannerBg} px-4 py-2.5 md:py-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs md:text-sm font-medium transition-colors`}>
-        <div className="flex items-center gap-2">
-          <Clock size={14} className={isCritical ? 'text-neutral-400' : 'text-neutral-500'} />
-          <p className="font-semibold tracking-tight">{message}</p>
+     {/* BANNER SUPERIOR IN-APP (BLINDADO CON CONTENCIÓN ESTRICTA) */}
+      <div className={`${bannerBg} w-full max-w-full overflow-hidden px-3.5 sm:px-4 py-2.5 sm:py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 text-xs font-medium transition-colors min-w-0`}>
+        
+        {/* MENSAJE: min-w-0 + max-w-full + break-words para que fluya en móvil sin estirar la pantalla */}
+        <div className="flex items-center justify-center sm:justify-start gap-2 min-w-0 max-w-full text-center sm:text-left">
+          <Clock size={14} className={`${isCritical ? 'text-neutral-400' : 'text-neutral-500'} shrink-0`} />
+          <p className="font-semibold tracking-tight text-xs leading-snug break-words">
+            {message}
+          </p>
         </div>
       
+        {/* BOTÓN DE ACCIÓN: shrink-0 y whitespace-nowrap para que nunca se deforme ni empuje fuera de pantalla */}
         <div 
           role="button"
           tabIndex={0}
           onClick={() => setShowModal(true)}
-          className={`flex items-center cursor-pointer gap-2 px-4 py-1.5 rounded-md font-bold text-[11px] uppercase tracking-wider transition-all active:scale-95 ${buttonClass}`}
+          className={`flex items-center justify-center cursor-pointer gap-1.5 px-3.5 py-1.5 rounded-md font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all active:scale-95 shrink-0 whitespace-nowrap ${buttonClass}`}
         >
-          {bannerType.includes('active') ? 'Renovar Licencia' : 'Activar Membresía'} <ArrowRight size={12} />
+          <span>{bannerType.includes('active') ? 'Renovar Licencia' : 'Activar Membresía'}</span>
+          <ArrowRight size={12} className="shrink-0" />
         </div>
       </div>
 

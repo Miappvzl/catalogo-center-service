@@ -24,17 +24,15 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
     if (isWelcome) {
       setIsOpen(true)
 
-      // Confeti de bienvenida
       setTimeout(() => {
         confetti({
-          particleCount: 110,
-          spread: 70,
+          particleCount: 120,
+          spread: 80,
           origin: { y: 0.55 },
-          colors: ['#000000', '#10B981', '#E5E5E5']
+          colors: ['#0a0a0a', '#E5E5E5', '#A3A3A3', '#FFFFFF']
         })
-      }, 300)
+      }, 400)
 
-      // Consultar si el nuevo usuario tiene un descuento asignado por su afiliado
       const checkReferralDiscount = async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser()
@@ -42,32 +40,23 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
 
           const { data: ref } = await supabase
             .from('saas_referrals')
-            .select(`
-              saas_affiliates (
-                discount_pct
-              )
-            `)
+            .select(`saas_affiliates ( discount_pct )`)
             .eq('referred_user_id', user.id)
             .single()
 
           if (ref?.saas_affiliates) {
             // @ts-ignore
             const discountPct = Number(ref.saas_affiliates.discount_pct || 0)
-
             if (discountPct > 0) {
               const BASE_PRICE = 18.99
               const finalPrice = (BASE_PRICE * (1 - discountPct / 100)).toFixed(2)
-              setDiscountInfo({
-                discountPct,
-                discountedPrice: finalPrice
-              })
+              setDiscountInfo({ discountPct, discountedPrice: finalPrice })
             }
           }
         } catch (err) {
-          console.error('Error al consultar descuento de referido:', err)
+          console.error('Error:', err)
         }
       }
-
       checkReferralDiscount()
     }
   }, [searchParams, supabase])
@@ -81,78 +70,74 @@ export default function WelcomeModal({ storeName }: { storeName: string }) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Fondo Difuminado */}
+          {/* Fondo Difuminado Premium */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-md"
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xl"
             onClick={handleClose}
           />
 
-          {/* Tarjeta Flotante */}
+          {/* Tarjeta Flotante High-End */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 15 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 15 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="relative w-full max-w-[460px] bg-white rounded-[2.5rem] p-7 sm:p-9 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.18)] border border-gray-100 text-center overflow-hidden font-sans z-10"
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-[480px] bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.25)] border border-neutral-200/50 text-center overflow-hidden font-sans z-10"
           >
-            {/* Elemento Decorativo */}
-            <div className="absolute -top-12 -right-12 text-gray-100/60 rotate-12 pointer-events-none">
-              <Sparkles size={160} strokeWidth={0.8} />
+            {/* Destello sutil Liquid Titanium */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-neutral-400 to-transparent opacity-50" />
+            
+            <div className="absolute -top-12 -right-12 text-neutral-100/50 rotate-12 pointer-events-none">
+              <Sparkles size={160} strokeWidth={0.5} />
             </div>
 
             <div className="relative z-10 flex flex-col items-center">
-              {/* Ícono Principal */}
+              {/* Ícono Obsidiana */}
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.15, type: 'spring', stiffness: 300 }}
-                className="w-16 h-16 bg-black text-white rounded-3xl flex items-center justify-center mb-6 shadow-[0_10px_25px_rgba(0,0,0,0.15)]"
+                transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}
+                className="w-16 h-16 bg-[#0a0a0a] text-white rounded-2xl flex items-center justify-center mb-6 shadow-[0_15px_35px_rgba(0,0,0,0.2)]"
               >
-                <Sparkles size={28} />
+                <Sparkles size={28} strokeWidth={1.5} />
               </motion.div>
 
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-3">
+              <h2 className="text-3xl font-black text-[#0a0a0a] tracking-tight mb-4">
                 ¡Bienvenido a Preziso!
               </h2>
 
-              {/* 🚀 TEXTO DE ACADEMIA RESTAURADO */}
-              <p className="text-xs sm:text-sm text-gray-500 font-medium leading-relaxed mb-6">
-                Es un placer recibir al equipo de <strong className="text-black font-extrabold">{storeName}</strong> a bordo. Hemos preparado una academia interactiva para que domines tu catálogo y configures tu tienda en menos de 5 minutos.
+              <p className="text-sm text-neutral-500 font-medium leading-relaxed mb-8">
+                Es un honor recibir al equipo de <strong className="text-[#0a0a0a] font-black">{storeName}</strong>. Hemos diseñado un modo de enfoque rápido para que domines la plataforma y actives tu tienda en menos de 5 minutos.
               </p>
 
-              {/* 🎁 BANNER DE DESCUENTO EN 1ER MES (Solo se activa si el afiliado ofreció > 0%) */}
+              {/* Beneficio Partner */}
               {discountInfo && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="w-full bg-emerald-50/80 border border-emerald-100/80 rounded-2xl p-4 mb-6 text-left relative overflow-hidden"
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                  className="w-full bg-[#FAFAFA] border border-neutral-200 rounded-2xl p-5 mb-8 text-left relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Tag size={14} className="text-emerald-600" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                      ¡Beneficio de Partner Aplicado!
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag size={14} className="text-[#0a0a0a]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#0a0a0a]">
+                      Beneficio de Partner Activo
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-emerald-950 leading-snug">
-                    Llegaste invitado con un enlace especial. Tu <b>primer mes</b> de suscripción pasa de <span className="line-through text-emerald-700/70">$18.99</span> a solo <strong className="text-emerald-900 font-black text-sm">${discountInfo.discountedPrice} USD</strong> ({discountInfo.discountPct}% desc).
-                  </p>
-                  <p className="text-[9px] text-emerald-700 font-medium mt-1.5">
-                    *Tus 7 días de prueba gratis comienzan ahora. El descuento se aplicará automáticamente en tu primer cobro.
+                  <p className="text-sm font-medium text-neutral-600 leading-snug">
+                    Llegaste con un acceso especial. Tu <b>primer mes</b> pasa de <span className="line-through text-neutral-400">$18.99</span> a <strong className="text-[#0a0a0a] font-black">${discountInfo.discountedPrice} USD</strong> ({discountInfo.discountPct}% desc).
                   </p>
                 </motion.div>
               )}
 
-              {/* 🚀 BOTÓN DE ACADEMIA RESTAURADO */}
+              {/* Botón de Acción Principal */}
               <button
                 onClick={handleClose}
-                className="w-full h-14 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(0,0,0,0.1)] group"
+                className="w-full h-14 bg-[#0a0a0a] text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black active:scale-[0.98] transition-all shadow-[0_15px_30px_rgba(0,0,0,0.15)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] group"
               >
-                Iniciar Academia <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                Comenzar Mi Misión <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </motion.div>
