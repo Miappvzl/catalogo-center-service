@@ -27,7 +27,9 @@ import {
   Megaphone,
   Lock,
   GraduationCap,
-  Barcode
+  Barcode,
+  Layers,
+  UtensilsCrossed
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -66,8 +68,9 @@ const NAV_LINKS: NavItem[] = [
   { name: 'Presupuestos', href: '/admin/quotes', icon: FileText, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
   { name: 'Caja', href: '/admin/cash', icon: Wallet, hideOnBottomBar: true, category: 'Ventas', allowedPlans: ['retail', 'pro'] },
 
-  // 📌 Catálogo
+ // 📌 Catálogo
   { name: 'Inventario', href: '/admin/inventory', icon: Package, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
+  { name: 'Colecciones', href: '/admin/collections', icon: Layers, hasPulse: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] }, // 🚀 RUTA MULTIENTIDAD
   { name: 'Matriz de SKUs', href: '/admin/inventory/skus', icon: Barcode, hasPulse: true, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'], allowedStoreTypes: ['retail'] },
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
@@ -236,24 +239,29 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
                         </motion.div>
                       )}
 
-                {/* Contenedor de Icono rígido de 36px con Punto Estático (Desaparece al visitar) */}
+              {/* Contenedor de Icono rígido de 36px con Punto Estático (Desaparece al visitar) */}
                       {(() => {
                         const showIndicator = link.hasPulse && !seenPulses[link.href] && pathname !== link.href;
+                        const isCollectionLink = link.href === '/admin/collections';
+                        const isRestaurant = store?.store_type === 'restaurant';
+                        const displayName = isCollectionLink 
+                          ? (isRestaurant ? 'Combos & Menús' : 'Colecciones') 
+                          : link.name;
+                        const LinkIcon = isCollectionLink && isRestaurant ? UtensilsCrossed : link.icon;
 
                         return (
                           <>
                             <div className="relative flex items-center justify-center w-9 h-7 flex-shrink-0 z-10">
-                              <link.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                              <LinkIcon size={16} strokeWidth={isActive ? 2.5 : 2} />
                               {showIndicator && (
                                 <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.6)] pointer-events-none group-hover/sidebar:opacity-0 transition-opacity duration-200" />
                               )}
                             </div>
 
-                            {/* Texto de Enlace */}
+                            {/* Texto de Enlace Camaleónico */}
                             <span className="ml-2.5 text-xs font-semibold tracking-tight whitespace-nowrap opacity-0 -translate-x-2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/sidebar:opacity-100 group-hover/sidebar:translate-x-0 z-10">
-                              {link.name}
+                              {displayName}
                             </span>
-
                             {/* MICRO-INDICADOR EN SIDEBAR EXPANDIDO */}
                             {showIndicator && (
                               <div className="ml-auto pr-3 opacity-0 transition-opacity duration-300 group-hover/sidebar:opacity-100 flex-shrink-0 flex items-center">
@@ -494,9 +502,22 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo,
                               </div>
                             )}
 
-                            <div className="relative z-10 flex items-center gap-3 w-full">
-                              <link.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
-                              <span>{link.name}</span>
+                           <div className="relative z-10 flex items-center gap-3 w-full">
+                              {(() => {
+                                const isCollectionLink = link.href === '/admin/collections';
+                                const isRestaurant = store?.store_type === 'restaurant';
+                                const displayName = isCollectionLink 
+                                  ? (isRestaurant ? 'Combos & Menús' : 'Colecciones') 
+                                  : link.name;
+                                const LinkIcon = isCollectionLink && isRestaurant ? UtensilsCrossed : link.icon;
+
+                                return (
+                                  <>
+                                    <LinkIcon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-neutral-900" : "text-neutral-400"} />
+                                    <span>{displayName}</span>
+                                  </>
+                                );
+                              })()}
 
                       {/* 🚀 MICRO-INDICADOR ESTÁTICO MÓVIL (Desaparece al visitar) */}
                               {link.hasPulse && !seenPulses[link.href] && pathname !== link.href && (
@@ -713,10 +734,10 @@ const MobileBottomBar = ({ pathname, store, seenPulses }: { pathname: string, st
     normalLinks[2],
     normalLinks[3]
   ].filter(Boolean)
-
-// 🚀 MEJORA DE INMERSIÓN: Ocultamos la barra si hay scroll, un modal, un tour, o si estamos en el Diseñador de Temas (Modo Inmersivo)
+// 🚀 MEJORA DE INMERSIÓN: Ocultamos la barra en personalización y en el gestor de colecciones
   const isCustomizerRoute = pathname === '/admin/customization';
-  const shouldRenderBar = isVisible && !isTourActive && !isModalActive && !isCustomizerRoute;
+  const isCollectionsRoute = pathname === '/admin/collections';
+  const shouldRenderBar = isVisible && !isTourActive && !isModalActive && !isCustomizerRoute && !isCollectionsRoute;
 
   return (
     <div

@@ -42,7 +42,7 @@ interface StoreHeaderProps {
 const CategoryPill = ({ label, active, onClick, isMinimal = false }: { label: string, active: boolean, onClick: () => void, isMinimal?: boolean }) => (
     <button
         onClick={onClick}
-        className={`px-5 py-2 md:px-6 md:py-2 text-[11px] md:text-xs font-bold tracking-wide transition-all duration-300 active:scale-95 whitespace-nowrap 
+        className={`px-5 py-2 md:px-6 md:py-2 text-[11px] md:text-xs font-medium tracking-wide transition-all duration-300 active:scale-95 whitespace-nowrap 
         ${isMinimal 
             ? (active ? 'text-[var(--store-text-main)] border-b-2 border-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] border-b-2 border-transparent hover:text-[var(--store-text-main)]')
             : (active ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[length:var(--border-width-ui)] border-[var(--store-primary)] rounded-[var(--radius-btn)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/40 rounded-[var(--radius-btn)] hover:bg-[var(--store-surface)]')
@@ -497,7 +497,7 @@ const renderSearchBlock = (isDense: boolean = false) => (
                                         }}
                                         className={`flex items-center justify-between p-3.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-all active:scale-95 ${props.selectedCategory === cat ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[var(--shadow-ui)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)]/50 hover:border-[var(--store-border)]'}`}
                                     >
-                                        <span className="font-bold text-sm">{cat}</span>
+                                        <span className="font-medium text-sm">{cat}</span>
                                         {props.selectedCategory === cat && <ChevronRight size={16} />}
                                     </button>
                                 ))}

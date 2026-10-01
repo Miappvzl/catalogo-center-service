@@ -26,6 +26,7 @@ import CriticalStockCardWrapper from "@/components/admin/CriticalStockCardWrappe
 import WelcomeModal from "@/components/admin/WelcomeModal";
 import PushNotificationManager from "@/components/admin/PushNotificationManager";
 import TodaySalesWidget from "@/components/admin/TodaySalesWidget";
+import FeatureCollectionModal from "@/components/admin/FeatureCollectionModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -734,6 +735,7 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
             <WelcomeModal storeName={store.name} />
            { /* 🚀 MODAL DE ANUNCIO PRODUCT-LED GROWTH (SOLO PARA COMERCIOS RETAIL) */}
             <FoodTechAnnouncementModal storeType={store.store_type || 'retail'} />
+            <FeatureCollectionModal store={store} />
         </div>
     );
 }

@@ -212,10 +212,15 @@ const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
   )
 }
 
-interface Props { store: any; products: any[]; rates: any; promotions?: any[] } // 🚀 NUEVO
+interface Props { 
+  store: any; 
+  products: any[]; 
+  rates: any; 
+  promotions?: any[];
+  collections?: any[]; // 🚀 PROPS DE COLECCIONES ACTIVAS
+}
 
-// 🚀 RENOMBRAMOS LOS PROPS INTERNOS PARA INTERCEPTARLOS
-export default function StoreInterface({ store: initialStore, products: initialProducts, rates, promotions = [] }: Props) {
+export default function StoreInterface({ store: initialStore, products: initialProducts, rates, promotions = [], collections = [] }: Props) {
   const router = useRouter()
     const searchParams = useSearchParams()
      const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
@@ -275,17 +280,23 @@ if (isMockMode) {
   }, [activeTheme.template_id]);
 
   const products = isMockMode && MOCK_DATA[currentNiche] ? MOCK_DATA[currentNiche].products : initialProducts;
-// 🚀 3. INTERCEPTOR DE PROMOCIONES (Holograma Promocional)
+// 🚀 3. INTERCEPTOR DE PROMOCIONES VIGENTES (AUTO-OCULTA VENCIDAS)
   const displayPromotions = useMemo(() => {
       if (isMockMode && MOCK_DATA[currentNiche]?.promotion) {
           return [{
               ...MOCK_DATA[currentNiche].promotion,
               id: 'mock-promo-1',
               is_active: true,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // +24 horas de urgencia viva
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           }];
       }
-      return promotions || [];
+      const now = Date.now();
+      return (promotions || []).filter((p: any) => {
+          if (!p.is_active) return false;
+          // 🛡️ Filtro temporal: Oculta automáticamente las campañas expiradas
+          if (p.expires_at && new Date(p.expires_at).getTime() <= now) return false;
+          return true;
+      });
   }, [isMockMode, currentNiche, promotions]);
 
   const store = useMemo(() => {
@@ -301,12 +312,26 @@ if (isMockMode) {
   }, [initialStore, isMockMode, currentNiche, activeTheme]);
 
  
-  // LÓGICA BOUTIQUE Y CAMPAÑAS
-  // LÓGICA BOUTIQUE Y CAMPAÑAS
+
+// LÓGICA BOUTIQUE, CAMPAÑAS Y COLECCIONES (SINCRONIZACIÓN REACTIVA)
   const pasilloQuery = searchParams?.get('pasillo')
-  const expQuery = searchParams?.get('exp') // 👈 Obtenemos la expiración
+  const expQuery = searchParams?.get('exp')
+  const collectionQuery = searchParams?.get('c')
   const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
   const [campaignContext, setCampaignContext] = useState<string | null>(pasilloQuery || null)
+  
+   // 🚀 FUENTE DE LA VERDAD REACTIVA: Escucha activa de cambios en la URL sin desincronización
+  const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(collectionQuery || null)
+
+  // Sincronización de seguridad para navegación atrás/adelante en el navegador
+  useEffect(() => {
+    setActiveCollectionSlug(searchParams?.get('c') || null);
+  }, [searchParams]);
+
+    useEffect(() => {
+    setActiveCollectionSlug(collectionQuery || null)
+  }, [collectionQuery])
+  
 
   // 🚀 ESTADOS DEL RELOJ FLASH
   const [isMounted, setIsMounted] = useState(false)
@@ -457,29 +482,59 @@ const [isModalOpen, setIsModalOpen] = useState(false)
     return ['Todos', ...sortedCats]
   }, [products, store?.categories_order])
 
-  const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
-    let baseFiltered = products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      const productCatClean = normalizeCategory(p.category)
-      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory
-      const matchesPromo = activePromo ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) : true
-      return matchesSearch && matchesCategory && matchesPromo
-    })
+// 🚀 RESOLUCIÓN ESTRICTA Y SANEADA DE COLECCIÓN ACTIVA
+  const selectedCollectionData = useMemo(() => {
+    if (!activeCollectionSlug || !collections || collections.length === 0) return null;
+    return collections.find((c: any) => String(c.slug).toLowerCase() === String(activeCollectionSlug).toLowerCase()) || null;
+  }, [activeCollectionSlug, collections]);
 
-    // 🚀 SMART MERCHANDISING: Ordena stock crítico a la cima en Modo Boutique
-    if (isBoutiqueMode) {
-      baseFiltered.sort((a, b) => {
-        const stockA = a.product_variants?.length > 0 ? a.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (a.stock || 0);
-        const stockB = b.product_variants?.length > 0 ? b.product_variants.reduce((acc: number, v: any) => acc + (v.stock || 0), 0) : (b.stock || 0);
-        const isCriticalA = stockA > 0 && stockA <= 3 ? 1 : 0;
-        const isCriticalB = stockB > 0 && stockB <= 3 ? 1 : 0;
-        return isCriticalB - isCriticalA;
+  // 🚀 FILTRADO REACTIVO EN VIVO (CON selectedCollectionData EN EL ARREGLO DE DEPENDENCIAS)
+  const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
+    let sourcePool = products;
+
+    if (selectedCollectionData && Array.isArray(selectedCollectionData.collection_items)) {
+      const allowedProductIds = new Set<string>();
+      const allowedCategories = new Set<string>();
+      const allowedPromoIds = new Set<string>();
+
+      selectedCollectionData.collection_items.forEach((it: any) => {
+        if (it.item_type === 'product' && it.product_id !== null && it.product_id !== undefined) {
+          allowedProductIds.add(String(it.product_id));
+        }
+        if (it.item_type === 'category' && it.category_name) {
+          allowedCategories.add(String(it.category_name).toLowerCase().trim());
+        }
+        if (it.item_type === 'promotion' && it.promotion_id) {
+          allowedPromoIds.add(String(it.promotion_id));
+        }
+      });
+
+      // Resolver productos incluidos en promociones vinculadas a esta colección
+      displayPromotions.forEach((pr: any) => {
+        if (allowedPromoIds.has(String(pr.id))) {
+          (pr.linked_products || []).forEach((pid: any) => allowedProductIds.add(String(pid)));
+        }
+      });
+
+      sourcePool = products.filter((p: any) => {
+        const pid = String(p.id);
+        const pcat = String(p.category || '').toLowerCase().trim();
+        return allowedProductIds.has(pid) || allowedCategories.has(pcat);
       });
     }
 
-    const featured = baseFiltered.filter(p => p.is_featured)
-    return { featured, standard: baseFiltered }
-  }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode])
+    let baseFiltered = sourcePool.filter((p: any) => {
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const productCatClean = normalizeCategory(p.category);
+      const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory;
+      const matchesPromo = activePromo ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) : true;
+      return matchesSearch && matchesCategory && matchesPromo;
+    });
+
+    // 🚀 Ocultamos "Lo más vendido" cuando el cliente está explorando una colección específica
+    const featured = selectedCollectionData ? [] : baseFiltered.filter(p => p.is_featured);
+    return { featured, standard: baseFiltered };
+  }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode, selectedCollectionData, displayPromotions]);
 
 
   // 6. TODOS LOS EFECTOS DE CICLO DE VIDA (UNIFICADOS ABAJO)
@@ -692,10 +747,10 @@ const startCenterX = startRect.left + offsetX + size / 2;
 
 
 
-  // 🚀 REINICIO DE PÁGINA AL BUSCAR O FILTRAR
+// 🚀 REINICIO DE PÁGINA AL BUSCAR, CAMBIAR CATEGORÍA O ACTIVAR COLECCIÓN
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, selectedCategory])
+  }, [debouncedSearch, selectedCategory, activeCollectionSlug])
 
   // 🚀 DETECCIÓN ULTRA-LIGERA DEL DISPOSITIVO
   useEffect(() => {
@@ -1191,12 +1246,185 @@ useEffect(() => {
         </div>
       )}
 
-   <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${
+  <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${
         activeTheme.layout?.card_style === 'modular_tech' 
           ? 'px-2 md:px-8' 
           : 'px-4 md:px-8'
       }`}>
         <>
+      {/* 🚀 ESCAPARATE DE COLECCIÓN ACTIVA (SHOWROOM LOOKBOOK) */}
+{selectedCollectionData && (
+  <div id="collection-view-anchor" className="mb-10 relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] animate-in fade-in duration-500">
+              {/* Fondo sutil con imagen desenfocada si existe portada */}
+              {selectedCollectionData.image_url && (
+                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+                  <Image 
+                    src={getOptimizedUrl(selectedCollectionData.image_url)} 
+                    alt="" 
+                    fill 
+                    className="object-cover blur-md" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--store-surface)] via-[var(--store-surface)]/90 to-transparent" />
+                </div>
+              )}
+
+              <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-2xl text-left">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-primary-text)] bg-[var(--store-primary)] px-2.5 py-0.5 rounded-full shadow-xs">
+                      {selectedCollectionData.settings?.badge_text || "Curaduría Especial"}
+                    </span>
+                    <span className="text-xs font-mono font-medium text-[var(--store-surface-text)]">
+                      {standardProducts.length} {standardProducts.length === 1 ? 'artículo en este drop' : 'artículos en este drop'}
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl md:text-4xl font-black text-[var(--store-text-main)] tracking-tight leading-none pt-0.5">
+                    {selectedCollectionData.name}
+                  </h2>
+
+                  {selectedCollectionData.description && (
+                    <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed font-normal pt-1">
+                      {selectedCollectionData.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Botón de Salida Rápida con Estilo de Pastilla */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCollectionSlug(null);
+                    setCurrentPage(1);
+                    window.history.replaceState(null, '', pathname);
+                    if (catalogTopRef.current) {
+                      catalogTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-[var(--radius-btn)] bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)] text-xs font-bold text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all shrink-0 active:scale-95 shadow-xs flex items-center gap-2 group"
+                >
+                  <X size={14} className="group-hover:rotate-90 transition-transform duration-200" />
+                  <span>Ver Catálogo General</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+      {/* 🚀 CÁPSULAS CINEMÁTICAS CON AVATAR STACKING (Awwwards Style) */}
+          {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
+            <section className="mb-14 animate-in fade-in">
+              <div className="flex items-end justify-between mb-5 px-1">
+                <div className="flex flex-col text-left">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-surface-text)] mb-1">
+  Agrupaciones & Promociones
+</span>
+<h2 className="text-xl md:text-2xl font-medium tracking-tight text-[var(--store-text-main)]">
+  Colecciones Destacadas
+</h2>
+                </div>
+              </div>
+
+              <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-3 snap-x snap-mandatory">
+                {collections.map((col: any) => {
+                  const itemCount = col.collection_items?.length || 0;
+
+                  // 🚀 RESOLUCIÓN DINÁMICA DE LAS FOTOS DE LOS PRODUCTOS EN EL DROP
+                  const previewThumbs = (col.collection_items || [])
+                    .filter((it: any) => it.item_type === 'product' && it.product_id)
+                    .slice(0, 4)
+                    .map((it: any) => {
+                      const p = products.find((prod: any) => String(prod.id) === String(it.product_id));
+                      return p?.image_url || null;
+                    })
+                    .filter(Boolean) as string[];
+
+                  return (
+                    <div
+                      key={col.id}
+onClick={() => {
+                        setActiveCollectionSlug(col.slug);
+                        setSelectedCategory('Todos');
+                        setCurrentPage(1);
+                        window.history.replaceState(null, '', `${pathname}?c=${col.slug}`);
+
+                        // 🚀 Desplazamiento milimétrico considerando el Navbar Sticky
+                        setTimeout(() => {
+                          const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current;
+                          if (anchor) {
+                            const yOffset = -130; // Altura del header compensada
+                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
+                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                          }
+                        }, 60);
+                      }}
+                      className="group relative shrink-0 w-[270px] sm:w-[320px] h-[175px] sm:h-[190px] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)] bg-neutral-950 overflow-hidden cursor-pointer transition-all shadow-[var(--shadow-ui)] p-5 flex flex-col justify-between active:scale-[0.99] snap-start"
+                    >
+                      {/* Fondo Cinemático con Capas de Fusión */}
+                      {col.image_url ? (
+                        <div className="absolute inset-0 z-0">
+                          <Image 
+                            src={getOptimizedUrl(col.image_url)} 
+                            alt={col.name} 
+                            fill 
+                            sizes="340px" 
+                            className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out opacity-55" 
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-black opacity-95" />
+                      )}
+
+                      {/* Capa Superior: Badge y Conteo */}
+                      <div className="relative z-10 flex items-start justify-between gap-2">
+                        {col.settings?.badge_text ? (
+                          <span className="text-[8px] font-mono font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md text-white border border-white/30 px-2.5 py-0.5 rounded-full shadow-sm">
+                            {col.settings.badge_text}
+                          </span>
+                        ) : <div />}
+                        
+                        <span className="text-[9px] font-mono font-bold text-white/90 uppercase tracking-wider bg-black/40 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15">
+                          {itemCount} {itemCount === 1 ? 'artículo' : 'artículos'}
+                        </span>
+                      </div>
+
+                      {/* Capa Inferior: Avatar Stacking + Título + CTA */}
+                      <div className="relative z-10 space-y-2 text-left">
+                        {/* Micro-Collage de Productos Incluidos */}
+                        {previewThumbs.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex -space-x-2 overflow-hidden py-0.5">
+                              {previewThumbs.map((imgUrl, i) => (
+                                <div 
+                                  key={i}
+                                  className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-neutral-900 overflow-hidden relative bg-neutral-800 shrink-0 shadow-sm"
+                                >
+                                  <Image src={getOptimizedUrl(imgUrl)} alt="" fill className="object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                           <span className="text-[10px] font-mono text-white/70">
+  Incluye
+</span>
+                          </div>
+                        )}
+
+                        <div>
+                          <h3 className="font-medium text-base sm:text-lg text-white tracking-tight leading-tight line-clamp-1 drop-shadow-sm">
+                            {col.name}
+                          </h3>
+                         <span className="text-[11px] font-bold text-white/90 flex items-center gap-1 transition-transform group-hover:translate-x-1 duration-200 mt-1">
+  Ver Colección &rarr;
+</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
             <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -1204,11 +1432,11 @@ useEffect(() => {
                 {activeTheme.layout?.card_style === 'dense_hardware' ? (
                   <div className="flex flex-col">
                     <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Stock de Alta Rotación</span>
-                    <h2 className="text-xl md:text-2xl font-black tracking-tight text-[var(--store-text-main)] uppercase">Top Ventas</h2>
+                    <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--store-text-main)] uppercase">Top Ventas</h2>
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
+                    <h2 className="text-2xl md:text-3xl font-medium tracking-tighter text-[var(--store-text-main)]">Lo más vendido</h2>
                   </div>
                 )}
               </div>
@@ -1356,7 +1584,7 @@ useEffect(() => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
               >
                 <ChevronLeft size={16} strokeWidth={2.5} className="md:mr-1" />
                 <span className="hidden md:inline">Ant</span>
@@ -1371,9 +1599,9 @@ useEffect(() => {
                     <button
                       key={page}
                       onClick={() => handlePageChange(page as number)}
-                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
+                      className={`w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] text-[11px] md:text-xs font-bold transition-all duration-300 active:scale-95 ${currentPage === page
                         ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
-                        : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border border-transparent hover:border-[var(--store-border)]/50'
+                        : 'bg-transparent text-[var(--store-text-main)] hover:bg-[var(--store-surface)] border-[var(--store-border)]/60 hover:border-[var(--store-border)]/50'
                         }`}
                     >
                       {page}
@@ -1386,7 +1614,7 @@ useEffect(() => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)]  text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
               >
                 <span className="hidden md:inline">Sig</span>
                 <ChevronRight size={16} strokeWidth={2.5} className="md:ml-1" />
@@ -1502,7 +1730,7 @@ useEffect(() => {
                 /* 🌟 TEMA 1 (UNIVERSAL): Carrusel Lifestyle B2C */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
-                    <h3 className="text-sm md:text-base font-black tracking-tight text-[var(--store-text-main)] uppercase">Explora más categorías</h3>
+                    <h3 className="text-sm md:text-base font-medium tracking-tight text-[var(--store-text-main)] uppercase">Explora más categorías</h3>
                   </div>
                   <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar ml-2 pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
                     {explorableCategories.map((cat: any) => (
@@ -1510,7 +1738,7 @@ useEffect(() => {
                         {!cat.useSolidColor && cat.coverUrl && <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="170px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-110" loading="lazy" />}
                         {!cat.useSolidColor && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />}
                         <div className="relative z-10 p-3 md:p-4 w-full">
-                          <span className={`block font-black tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>{cat.name}</span>
+                          <span className={`block font-medium tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>{cat.name}</span>
                           <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>{cat.count} Productos</span>
                         </div>
                       </button>

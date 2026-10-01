@@ -143,7 +143,8 @@ export default async function StorePage({
 async function DeferredStoreContent({ store, isPreview }: { store: any, isPreview: boolean }) {
   const supabase = isPreview ? createUncachedClient() : createPublicCachedClient()
 
-  const [productsResponse, ratesResponse, promotionsResponse] = await Promise.all([
+  // 🚀 CONSULTA PARALELA O(1): Inyectamos colecciones activas e ítems vinculados
+  const [productsResponse, ratesResponse, promotionsResponse, collectionsResponse] = await Promise.all([
     supabase
       .from('products')
       .select(`
@@ -163,14 +164,21 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
       .order('created_at', { ascending: false }),
 
     supabase.from('app_config').select('*').limit(1).single(),
-    supabase.from('promotions').select('*').eq('store_id', store.id).eq('is_active', true)
+    supabase.from('promotions').select('*').eq('store_id', store.id).eq('is_active', true),
+    supabase
+      .from('collections')
+      .select('*, collection_items(*)')
+      .eq('store_id', store.id)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
   ])
 
   const props = {
     store,
     products: productsResponse.data || [],
     rates: ratesResponse.data || { usd_rate: 0, eur_rate: 0 },
-    promotions: promotionsResponse.data || []
+    promotions: promotionsResponse.data || [],
+    collections: collectionsResponse.data || [] // 🚀 PASAMOS COLECCIONES A LAS INTERFACES
   }
 
   return store.store_type === 'restaurant' 

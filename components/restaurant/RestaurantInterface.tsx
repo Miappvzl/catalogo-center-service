@@ -27,14 +27,15 @@ interface RestaurantInterfaceProps {
     products: any[]
     rates: { usd_rate: number; eur_rate: number }
     promotions?: any[]
-    
+    collections?: any[] // 🚀 INYECCIÓN DE COMBOS & ESPECIALES
 }
 
 export default function RestaurantInterface({
     store,
     products,
     rates,
-    promotions = []
+    promotions = [],
+    collections = []
 }: RestaurantInterfaceProps) {
 
     // 1. Sincronización en vivo con el Customizador
@@ -172,10 +173,44 @@ export default function RestaurantInterface({
     const isEur = store?.currency_type === 'eur'
     const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
 
-    // Estados de navegación y filtros
+ // Estados de navegación y filtros
     const [searchQuery, setSearchQuery] = useState('')
     const [activeCategory, setActiveCategory] = useState<string>('Todos')
     const [bottomTab, setBottomTab] = useState<'home' | 'favorites'>('home')
+
+ // 🚀 CONTROL REACTIVO DE COMBO / ESPECIAL ACTIVO
+    const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null)
+
+    const selectedCollectionData = useMemo(() => {
+        if (!activeCollectionSlug || !collections || collections.length === 0) return null
+        return collections.find((c: any) => String(c.slug).toLowerCase() === String(activeCollectionSlug).toLowerCase()) || null
+    }, [activeCollectionSlug, collections])
+
+    // 🚀 POOL DE PLATOS FILTRADOS (IDÉNTICO A RETAIL):
+    // Si hay un combo activo, el origen de datos se reduce exclusivamente a los platos de ese combo
+    const sourceProducts = useMemo(() => {
+        if (!selectedCollectionData || !Array.isArray(selectedCollectionData.collection_items)) {
+            return products
+        }
+
+        const allowedProductIds = new Set<string>()
+        const allowedCategories = new Set<string>()
+
+        selectedCollectionData.collection_items.forEach((it: any) => {
+            if (it.item_type === 'product' && it.product_id) {
+                allowedProductIds.add(String(it.product_id))
+            }
+            if (it.item_type === 'category' && it.category_name) {
+                allowedCategories.add(String(it.category_name).toLowerCase().trim())
+            }
+        })
+
+        return products.filter((p: any) => {
+            const pid = String(p.id)
+            const pcat = String(p.category || '').toLowerCase().trim()
+            return allowedProductIds.has(pid) || allowedCategories.has(pcat)
+        })
+    }, [products, selectedCollectionData])
     const [isRateModalOpen, setIsRateModalOpen] = useState(false)
     const [isFoodModalOpen, setIsFoodModalOpen] = useState(false)
     const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
@@ -390,13 +425,14 @@ export default function RestaurantInterface({
     const featuredProducts = useMemo(() => products.filter(p => p.is_featured && p.status === 'active'), [products])
     const favoriteProducts = useMemo(() => products.filter(p => favoriteIds.has(String(p.id)) && p.status === 'active'), [products, favoriteIds])
 
+ // 🚀 AHORA LAS CATEGORÍAS SE ALIMENTAN DE sourceProducts (Si hay combo, solo muestra los platos del combo)
     const productsByCategory = useMemo(() => {
         const map: Record<string, any[]> = {}
         categories.forEach(cat => {
-            map[cat] = products.filter(p => p.category?.trim().toLowerCase() === cat.toLowerCase() && p.status === 'active')
+            map[cat] = sourceProducts.filter(p => p.category?.trim().toLowerCase() === cat.toLowerCase() && p.status === 'active')
         })
         return map
-    }, [products, categories])
+    }, [sourceProducts, categories])
 
     // Filtros calculados
     const activeFiltersCount = useMemo(() => {
@@ -408,8 +444,13 @@ export default function RestaurantInterface({
         return count
     }, [filters])
 
-    const filteredProductsList = useMemo(() => {
-        let list = [...products].filter(p => p.status === 'active')
+const filteredProductsList = useMemo(() => {
+        let list = [...sourceProducts].filter(p => p.status === 'active')
+        if (searchQuery.trim() !== '') {
+            const q = searchQuery.toLowerCase().trim()
+            list = list.filter(p => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))
+        }
+
         if (searchQuery.trim() !== '') {
             const q = searchQuery.toLowerCase().trim()
             list = list.filter(p => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))
@@ -439,16 +480,16 @@ export default function RestaurantInterface({
         } else if (filters.sortBy === 'price_desc') {
             list.sort((a, b) => Number(b.usd_cash_price || 0) - Number(a.usd_cash_price || 0))
         }
-        return list
-    }, [products, searchQuery, filters])
+      return list
+    }, [sourceProducts, searchQuery, filters])
 
-    const isFilteringActive = searchQuery.trim() !== '' || activeFiltersCount > 0
+   const isFilteringActive = searchQuery.trim() !== '' || activeFiltersCount > 0 || !!selectedCollectionData
 
     const handleResetAllFilters = () => {
         setFilters(DEFAULT_FILTERS)
         setSearchQuery('')
+        setActiveCollectionSlug(null)
     }
-
     const handleOpenDishModal = useCallback((product: any) => {
         const foodProduct = {
             ...product,
@@ -755,6 +796,9 @@ export default function RestaurantInterface({
                     </div>
                 )}
 
+            {/* 🚀 ANCLA PERMANENTE PARA DESPLAZAMIENTO SUAVE */}
+                <div id="restaurant-menu-anchor" className="w-full h-px scroll-mt-28" />
+
                 {/* 4. CUERPO DEL MENÚ */}
                 {bottomTab === 'favorites' ? (
                     <div className="px-5 py-6">
@@ -775,11 +819,44 @@ export default function RestaurantInterface({
                             </div>
                         )}
                     </div>
-                ) : isFilteringActive ? (
+              ) : isFilteringActive ? (
                     <div className="px-5 py-6 space-y-4">
+                
+                        {/* 🚀 BANNER HERO DEL COMBO ACTIVO EN MÓVIL */}
+                        {selectedCollectionData && (
+                            <div id="restaurant-combo-view-anchor" className="p-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] text-left space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2 py-0.5 rounded">
+                                        {selectedCollectionData.settings?.badge_text || 'Combo Seleccionado'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveCollectionSlug(null)}
+                                        className="text-xs font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] underline flex items-center gap-1"
+                                    >
+                                        <X size={12} /> Ver Todo el Menú
+                                    </button>
+                                </div>
+
+                                <h2 className="text-lg font-black text-[var(--store-text-main)] leading-tight">
+                                    {selectedCollectionData.name}
+                                </h2>
+
+                                {selectedCollectionData.description && (
+                                    <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
+                                        {selectedCollectionData.description}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between border-b border-[var(--store-border)]/40 pb-2">
                             <h2 className="text-base font-black text-[var(--store-text-main)]">
-                                {searchQuery ? `Resultados para "${searchQuery}"` : 'Platos Filtrados'}
+                                {selectedCollectionData 
+                                    ? 'Platos incluidos en este combo' 
+                                    : searchQuery 
+                                        ? `Resultados para "${searchQuery}"` 
+                                        : 'Platos Filtrados'}
                             </h2>
                             <span className="text-xs font-mono text-[var(--store-surface-text)]">
                                 {filteredProductsList.length} encontrados
@@ -955,6 +1032,138 @@ export default function RestaurantInterface({
                                         })}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                 {/* 🍔 SECCIÓN: COMBOS & ESPECIALES GASTRONÓMICOS (MÓVIL) */}
+                        {collections && collections.length > 0 && !isFilteringActive && (
+                            <div className="px-5 pb-3">
+                                <div className="mb-3 border-b border-[var(--store-border)]/40 pb-2 flex items-center justify-between">
+                                    <h3 className="text-base font-black text-[var(--store-text-main)] tracking-tight">
+                                        Combos & Especiales
+                                    </h3>
+                                    <span className="text-[10px] font-mono text-[var(--store-surface-text)]">
+                                        {collections.length} disponibles
+                                    </span>
+                                </div>
+
+                                <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
+                                    {collections.map((col: any) => {
+                                        const itemCount = col.collection_items?.length || 0
+
+                                        // Cálculo en vivo del precio consolidado del combo
+                                        const comboTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
+                                            if (it.item_type === 'product' && it.product_id) {
+                                                const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                                return acc + Number(p?.usd_cash_price || 0)
+                                            }
+                                            return acc
+                                        }, 0)
+
+                                        const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(comboTotalUSD * activeRate)
+
+                                        // Miniaturas de los platos incluidos
+                                        const dishThumbs = (col.collection_items || [])
+                                            .filter((it: any) => it.item_type === 'product' && it.product_id)
+                                            .slice(0, 3)
+                                            .map((it: any) => {
+                                                const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                                return p?.image_url || null
+                                            })
+                                            .filter(Boolean) as string[]
+
+                                      return (
+                                            <div
+                                                key={col.id}
+                                                onClick={() => {
+                                                    setActiveCollectionSlug(col.slug);
+                                                    setTimeout(() => {
+                                                        const anchor = document.getElementById('restaurant-menu-anchor');
+                                                        if (anchor) {
+                                                            const yOffset = -120;
+                                                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
+                                                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                                                        }
+                                                    }, 50);
+                                                }}
+                                                className="w-[84vw] max-w-[340px] shrink-0 snap-start p-4.5 rounded-[var(--radius-card)] bg-neutral-950 border border-neutral-800 shadow-lg flex flex-col justify-between gap-3.5 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden text-left"
+                                            >
+                                                {/* 🍔 FOTO VIVA CON GRADIENTE OSCURO CINEMÁTICO (Alto Contraste y Apetito) */}
+                                                {col.image_url ? (
+                                                    <div className="absolute inset-0 z-0">
+                                                        <Image 
+                                                            src={getOptimizedUrl(col.image_url)} 
+                                                            alt={col.name} 
+                                                            fill 
+                                                            sizes="340px" 
+                                                            className="object-cover opacity-65" 
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 to-black/25" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-black opacity-95" />
+                                                )}
+
+                                                {/* Capa Superior: Badge de Contraste + Miniaturas */}
+                                                <div className="relative z-10 flex items-center justify-between gap-2">
+                                                    {col.settings?.badge_text ? (
+                                                        <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white text-neutral-950 px-2.5 py-0.5 rounded shadow-xs">
+                                                            {col.settings.badge_text}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-white/90 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded border border-white/15">
+                                                            Combo Especial
+                                                        </span>
+                                                    )}
+
+                                                    {dishThumbs.length > 0 && (
+                                                        <div className="flex -space-x-2 overflow-hidden py-0.5">
+                                                            {dishThumbs.map((src, i) => (
+                                                                <div key={i} className="inline-block h-6 w-6 rounded-full ring-2 ring-black/80 overflow-hidden relative bg-neutral-800 shrink-0 shadow-sm">
+                                                                    <Image src={getOptimizedUrl(src)} alt="" fill className="object-cover" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Título y Descripción con Lectura Impecable */}
+                                                <div className="relative z-10 space-y-1">
+                                                    <h4 className="font-black text-base text-white leading-tight drop-shadow-xs line-clamp-1">
+                                                        {col.name}
+                                                    </h4>
+                                                    {col.description && (
+                                                        <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed">
+                                                            {col.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Precios en Blanco Puro y Tasa BCV */}
+                                                <div className="relative z-10 pt-2.5 border-t border-white/15 flex items-center justify-between">
+                                                    {comboTotalUSD > 0 ? (
+                                                        <div className="flex flex-col text-left">
+                                                            <span className="text-base font-black font-mono text-white leading-none">
+                                                                ${comboTotalUSD.toFixed(2)}
+                                                            </span>
+                                                            <span className="text-[10px] font-mono text-neutral-300 mt-1 leading-none">
+                                                                Bs. {formattedBs}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-mono text-neutral-400">
+                                                            {itemCount} opciones
+                                                        </span>
+                                                    )}
+
+                                                    <span className="text-xs font-bold text-white flex items-center gap-1">
+                                                        Ver Combo &rarr;
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         )}
 
@@ -1191,14 +1400,20 @@ export default function RestaurantInterface({
                 <div className="flex-1 w-full max-w-[1400px] mx-auto px-8 py-10 relative">
                     <div className="flex items-start gap-12 lg:gap-16">
                         
-                        {/* 2.1 ÍNDICE MAGNÉTICO (Sticky Left Sidebar) */}
-                        {!searchQuery && (
-                            <aside className="hidden lg:block w-[240px] shrink-0 sticky top-28">
-                                <div className="space-y-6">
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--store-surface-text)] font-mono px-3">
-                                        La Carta
-                                    </h3>
-                                    <nav className="space-y-1 border-l-2 border-[var(--store-border)]/30 ml-3 pl-3">
+                     {/* 2.1 ÍNDICE MAGNÉTICO GASTRONÓMICO (Sticky Left Sidebar) */}
+                        {!searchQuery && !selectedCollectionData && (
+                            <aside className="hidden lg:block w-[240px] shrink-0 sticky top-28 select-none">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-3">
+                                        <h3 className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
+                                            Menú por Rubros
+                                        </h3>
+                                        <span className="text-[10px] font-mono text-[var(--store-surface-text)]">
+                                            {categories.length}
+                                        </span>
+                                    </div>
+
+                                    <nav className="space-y-1">
                                         {categories.map((cat) => {
                                             const isActive = activeCategory === cat
                                             const count = (productsByCategory[cat] || []).length
@@ -1208,27 +1423,32 @@ export default function RestaurantInterface({
                                                     key={cat}
                                                     type="button"
                                                     onClick={() => handleScrollToSection(cat)}
-                                                    className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl transition-all text-left outline-none group"
-                                                    style={{
-                                                        backgroundColor: isActive 
-                                                            ? 'color-mix(in srgb, var(--store-primary) 8%, transparent)' 
-                                                            : 'transparent'
-                                                    }}
+                                                    className={`w-full flex items-center justify-between py-2 px-3 rounded-[var(--radius-btn,12px)] transition-all text-left outline-none cursor-pointer border ${
+                                                        isActive 
+                                                            ? 'bg-[var(--store-surface)] border-[var(--store-primary)]/40 shadow-xs' 
+                                                            : 'bg-transparent border-transparent hover:bg-[var(--store-surface)]/60 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
+                                                    }`}
                                                 >
+                                                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                        {isActive && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
+                                                        )}
+                                                        <span 
+                                                            className={`text-xs truncate ${
+                                                                isActive 
+                                                                    ? 'font-black text-[var(--store-text-main)]' 
+                                                                    : 'font-semibold'
+                                                            }`}
+                                                        >
+                                                            {cat}
+                                                        </span>
+                                                    </div>
+
                                                     <span 
-                                                        className={`text-sm truncate pr-3 transition-colors ${
+                                                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors shrink-0 ${
                                                             isActive 
-                                                                ? 'font-black text-[var(--store-primary)]' 
-                                                                : 'font-semibold text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
-                                                        }`}
-                                                    >
-                                                        {cat}
-                                                    </span>
-                                                    <span 
-                                                        className={`text-[10px] font-mono px-2 py-0.5 rounded-md transition-colors ${
-                                                            isActive 
-                                                                ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] font-bold shadow-sm' 
-                                                                : 'text-[var(--store-surface-text)] bg-[var(--store-surface)] border border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/20'
+                                                                ? 'bg-[var(--store-text-main)] text-[var(--store-bg)] font-bold' 
+                                                                : 'text-[var(--store-surface-text)] opacity-75'
                                                         }`}
                                                     >
                                                         {count}
@@ -1240,12 +1460,167 @@ export default function RestaurantInterface({
                                 </div>
                             </aside>
                         )}
-
-                        {/* 2.2 CONTENT FEED (Bento Grid + Crave-Grid) */}
+{/* 2.2 CONTENT FEED (Bento Grid + Crave-Grid) */}
                         <main className="flex-1 min-w-0 space-y-16 pb-32">
-                        
-                                {/* BENTO SHOWCASE EDITORIAL CON PROMOCIONES */}
-                            {(resolvedDesktopHeroUrl || promotions.filter(p => p.is_active).length > 0) && !searchQuery && (
+                            <div id="restaurant-desktop-content-anchor" className="w-full h-px" />
+
+                            {/* 🚀 BANNER HERO DE COMBO ACTIVO EN DESKTOP */}
+                            {selectedCollectionData && (
+                                <div className="p-6 md:p-8 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center justify-between gap-6 text-left animate-in fade-in">
+                                    <div className="space-y-1.5 max-w-xl">
+                                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2.5 py-0.5 rounded-full">
+                                            {selectedCollectionData.settings?.badge_text || 'Combo Seleccionado'}
+                                        </span>
+                                        <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight">
+                                            {selectedCollectionData.name}
+                                        </h2>
+                                        {selectedCollectionData.description && (
+                                            <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
+                                                {selectedCollectionData.description}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveCollectionSlug(null)}
+                                        className="px-4 py-2.5 rounded-[var(--radius-btn)] bg-[var(--store-bg)] border border-[var(--store-border)] text-xs font-bold text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
+                                    >
+                                        <X size={14} />
+                                        <span>Ver Menú Completo</span>
+                                    </button>
+                                </div>
+                            )}
+
+                          {/* 🍔 RIEL DE COMBOS VISUALES EN DESKTOP (ALTO IMPACTO GASTRONÓMICO) */}
+                            {collections && collections.length > 0 && !isFilteringActive && (
+                                <section className="space-y-4 animate-in fade-in">
+                                    <div className="border-b border-[var(--store-border)]/40 pb-2.5 flex items-center justify-between">
+                                        <div>
+                                            <h2 className="text-xl font-black tracking-tight text-[var(--store-text-main)]">
+                                                Combos & Especiales del Menú
+                                            </h2>
+                                            <p className="text-xs text-[var(--store-surface-text)] mt-0.5">
+                                                Combinaciones preparadas con precio especial para pedir en un toque
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4.5">
+                                        {collections.map((col: any) => {
+                                            const comboTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
+                                                if (it.item_type === 'product' && it.product_id) {
+                                                    const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                                    return acc + Number(p?.usd_cash_price || 0)
+                                                }
+                                                return acc
+                                            }, 0)
+                                            const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(comboTotalUSD * activeRate)
+
+                                            // Extraer miniaturas de los platos incluidos
+                                            const dishThumbs = (col.collection_items || [])
+                                                .filter((it: any) => it.item_type === 'product' && it.product_id)
+                                                .slice(0, 4)
+                                                .map((it: any) => {
+                                                    const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                                    return p?.image_url || null
+                                                })
+                                                .filter(Boolean) as string[]
+
+                                            return (
+                                                <div
+                                                    key={`desktop-col-${col.id}`}
+                                                    onClick={() => {
+                                                        setActiveCollectionSlug(col.slug);
+                                                        // 🚀 Desplazamiento milimétrico sin interrupciones
+                                                        setTimeout(() => {
+                                                            const anchor = document.getElementById('restaurant-desktop-content-anchor');
+                                                            if (anchor) {
+                                                                const yOffset = -90;
+                                                                const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
+                                                                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                                                            }
+                                                        }, 40);
+                                                    }}
+                                                    className="group relative rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/80 transition-all duration-300 shadow-[var(--shadow-ui)] p-5 flex flex-col justify-between gap-4 cursor-pointer text-left overflow-hidden active:scale-[0.99]"
+                                                >
+                                                    {/* Portada de Comida con Gradiente Suave */}
+                                                    {col.image_url ? (
+                                                        <div className="relative aspect-[16/8] w-full rounded-xl overflow-hidden bg-neutral-900 border border-[var(--store-border)]/30">
+                                                            <Image 
+                                                                src={getOptimizedUrl(col.image_url)} 
+                                                                alt={col.name} 
+                                                                fill 
+                                                                sizes="380px" 
+                                                                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                                                            />
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                                                            
+                                                            <div className="absolute top-2.5 left-2.5 z-10">
+                                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white/95 text-neutral-900 px-2 py-0.5 rounded shadow-xs">
+                                                                    {col.settings?.badge_text || 'COMBO'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2 py-0.5 rounded shadow-xs">
+                                                                {col.settings?.badge_text || 'COMBO'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-1.5 min-w-0">
+                                                        <h4 className="font-black text-base text-[var(--store-text-main)] group-hover:text-[var(--store-primary)] transition-colors line-clamp-1 leading-snug">
+                                                            {col.name}
+                                                        </h4>
+                                                        {col.description && (
+                                                            <p className="text-xs text-[var(--store-surface-text)] line-clamp-2 leading-relaxed font-normal">
+                                                                {col.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Pie de Tarjeta: Miniaturas de Platos + Precios */}
+                                                    <div className="pt-3 border-t border-[var(--store-border)]/30 flex items-center justify-between gap-3 mt-auto">
+                                                        {dishThumbs.length > 0 ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="flex -space-x-2 overflow-hidden py-0.5">
+                                                                    {dishThumbs.map((img, i) => (
+                                                                        <div key={i} className="inline-block h-6 w-6 rounded-full ring-2 ring-[var(--store-surface)] overflow-hidden relative bg-[var(--store-bg)] shrink-0">
+                                                                            <Image src={getOptimizedUrl(img)} alt="" fill className="object-cover" />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-[10px] font-mono text-[var(--store-surface-text)] font-semibold">
+                                                                    {col.collection_items?.length} platos
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[11px] font-mono text-[var(--store-surface-text)]">
+                                                                {col.collection_items?.length || 0} opciones
+                                                            </span>
+                                                        )}
+
+                                                        {comboTotalUSD > 0 && (
+                                                            <div className="text-right shrink-0 leading-none">
+                                                                <span className="text-base font-black font-mono text-[var(--store-text-main)] leading-none">
+                                                                    ${comboTotalUSD.toFixed(2)}
+                                                                </span>
+                                                                <span className="text-[10px] font-mono text-[var(--store-surface-text)] block mt-1 leading-none tabular-nums">
+                                                                    Bs. {formattedBs}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </section>
+                            )}
+
+                               {/* BENTO SHOWCASE (Se oculta automáticamente si hay búsqueda o si un combo está activo) */}
+                            {(resolvedDesktopHeroUrl || promotions.filter(p => p.is_active).length > 0) && !searchQuery && !selectedCollectionData && (
                                 <section className="grid grid-cols-12 gap-5 items-stretch">
                                     
                                     {/* Bloque 1: Hero Principal (Ocupa 8 cols si hay promos, o 12 cols si no hay) */}
@@ -1339,8 +1714,8 @@ export default function RestaurantInterface({
                                 </section>
                             )}
                            
-                            {/* VISTA A: BÚSQUEDA ACTIVA (CORREGIDO CON filteredProductsList) */}
-                            {searchQuery.trim() !== '' ? (
+                       {/* VISTA A: BÚSQUEDA ACTIVA O COMBO SELECCIONADO */}
+                            {(searchQuery.trim() !== '' || selectedCollectionData) ? (
                                 <section className="space-y-6 animate-in fade-in">
                                     <div className="flex items-end justify-between border-b border-[var(--store-border)]/40 pb-3">
                                         <div>
@@ -1352,7 +1727,7 @@ export default function RestaurantInterface({
                                             {filteredProductsList.length} platos
                                         </span>
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                         {filteredProductsList.map((dish: any, idx: number) => (
                                             <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
                                         ))}
@@ -1372,7 +1747,7 @@ export default function RestaurantInterface({
                                                     Los favoritos indiscutibles de nuestra comunidad
                                                 </p>
                                             </div>
-                                            <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+                                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                                 {featuredProducts.map((dish, idx) => (
                                                     <FoodDishCard key={`featured-${dish.id}`} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
                                                 ))}
@@ -1396,7 +1771,7 @@ export default function RestaurantInterface({
                                                         {dishes.length} opciones
                                                     </span>
                                                 </div>
-                                                <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+                                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                                     {dishes.map((dish, idx) => (
                                                         <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
                                                     ))}
