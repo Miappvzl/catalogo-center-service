@@ -970,7 +970,7 @@ const taxAmountCashUSD = applyTax
                 else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }
 
-            // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
+          // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
             if (appliedCreditUSD > 0) {
                 uploadedPayments.push({
                     method: "Crédito de Tienda",
@@ -984,6 +984,15 @@ const taxAmountCashUSD = applyTax
             const isAutomatedGateway = finalPaymentMethod === "Pago Flash";
             let order: any;
 
+            // 🚀 ADAPTADOR ESTRICTO DE DATOS (Frontend State -> PostgreSQL Enum Constraint)
+            const rawFulfillment = isFoodTech ? clientData.deliveryType : finalShippingMethod;
+            let strictFulfillmentType = 'pickup'; // Fallback seguro por defecto (Aplica también para 'service' / Intangibles)
+            
+            if (rawFulfillment === 'courier') strictFulfillmentType = 'shipping';
+            else if (rawFulfillment === 'local_delivery') strictFulfillmentType = 'delivery';
+            else if (rawFulfillment === 'dine_in') strictFulfillmentType = 'dine_in';
+            else if (rawFulfillment === 'pickup') strictFulfillmentType = 'pickup';
+
             if (isAutomatedGateway) {
                 const initRes = await fetch('/api/checkout/pago-flash/init', {
                     method: 'POST',
@@ -991,13 +1000,18 @@ const taxAmountCashUSD = applyTax
                     body: JSON.stringify({
                         storeId, clientData,
                         orderData: {
-                            total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, shipping_method: finalShippingMethod, delivery_info: deliveryInfoFull, fulfillment_type: isFoodTech ? clientData.deliveryType : finalShippingMethod,
+                            total_usd: Number(grandTotalUSD.toFixed(2)), 
+                            total_bs: Number(grandTotalBs.toFixed(2)), 
+                            exchange_rate: activeRate, 
+                            currency_type: currency, 
+                            shipping_method: rawFulfillment, 
+                            delivery_info: deliveryInfoFull, 
+                            fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
                             table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
                         },
                         items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
                     })
                 });
-
                 const initData = await initRes.json();
                 if (!initRes.ok || !initData.success) throw new Error(initData.error || 'Fallo al iniciar el pago.');
 
@@ -1017,11 +1031,39 @@ const taxAmountCashUSD = applyTax
                     const userEmail = changeEmail || currentUser?.email || 'No provisto';
                     deliveryInfoFull += ` | ⚠️ VUELTO VIRTUAL: $${expectedChange.toFixed(2)} (Entregó: $${tenderedAmount.toFixed(2)} | Correo: ${userEmail})`;
                 }
-                const { data: insertedOrder, error: orderError } = await supabase
+              const { data: insertedOrder, error: orderError } = await supabase
                     .from("orders")
                     .insert({
-                        store_id: storeId, customer_id: currentUser ? currentUser.id : null, customer_name: clientData.name, customer_phone: clientData.phone, total_usd: Number(grandTotalUSD.toFixed(2)), total_bs: Number(grandTotalBs.toFixed(2)), exchange_rate: activeRate, currency_type: currency, status: "pending", payment_method: finalPaymentMethod, split_payments: uploadedPayments, shipping_method: isFoodTech ? clientData.deliveryType : finalShippingMethod, fulfillment_type: isFoodTech ? clientData.deliveryType : finalShippingMethod, table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
-                        tip_amount_usd: isFoodTech ? Number(tipAmountUSD.toFixed(2)) : 0, delivery_info: deliveryInfoFull, shipping_cost: Number(deliveryCost.toFixed(2)), discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), affiliate_code: affiliateCode || null, document_type: isStrictTax ? "invoice" : "note", is_tax_applied: applyTax, tax_percentage: applyTax ? taxPercentage : 0, subtotal_usd: Number(totalListUSD_base.toFixed(2)), tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), fx_savings_usd: Number(actualFxSavings.toFixed(2)), customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
+                        store_id: storeId, 
+                        customer_id: currentUser ? currentUser.id : null, 
+                        customer_name: clientData.name, 
+                        customer_phone: clientData.phone, 
+                        total_usd: Number(grandTotalUSD.toFixed(2)), 
+                        total_bs: Number(grandTotalBs.toFixed(2)), 
+                        exchange_rate: activeRate, 
+                        currency_type: currency, 
+                        status: "pending", 
+                        payment_method: finalPaymentMethod, 
+                        split_payments: uploadedPayments, 
+                        shipping_method: rawFulfillment, 
+                        fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
+                        table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
+                        tip_amount_usd: isFoodTech ? Number(tipAmountUSD.toFixed(2)) : 0, 
+                        delivery_info: deliveryInfoFull, 
+                        shipping_cost: Number(deliveryCost.toFixed(2)), 
+                        discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), 
+                        affiliate_code: affiliateCode || null, 
+                        document_type: isStrictTax ? "invoice" : "note", 
+                        is_tax_applied: applyTax, 
+                        tax_percentage: applyTax ? taxPercentage : 0, 
+                        subtotal_usd: Number(totalListUSD_base.toFixed(2)), 
+                        tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), 
+                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), 
+                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), 
+                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), 
+                        fx_savings_usd: Number(actualFxSavings.toFixed(2)), 
+                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, 
+                        customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
                     }).select().single();
 
                 if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
