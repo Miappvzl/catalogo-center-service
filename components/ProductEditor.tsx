@@ -208,7 +208,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         name: 'Franela Oversize Streetwear',
                         category: 'Ropa',
                         price: 25,
-                        image_url: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600'
+                        image_url: 'https://images.unsplash.com/photo-1727129289434-c0f0589a7b50?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
                     }))
                 }
                 if (isMission2) {
@@ -839,18 +839,15 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
             if (currentId) {
                 // 🚀 BIFURCACIÓN FOODTECH VS RETAIL
-                if (storeSettings?.storeType === 'restaurant') {
+              if (storeSettings?.storeType === 'restaurant') {
 
-                    // 1. Limpiamos las asociaciones previas del producto
                     await supabase.from('product_modifier_groups').delete().eq('product_id', currentId);
 
-                    // 2. Procesamos cada grupo creado en FoodModifierManager
                     for (let i = 0; i < foodModifiers.length; i++) {
                         const group = foodModifiers[i];
                         let finalGroupId = group.id;
 
                         if (group.id.startsWith('temp-group-')) {
-                            // A. ES UN GRUPO NUEVO: Lo insertamos en modifier_groups
                             const { data: newGroup, error: groupErr } = await supabase
                                 .from('modifier_groups')
                                 .insert({
@@ -866,12 +863,13 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             if (groupErr) throw groupErr;
                             finalGroupId = newGroup.id;
 
-                            // B. Insertamos las opciones hijas del nuevo grupo
+                            // 🚀 INCLUSIÓN DE image_url EN NUEVAS OPCIONES
                             if (group.modifier_options && group.modifier_options.length > 0) {
                                 const optionsPayload = group.modifier_options.map((opt: any, optIdx: number) => ({
                                     group_id: finalGroupId,
                                     name: opt.name,
                                     price_adjustment_usd: Number(opt.price_adjustment_usd) || 0,
+                                    image_url: opt.image_url || null, // 👈 AQUÍ
                                     is_available: true,
                                     display_order: optIdx
                                 }));
@@ -879,7 +877,6 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 if (optErr) throw optErr;
                             }
                         } else {
-                            // C. ES UN GRUPO EXISTENTE: Lo actualizamos
                             const { error: updateErr } = await supabase
                                 .from('modifier_groups')
                                 .update({
@@ -892,13 +889,15 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                             if (updateErr) throw updateErr;
 
-                            // Actualizamos sus opciones (re-sincronización limpia)
                             await supabase.from('modifier_options').delete().eq('group_id', group.id);
+                            
+                            // 🚀 INCLUSIÓN DE image_url EN OPCIONES ACTUALIZADAS
                             if (group.modifier_options && group.modifier_options.length > 0) {
                                 const optionsPayload = group.modifier_options.map((opt: any, optIdx: number) => ({
                                     group_id: group.id,
                                     name: opt.name,
                                     price_adjustment_usd: Number(opt.price_adjustment_usd) || 0,
+                                    image_url: opt.image_url || null, // 👈 AQUÍ
                                     is_available: true,
                                     display_order: optIdx
                                 }));
@@ -906,14 +905,12 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             }
                         }
 
-                        // D. Vinculamos el grupo al producto en la tabla pivote
                         await supabase.from('product_modifier_groups').insert({
                             product_id: currentId,
                             group_id: finalGroupId,
                             display_order: i
                         });
                     }
-
                 } else {
                     // --- LÓGICA ORIGINAL DE RETAIL (ROPA / ACCESORIOS) ---
                     if (!hasVariants) {
