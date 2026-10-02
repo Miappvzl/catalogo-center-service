@@ -734,8 +734,7 @@ return (
             </main>
 
             <WelcomeModal storeName={store.name} />
-            <FoodTechAnnouncementModal storeType={store.store_type || 'retail'} />
-            <FeatureCollectionModal store={store} />
+           
         </div>
     );
 }
