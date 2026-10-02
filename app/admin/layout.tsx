@@ -39,33 +39,34 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const isExpired = expirationDate < now || store.subscription_status === 'expired';
   // ------------------------------------------------------------------
 
-  return (
+  // app/admin/layout.tsx
 
+  return (
     <>
       {/* 🚀 EL MURO DE CONTENCIÓN (Solo renderiza si es necesario) */}
       <FiscalGatekeeper store={store} />
 
-
-    <div className="flex min-h-screen bg-[#F8F9FA] selection:bg-black selection:text-white relative">
-      {/* Pasamos la tienda y el estado de expiración a la navegación */}
-     <AdminNavigation store={store} />
-      
-      <div className="flex-1 lg:pl-[70px] relative z-10 flex flex-col h-screen overflow-hidden">
+      {/* 🚀 FIX 1: w-full, max-w-full y overflow-x-clip para blindar el viewport sin crear contexto de scroll que rompa sticky */}
+      <div className="flex min-h-screen w-full max-w-full bg-[#F8F9FA] selection:bg-black selection:text-white relative overflow-x-clip">
+        {/* Pasamos la tienda y el estado de expiración a la navegación */}
+        <AdminNavigation store={store} />
         
-       
-
-        {/* 🚀 EL MAGICO CAMPO DE FUERZA (Fieldset) */}
-        <div className="flex-1 overflow-y-auto">
+        {/* 🚀 FIX 2: min-w-0 y w-full eliminan la restricción nativa de flexbox (min-width: auto) que impedía contraer a 375px */}
+        <div className="flex-1 w-full max-w-full min-w-0 lg:pl-[70px] relative z-10 flex flex-col h-screen overflow-hidden">
+          
+          {/* 🚀 FIX 3: overflow-x-hidden explícito para evitar que overflow-y-auto compute automáticamente scroll horizontal */}
+          <div className="flex-1 w-full min-w-0 overflow-y-auto overflow-x-hidden">
+            {/* 🚀 FIX 4: min-w-0 y w-full neutralizan el 'min-inline-size: min-content' nativo del tag <fieldset> */}
             <fieldset 
-                disabled={isExpired} 
-                className={`min-h-full ${isExpired ? 'opacity-80 grayscale-[30%]' : ''}`}
+              disabled={isExpired} 
+              className={`min-h-full w-full min-w-0 border-0 p-0 m-0 ${isExpired ? 'opacity-80 grayscale-[30%]' : ''}`}
             >
-                {children}
+              {children}
             </fieldset>
-        </div>
+          </div>
 
+        </div>
       </div>
-    </div>
     </>
   )
 }

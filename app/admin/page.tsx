@@ -288,8 +288,8 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
     const storeUrl = `${store.slug}.preziso.shop`;
     const isRestaurant = store.store_type === 'restaurant';
 return (
-        /* 🚀 CORRECCIÓN CLAVE: Se removió overflow-x-hidden de aquí para restaurar sticky y el scrollY del header */
-        <div className="min-h-screen w-full bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative">
+     // 🚀 FIX: overflow-x-clip corta el desbordamiento fantasma SIN crear contexto de scroll y SIN romper position: sticky
+<div className="min-h-screen w-full bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative overflow-x-clip">
             <AdminHeader store={store} />
 
             <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 relative z-10">

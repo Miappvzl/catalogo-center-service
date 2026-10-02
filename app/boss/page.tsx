@@ -25,7 +25,10 @@ import {
     ArrowUpRight,
     MessageCircle,
     Tag,
-    Smartphone
+    Smartphone,
+    Percent,
+    Sparkles,
+    Send
 } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabase } from '@/lib/supabase-client'
