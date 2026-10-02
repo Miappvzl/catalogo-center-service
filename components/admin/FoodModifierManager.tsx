@@ -1,8 +1,13 @@
+// components/admin/FoodModifierManager.tsx
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, Circle, CheckSquare, Layers } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Sparkles, Circle, CheckSquare, Layers, ImageIcon, Loader2, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
+import { getSupabase } from '@/lib/supabase-client'
+import { compressImage } from '@/utils/imageOptimizer'
+import { getOptimizedUrl } from '@/utils/cdn'
 import { NumberInput } from '../NumberInput'
 
 export interface ModifierOption {
@@ -10,6 +15,7 @@ export interface ModifierOption {
     name: string
     price_adjustment_usd: number
     is_available: boolean
+    image_url?: string | null // 🚀 SOPORTE FOTOGRÁFICO VISUAL
 }
 
 export interface ModifierGroup {
@@ -30,7 +36,29 @@ interface Props {
 }
 
 export default function FoodModifierManager({ groups, onChange, tourStep, isMission2, onPresetAdded }: Props) {
+    const supabase = getSupabase()
     const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
+    const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null)
+
+    // --- SUBIDA Y COMPRESIÓN DE FOTO DE MODIFICADOR ---
+    const handleOptionImageUpload = async (groupId: string, optionId: string, file: File) => {
+        if (!file.type.startsWith('image/')) return
+        setUploadingOptionId(optionId)
+        try {
+            // Comprime a 400px en alta resolución (ideal para miniaturas de comida)
+            const compressed = await compressImage(file, 400, 0.8)
+            const fileName = `mod-opt-${Date.now()}-${Math.random().toString(36).substring(2)}.jpg`
+            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressed)
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
+            updateOption(groupId, optionId, { image_url: publicUrl })
+        } catch (err) {
+            console.error('Error cargando foto del modificador:', err)
+        } finally {
+            setUploadingOptionId(null)
+        }
+    }
 
     // --- PLANTILLAS PREDEFINIDAS ---
     const addPreset = (type: 'sizes' | 'meat' | 'extras' | 'drinks' | 'exclusions') => {
@@ -44,9 +72,9 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                 min_selections: 1,
                 max_selections: 1,
                 modifier_options: [
-                    { id: `temp-opt-s1`, name: 'Mediana (8 Porciones)', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-s2`, name: 'Grande (10 Porciones)', price_adjustment_usd: 3.5, is_available: true },
-                    { id: `temp-opt-s3`, name: 'Familiar (12 Porciones)', price_adjustment_usd: 6.0, is_available: true },
+                    { id: `temp-opt-s1`, name: 'Mediana (8 Porciones)', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-s2`, name: 'Grande (10 Porciones)', price_adjustment_usd: 3.5, is_available: true, image_url: null },
+                    { id: `temp-opt-s3`, name: 'Familiar (12 Porciones)', price_adjustment_usd: 6.0, is_available: true, image_url: null },
                 ]
             }
         } else if (type === 'extras') {
@@ -57,9 +85,9 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                 min_selections: 0,
                 max_selections: 5,
                 modifier_options: [
-                    { id: `temp-opt-e1`, name: 'Extra Queso Mozzarella', price_adjustment_usd: 1.5, is_available: true },
-                    { id: `temp-opt-e2`, name: 'Tocineta Ahumada', price_adjustment_usd: 2.0, is_available: true },
-                    { id: `temp-opt-e3`, name: 'Borde Relleno de Queso', price_adjustment_usd: 2.5, is_available: true },
+                    { id: `temp-opt-e1`, name: 'Extra Queso Mozzarella', price_adjustment_usd: 1.5, is_available: true, image_url: null },
+                    { id: `temp-opt-e2`, name: 'Tocineta Ahumada', price_adjustment_usd: 2.0, is_available: true, image_url: null },
+                    { id: `temp-opt-e3`, name: 'Borde Relleno de Queso', price_adjustment_usd: 2.5, is_available: true, image_url: null },
                 ]
             }
         } else if (type === 'meat') {
@@ -70,9 +98,9 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                 min_selections: 1,
                 max_selections: 1,
                 modifier_options: [
-                    { id: `temp-opt-m1`, name: 'Término Medio', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-m2`, name: 'Tres Cuartos', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-m3`, name: 'Bien Cocido', price_adjustment_usd: 0, is_available: true },
+                    { id: `temp-opt-m1`, name: 'Término Medio', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-m2`, name: 'Tres Cuartos', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-m3`, name: 'Bien Cocido', price_adjustment_usd: 0, is_available: true, image_url: null },
                 ]
             }
         } else if (type === 'drinks') {
@@ -83,9 +111,9 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                 min_selections: 1,
                 max_selections: 1,
                 modifier_options: [
-                    { id: `temp-opt-d1`, name: 'Coca-Cola Clásica', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-d2`, name: 'Té Frío de la Casa', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-d3`, name: 'Cerveza Nacional (+ $1.50)', price_adjustment_usd: 1.5, is_available: true },
+                    { id: `temp-opt-d1`, name: 'Coca-Cola Clásica', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-d2`, name: 'Té Frío de la Casa', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-d3`, name: 'Cerveza Nacional (+ $1.50)', price_adjustment_usd: 1.5, is_available: true, image_url: null },
                 ]
             }
         } else {
@@ -96,9 +124,9 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                 min_selections: 0,
                 max_selections: 10,
                 modifier_options: [
-                    { id: `temp-opt-x1`, name: 'Sin Cebolla', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-x2`, name: 'Sin Pepinillos', price_adjustment_usd: 0, is_available: true },
-                    { id: `temp-opt-x3`, name: 'Salsas Aparte', price_adjustment_usd: 0, is_available: true },
+                    { id: `temp-opt-x1`, name: 'Sin Cebolla', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-x2`, name: 'Sin Pepinillos', price_adjustment_usd: 0, is_available: true, image_url: null },
+                    { id: `temp-opt-x3`, name: 'Salsas Aparte', price_adjustment_usd: 0, is_available: true, image_url: null },
                 ]
             }
         }
@@ -134,7 +162,8 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
             id: `temp-opt-${crypto.randomUUID()}`,
             name: '',
             price_adjustment_usd: 0,
-            is_available: true
+            is_available: true,
+            image_url: null
         }
         onChange(groups.map(g => {
             if (g.id === groupId) {
@@ -176,7 +205,7 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                             <span>Personalizaciones de Comida</span>
                         </h4>
                         <p className="text-xs text-neutral-600 font-medium mt-0.5">
-                            Preguntas que el comensal responderá al pedir (ej. tamaños de pizza, salsas, extras).
+                            Preguntas que el comensal responderá al pedir (ej. rellenos, tamaños, ingredientes extra).
                         </p>
                     </div>
 
@@ -196,7 +225,6 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                         ⚡ Plantillas Rápidas (Haz clic para insertar):
                     </span>
                     <div className="flex flex-wrap gap-2.5 items-center">
-                        {/* 1. TAMAÑO / PORCIÓN */}
                         <button
                             type="button"
                             id="tour-preset-sizes-btn"
@@ -211,7 +239,6 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                             <span>Tamaño / Porción</span>
                         </button>
 
-                        {/* 2. EXTRAS / TOPPINGS */}
                         <button
                             type="button"
                             id="tour-preset-extras-btn"
@@ -261,18 +288,15 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                             <Layers size={28} className="text-neutral-300" />
                             <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">No has añadido opciones a este plato</p>
                             <p className="text-xs text-neutral-500 max-w-sm">
-                                Haz clic en una de las plantillas rápidas de arriba para crear tus primeros tamaños o ingredientes.
+                                Haz clic en una de las plantillas rápidas de arriba para crear tus primeros tamaños, rellenos o ingredientes.
                             </p>
                         </div>
                     ) : (
                         groups.map((group, idx) => {
                             const isSingleChoice = group.max_selections === 1;
-
-                            // 🚀 IDENTIFICACIÓN SEMÁNTICA: Distinguimos qué grupo es cuál sin importar el orden
                             const isSizesGroup = group.name.toLowerCase().includes('tamaño') || group.id.includes('sizes');
                             const isExtrasGroup = group.name.toLowerCase().includes('extras') || group.id.includes('extras');
 
-                            // Auto-expande el grupo de Tamaños en el paso 2, o el de Extras en el paso 4
                             const isExpanded = expandedGroupId === group.id || 
                                                (isMission2 && ((tourStep === 2 && isSizesGroup) || (tourStep === 4 && isExtrasGroup)));
 
@@ -348,7 +372,7 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                         type="text"
                                                         value={group.name}
                                                         onChange={(e) => updateGroup(group.id, { name: e.target.value })}
-                                                        placeholder="Ej: ¿Qué tamaño deseas?, Elige tus extras..."
+                                                        placeholder="Ej: ¿Qué relleno deseas?, Elige tus extras..."
                                                         className="w-full bg-white border border-neutral-300 focus:border-neutral-950 rounded-lg px-3.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-all shadow-xs"
                                                     />
                                                 </div>
@@ -362,7 +386,6 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                             : ''
                                                     }`}
                                                 >
-                                                    {/* Selector: Único vs Múltiple */}
                                                     <div className="space-y-1.5">
                                                         <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">
                                                             ¿Cómo debe elegir el cliente?
@@ -415,7 +438,6 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                         )}
                                                     </div>
 
-                                                    {/* Switch Obligatorio */}
                                                     <div className="space-y-1.5">
                                                         <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">
                                                             ¿Es obligatorio responder?
@@ -443,7 +465,7 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                     </div>
                                                 </div>
 
-                                                {/* 3. LISTADO DE OPCIONES / INGREDIENTES */}
+                                                {/* 3. LISTADO DE OPCIONES / INGREDIENTES CON SOPORTE VISUAL */}
                                                 <div 
                                                     id={isSizesGroup ? 'tour-modifier-options-sizes' : `tour-modifier-options-${idx}`} 
                                                     className={`space-y-2.5 pt-1 transition-all scroll-mt-28 md:scroll-mt-32 ${
@@ -465,14 +487,15 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                         {group.modifier_options.map((opt, optIdx) => (
                                                             <div 
                                                                 key={opt.id} 
-                                                                className={`p-2.5 rounded-xl border transition-all space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3 ${
+                                                                className={`p-2.5 rounded-xl border transition-all space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2.5 ${
                                                                     opt.is_available 
                                                                         ? 'bg-white border-neutral-200/90 shadow-2xs hover:border-neutral-300' 
                                                                         : 'bg-neutral-100/70 border-neutral-200 opacity-60'
                                                                 }`}
                                                             >
-                                                                {/* FILA 1 (Móvil) / LADO IZQUIERDO (Desktop): Estado + Nombre */}
+                                                                {/* FILA 1 (Móvil) / LADO IZQUIERDO (Desktop): Estado + Foto + Nombre */}
                                                                 <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                    {/* Switch Disponibilidad */}
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => updateOption(group.id, opt.id, { is_available: !opt.is_available })}
@@ -486,11 +509,57 @@ export default function FoodModifierManager({ groups, onChange, tourStep, isMiss
                                                                         {opt.is_available ? 'Activo' : 'Agotado'}
                                                                     </button>
 
+                                                                    {/* 🚀 MICRO-CARGADOR DE FOTO DE MODIFICADOR (38x38 px) */}
+                                                                    <div className="relative shrink-0">
+                                                                        <input
+                                                                            type="file"
+                                                                            id={`file-opt-${group.id}-${opt.id}`}
+                                                                            className="hidden"
+                                                                            accept="image/*"
+                                                                            onChange={(e) => e.target.files && handleOptionImageUpload(group.id, opt.id, e.target.files[0])}
+                                                                        />
+
+                                                                        {opt.image_url ? (
+                                                                            <div className="relative w-9 h-9 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 group/img shrink-0">
+                                                                                <Image
+                                                                                    src={getOptimizedUrl(opt.image_url)}
+                                                                                    alt={opt.name || "Opción"}
+                                                                                    fill
+                                                                                    sizes="36px"
+                                                                                    className="object-cover"
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateOption(group.id, opt.id, { image_url: null })}
+                                                                                    className="absolute inset-0 bg-neutral-950/70 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                                                                    title="Eliminar foto"
+                                                                                >
+                                                                                    <X size={13} strokeWidth={2.5} />
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => document.getElementById(`file-opt-${group.id}-${opt.id}`)?.click()}
+                                                                                disabled={uploadingOptionId === opt.id}
+                                                                                className="w-9 h-9 rounded-lg border border-dashed border-neutral-300 hover:border-neutral-900 bg-neutral-50 hover:bg-white flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-colors shrink-0"
+                                                                                title="Añadir foto del extra / relleno"
+                                                                            >
+                                                                                {uploadingOptionId === opt.id ? (
+                                                                                    <Loader2 size={13} className="animate-spin text-neutral-600" />
+                                                                                ) : (
+                                                                                    <ImageIcon size={14} strokeWidth={2} />
+                                                                                )}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Input Nombre de la Opción */}
                                                                     <input
                                                                         type="text"
                                                                         value={opt.name}
                                                                         onChange={(e) => updateOption(group.id, opt.id, { name: e.target.value })}
-                                                                        placeholder={`Opción ${optIdx + 1} (Ej: Extra Queso...)`}
+                                                                        placeholder={`Opción ${optIdx + 1} (Ej: Relleno de Pollo, Tocineta...)`}
                                                                         className="flex-1 min-w-0 bg-transparent border-none text-xs font-bold text-neutral-900 outline-none px-1 placeholder:text-neutral-400"
                                                                     />
                                                                 </div>

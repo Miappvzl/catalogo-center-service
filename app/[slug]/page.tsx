@@ -144,6 +144,7 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
   const supabase = isPreview ? createUncachedClient() : createPublicCachedClient()
 
   // 🚀 CONSULTA PARALELA O(1): Inyectamos colecciones activas e ítems vinculados
+ // 🚀 CONSULTA PARALELA O(1): Inyectamos image_url en modifier_options
   const [productsResponse, ratesResponse, promotionsResponse, collectionsResponse] = await Promise.all([
     supabase
       .from('products')
@@ -154,7 +155,7 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
           display_order,
           modifier_groups(
             id, name, is_required, min_selections, max_selections,
-            modifier_options(id, name, price_adjustment_usd, is_available, display_order)
+            modifier_options(id, name, price_adjustment_usd, is_available, display_order, image_url)
           )
         )
       `)

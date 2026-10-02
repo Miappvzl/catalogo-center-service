@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck } from 'lucide-react'
+import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck, Store } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
@@ -56,7 +56,7 @@ interface Order {
     liquid_amount_usd?: number;
     customer_id?: string | null;
     vuelto_processed?: boolean;
-     fulfillment_type?: string | null;
+    fulfillment_type?: string | null;
     table_number?: string | null;
     tip_amount_usd?: number;
 }
@@ -124,15 +124,17 @@ export default function OrdersPage() {
 
     const [storeId, setStoreId] = useState<string | null>(null)
     const [storeSlug, setStoreSlug] = useState<string | null>(null)
+    const [storeType, setStoreType] = useState<string>('retail') // 🚀 NUEVO: Memoria semántica
 
     useEffect(() => {
         const initStore = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-                const { data: store } = await supabase.from('stores').select('id, slug').eq('user_id', user.id).single()
+                const { data: store } = await supabase.from('stores').select('id, slug, store_type').eq('user_id', user.id).single()
                 if (store) {
                     setStoreId(store.id)
                     setStoreSlug(store.slug)
+                    setStoreType(store.store_type || 'retail') // 🚀 Guardamos el contexto de negocio
                 }
             }
         }
@@ -151,10 +153,10 @@ export default function OrdersPage() {
         navigator.clipboard.writeText(link)
         setCopiedQuote(orderId)
         setTimeout(() => setCopiedQuote(null), 2000)
-        Swal.fire({ 
-            toast: true, position: 'top-end', icon: 'success', title: 'Enlace copiado', 
-            showConfirmButton: false, timer: 1500, 
-            customClass: { popup: 'rounded-xl text-xs font-semibold bg-neutral-900 text-white border border-neutral-800' } 
+        Swal.fire({
+            toast: true, position: 'top-end', icon: 'success', title: 'Enlace copiado',
+            showConfirmButton: false, timer: 1500,
+            customClass: { popup: 'rounded-xl text-xs font-semibold bg-neutral-900 text-white border border-neutral-800' }
         })
     }
 
@@ -202,11 +204,11 @@ export default function OrdersPage() {
             setLoadingMore(false)
         }
     }, [supabase, storeId])
-useEffect(() => {
-        if (storeId) { 
-            fetchOrders(0, true); 
-            fetchKPIs(); 
-            
+    useEffect(() => {
+        if (storeId) {
+            fetchOrders(0, true);
+            fetchKPIs();
+
             // 🚀 MOTOR DE DEEPLINKING (Auto-apertura desde CRM)
             const targetOrderId = searchParams.get('drawer');
             if (targetOrderId) {
@@ -220,7 +222,7 @@ useEffect(() => {
                             setSelectedOrder(data as Order);
                             setTrackingInput(data.tracking_number || '');
                             setIsDrawerOpen(true);
-                            
+
                             // Limpiamos la URL silenciosamente sin recargar la página para mantener la UI limpia
                             window.history.replaceState(null, '', '/admin/orders');
                         }
@@ -235,9 +237,9 @@ useEffect(() => {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` }, async (payload: any) => {
                 const { data: newOrder } = await supabase.from('orders').select('*, order_items(*)').eq('id', payload.new.id).single()
                 if (newOrder) {
-                    const Toast = Swal.mixin({ 
-                        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, 
-                        customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+                    const Toast = Swal.mixin({
+                        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
+                        customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
                     })
                     Toast.fire({ icon: 'info', title: `¡Nuevo pedido de ${newOrder.customer_name}!` })
                     setOrders(prev => [newOrder as Order, ...prev])
@@ -278,10 +280,10 @@ useEffect(() => {
             const { error } = await supabase.from('orders').update(payload).eq('id', orderId)
             if (error) throw error
 
-            Swal.fire({ 
-                toast: true, position: 'top-end', icon: 'success', title: 'Actualizado', 
-                showConfirmButton: false, timer: 1500, 
-                customClass: { popup: 'rounded-xl font-semibold text-xs bg-neutral-900 text-white border border-neutral-800' } 
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Actualizado',
+                showConfirmButton: false, timer: 1500,
+                customClass: { popup: 'rounded-xl font-semibold text-xs bg-neutral-900 text-white border border-neutral-800' }
             })
             fetchKPIs()
         } catch (error) {
@@ -325,10 +327,10 @@ useEffect(() => {
             const { error } = await supabase.from('orders').update(payload).eq('id', reconcileModal.orderId)
             if (error) throw error
 
-            Swal.fire({ 
-                toast: true, position: 'top-end', icon: 'success', title: 'Pago Conciliado', 
-                showConfirmButton: false, timer: 2000, 
-                customClass: { popup: 'rounded-xl bg-neutral-900 text-white text-xs font-semibold border border-neutral-800' } 
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Pago Conciliado',
+                showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'rounded-xl bg-neutral-900 text-white text-xs font-semibold border border-neutral-800' }
             })
             fetchKPIs()
         } catch (e) {
@@ -361,7 +363,7 @@ useEffect(() => {
 
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-900 selection:text-white">
-            
+
             {/* 🚀 HEADER CLEANLOOK */}
             <div className="bg-[#F6F6F6]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-3">
@@ -380,7 +382,7 @@ useEffect(() => {
 
             <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
                 <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6 md:space-y-8">
-                    
+
                     {/* 🚀 KPI CARDS (Bento Grid Style) */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 w-full">
                         <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
@@ -403,7 +405,7 @@ useEffect(() => {
 
                     {/* 🚀 FILTROS Y BÚSQUEDA */}
                     <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
-                        
+
                         {/* Pill Tabs */}
                         <div className="flex bg-neutral-100/50 p-1 rounded-lg border border-neutral-200/50 shrink-0 w-full overflow-x-auto no-scrollbar lg:w-auto max-w-full">
                             {['all', 'quote', 'pending', 'paid', 'shipped'].map(status => (
@@ -443,38 +445,44 @@ useEffect(() => {
                             <div className="md:hidden space-y-3 w-full">
                                 {filteredOrders.map(order => (
                                     <div key={order.id} onClick={() => openDrawer(order)} className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:border-neutral-300 p-4.5 active:bg-neutral-50 transition-all cursor-pointer w-full relative">
-                                        
+
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="min-w-0 pr-2">
                                                 <p className="text-xs font-bold text-neutral-900 truncate font-mono">#{order.order_number}</p>
                                                 <p className="text-[10px] text-neutral-400 font-mono truncate mb-2">{new Date(order.created_at).toLocaleDateString()}</p>
-                                                
+
                                                 <div className="flex gap-1.5 flex-wrap">
                                                     {/* Etiquetas de Origen */}
                                                     {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span> :
                                                         order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span> :
                                                             <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>}
 
-                                                            {order.fulfillment_type === 'dine_in' ? (
-    <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
-        Mesa {order.table_number || 'N/A'}
-    </span>
-) : order.fulfillment_type === 'pickup' ? (
-    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
-        Para Llevar
-    </span>
-) : order.fulfillment_type === 'local_delivery' || order.fulfillment_type === 'delivery' ? (
-    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
-        Delivery
-    </span>
-) : null}
-                                                    
+
+                                                    {/* LÓGICA LOGÍSTICA OMNICANAL */}
+                                                    {order.fulfillment_type === 'dine_in' ? (
+                                                        <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                            Mesa {order.table_number || 'N/A'}
+                                                        </span>
+                                                    ) : order.fulfillment_type === 'pickup' ? (
+                                                        <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                            {storeType === 'restaurant' ? 'Para Llevar' : 'Retiro Local'}
+                                                        </span>
+                                                    ) : order.fulfillment_type === 'shipping' ? (
+                                                        <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                            Envío Nacional
+                                                        </span>
+                                                    ) : order.fulfillment_type === 'local_delivery' || order.fulfillment_type === 'delivery' ? (
+                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                            Delivery
+                                                        </span>
+                                                    ) : null}
+
                                                     {order.payment_method && (
                                                         <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/50 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                             {order.payment_method}
                                                         </span>
                                                     )}
-                                                    
+
                                                     {/* Etiqueta Contable de Vuelto Virtual */}
                                                     {order.delivery_info?.includes('⚠️ VUELTO VIRTUAL') && (
                                                         order.vuelto_processed ? (
@@ -532,19 +540,19 @@ useEffect(() => {
                                         <tbody className="divide-y divide-neutral-100">
                                             {filteredOrders.map(order => (
                                                 <tr key={order.id} onClick={() => openDrawer(order)} className="hover:bg-neutral-50/40 transition-colors cursor-pointer group">
-                                                   <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="font-bold text-xs font-mono text-neutral-900 group-hover:text-black transition-colors block mb-2">#{order.order_number}</span>
                                                         <div className="flex gap-1.5 flex-wrap max-w-40">
                                                             {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span> :
                                                                 order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span> :
                                                                     <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>}
-                                                            
+
                                                             {order.payment_method && (
                                                                 <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/50 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                                     {order.payment_method}
                                                                 </span>
                                                             )}
-                                                            
+
                                                             {/* Etiqueta Contable de Vuelto Virtual */}
                                                             {order.delivery_info?.includes('⚠️ VUELTO VIRTUAL') && (
                                                                 order.vuelto_processed ? (
@@ -616,19 +624,19 @@ useEffect(() => {
                 {isDrawerOpen && selectedOrder && (
                     <div className="fixed inset-0 z-[100] flex justify-end">
                         {/* Backdrop Cleanlook */}
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }} 
-                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs" 
-                            onClick={() => setIsDrawerOpen(false)} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
+                            onClick={() => setIsDrawerOpen(false)}
                         />
 
-                        <motion.div 
-                            initial={{ x: '100%' }} 
-                            animate={{ x: 0 }} 
-                            exit={{ x: '100%' }} 
-                            transition={{ type: 'spring', damping: 30, stiffness: 300 }} 
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                             className="relative w-full md:w-[480px] bg-[#FAFAFC] h-full flex flex-col shadow-2xl border-l border-neutral-200/50"
                         >
                             {/* Header del Drawer */}
@@ -646,7 +654,7 @@ useEffect(() => {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 no-scrollbar">
-                                
+
                                 {/* Tarjeta de Estado del Documento */}
                                 <div className="p-4 bg-white border border-neutral-200/50 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col gap-4">
                                     <div className="flex items-center gap-3.5">
@@ -666,7 +674,7 @@ useEffect(() => {
                                             </p>
                                         </div>
                                     </div>
-                                   <div className="flex flex-col gap-2 mt-1">
+                                    <div className="flex flex-col gap-2 mt-1">
                                         <div className="flex gap-2">
                                             <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-2.5 bg-white border border-neutral-200/50 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 text-neutral-700 active:scale-95 shadow-xs">
                                                 {copiedQuote === selectedOrder.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />} Copiar Link
@@ -677,7 +685,7 @@ useEffect(() => {
                                         </div>
 
                                         {/* DISPARADOR DE COMANDA TERMICA DE COCINA */}
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => window.print()}
                                             className="w-full py-2.5 bg-neutral-950 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
@@ -741,17 +749,17 @@ useEffect(() => {
                                     </div>
                                 )}
 
-                               {/* Resumen Financiero y Cliente */}
+                                {/* Resumen Financiero y Cliente */}
                                 <div className={`flex justify-between items-start pt-5 border-t border-neutral-200/50 ${selectedOrder.status === 'quote' && 'mt-5'}`}>
                                     <div className="min-w-0 pr-4 space-y-1">
                                         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Cliente</p>
                                         <p className="font-bold text-sm text-neutral-900 wrap-break-word">{selectedOrder.customer_name}</p>
                                         {selectedOrder.customer_phone && (
-                                            <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" 
-                                              className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 mt-1.5 w-fit bg-emerald-50 border border-emerald-100/40 px-2 py-1 rounded truncate transition-colors"
+                                            <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 mt-1.5 w-fit bg-emerald-50 border border-emerald-100/40 px-2 py-1 rounded truncate transition-colors"
                                             >
-                                              <WhatsAppIcon size={12} className="shrink-0 fill-current" /> 
-                                              <span className="truncate font-mono">{selectedOrder.customer_phone}</span>
+                                                <WhatsAppIcon size={12} className="shrink-0 fill-current" />
+                                                <span className="truncate font-mono">{selectedOrder.customer_phone}</span>
                                             </a>
                                         )}
                                     </div>
@@ -762,7 +770,7 @@ useEffect(() => {
                                             ${Number(selectedOrder?.total_usd || 0).toFixed(2)}
                                         </p>
 
-                                     {/* 🚀 DESGLOSE DE PROPINA AISLADO Y LIMPIO */}
+                                        {/* 🚀 DESGLOSE DE PROPINA AISLADO Y LIMPIO */}
                                         {Number(selectedOrder?.tip_amount_usd || 0) > 0 && (
                                             <div className="mt-1.5 mb-1.5 flex flex-col items-end">
                                                 <div className="flex items-center gap-2 text-[10px]">
@@ -796,20 +804,21 @@ useEffect(() => {
                                     </div>
                                 </div>
 
-                            {/* MODALIDAD DE ENTREGA / SERVICIO EN SALA */}
+                                {/* MODALIDAD DE ENTREGA OMNICANAL */}
                                 <div className="bg-white rounded-xl p-5 space-y-4 border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
-                                            {selectedOrder.fulfillment_type === 'dine_in' ? 'Servicio en Sala' : 
-                                             selectedOrder.fulfillment_type === 'pickup' ? 'Para Llevar' : 'Destino de Entrega'}
+                                            {selectedOrder.fulfillment_type === 'dine_in' ? 'Servicio en Sala' :
+                                                selectedOrder.fulfillment_type === 'pickup' ? (storeType === 'restaurant' ? 'Para Llevar' : 'Retiro Personal') :
+                                                    selectedOrder.fulfillment_type === 'shipping' ? 'Agencia de Envío Nacional' : 'Destino de Entrega (Delivery)'}
                                         </p>
                                         <div className="flex items-start gap-3 bg-neutral-50/50 p-3.5 rounded-lg border border-neutral-200/50">
                                             {/* Icono Dinámico */}
                                             <div className="p-2 bg-white rounded-md border border-neutral-200 shadow-xs shrink-0 text-neutral-700">
-                                                {selectedOrder.fulfillment_type === 'dine_in' ? <MapPin size={16} /> : 
-                                                 selectedOrder.fulfillment_type === 'pickup' ? <Package size={16} /> : <Truck size={16} />}
+                                                {selectedOrder.fulfillment_type === 'dine_in' ? <MapPin size={16} /> :
+                                                    selectedOrder.fulfillment_type === 'pickup' ? <Store size={16} /> : <Truck size={16} />}
                                             </div>
-                                            
+
                                             <div className="text-xs font-medium text-neutral-700 leading-snug flex-1 wrap-break-word">
                                                 {selectedOrder.fulfillment_type === 'dine_in' ? (
                                                     <div className="flex flex-col gap-0.5">
@@ -820,8 +829,12 @@ useEffect(() => {
                                                     </div>
                                                 ) : selectedOrder.fulfillment_type === 'pickup' ? (
                                                     <div className="flex flex-col gap-0.5">
-                                                        <span className="font-black text-neutral-900 uppercase tracking-wide">Retiro en Barra</span>
-                                                        <span className="text-[11px] text-neutral-500">El cliente pasará buscando el pedido.</span>
+                                                        <span className="font-black text-neutral-900 uppercase tracking-wide">
+                                                            {storeType === 'restaurant' ? 'Retiro en Barra' : 'Retiro en Tienda Física'}
+                                                        </span>
+                                                        <span className="text-[11px] text-neutral-500">
+                                                            {storeType === 'restaurant' ? 'El cliente pasará buscando el pedido.' : 'El cliente retirará su paquete en el local.'}
+                                                        </span>
                                                     </div>
                                                 ) : (
                                                     <p className="mt-1">{selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Detalles en descripción'}</p>
@@ -849,7 +862,7 @@ useEffect(() => {
 
                                         if (vueltoMatch) {
                                             const [_, expectedChange, tenderedAmount, userEmail] = vueltoMatch;
-                                            
+
                                             return (
                                                 <div className="mt-3 p-4 bg-white border border-amber-200/50 rounded-lg shadow-xs flex flex-col gap-3.5">
                                                     <div className="flex items-start gap-2.5">
@@ -866,8 +879,8 @@ useEffect(() => {
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    
-                                                    <button 
+
+                                                    <button
                                                         onClick={() => setCreditModalOpen(true)}
                                                         className="w-full bg-neutral-950 hover:bg-black text-white rounded-lg py-2.5 text-[11px] font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98]"
                                                     >
@@ -880,10 +893,10 @@ useEffect(() => {
                                     })()}
                                 </div>
 
-                               {/* Artículos / Comanda de Cocina */}
+                                {/* Artículos / Comanda de Cocina */}
                                 <div>
                                     <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5">
-                                        Comanda de Pedido ({selectedOrder.order_items.length})
+                                        {storeType === 'restaurant' ? 'Comanda de Pedido' : 'Artículos del Pedido'} ({selectedOrder.order_items.length})
                                     </p>
                                     <div className="space-y-2 mb-2">
                                         {selectedOrder.order_items.map((item) => {
@@ -949,14 +962,13 @@ useEffect(() => {
                                     <div className="flex flex-wrap gap-2 w-full">
                                         {['pending', 'paid', 'shipped', 'cancelled'].map(status => (
                                             <button
-                                                key={status} 
-                                                onClick={() => handleStatusClick(selectedOrder.id, status)} 
+                                                key={status}
+                                                onClick={() => handleStatusClick(selectedOrder.id, status)}
                                                 disabled={updatingId === selectedOrder.id || (selectedOrder.status === status && status !== 'shipped')}
-                                                className={`flex-1 min-w-[100px] px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
-                                                    selectedOrder.status === status 
-                                                        ? 'bg-neutral-950 text-white shadow-xs opacity-100' 
+                                                className={`flex-1 min-w-[100px] px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${selectedOrder.status === status
+                                                        ? 'bg-neutral-950 text-white shadow-xs opacity-100'
                                                         : 'bg-white text-neutral-500 hover:text-neutral-900 border border-neutral-200/50 hover:bg-neutral-50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]'
-                                                }`}
+                                                    }`}
                                             >
                                                 {updatingId === selectedOrder.id && selectedOrder.status !== status ? <Loader2 size={12} className="animate-spin" /> : null}
                                                 {status === 'pending' ? 'Pendiente' : status === 'paid' ? 'Pagado' : status === 'shipped' ? 'Enviado' : 'Cancelar'}
@@ -975,17 +987,17 @@ useEffect(() => {
             <AnimatePresence>
                 {reconcileModal.isOpen && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }} 
-                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs" 
-                            onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
+                            onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })}
                         />
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.96, y: 15 }} 
-                            animate={{ opacity: 1, scale: 1, y: 0 }} 
-                            exit={{ opacity: 0, scale: 0.96, y: 15 }} 
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 15 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 15 }}
                             className="relative bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col p-6 md:p-8 border border-neutral-200/50"
                         >
                             <div className="space-y-1 mb-5">
@@ -999,25 +1011,24 @@ useEffect(() => {
                                     <div className="flex flex-wrap gap-1.5">
                                         {['Pago Móvil', 'Transferencia', 'Zelle', 'Efectivo', 'Binance', 'Zinli', 'WallyTech', 'Otro'].map(pm => (
                                             <button
-                                                key={pm} 
+                                                key={pm}
                                                 onClick={() => setReconcileModal({ ...reconcileModal, method: pm })}
-                                                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all border ${
-                                                    reconcileModal.method === pm 
-                                                        ? 'bg-neutral-950 text-white border-transparent shadow-xs' 
+                                                className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all border ${reconcileModal.method === pm
+                                                        ? 'bg-neutral-950 text-white border-transparent shadow-xs'
                                                         : 'bg-neutral-50/50 text-neutral-600 border-neutral-200/50 hover:bg-neutral-100 hover:text-neutral-900'
-                                                }`}
+                                                    }`}
                                             >
                                                 {pm}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2 block">Referencia (Opcional)</label>
                                     <input
-                                        type="text" 
-                                        value={reconcileModal.reference} 
+                                        type="text"
+                                        value={reconcileModal.reference}
                                         onChange={(e) => setReconcileModal({ ...reconcileModal, reference: e.target.value })}
                                         placeholder="Ej: 123456"
                                         className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 outline-none transition-all placeholder:text-neutral-300 font-mono"
@@ -1046,11 +1057,10 @@ useEffect(() => {
                                                     <button
                                                         key={pct}
                                                         onClick={() => setReconcileModal({ ...reconcileModal, retentionPct: pct })}
-                                                        className={`flex-1 py-1.5 rounded-md text-[11px] font-semibold transition-all border ${
-                                                            reconcileModal.retentionPct === pct 
-                                                                ? 'bg-neutral-950 text-white border-transparent shadow-xs' 
+                                                        className={`flex-1 py-1.5 rounded-md text-[11px] font-semibold transition-all border ${reconcileModal.retentionPct === pct
+                                                                ? 'bg-neutral-950 text-white border-transparent shadow-xs'
                                                                 : 'bg-neutral-50/50 text-neutral-500 border-neutral-200/50 hover:bg-neutral-100'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {pct === 0 ? 'No Aplica' : `${pct}%`}
                                                     </button>
@@ -1078,18 +1088,18 @@ useEffect(() => {
                                 })()}
 
                                 <div className="flex gap-2 mt-2 pt-4 border-t border-neutral-100">
-                                    <button 
-                                        onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })} 
+                                    <button
+                                        onClick={() => setReconcileModal({ ...reconcileModal, isOpen: false })}
                                         className="flex-1 bg-white border border-neutral-200/50 text-neutral-600 font-semibold text-[11px] py-2.5 rounded-lg hover:bg-neutral-50 transition-all"
                                     >
                                         Cancelar
                                     </button>
-                                    <button 
-                                        onClick={processReconciliation} 
-                                        disabled={updatingId === reconcileModal.orderId} 
+                                    <button
+                                        onClick={processReconciliation}
+                                        disabled={updatingId === reconcileModal.orderId}
                                         className="flex-1 bg-neutral-950 text-white font-semibold text-[11px] py-2.5 rounded-lg shadow-xs hover:bg-black active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
                                     >
-                                        {updatingId === reconcileModal.orderId ? <Loader2 size={14} className="animate-spin" /> : <DollarSign size={14} />} 
+                                        {updatingId === reconcileModal.orderId ? <Loader2 size={14} className="animate-spin" /> : <DollarSign size={14} />}
                                         Confirmar Pago
                                     </button>
                                 </div>
@@ -1164,8 +1174,10 @@ useEffect(() => {
                 <div id="thermal-receipt" className="hidden">
                     {/* Encabezado del Comercio */}
                     <div className="text-center pb-2 border-b-2 border-black">
-                        <h2 className="text-sm font-black uppercase tracking-wider">{storeSlug || 'RESTAURANTE'}</h2>
-                        <p className="text-[10px] font-bold mt-0.5">COMPROBANTE DE COCINA / DESPACHO</p>
+                        <h2 className="text-sm font-black uppercase tracking-wider">{storeSlug || 'TIENDA'}</h2>
+                        <p className="text-[10px] font-bold mt-0.5">
+                            {storeType === 'restaurant' ? 'COMPROBANTE DE COCINA / DESPACHO' : 'RECIBO DE DESPACHO'}
+                        </p>
                     </div>
 
                     {/* Ficha Destacada del Pedido */}
@@ -1183,12 +1195,17 @@ useEffect(() => {
                             </div>
                         ) : selectedOrder.fulfillment_type === 'pickup' ? (
                             <div>
-                                <p className="text-xs font-black uppercase">MODALIDAD: PARA LLEVAR</p>
-                                <p className="text-[10px] font-bold">RETIRO DIRECTO EN BARRA</p>
+                                <p className="text-xs font-black uppercase">MODALIDAD: {storeType === 'restaurant' ? 'PARA LLEVAR' : 'RETIRO PERSONAL'}</p>
+                                <p className="text-[10px] font-bold">{storeType === 'restaurant' ? 'RETIRO DIRECTO EN BARRA' : 'RETIRO EN TIENDA FISICA'}</p>
+                            </div>
+                        ) : selectedOrder.fulfillment_type === 'shipping' ? (
+                            <div>
+                                <p className="text-xs font-black uppercase">MODALIDAD: ENVIO NACIONAL</p>
+                                <p className="text-[10px] leading-tight mt-0.5">{selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Direccion no provista'}</p>
                             </div>
                         ) : (
                             <div>
-                                <p className="text-xs font-black uppercase">MODALIDAD: DELIVERY</p>
+                                <p className="text-xs font-black uppercase">MODALIDAD: DELIVERY LOCAL</p>
                                 <p className="text-[10px] leading-tight mt-0.5">{selectedOrder.delivery_info?.split(' | ⚠️ ')[0] || 'Direccion no provista'}</p>
                             </div>
                         )}
@@ -1261,11 +1278,11 @@ useEffect(() => {
 
                     {/* Pie de Comanda */}
                     <div className="text-center pt-2 text-[9px]">
-                        <p className="font-bold">PREZISO POS - SISTEMA GASTRONOMICO</p>
+                        <p className="font-bold">PREZISO POS - {storeType === 'restaurant' ? 'SISTEMA GASTRONOMICO' : 'SISTEMA COMERCIAL'}</p>
                     </div>
                 </div>
             )}
         </div>
-        
+
     )
 }

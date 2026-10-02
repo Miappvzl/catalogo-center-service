@@ -15,6 +15,7 @@ export interface ModifierOption {
     name: string
     price_adjustment_usd: number
     is_available: boolean
+    image_url?: string | null // 🚀 SOPORTE FOTOGRÁFICO DE OPCIONES
 }
 
 export interface ModifierGroup {
@@ -71,42 +72,49 @@ export default function ProductFoodModal({
     const [isDesktop, setIsDesktop] = useState(false)
     const modalHeroRef = useRef<HTMLDivElement>(null)
 
+    // 🚀 HERO IMAGE SWAPPING REACTIVO: Si el comensal selecciona un relleno o extra con foto, cambia la foto principal
+    const activeDisplayImage = useMemo(() => {
+        const allSelected = Object.values(selectedOptions).flat()
+        // Busca la última opción seleccionada que posea fotografía propia
+        const optionWithImage = [...allSelected].reverse().find((opt) => opt.image_url)
+        return optionWithImage?.image_url || product?.image_url || ''
+    }, [selectedOptions, product?.image_url])
 
-// 🚀 INTERCEPTOR NATIVO: Control de gestos móviles
+    // Interceptor nativo para gestos móviles (botón atrás)
     useEffect(() => {
-        if (!isOpen) return;
-        const modalId = `food-modal-${Date.now()}`;
-        window.history.pushState({ modalId }, '');
+        if (!isOpen) return
+        const modalId = `food-modal-${Date.now()}`
+        window.history.pushState({ modalId }, '')
 
         const handlePopState = () => {
-            onClose();
-        };
+            onClose()
+        }
 
-        window.addEventListener('popstate', handlePopState);
+        window.addEventListener('popstate', handlePopState)
 
         return () => {
-            window.removeEventListener('popstate', handlePopState);
+            window.removeEventListener('popstate', handlePopState)
             if (window.history.state?.modalId === modalId) {
-                window.history.go(-1);
+                window.history.go(-1)
             }
-        };
-    }, [isOpen, onClose]);
+        }
+    }, [isOpen, onClose])
 
-    // 🚀 CONTROLADOR DEL SCROLL DE FONDO (Bloqueo absoluto de lienzo)
+    // Bloqueo de scroll del fondo
     useEffect(() => {
         if (isOpen) {
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden'
+            document.body.style.overflow = 'hidden'
         } else {
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
+            document.documentElement.style.overflow = ''
+            document.body.style.overflow = ''
         }
 
         return () => {
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
-        };
-    }, [isOpen]);
+            document.documentElement.style.overflow = ''
+            document.body.style.overflow = ''
+        }
+    }, [isOpen])
 
     useEffect(() => {
         const handleResize = () => setIsDesktop(window.innerWidth >= 768)
@@ -204,9 +212,10 @@ export default function ProductFoodModal({
 
         if (!product) return
 
+        // 🚀 La animación de volar al carrito usa la foto del relleno/extra seleccionado
         if (modalHeroRef.current) {
             const startRect = modalHeroRef.current.getBoundingClientRect()
-            const src = product.image_url ? getOptimizedUrl(product.image_url) : ''
+            const src = activeDisplayImage ? getOptimizedUrl(activeDisplayImage) : ''
             document.dispatchEvent(new CustomEvent('flyToCart', { detail: { startRect, src } }))
         }
 
@@ -247,7 +256,7 @@ export default function ProductFoodModal({
                         aria-hidden="true" 
                     />
 
-                    {/* CAJÓN LATERAL DERECHO (SLIDE-OVER DRAWER DE 840PX EN DESKTOP) */}
+                    {/* CAJÓN LATERAL DERECHO */}
                     <motion.div
                         key="food-modal-sheet-panel"
                         custom={isDesktop}
@@ -267,15 +276,14 @@ export default function ProductFoodModal({
                                 : 'w-full h-[100dvh] max-h-[100dvh] flex flex-col'
                         }`}
                     >
-                       {/* ========================================================= */}
-                        {/* MITAD IZQUIERDA: FOTO DEL PLATO COMPLETA (SIN ZOOM NI RECORTE) */}
+                        {/* ========================================================= */}
+                        {/* MITAD IZQUIERDA (DESKTOP): HERO CON CROSS-FADE DINÁMICO   */}
                         {/* ========================================================= */}
                         {isDesktop && (
                             <div 
                                 ref={modalHeroRef}
                                 className="col-span-5 h-full relative overflow-hidden bg-[var(--store-bg)] border-r border-[var(--store-border)]/40 flex flex-col justify-between p-6 select-none"
                             >
-                                {/* Fila Superior: Botón Favorito y Tiempo de Cocina */}
                                 <div className="relative z-10 flex items-center justify-between">
                                     <button
                                         type="button"
@@ -296,25 +304,35 @@ export default function ProductFoodModal({
                                     )}
                                 </div>
 
-                                {/* Contenedor de Imagen: object-contain para ver el plato al 100% */}
-                                <div className="relative w-full flex-1 flex items-center justify-center my-auto min-h-0 p-4">
-                                    {product.image_url ? (
-                                        <Image
-                                            src={getOptimizedUrl(product.image_url)}
-                                            alt={product.name}
-                                            fill
-                                            priority
-                                            sizes="450px"
-                                            className="object-contain p-2 drop-shadow-xl"
-                                        />
-                                    ) : (
-                                        <div className="text-[var(--store-surface-text)] font-mono text-xs opacity-50">
-                                            FOTOGRAFIA NO DISPONIBLE
-                                        </div>
-                                    )}
+                                {/* Contenedor con Transición Cross-Fade */}
+                                <div className="relative w-full flex-1 flex items-center justify-center my-auto min-h-0 p-4 overflow-hidden">
+                                    <AnimatePresence mode="wait">
+                                        {activeDisplayImage ? (
+                                            <motion.div
+                                                key={activeDisplayImage}
+                                                initial={{ opacity: 0, scale: 0.96 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.96 }}
+                                                transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+                                                className="relative w-full h-full flex items-center justify-center"
+                                            >
+                                                <Image
+                                                    src={getOptimizedUrl(activeDisplayImage)}
+                                                    alt={product.name}
+                                                    fill
+                                                    priority
+                                                    sizes="450px"
+                                                    className="object-contain p-2 drop-shadow-xl"
+                                                />
+                                            </motion.div>
+                                        ) : (
+                                            <div className="text-[var(--store-surface-text)] font-mono text-xs opacity-50">
+                                                FOTOGRAFIA NO DISPONIBLE
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
 
-                                {/* Base: Categoría y Precio Base */}
                                 <div className="relative z-10 pt-3 border-t border-[var(--store-border)]/40 flex items-center justify-between">
                                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--store-surface-text)] font-mono">
                                         {product.category || 'Especialidad'}
@@ -327,11 +345,11 @@ export default function ProductFoodModal({
                         )}
 
                         {/* ========================================================= */}
-                        {/* MITAD DERECHA: CABECERA, EXTRAS CON SCROLL Y FOOTER FIJO    */}
+                        {/* MITAD DERECHA: EXTRAS VISUALES Y FOOTER                    */}
                         {/* ========================================================= */}
-                       <div className={`${isDesktop ? 'col-span-7' : 'w-full'} h-full flex flex-col min-h-0 relative bg-[var(--store-surface)]`}>
+                        <div className={`${isDesktop ? 'col-span-7' : 'w-full'} h-full flex flex-col min-h-0 relative bg-[var(--store-surface)]`}>
                             
-                            {/* Cabecera con Botón de Cierre [X] */}
+                            {/* Cabecera */}
                             <div className="p-5 sm:p-6 pb-4 border-b border-[var(--store-border)]/40 flex items-start justify-between gap-4 shrink-0">
                                 <div className="min-w-0 flex-1 space-y-1 text-left">
                                     {product.category && (
@@ -369,29 +387,40 @@ export default function ProductFoodModal({
                                 </button>
                             </div>
 
-                            {/* Cuerpo Scrolleable con Modificadores */}
-<div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-5 sm:p-6 space-y-6 text-left">
+                            {/* Cuerpo Scrolleable */}
+                            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-5 sm:p-6 space-y-6 text-left">
                                 
-                                {/* En móvil mostramos la foto dentro del scroll */}
+                                {/* En móvil: Hero con Cross-Fade Dinámico */}
                                 {!isDesktop && (
                                     <div 
                                         ref={modalHeroRef}
                                         className="w-full aspect-[16/10] relative bg-[var(--store-bg)] overflow-hidden rounded-2xl shrink-0"
                                     >
-                                        {product.image_url ? (
-                                            <Image
-                                                src={getOptimizedUrl(product.image_url)}
-                                                alt={product.name}
-                                                fill
-                                                sizes="(max-width: 640px) 100vw, 550px"
-                                                className="object-cover"
-                                                priority
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] text-xs font-mono font-bold">
-                                                MENU
-                                            </div>
-                                        )}
+                                        <AnimatePresence mode="wait">
+                                            {activeDisplayImage ? (
+                                                <motion.div
+                                                    key={activeDisplayImage}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.22, ease: "easeInOut" }}
+                                                    className="absolute inset-0"
+                                                >
+                                                    <Image
+                                                        src={getOptimizedUrl(activeDisplayImage)}
+                                                        alt={product.name}
+                                                        fill
+                                                        sizes="(max-width: 640px) 100vw, 550px"
+                                                        className="object-cover"
+                                                        priority
+                                                    />
+                                                </motion.div>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] text-xs font-mono font-bold">
+                                                    MENU
+                                                </div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 )}
 
@@ -451,7 +480,7 @@ export default function ProductFoodModal({
                                                         <div
                                                             key={option.id}
                                                             onClick={() => !isDisabled && handleToggleOption(group, option)}
-                                                            className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all select-none ${
+                                                            className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border transition-all select-none ${
                                                                 isDisabled 
                                                                     ? 'opacity-40 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/40' 
                                                                     : 'cursor-pointer hover:border-[var(--store-primary)]/50 active:scale-[0.99]'
@@ -466,6 +495,7 @@ export default function ProductFoodModal({
                                                             }}
                                                         >
                                                             <div className="flex items-center gap-3 min-w-0 pr-3">
+                                                                {/* Indicador Checkbox / Radio */}
                                                                 <div 
                                                                     className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${
                                                                         isSingleChoice ? 'rounded-full' : 'rounded-md'
@@ -485,6 +515,19 @@ export default function ProductFoodModal({
                                                                     )}
                                                                 </div>
 
+                                                                {/* 🚀 MINIATURA VISUAL DEL EXTRA / RELLENO (44x44 px) */}
+                                                                {option.image_url && (
+                                                                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[var(--store-bg)] border border-[var(--store-border)]/50 shrink-0 shadow-2xs">
+                                                                        <Image
+                                                                            src={getOptimizedUrl(option.image_url)}
+                                                                            alt={option.name}
+                                                                            fill
+                                                                            sizes="44px"
+                                                                            className="object-cover"
+                                                                        />
+                                                                    </div>
+                                                                )}
+
                                                                 <span className={`text-xs sm:text-sm font-semibold leading-snug truncate ${
                                                                     isSelected ? 'text-[var(--store-text-main)] font-bold' : 'text-[var(--store-text-main)]/90'
                                                                 }`}>
@@ -494,7 +537,7 @@ export default function ProductFoodModal({
 
                                                             {priceExtra > 0 && (
                                                                 <div className="shrink-0 text-right pl-2">
-                                                                    <span className="text-xs sm:text-sm font-bold font-mono text-[var(--store-text-main)] bg-[var(--store-bg)] px-2 py-0.5 rounded-md border border-[var(--store-border)]/40">
+                                                                    <span className="text-xs sm:text-sm font-bold font-mono text-[var(--store-text-main)] bg-[var(--store-bg)] px-2.5 py-1 rounded-lg border border-[var(--store-border)]/40 shadow-2xs">
                                                                         +${priceExtra.toFixed(2)}
                                                                     </span>
                                                                 </div>
@@ -537,7 +580,7 @@ export default function ProductFoodModal({
 
                             </div>
 
-                            {/* FOOTER ESTÁTICO FIJO (SINCRONIZADO EN GEOMETRÍA Y SOMBRAS) */}
+                            {/* FOOTER ESTÁTICO FIJO */}
                             <div className="shrink-0 bg-[var(--store-surface)] border-t border-[var(--store-border)]/50 px-5 py-3.5 pb-[calc(1rem+env(safe-area-inset-bottom))] z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
                                 
                                 <AnimatePresence>
@@ -555,7 +598,7 @@ export default function ProductFoodModal({
                                 </AnimatePresence>
 
                                 <div className="flex items-center gap-3">
-                                    {/* 1. Contador con Silueta Idéntica al Botón y Sombra del Buscador */}
+                                    {/* 1. Contador de Cantidad */}
                                     <div 
                                         className="flex items-center bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] p-1 shrink-0 transition-all"
                                         style={{ borderRadius: 'var(--radius-btn, 9999px)' }}
@@ -581,7 +624,7 @@ export default function ProductFoodModal({
                                         </button>
                                     </div>
 
-                                    {/* 2. Botón de Compra con la Misma Silueta y Sombra del Buscador */}
+                                    {/* 2. Botón de Compra */}
                                     <motion.button
                                         type="button"
                                         animate={shakeError ? { x: [-6, 6, -4, 4, 0] } : {}}
