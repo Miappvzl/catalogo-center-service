@@ -15,6 +15,7 @@ import { compressImage } from '@/utils/imageOptimizer'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
+import EliteColorPicker from '@/components/admin/EliteColorPicker'
 // 🚀 AÑADIR ESTE COMPONENTE (Solución al error TS2304)
 const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
     <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 cursor-pointer ${active ? `${activeColor} border-transparent justify-end` : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
@@ -26,95 +27,9 @@ const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: bo
     </div>
 )
 
-const ColorInputRow = ({ label, valueKey, value, description, onChange }: { label: string, valueKey: string, value: string, description?: string, onChange: (k: string, value: string) => void }) => (
-    <div className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200/60 hover:border-neutral-300 transition-colors bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] group/row">
-        <div className="flex flex-col pr-4">
-            <p className="font-bold text-xs text-neutral-900">{label}</p>
-            {description ? (
-                <p className="text-[10px] text-neutral-500 mt-0.5 leading-relaxed font-medium">{description}</p>
-            ) : (
-                <p className="text-[10px] font-mono text-neutral-400 mt-0.5 uppercase font-semibold">{value}</p>
-            )}
-        </div>
-        <motion.div
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(0,0,0,0.2)] shrink-0 cursor-pointer transition-shadow"
-        >
-            <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: value }} />
-            <input type="color" value={value} onChange={(e) => onChange(valueKey, e.target.value)} className="absolute -inset-4 w-16 h-16 cursor-pointer opacity-0" />
-        </motion.div>
-    </div>
-)
-const BorderColorRow = ({ label, value, description, onChange }: { label: string; value: string; description?: string; onChange: (value: string) => void; }) => {
-    const baseHex = value.startsWith('#') ? value.slice(0, 7) : '#e5e7eb';
-    const rawAlpha = value.length === 9 ? value.slice(7, 9) : 'ff';
-    const opacityPct = Math.min(100, Math.max(0, Math.round((parseInt(rawAlpha, 16) / 255) * 100) || 100));
 
-    const handleBaseColorChange = (newHex: string) => {
-        const alphaHex = Math.round((opacityPct / 100) * 255).toString(16).padStart(2, '0');
-        onChange(`${newHex}${alphaHex}`);
-    };
 
-    const handleOpacityChange = (newPct: number) => {
-        const alphaHex = Math.round((newPct / 100) * 255).toString(16).padStart(2, '0');
-        onChange(`${baseHex}${alphaHex}`);
-    };
-
-    return (
-        <div className="p-3.5 rounded-xl border border-neutral-200/50 hover:border-neutral-300 transition-colors bg-white shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col pr-4">
-                    <p className="font-semibold text-xs text-neutral-900">{label}</p>
-                    {description ? (
-                        <p className="text-[10px] text-neutral-400 mt-0.5 leading-relaxed font-medium">{description}</p>
-                    ) : (
-                        <p className="text-[10px] font-mono text-neutral-400 mt-0.5 uppercase font-semibold">
-                            {baseHex} · {opacityPct}% opacidad
-                        </p>
-                    )}
-                </div>
-
-                <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.1),inset_0_2px_4px_rgba(0,0,0,0.2)] shrink-0 cursor-pointer"
-                    style={{
-                        backgroundImage: 'linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)',
-                        backgroundSize: '8px 8px',
-                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-                    }}
-                >
-                    <div className="absolute inset-0" style={{ backgroundColor: value }} />
-                    <input
-                        type="color"
-                        value={baseHex}
-                        onChange={(e) => handleBaseColorChange(e.target.value)}
-                        className="absolute -inset-2 w-12 h-12 cursor-pointer scale-150 opacity-0"
-                    />
-                </motion.div>
-            </div>
-
-           <div className="pt-2.5 border-t border-neutral-100 flex items-center gap-3">
-                <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-400 shrink-0">
-                    Transparencia
-                </span>
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={opacityPct}
-                    onChange={(e) => handleOpacityChange(Number(e.target.value))}
-                    className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-neutral-900"
-                />
-                <span className="text-[10px] font-mono font-bold text-neutral-900 w-8 text-right shrink-0">
-                    {opacityPct}%
-                </span>
-            </div>
-        </div>
-    );
-};
+  
 
 // 🚀 CATÁLOGO DE ICONOS VECTORIALES PROFESIONALES (A nivel de módulo)
 const TRUST_BADGE_ICONS = [
@@ -1150,52 +1065,119 @@ export default function CustomizationPage() {
 
 
                         {/* TAB 3: COLORES */}
-                        {activeTab === 'colors' && (
-                            <div className="space-y-5 animate-in fade-in pb-10">
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2.5">Marca & Botones</span>
-                                    <div className="space-y-2">
-                                        <ColorInputRow label="Color Principal" valueKey="primary" value={config.colors.primary} description="Botones de compra y elementos destacados." onChange={handleColorChange} />
-                                        <ColorInputRow label="Texto en Botones" valueKey="primary_text" value={config.colors.primary_text} description="Texto sobre el botón de acción." onChange={handleColorChange} />
-                                    </div>
-                                </div>
+{activeTab === 'colors' && (
+    <div className="space-y-5 animate-in fade-in pb-10">
+        <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2.5">Marca & Botones</span>
+            <div className="space-y-2">
+                <EliteColorPicker 
+                    label="Color Principal" 
+                    value={config.colors.primary} 
+                    description="Botones de compra y elementos destacados." 
+                    onChange={(val) => handleColorChange('primary', val)} 
+                />
+                <EliteColorPicker 
+                    label="Texto en Botones" 
+                    value={config.colors.primary_text} 
+                    description="Texto sobre el botón de acción." 
+                    onChange={(val) => handleColorChange('primary_text', val)} 
+                />
+            </div>
+        </div>
 
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Lienzo & Superficies</span>
-                                    <div className="space-y-2">
-                                        <ColorInputRow label="Fondo General" valueKey="background" value={config.colors.background} description="Color de fondo de toda la tienda." onChange={handleColorChange} />
-                                        <ColorInputRow label="Fondo de Tarjetas" valueKey="surface" value={config.colors.surface} description="Superficie de productos y menús." onChange={handleColorChange} />
-                                    </div>
-                                </div>
+        <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Lienzo & Superficies</span>
+            <div className="space-y-2">
+                <EliteColorPicker 
+                    label="Fondo General" 
+                    value={config.colors.background} 
+                    description="Color de fondo de toda la tienda." 
+                    onChange={(val) => handleColorChange('background', val)} 
+                />
+                <EliteColorPicker 
+                    label="Fondo de Tarjetas" 
+                    value={config.colors.surface} 
+                    description="Superficie de productos y menús." 
+                    onChange={(val) => handleColorChange('surface', val)} 
+                />
+            </div>
+        </div>
 
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Textos & Bordes</span>
-                                    <div className="space-y-2">
-                                        <ColorInputRow label="Texto Principal" valueKey="text_main" value={config.colors.text_main} description="Títulos y precios." onChange={handleColorChange} />
-                                        <ColorInputRow label="Texto Secundario" valueKey="surface_text" value={config.colors.surface_text} description="Descripciones y categorías." onChange={handleColorChange} />
-                                        <BorderColorRow label="Líneas y Bordes" value={config.colors.border} description="Color y nivel de transparencia de las líneas divisorias y contornos." onChange={(val) => handleColorChange('border', val)} />
-                                    </div>
-                                </div>
+        <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Textos & Bordes</span>
+            <div className="space-y-2">
+                <EliteColorPicker 
+                    label="Texto Principal" 
+                    value={config.colors.text_main} 
+                    description="Títulos y precios." 
+                    onChange={(val) => handleColorChange('text_main', val)} 
+                />
+                <EliteColorPicker 
+                    label="Texto Secundario" 
+                    value={config.colors.surface_text} 
+                    description="Descripciones y categorías." 
+                    onChange={(val) => handleColorChange('surface_text', val)} 
+                />
+                {/* 🚀 BORDES CON TRANSPARENCIA INTEGRADA (enableAlpha={true}) */}
+                <EliteColorPicker 
+                    label="Líneas y Bordes" 
+                    value={config.colors.border} 
+                    description="Color y nivel de transparencia de las líneas divisorias y contornos." 
+                    enableAlpha={true}
+                    onChange={(val) => handleColorChange('border', val)} 
+                />
+            </div>
+        </div>
 
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 block mb-2">Conversión</span>
-                                    <div className="space-y-2">
-                                        <ColorInputRow label="Ahorro en Divisas" valueKey="incentive" value={config.colors.incentive} description="Badges de ahorro en divisas y checkmarks." onChange={handleColorChange} />
-                                    </div>
-                                </div>
+        <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 block mb-2">Conversión</span>
+            <div className="space-y-2">
+                <EliteColorPicker 
+                    label="Ahorro en Divisas" 
+                    value={config.colors.incentive} 
+                    description="Badges de ahorro en divisas y checkmarks." 
+                    onChange={(val) => handleColorChange('incentive', val)} 
+                />
+            </div>
+        </div>
 
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 block mb-2">Etiquetas & Interacciones</span>
-                                    <div className="space-y-2">
-                                        <ColorInputRow label="Fondo de Descuento" valueKey="badge_discount_bg" value={config.colors.badge_discount_bg} description="Fondo de la etiqueta de % de rebaja." onChange={handleColorChange} />
-                                        <ColorInputRow label="Texto de Descuento" valueKey="badge_discount_text" value={config.colors.badge_discount_text} description="Color del número de descuento." onChange={handleColorChange} />
-                                        <ColorInputRow label="Fondo de Agotado" valueKey="badge_soldout_bg" value={config.colors.badge_soldout_bg} description="Fondo de la etiqueta sin stock." onChange={handleColorChange} />
-                                        <ColorInputRow label="Texto de Agotado" valueKey="badge_soldout_text" value={config.colors.badge_soldout_text} description="Color del texto sin stock." onChange={handleColorChange} />
-                                        <ColorInputRow label="Icono Favorito" valueKey="action_favorite" value={config.colors.action_favorite} description="Color del corazón al ser activado." onChange={handleColorChange} />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+        <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 block mb-2">Etiquetas & Interacciones</span>
+            <div className="space-y-2">
+                <EliteColorPicker 
+                    label="Fondo de Descuento" 
+                    value={config.colors.badge_discount_bg} 
+                    description="Fondo de la etiqueta de % de rebaja." 
+                    onChange={(val) => handleColorChange('badge_discount_bg', val)} 
+                />
+                <EliteColorPicker 
+                    label="Texto de Descuento" 
+                    value={config.colors.badge_discount_text} 
+                    description="Color del número de descuento." 
+                    onChange={(val) => handleColorChange('badge_discount_text', val)} 
+                />
+                <EliteColorPicker 
+                    label="Fondo de Agotado" 
+                    value={config.colors.badge_soldout_bg} 
+                    description="Fondo de la etiqueta sin stock." 
+                    onChange={(val) => handleColorChange('badge_soldout_bg', val)} 
+                />
+                <EliteColorPicker 
+                    label="Texto de Agotado" 
+                    value={config.colors.badge_soldout_text} 
+                    description="Color del texto sin stock." 
+                    onChange={(val) => handleColorChange('badge_soldout_text', val)} 
+                />
+                <EliteColorPicker 
+                    label="Icono Favorito" 
+                    value={config.colors.action_favorite} 
+                    description="Color del corazón al ser activado." 
+                    onChange={(val) => handleColorChange('action_favorite', val)} 
+                />
+            </div>
+        </div>
+    </div>
+)}
                         {/* TAB 4: PASO 1 & 2 (LÍNEAS, BOTONES Y SOMBRAS CON GUARDRAILS) */}
                         {activeTab === 'shapes' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
