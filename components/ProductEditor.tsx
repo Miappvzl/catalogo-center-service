@@ -1704,241 +1704,240 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
 
                                     {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
-                                    <div className="bg-neutral-50/60 rounded-2xl p-4 md:p-6 border border-neutral-200/70 space-y-5 w-full">
+                                    <div className="bg-neutral-50/60 rounded-2xl p-[0.4rem] md:p-6 border border-neutral-200/70 space-y-5 w-full">
                                         <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')} />
 
-                               {/* FILA 1: COLORWAY Y FOTOGRAFÍAS (MISMA ALTURA EXACTA 1:1) */}
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch w-full">
-        {/* LADO IZQUIERDO: COLORWAY */}
-        <div id="tour-step-2-color" className={`lg:col-span-7 w-full min-w-0 ${getUniversalSpotlightClass('tour-step-2-color')}`}>
-            <EliteVariantColorPicker 
-                useColor={useColor}
-                onToggleColor={(val: boolean) => { setUseColor(val); setIsDirty(true); }}
-                colorName={variantInput.colorName}
-                colorHex={variantInput.colorHex}
-                onChange={(name: string, hex: string) => {
-                    updateVariantInput('colorName', name);
-                    updateVariantInput('colorHex', hex);
-                }}
-            />
-        </div>
+                                        {/* FILA 1: COLORWAY Y FOTOGRAFÍAS (MISMA ALTURA EXACTA 1:1) */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch w-full">
+                                            {/* LADO IZQUIERDO: COLORWAY */}
+                                            <div id="tour-step-2-color" className={`lg:col-span-7 w-full min-w-0 ${getUniversalSpotlightClass('tour-step-2-color')}`}>
+                                                <EliteVariantColorPicker
+                                                    useColor={useColor}
+                                                    onToggleColor={(val: boolean) => { setUseColor(val); setIsDirty(true); }}
+                                                    colorName={variantInput.colorName}
+                                                    colorHex={variantInput.colorHex}
+                                                    onChange={(name: string, hex: string) => {
+                                                        updateVariantInput('colorName', name);
+                                                        updateVariantInput('colorHex', hex);
+                                                    }}
+                                                />
+                                            </div>
 
-        {/* 🚀 LADO DERECHO: FOTOS CON ALTURA PARITARIA EXACTA (~96px) */}
-        <div className="lg:col-span-5 bg-white p-3 rounded-2xl border border-neutral-200/70 shadow-xs flex flex-col justify-between w-full min-w-0">
-            {/* Cabecera idéntica a la izquierda */}
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100 min-h-[28px]">
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <ImageIcon size={13} className="text-neutral-800 shrink-0" />
-                    <span className="text-[11px] font-bold text-neutral-900 leading-none">
-                        Fotos del Color
-                    </span>
-                </div>
-                <span className="font-mono text-[10px] text-neutral-400 font-bold leading-none">
-                    {variantInput.images.length}/3
-                </span>
-            </div>
+                                            {/* 🚀 LADO DERECHO: FOTOS CON ALTURA PARITARIA EXACTA (~96px) */}
+                                            <div className="lg:col-span-5 bg-white p-3 rounded-2xl border border-neutral-200/70 shadow-xs flex flex-col justify-between w-full min-w-0">
+                                                {/* Cabecera idéntica a la izquierda */}
+                                                <div className="flex items-center justify-between pb-2 border-b border-neutral-100 min-h-[28px]">
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <ImageIcon size={13} className="text-neutral-800 shrink-0" />
+                                                        <span className="text-[11px] font-bold text-neutral-900 leading-none">
+                                                            Fotos del Color
+                                                        </span>
+                                                    </div>
+                                                    <span className="font-mono text-[10px] text-neutral-400 font-bold leading-none">
+                                                        {variantInput.images.length}/3
+                                                    </span>
+                                                </div>
 
-            {/* Fila única de fotos (Misma altura que el input de color: h-8.5) */}
-            <div className="flex items-center gap-2 h-8.5 w-full">
-                {/* Miniaturas de fotos cargadas */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                    {variantInput.images.map((imgUrl, slotIdx) => (
-                        <div key={slotIdx} className="relative w-8.5 h-8.5 rounded-lg border border-neutral-200/80 bg-neutral-50 overflow-hidden shrink-0 group shadow-2xs">
-                            <Image src={getOptimizedUrl(imgUrl)} alt="" fill sizes="34px" className="object-cover" />
-                            <button
-                                type="button"
-                                onClick={() => removeImageFromVariantInput(slotIdx)}
-                                className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
-                                title="Eliminar"
-                            >
-                                <X size={11} strokeWidth={2.5} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                                                {/* Fila única de fotos (Misma altura que el input de color: h-8.5) */}
+                                                <div className="flex items-center gap-2 h-8.5 w-full">
+                                                    {/* Miniaturas de fotos cargadas */}
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        {variantInput.images.map((imgUrl, slotIdx) => (
+                                                            <div key={slotIdx} className="relative w-8.5 h-8.5 rounded-lg border border-neutral-200/80 bg-neutral-50 overflow-hidden shrink-0 group shadow-2xs">
+                                                                <Image src={getOptimizedUrl(imgUrl)} alt="" fill sizes="34px" className="object-cover" />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeImageFromVariantInput(slotIdx)}
+                                                                    className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                                                                    title="Eliminar"
+                                                                >
+                                                                    <X size={11} strokeWidth={2.5} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
 
-                {/* Botón de subida compacto que llena el espacio restante */}
-                {variantInput.images.length < 3 ? (
-                    <button
-                        type="button"
-                        onClick={() => variantImageInputRef.current?.click()}
-                        disabled={uploading}
-                        className="flex-1 h-full rounded-xl border border-dashed border-neutral-300 hover:border-neutral-900 hover:bg-neutral-50/50 bg-neutral-50/30 flex items-center justify-center gap-1.5 text-neutral-600 hover:text-neutral-950 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
-                        title="Subir fotos para este color"
-                    >
-                        {uploading ? (
-                            <Loader2 size={12} className="animate-spin text-neutral-400" />
-                        ) : (
-                            <Plus size={13} strokeWidth={2.5} className="text-neutral-500" />
-                        )}
-                        <span className="truncate">
-                            {variantInput.images.length === 0 ? '+ Subir fotos (hasta 3)' : '+ Añadir foto'}
-                        </span>
-                    </button>
-                ) : (
-                    <div className="flex-1 h-full rounded-xl bg-neutral-50 border border-neutral-200/50 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-medium">
-                        Límite alcanzado
-                    </div>
-                )}
-            </div>
-        </div>
-    </div>
+                                                    {/* Botón de subida compacto que llena el espacio restante */}
+                                                    {variantInput.images.length < 3 ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => variantImageInputRef.current?.click()}
+                                                            disabled={uploading}
+                                                            className="flex-1 h-full rounded-xl border border-dashed border-neutral-300 hover:border-neutral-900 hover:bg-neutral-50/50 bg-neutral-50/30 flex items-center justify-center gap-1.5 text-neutral-600 hover:text-neutral-950 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                            title="Subir fotos para este color"
+                                                        >
+                                                            {uploading ? (
+                                                                <Loader2 size={12} className="animate-spin text-neutral-400" />
+                                                            ) : (
+                                                                <Plus size={13} strokeWidth={2.5} className="text-neutral-500" />
+                                                            )}
+                                                            <span className="truncate">
+                                                                {variantInput.images.length === 0 ? '+ Subir fotos (hasta 3)' : '+ Añadir foto'}
+                                                            </span>
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex-1 h-full rounded-xl bg-neutral-50 border border-neutral-200/50 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-medium">
+                                                            Límite alcanzado
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
 
-    {/* FILA 2: TALLAS Y STOCK (INTACTA) */}
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
-        {/* TALLAS Y MEDIDAS (7 COLS) */}
-        <div id="tour-step-2-sizes" className={`lg:col-span-7 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-2.5 ${getUniversalSpotlightClass('tour-step-2-sizes')}`}>
-            <div className="flex justify-between items-center text-xs font-bold text-neutral-900">
-                <label className="block">Tallas o Medidas</label>
+                                        {/* FILA 2: TALLAS Y STOCK (INTACTA) */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
+                                            {/* TALLAS Y MEDIDAS (7 COLS) */}
+                                            <div id="tour-step-2-sizes" className={`lg:col-span-7 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-2.5 ${getUniversalSpotlightClass('tour-step-2-sizes')}`}>
+                                                <div className="flex justify-between items-center text-xs font-bold text-neutral-900">
+                                                    <label className="block">Tallas o Medidas</label>
 
-                {sizeTags.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => { setSizeTags([]); setIsDirty(true); }}
-                        className="flex items-center gap-1 text-[9px] font-bold text-rose-600 hover:text-rose-800 uppercase tracking-wider transition-colors cursor-pointer"
-                        title="Borrar todas las tallas"
-                    >
-                        <X size={10} strokeWidth={3} />
-                        <span>Vaciar</span>
-                    </button>
-                )}
-            </div>
+                                                    {sizeTags.length > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setSizeTags([]); setIsDirty(true); }}
+                                                            className="flex items-center gap-1 text-[9px] font-bold text-rose-600 hover:text-rose-800 uppercase tracking-wider transition-colors cursor-pointer"
+                                                            title="Borrar todas las tallas"
+                                                        >
+                                                            <X size={10} strokeWidth={3} />
+                                                            <span>Vaciar</span>
+                                                        </button>
+                                                    )}
+                                                </div>
 
-            <div className="w-full bg-neutral-50/70 border border-neutral-200/80 focus-within:border-neutral-900 focus-within:bg-white rounded-xl p-1.5 min-h-10 flex flex-wrap items-center gap-1.5 transition-colors">
-                {sizeTags.map(tag => (
-                    <span key={tag} className="flex items-center gap-1 bg-neutral-900 text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold">
-                        {tag}
-                        <button type="button" onClick={() => removeSizeTag(tag)} className="hover:text-rose-400 cursor-pointer"><X size={10} /></button>
-                    </span>
-                ))}
-                <div className="flex-1 min-w-[100px] flex items-center">
-                    <input 
-                        placeholder={sizeTags.length === 0 ? "Escribe tallas..." : ""} 
-                        value={sizeInputValue} 
-                        onChange={handleSizeInputChange} 
-                        onKeyDown={handleSizeKeyDown} 
-                        onBlur={handleSizeBlur} 
-                        className="w-full bg-transparent outline-none text-xs font-bold text-neutral-900 placeholder:text-neutral-400 placeholder:font-normal" 
-                    />
-                </div>
-            </div>
+                                                <div className="w-full bg-neutral-50/70 border border-neutral-200/80 focus-within:border-neutral-900 focus-within:bg-white rounded-xl p-1.5 min-h-10 flex flex-wrap items-center gap-1.5 transition-colors">
+                                                    {sizeTags.map(tag => (
+                                                        <span key={tag} className="flex items-center gap-1 bg-neutral-900 text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold">
+                                                            {tag}
+                                                            <button type="button" onClick={() => removeSizeTag(tag)} className="hover:text-rose-400 cursor-pointer"><X size={10} /></button>
+                                                        </span>
+                                                    ))}
+                                                    <div className="flex-1 min-w-[100px] flex items-center">
+                                                        <input
+                                                            placeholder={sizeTags.length === 0 ? "Escribe tallas..." : ""}
+                                                            value={sizeInputValue}
+                                                            onChange={handleSizeInputChange}
+                                                            onKeyDown={handleSizeKeyDown}
+                                                            onBlur={handleSizeBlur}
+                                                            className="w-full bg-transparent outline-none text-xs font-bold text-neutral-900 placeholder:text-neutral-400 placeholder:font-normal"
+                                                        />
+                                                    </div>
+                                                </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {[
-                    { label: 'D: S - H: XL', sizes: ['S', 'M', 'L', 'XL'] },
-                    { label: 'D: XS - H: 2XL', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
-                    { label: 'D: 36 - H: 39', sizes: ['36', '37', '38', '39'] },
-                    { label: 'D: 40 - H: 44', sizes: ['40', '41', '42', '43', '44'] },
-                    { label: 'D: 35 - H: 45', sizes: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
-                    { label: 'Única', sizes: ['Única'] },
-                ].map(pack => (
-                    <button
-                        key={pack.label}
-                        type="button"
-                        onClick={() => handleAddSizePack(pack.sizes)}
-                        className="px-2 py-0.5 text-[9px] font-mono font-bold bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-700 rounded-md transition-colors cursor-pointer active:scale-95"
-                    >
-                        + {pack.label}
-                    </button>
-                ))}
-            </div>
-        </div>
+                                                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                                    {[
+                                                        { label: 'D: S - H: XL', sizes: ['S', 'M', 'L', 'XL'] },
+                                                        { label: 'D: XS - H: 2XL', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
+                                                        { label: 'D: 36 - H: 39', sizes: ['36', '37', '38', '39'] },
+                                                        { label: 'D: 40 - H: 44', sizes: ['40', '41', '42', '43', '44'] },
+                                                        { label: 'D: 35 - H: 45', sizes: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
+                                                        { label: 'Única', sizes: ['Única'] },
+                                                    ].map(pack => (
+                                                        <button
+                                                            key={pack.label}
+                                                            type="button"
+                                                            onClick={() => handleAddSizePack(pack.sizes)}
+                                                            className="px-2 py-0.5 text-[9px] font-mono font-bold bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-700 rounded-md transition-colors cursor-pointer active:scale-95"
+                                                        >
+                                                            + {pack.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
 
-        {/* STOCK INICIAL (5 COLS) */}
-        <div className="lg:col-span-5 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-1.5 flex flex-col justify-between h-full">
-            <div>
-                <label className="text-xs font-bold text-neutral-900 block leading-none">Stock por cada talla</label>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1">Cantidad física inicial asignada.</p>
-            </div>
-            <NumberInput 
-                min="0" 
-                value={variantInput.defaultStock} 
-                onChangeValue={(val) => updateVariantInput('defaultStock', val)} 
-                className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:border-neutral-900 focus:bg-white rounded-xl px-3 py-1.5 text-sm font-bold text-neutral-900 outline-none text-center h-10 shadow-2xs font-mono" 
-            />
-        </div>
-    </div>
+                                            {/* STOCK INICIAL (5 COLS) */}
+                                            <div className="lg:col-span-5 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-1.5 flex flex-col justify-between h-full">
+                                                <div>
+                                                    <label className="text-xs font-bold text-neutral-900 block leading-none">Stock por cada talla</label>
+                                                    <p className="text-[10px] text-neutral-400 font-medium mt-1">Cantidad física inicial asignada.</p>
+                                                </div>
+                                                <NumberInput
+                                                    min="0"
+                                                    value={variantInput.defaultStock}
+                                                    onChangeValue={(val) => updateVariantInput('defaultStock', val)}
+                                                    className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:border-neutral-900 focus:bg-white rounded-xl px-3 py-1.5 text-sm font-bold text-neutral-900 outline-none text-center h-10 shadow-2xs font-mono"
+                                                />
+                                            </div>
+                                        </div>
 
-    {/* 🚀 BOTÓN 1: PRECIOS ESPECÍFICOS (TEXTO BREVE, EXPLICATIVO Y EN 1 SOLA LÍNEA) */}
-    <div className="bg-white rounded-xl border border-neutral-200/70 shadow-2xs p-3">
-        <button
-            type="button"
-            onClick={() => setShowVariantPricing(!showVariantPricing)}
-            className="flex items-center justify-between w-full text-left transition-colors cursor-pointer group/price"
-        >
-            <div className="flex items-center gap-2 min-w-0">
-                <span className="w-5 h-5 rounded-md bg-neutral-100 group-hover/price:bg-neutral-200/80 text-neutral-700 flex items-center justify-center font-mono text-[11px] font-bold shrink-0 transition-colors">
-                    {showVariantPricing ? '−' : '+'}
-                </span>
-                <div className="flex items-baseline gap-1.5 truncate">
-                    <span className="text-xs font-bold text-neutral-900 leading-none">
-                        Precios por Talla
-                    </span>
-                    <span className="text-[10px] text-neutral-400 font-medium hidden sm:inline truncate">
-                        (Opcional · Hereda el precio base)
-                    </span>
-                </div>
-            </div>
+                                        {/* 🚀 BOTÓN 1: PRECIOS ESPECÍFICOS (TEXTO BREVE, EXPLICATIVO Y EN 1 SOLA LÍNEA) */}
+                                        <div className="bg-white rounded-xl border border-neutral-200/70 shadow-2xs p-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowVariantPricing(!showVariantPricing)}
+                                                className="flex items-center justify-between w-full text-left transition-colors cursor-pointer group/price"
+                                            >
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="w-5 h-5 rounded-md bg-neutral-100 group-hover/price:bg-neutral-200/80 text-neutral-700 flex items-center justify-center font-mono text-[11px] font-bold shrink-0 transition-colors">
+                                                        {showVariantPricing ? '−' : '+'}
+                                                    </span>
+                                                    <div className="flex items-baseline gap-1.5 truncate">
+                                                        <span className="text-xs font-bold text-neutral-900 leading-none">
+                                                            Precios por Talla
+                                                        </span>
+                                                        <span className="text-[10px] text-neutral-400 font-medium hidden sm:inline truncate">
+                                                            (Opcional · Hereda el precio base)
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors shrink-0 ${
-                showVariantPricing 
-                    ? 'bg-neutral-900 text-white' 
-                    : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
-            }`}>
-                {showVariantPricing ? 'Cerrar' : 'Personalizar'}
-            </span>
-        </button>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors shrink-0 ${showVariantPricing
+                                                        ? 'bg-neutral-900 text-white'
+                                                        : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
+                                                    }`}>
+                                                    {showVariantPricing ? 'Cerrar' : 'Personalizar'}
+                                                </span>
+                                            </button>
 
-        <AnimatePresence>
-            {showVariantPricing && (
-                <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                >
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-2.5 border-t border-neutral-100">
-                        <div>
-                            <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Precio específico $</label>
-                            <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio $</label>
-                            <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-400 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-neutral-50/70 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Margen propio $</label>
-                            <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    </div>
+                                            <AnimatePresence>
+                                                {showVariantPricing && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-2.5 border-t border-neutral-100">
+                                                            <div>
+                                                                <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Precio específico $</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio $</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-400 font-bold text-xs font-mono">$</span>
+                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-neutral-50/70 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Margen propio $</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
 
-    {/* 🚀 BOTÓN 2: GENERADOR INTELIGENTE (BREVE, CONCENTRADO Y CON CONTEO EN VIVO) */}
-    <button 
-        type="button"
-        id="tour-step-2-generate" 
-        onClick={addVariantGroup} 
-        className={`w-full bg-neutral-950 text-white py-3 rounded-xl hover:bg-black active:scale-[0.99] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${getUniversalSpotlightClass('tour-step-2-generate')}`}
-    >
-        <Plus size={14} strokeWidth={2.5} className="shrink-0" />
-        <span>
-            {sizeTags.length > 0 ? `Generar ${sizeTags.length} Variantes` : 'Generar Variantes'}
-        </span>
-    </button>
-</div>
+                                        {/* 🚀 BOTÓN 2: GENERADOR INTELIGENTE (BREVE, CONCENTRADO Y CON CONTEO EN VIVO) */}
+                                        <button
+                                            type="button"
+                                            id="tour-step-2-generate"
+                                            onClick={addVariantGroup}
+                                            className={`w-full bg-neutral-950 text-white py-3 rounded-xl hover:bg-black active:scale-[0.99] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${getUniversalSpotlightClass('tour-step-2-generate')}`}
+                                        >
+                                            <Plus size={14} strokeWidth={2.5} className="shrink-0" />
+                                            <span>
+                                                {sizeTags.length > 0 ? `Generar ${sizeTags.length} Variantes` : 'Generar Variantes'}
+                                            </span>
+                                        </button>
+                                    </div>
 
                                     {/* LISTADO DE VARIANTES CREADAS CON ANCLAJE SPOTLIGHT */}
                                     <div

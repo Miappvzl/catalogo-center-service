@@ -114,12 +114,7 @@ export default function EliteVariantColorPicker({
             {/* 1. CABECERA CON ALINEACIÓN PERFECTA (ITEMS-CENTER ESTRICTO) */}
             <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-neutral-100 w-full min-h-[28px]">
                 {/* Izquierda: Icono + Label */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <Palette size={13} className="text-neutral-800 shrink-0" />
-                    <span className="text-[11px] font-bold text-neutral-900 leading-none">
-                        Color
-                    </span>
-                </div>
+                
 
                 {/* Centro: Segmented 1 Tono / Bicolor */}
                 {useColor ? (
