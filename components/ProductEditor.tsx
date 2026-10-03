@@ -895,7 +895,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         const group = foodModifiers[i];
                         let finalGroupId = group.id;
 
-                        if (group.id.startsWith('temp-group-')) {
+                       if (group.id.startsWith('temp-group-')) {
                             const { data: newGroup, error: groupErr } = await supabase
                                 .from('modifier_groups')
                                 .insert({
@@ -903,7 +903,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     name: group.name,
                                     is_required: group.is_required,
                                     min_selections: group.min_selections,
-                                    max_selections: group.max_selections
+                                    max_selections: group.max_selections,
+                                    selection_type: group.selection_type || 'single' // 🚀 FIX: Persistencia en BD
                                 })
                                 .select()
                                 .single();
@@ -924,14 +925,15 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 const { error: optErr } = await supabase.from('modifier_options').insert(optionsPayload);
                                 if (optErr) throw optErr;
                             }
-                        } else {
+                       } else {
                             const { error: updateErr } = await supabase
                                 .from('modifier_groups')
                                 .update({
                                     name: group.name,
                                     is_required: group.is_required,
                                     min_selections: group.min_selections,
-                                    max_selections: group.max_selections
+                                    max_selections: group.max_selections,
+                                    selection_type: group.selection_type || 'single' // 🚀 FIX: Persistencia en BD
                                 })
                                 .eq('id', group.id);
 
