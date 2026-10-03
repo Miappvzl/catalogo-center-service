@@ -151,11 +151,11 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
       .select(`
         *,
         product_variants(*),
-        product_modifier_groups(
+       product_modifier_groups(
           display_order,
           modifier_groups(
-            id, name, is_required, min_selections, max_selections,
-            modifier_options(id, name, price_adjustment_usd, is_available, display_order, image_url)
+            *,
+            modifier_options(*)
           )
         )
       `)
@@ -173,6 +173,10 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
       .eq('is_active', true)
       .order('display_order', { ascending: true })
   ])
+
+  if (productsResponse.error) {
+    console.error("🚨 ERROR DE PRODUCTOS SUPABASE:", productsResponse.error);
+  }
 
   const props = {
     store,

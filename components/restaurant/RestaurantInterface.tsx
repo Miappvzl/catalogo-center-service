@@ -490,10 +490,17 @@ const filteredProductsList = useMemo(() => {
         setSearchQuery('')
         setActiveCollectionSlug(null)
     }
-    const handleOpenDishModal = useCallback((product: any) => {
+  const handleOpenDishModal = useCallback((product: any) => {
+        const rawGroups = product.product_modifier_groups
+            ? [...product.product_modifier_groups]
+                .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+                .map((pmg: any) => pmg.modifier_groups)
+                .filter(Boolean)
+            : []
+
         const foodProduct = {
             ...product,
-            modifier_groups: product.product_modifier_groups?.map((pmg: any) => pmg.modifier_groups).filter(Boolean) || []
+            modifier_groups: rawGroups
         }
         setSelectedProductForModal(foodProduct)
         setIsFoodModalOpen(true)
