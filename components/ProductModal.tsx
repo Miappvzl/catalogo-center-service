@@ -12,6 +12,7 @@ import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animate } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
+import { getVariantSwatchStyle } from '@/utils/ColorUtils'
 
 // 🚀 VISOR INMERSIVO HÍBRIDO (Drag Nativo en Desktop, Multi-Touch Pinch en Móvil & Doble Tap)
 interface LightboxViewerProps {
@@ -977,7 +978,7 @@ Mi duda es la siguiente: `;
                                                                     }}
                                                                     disabled={!c.isAvailable}
                                                                     className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
-                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
+                                                                   style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                 >
                                                                     {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
                                                                     {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
@@ -1270,7 +1271,7 @@ Mi duda es la siguiente: `;
                                                                         ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
                                                                         : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
                                                                         } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
+                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                     title={c.name}
                                                                 >
                                                                     {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
@@ -2148,7 +2149,7 @@ Mi duda es la siguiente: `;
                                                                             ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
                                                                             : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
                                                                             } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
-                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? { backgroundColor: c.hex } : {}}
+                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                         title={!c.isAvailable ? 'Agotado' : c.name}
                                                                     >
                                                                         {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (

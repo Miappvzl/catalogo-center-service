@@ -35,6 +35,7 @@ import { NumberInput } from './NumberInput'
 import ProductWholesaleConfig from '@/components/admin/ProductWholesaleConfig';
 import FoodModifierManager from './admin/FoodModifierManager';
 import { generateSmartSKU } from '@/utils/skuGenerator';
+import EliteVariantColorPicker from './admin/EliteVariantColorPicker'
 
 
 
@@ -278,6 +279,15 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [simpleStock, setSimpleStock] = useState<number | ''>(10)
     const [sizeInputValue, setSizeInputValue] = useState('')
     const [sizeTags, setSizeTags] = useState<string[]>([])
+    // 🚀 ELITE: Divulgación Progresiva para precios de variantes y paquetes de tallas
+    const [showVariantPricing, setShowVariantPricing] = useState(false)
+
+    const handleAddSizePack = (packSizes: string[]) => {
+        const cleanPacks = packSizes.map(s => s.toUpperCase());
+        const combined = Array.from(new Set([...sizeTags, ...cleanPacks]));
+        setSizeTags(combined);
+        setIsDirty(true);
+    }
     const [expandedVariantId, setExpandedVariantId] = useState<string | null>(null)
 
     const [existingCategories, setExistingCategories] = useState<string[]>([])
@@ -312,28 +322,6 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
 
 
-    useEffect(() => {
-        const fetchCategories = async () => {
-            if (!storeSettings?.id) return
-            const { data } = await supabase.from('products').select('category').eq('store_id', storeSettings.id)
-            if (data) {
-                const uniqueCategories = Array.from(new Set(data.map((p: any) => p.category).filter(Boolean))) as string[]
-                setExistingCategories(uniqueCategories.sort())
-            }
-        }
-        fetchCategories()
-    }, [storeSettings?.id, supabase])
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-                setIsCategoryDropdownOpen(false)
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
 
 
 
@@ -467,6 +455,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         setIsDirty(true)
     }
 
+
+
     const updateVariantOverride = (id: string, field: string, value: any) => {
         setVariants(variants.map(v => {
             if (v.id === id) return { ...v, [field]: value }
@@ -474,6 +464,64 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }))
         setIsDirty(true)
     }
+
+    // 🚀 ELITE: Sincronizador de Colorway a nivel de Grupo completo
+    const updateVariantGroupColor = (oldColorName: string, newColorName: string, newColorHex: string) => {
+        setVariants(prev => prev.map(v => {
+            if (v.color_name === oldColorName) {
+                return {
+                    ...v,
+                    color_name: newColorName,
+                    color_hex: newColorHex
+                }
+            }
+            return v
+        }))
+        setIsDirty(true)
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-neutral-900 text-white rounded-lg text-xs font-semibold' } })
+        Toast.fire({ icon: 'success', title: `Color actualizado en todas las tallas de "${oldColorName}"` })
+    }
+
+    // 🚀 ELITE: Interceptor con alerta de confirmación para evitar desincronizaciones accidentales
+    const handleVariantColorChangeWithGuard = (targetVariant: any, newName: string, newHex: string) => {
+        // Si no hay cambios reales de valor, ignorar
+        if (targetVariant.color_name === newName && targetVariant.color_hex === newHex) return;
+
+        const siblings = variants.filter(item => item.color_name === targetVariant.color_name);
+
+        // Si existen múltiples tallas compartiendo este color, exigimos confirmación estricta
+        if (siblings.length > 1) {
+            Swal.fire({
+                title: '¿Sincronizar todo el grupo?',
+                html: `Se detectaron <b>${siblings.length} tallas</b> asociadas al color <b>${targetVariant.color_name}</b>.<br><br>¿Deseas aplicar este nuevo color a todas las tallas del grupo o cancelar la acción?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0a0a0a',
+                cancelButtonColor: '#737373',
+                confirmButtonText: 'Sí, aplicar a todas',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'rounded-2xl font-sans text-xs p-6 shadow-xl border border-neutral-200/60',
+                    confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5 bg-neutral-950 text-white',
+                    cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5 bg-neutral-100 text-neutral-700 border border-neutral-200'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // OK: Se le cambia a todos automáticamente
+                    updateVariantGroupColor(targetVariant.color_name, newName, newHex);
+                } else {
+                    // CANCELAR O CLIC FUERA: No cambia nada
+                    // Forzamos un re-render suave para que el selector visual revierta al color original
+                    setVariants([...variants]);
+                }
+            });
+        } else {
+            // Si es un SKU con color exclusivo (sin tallas hermanas), actualiza directo
+            updateVariantOverride(targetVariant.id, 'color_name', newName);
+            updateVariantOverride(targetVariant.id, 'color_hex', newHex);
+        }
+    };
 
     const math = useMemo(() => {
         const cashPrice = Number(formData.price) || 0
@@ -839,7 +887,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
             if (currentId) {
                 // 🚀 BIFURCACIÓN FOODTECH VS RETAIL
-              if (storeSettings?.storeType === 'restaurant') {
+                if (storeSettings?.storeType === 'restaurant') {
 
                     await supabase.from('product_modifier_groups').delete().eq('product_id', currentId);
 
@@ -890,7 +938,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             if (updateErr) throw updateErr;
 
                             await supabase.from('modifier_options').delete().eq('group_id', group.id);
-                            
+
                             // 🚀 INCLUSIÓN DE image_url EN OPCIONES ACTUALIZADAS
                             if (group.modifier_options && group.modifier_options.length > 0) {
                                 const optionsPayload = group.modifier_options.map((opt: any, optIdx: number) => ({
@@ -1013,18 +1061,37 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         </div>
     )
 
-      return (
+    const renderVariantColor = (hex: string) => {
+        if (!hex || hex === 'transparent' || hex === '#transparent') return null;
+        if (hex.includes(',')) {
+            const [c1, c2] = hex.split(',');
+            return (
+                <div
+                    className="w-3.5 h-3.5 rounded-full border border-neutral-300 shrink-0 shadow-xs"
+                    style={{ background: `linear-gradient(135deg, ${c1} 50%, ${c2} 50%)` }}
+                    title="Bicolor"
+                />
+            );
+        }
+        return (
+            <div
+                className="w-3.5 h-3.5 rounded-full border border-neutral-300 shrink-0 shadow-xs"
+                style={{ backgroundColor: hex }}
+            />
+        );
+    };
+
+
+    return (
         <div className={`min-h-screen bg-[#FAFAFC] font-sans text-neutral-900 selection:bg-neutral-950 selection:text-white overflow-x-clip w-full max-w-[100vw] antialiased ${mission ? 'pb-80 md:pb-52' : 'pb-32'}`}>
-            
+
             {/* 🚀 STICKY SMART HEADER: Solo se descubre e ilumina en el paso final exacto */}
-            <div 
-                className={`bg-[#FAFAFC]/95 backdrop-blur-md px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50 sticky top-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${
-                    isHeaderVisible || currentTargetId === 'tour-save-btn' ? 'translate-y-0' : '-translate-y-full'
-                } ${
-                    currentTargetId === 'tour-save-btn'
+            <div
+                className={`bg-[#FAFAFC]/95 backdrop-blur-md px-4 md:px-8 py-4 flex justify-between items-center border-b border-neutral-200/50 sticky top-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${isHeaderVisible || currentTargetId === 'tour-save-btn' ? 'translate-y-0' : '-translate-y-full'
+                    } ${currentTargetId === 'tour-save-btn'
                         ? 'z-[60] bg-white shadow-[0_15px_40px_rgba(0,0,0,0.08)] ring-4 ring-neutral-900/10 relative'
                         : 'z-40 bg-[#FAFAFC]/95'
-                }`}
+                    }`}
             >
                 <div className="flex items-center gap-3.5 min-w-0">
                     <button onClick={handleExit} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-400 transition-all shrink-0 shadow-xs active:scale-[0.98]" title="Volver">
@@ -1037,17 +1104,16 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                 <div className="flex items-center gap-2.5 shrink-0 pl-2">
                     <button onClick={handleExit} className="hidden md:block px-3 py-2 text-xs font-bold text-neutral-600 hover:text-neutral-950 transition-colors uppercase tracking-wider">Cancelar</button>
-                    
+
                     {/* Botón Guardar Producto */}
                     <button
                         onClick={handleSave}
                         disabled={saving}
                         id="tour-save-btn"
-                        className={`bg-neutral-950 text-white px-4 md:px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-black active:scale-[0.98] flex items-center gap-1.5 disabled:opacity-70 transition-all ${
-                            currentTargetId === 'tour-save-btn'
-                                ? 'relative z-[70] ring-4 ring-neutral-950/20 shadow-[0_0_0_2px_#000000,0_10px_35px_rgba(0,0,0,0.35)] scale-105 pointer-events-auto cursor-pointer'
-                                : 'shadow-xs'
-                        }`}
+                        className={`bg-neutral-950 text-white px-4 md:px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-black active:scale-[0.98] flex items-center gap-1.5 disabled:opacity-70 transition-all ${currentTargetId === 'tour-save-btn'
+                            ? 'relative z-[70] ring-4 ring-neutral-950/20 shadow-[0_0_0_2px_#000000,0_10px_35px_rgba(0,0,0,0.35)] scale-105 pointer-events-auto cursor-pointer'
+                            : 'shadow-xs'
+                            }`}
                     >
                         {saving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : <Save strokeWidth={2} className="w-3.5 h-3.5" />}
                         <span className="hidden sm:block">Guardar Producto</span>
@@ -1637,119 +1703,242 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                             ) : (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
 
-                                    {/* CREADOR RÁPIDO DE VARIANTES */}
-                                    <div className="bg-neutral-50/50 rounded-lg p-5 border border-neutral-200/50 space-y-5 w-full">
+                                    {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
+                                    <div className="bg-neutral-50/60 rounded-2xl p-4 md:p-6 border border-neutral-200/70 space-y-5 w-full">
                                         <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')} />
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div id="tour-step-2-color" className={`p-2.5 -m-2.5 rounded-xl  bg-white ${getUniversalSpotlightClass('tour-step-2-color')}`}>
-                                                <div className="flex justify-between items-center gap-2 mb-1.5">
-                                                    <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">Atributo Primario (Nombre)</label>
-                                                    <label className="flex items-center gap-1.5 cursor-pointer">
-                                                        <input type="checkbox" checked={useColor} onChange={(e) => setUseColor(e.target.checked)} className="accent-neutral-900 cursor-pointer" />
-                                                        <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider">¿Lleva Color?</span>
-                                                    </label>
-                                                </div>
-                                                <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-neutral-200/50 focus-within:border-neutral-400 transition-colors shadow-xs h-12">
-                                                    {useColor && <input type="color" value={variantInput.colorHex} onChange={e => updateVariantInput('colorHex', e.target.value)} className="w-8 h-8 rounded border-none cursor-pointer bg-transparent shrink-0" />}
-                                                    <input type="text" placeholder={useColor ? "Ej: Negro, Dorado, Azul..." : "Ej: Licencia Estándar..."} value={variantInput.colorName} onChange={e => updateVariantInput('colorName', e.target.value)} className="flex-1 bg-transparent border-none text-xs font-bold outline-none text-neutral-900 px-2 placeholder:text-neutral-400" />
-                                                </div>
-                                            </div>
+                               {/* FILA 1: COLORWAY Y FOTOGRAFÍAS (MISMA ALTURA EXACTA 1:1) */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch w-full">
+        {/* LADO IZQUIERDO: COLORWAY */}
+        <div id="tour-step-2-color" className={`lg:col-span-7 w-full min-w-0 ${getUniversalSpotlightClass('tour-step-2-color')}`}>
+            <EliteVariantColorPicker 
+                useColor={useColor}
+                onToggleColor={(val: boolean) => { setUseColor(val); setIsDirty(true); }}
+                colorName={variantInput.colorName}
+                colorHex={variantInput.colorHex}
+                onChange={(name: string, hex: string) => {
+                    updateVariantInput('colorName', name);
+                    updateVariantInput('colorHex', hex);
+                }}
+            />
+        </div>
 
-                                            <div>
-                                                <div className="flex justify-between items-center gap-2 mb-1.5 text-[11px] font-bold text-neutral-700 uppercase tracking-wider">
-                                                    <span>Fotos de la variante</span>
-                                                    <span className="font-mono text-neutral-600">{variantInput.images.length}/3</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => variantImageInputRef.current?.click()} disabled={variantInput.images.length >= 3 || uploading} className="w-12 h-12 rounded-lg border border-dashed border-neutral-300 flex items-center justify-center hover:border-neutral-500 hover:bg-white transition-all disabled:opacity-50 text-neutral-600 hover:text-neutral-950 shrink-0 bg-white shadow-xs">
-                                                        {uploading ? <Loader2 className="animate-spin text-neutral-400" size={16} /> : <Plus size={18} />}
-                                                    </button>
-                                                    {variantInput.images.map((img, idx) => (
-                                                        <div key={idx} className="relative w-12 h-12 rounded-lg border border-neutral-200/60 overflow-hidden group bg-white shrink-0 shadow-xs">
-                                                            <Image
-                                                                src={getOptimizedUrl(img)}
-                                                                alt={`Exclusiva ${idx + 1}`}
-                                                                fill
-                                                                sizes="48px"
-                                                                className="object-cover"
-                                                            />
-                                                            <button onClick={() => removeImageFromVariantInput(idx)} className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white transition-opacity">
-                                                                <X size={14} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
+        {/* 🚀 LADO DERECHO: FOTOS CON ALTURA PARITARIA EXACTA (~96px) */}
+        <div className="lg:col-span-5 bg-white p-3 rounded-2xl border border-neutral-200/70 shadow-xs flex flex-col justify-between w-full min-w-0">
+            {/* Cabecera idéntica a la izquierda */}
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-100 min-h-[28px]">
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <ImageIcon size={13} className="text-neutral-800 shrink-0" />
+                    <span className="text-[11px] font-bold text-neutral-900 leading-none">
+                        Fotos del Color
+                    </span>
+                </div>
+                <span className="font-mono text-[10px] text-neutral-400 font-bold leading-none">
+                    {variantInput.images.length}/3
+                </span>
+            </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div id="tour-step-2-sizes" className={`p-2.5 -m-2.5 rounded-xl ${getUniversalSpotlightClass('tour-step-2-sizes')}`}>
-                                                <div className="flex justify-between items-center gap-2 mb-1.5 text-[11px] font-bold text-neutral-700 uppercase tracking-wider">
-                                                    <label className="block">Atributo Secundario (Medida/Talla)</label>
-                                                    <span className="font-normal font-mono text-[10px] text-neutral-600">Separar por comas ( , )</span>
-                                                </div>
-                                                <div className="w-full bg-white border border-neutral-200/50 focus-within:border-neutral-400 rounded-lg p-2 min-h-12 flex flex-wrap items-center gap-1.5 transition-colors shadow-xs">
-                                                    {sizeTags.map(tag => (
-                                                        <span key={tag} className="flex items-center gap-1 bg-neutral-900 text-white px-2 py-0.5 rounded text-[10px] font-bold animate-in fade-in">
-                                                            {tag}
-                                                            <button onClick={() => removeSizeTag(tag)} className="hover:text-rose-400 transition-colors"><X size={10} /></button>
-                                                        </span>
-                                                    ))}
-                                                    <div className="flex-1 min-w-[100px] flex items-center">
-                                                        <input placeholder={sizeTags.length === 0 ? "Ej: S, M, L..." : ""} value={sizeInputValue} onChange={handleSizeInputChange} onKeyDown={handleSizeKeyDown} onBlur={handleSizeBlur} className="w-full bg-transparent outline-none text-xs font-bold text-neutral-900 placeholder:text-neutral-400" />
-                                                        {sizeInputValue.trim() !== '' && (
-                                                            <button onClick={(e) => { e.preventDefault(); addSizeFromInput() }} className="shrink-0 p-1 bg-neutral-100 text-neutral-900 rounded hover:bg-neutral-200 transition-colors">
-                                                                <Plus size={12} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap gap-1.5 mt-2.5">
-                                                    {COMMON_SIZES.map(size => (
-                                                        <button key={size} onClick={(e) => handleQuickPillClick(e, size)} className="px-2 py-0.5 text-[10px] font-bold bg-white border border-neutral-300 text-neutral-700 rounded hover:border-neutral-700 hover:text-neutral-950 transition-colors shadow-xs">
-                                                            + {size}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
+            {/* Fila única de fotos (Misma altura que el input de color: h-8.5) */}
+            <div className="flex items-center gap-2 h-8.5 w-full">
+                {/* Miniaturas de fotos cargadas */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {variantInput.images.map((imgUrl, slotIdx) => (
+                        <div key={slotIdx} className="relative w-8.5 h-8.5 rounded-lg border border-neutral-200/80 bg-neutral-50 overflow-hidden shrink-0 group shadow-2xs">
+                            <Image src={getOptimizedUrl(imgUrl)} alt="" fill sizes="34px" className="object-cover" />
+                            <button
+                                type="button"
+                                onClick={() => removeImageFromVariantInput(slotIdx)}
+                                className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                                title="Eliminar"
+                            >
+                                <X size={11} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
 
-                                            <div className="w-full">
-                                                <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Stock por cada opción</label>
-                                                <NumberInput min="0" value={variantInput.defaultStock} onChangeValue={(val) => updateVariantInput('defaultStock', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg px-3 py-2 text-sm font-bold text-neutral-900 outline-none text-center transition-colors h-12 shadow-xs font-mono" />
-                                            </div>
-                                        </div>
+                {/* Botón de subida compacto que llena el espacio restante */}
+                {variantInput.images.length < 3 ? (
+                    <button
+                        type="button"
+                        onClick={() => variantImageInputRef.current?.click()}
+                        disabled={uploading}
+                        className="flex-1 h-full rounded-xl border border-dashed border-neutral-300 hover:border-neutral-900 hover:bg-neutral-50/50 bg-neutral-50/30 flex items-center justify-center gap-1.5 text-neutral-600 hover:text-neutral-950 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                        title="Subir fotos para este color"
+                    >
+                        {uploading ? (
+                            <Loader2 size={12} className="animate-spin text-neutral-400" />
+                        ) : (
+                            <Plus size={13} strokeWidth={2.5} className="text-neutral-500" />
+                        )}
+                        <span className="truncate">
+                            {variantInput.images.length === 0 ? '+ Subir fotos (hasta 3)' : '+ Añadir foto'}
+                        </span>
+                    </button>
+                ) : (
+                    <div className="flex-1 h-full rounded-xl bg-neutral-50 border border-neutral-200/50 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-medium">
+                        Límite alcanzado
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
 
-                                        {/* PRECIOS EN LA GENERACIÓN MASIVA */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-neutral-200/50">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Precio variante (Opcional)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio (Opcional)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
-                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-white border border-rose-200/70 focus:border-rose-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Margen propio (Opcional)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
-                                                </div>
-                                            </div>
-                                        </div>
+    {/* FILA 2: TALLAS Y STOCK (INTACTA) */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
+        {/* TALLAS Y MEDIDAS (7 COLS) */}
+        <div id="tour-step-2-sizes" className={`lg:col-span-7 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-2.5 ${getUniversalSpotlightClass('tour-step-2-sizes')}`}>
+            <div className="flex justify-between items-center text-xs font-bold text-neutral-900">
+                <label className="block">Tallas o Medidas</label>
 
-                                        <button id="tour-step-2-generate" onClick={addVariantGroup} className={`w-full bg-neutral-950 text-white py-3 rounded-lg hover:bg-black active:scale-[0.98] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs border border-transparent ${getUniversalSpotlightClass('tour-step-2-generate')}`}>
-                                            <Plus size={14} />
-                                            <span>Generar Matriz de Variantes</span>
-                                        </button>
-                                    </div>
+                {sizeTags.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => { setSizeTags([]); setIsDirty(true); }}
+                        className="flex items-center gap-1 text-[9px] font-bold text-rose-600 hover:text-rose-800 uppercase tracking-wider transition-colors cursor-pointer"
+                        title="Borrar todas las tallas"
+                    >
+                        <X size={10} strokeWidth={3} />
+                        <span>Vaciar</span>
+                    </button>
+                )}
+            </div>
+
+            <div className="w-full bg-neutral-50/70 border border-neutral-200/80 focus-within:border-neutral-900 focus-within:bg-white rounded-xl p-1.5 min-h-10 flex flex-wrap items-center gap-1.5 transition-colors">
+                {sizeTags.map(tag => (
+                    <span key={tag} className="flex items-center gap-1 bg-neutral-900 text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold">
+                        {tag}
+                        <button type="button" onClick={() => removeSizeTag(tag)} className="hover:text-rose-400 cursor-pointer"><X size={10} /></button>
+                    </span>
+                ))}
+                <div className="flex-1 min-w-[100px] flex items-center">
+                    <input 
+                        placeholder={sizeTags.length === 0 ? "Escribe tallas..." : ""} 
+                        value={sizeInputValue} 
+                        onChange={handleSizeInputChange} 
+                        onKeyDown={handleSizeKeyDown} 
+                        onBlur={handleSizeBlur} 
+                        className="w-full bg-transparent outline-none text-xs font-bold text-neutral-900 placeholder:text-neutral-400 placeholder:font-normal" 
+                    />
+                </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {[
+                    { label: 'D: S - H: XL', sizes: ['S', 'M', 'L', 'XL'] },
+                    { label: 'D: XS - H: 2XL', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
+                    { label: 'D: 36 - H: 39', sizes: ['36', '37', '38', '39'] },
+                    { label: 'D: 40 - H: 44', sizes: ['40', '41', '42', '43', '44'] },
+                    { label: 'D: 35 - H: 45', sizes: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
+                    { label: 'Única', sizes: ['Única'] },
+                ].map(pack => (
+                    <button
+                        key={pack.label}
+                        type="button"
+                        onClick={() => handleAddSizePack(pack.sizes)}
+                        className="px-2 py-0.5 text-[9px] font-mono font-bold bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-700 rounded-md transition-colors cursor-pointer active:scale-95"
+                    >
+                        + {pack.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        {/* STOCK INICIAL (5 COLS) */}
+        <div className="lg:col-span-5 bg-white p-3.5 md:p-4 rounded-2xl border border-neutral-200/70 shadow-xs space-y-1.5 flex flex-col justify-between h-full">
+            <div>
+                <label className="text-xs font-bold text-neutral-900 block leading-none">Stock por cada talla</label>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1">Cantidad física inicial asignada.</p>
+            </div>
+            <NumberInput 
+                min="0" 
+                value={variantInput.defaultStock} 
+                onChangeValue={(val) => updateVariantInput('defaultStock', val)} 
+                className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:border-neutral-900 focus:bg-white rounded-xl px-3 py-1.5 text-sm font-bold text-neutral-900 outline-none text-center h-10 shadow-2xs font-mono" 
+            />
+        </div>
+    </div>
+
+    {/* 🚀 BOTÓN 1: PRECIOS ESPECÍFICOS (TEXTO BREVE, EXPLICATIVO Y EN 1 SOLA LÍNEA) */}
+    <div className="bg-white rounded-xl border border-neutral-200/70 shadow-2xs p-3">
+        <button
+            type="button"
+            onClick={() => setShowVariantPricing(!showVariantPricing)}
+            className="flex items-center justify-between w-full text-left transition-colors cursor-pointer group/price"
+        >
+            <div className="flex items-center gap-2 min-w-0">
+                <span className="w-5 h-5 rounded-md bg-neutral-100 group-hover/price:bg-neutral-200/80 text-neutral-700 flex items-center justify-center font-mono text-[11px] font-bold shrink-0 transition-colors">
+                    {showVariantPricing ? '−' : '+'}
+                </span>
+                <div className="flex items-baseline gap-1.5 truncate">
+                    <span className="text-xs font-bold text-neutral-900 leading-none">
+                        Precios por Talla
+                    </span>
+                    <span className="text-[10px] text-neutral-400 font-medium hidden sm:inline truncate">
+                        (Opcional · Hereda el precio base)
+                    </span>
+                </div>
+            </div>
+
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors shrink-0 ${
+                showVariantPricing 
+                    ? 'bg-neutral-900 text-white' 
+                    : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
+            }`}>
+                {showVariantPricing ? 'Cerrar' : 'Personalizar'}
+            </span>
+        </button>
+
+        <AnimatePresence>
+            {showVariantPricing && (
+                <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                >
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-2.5 border-t border-neutral-100">
+                        <div>
+                            <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Precio específico $</label>
+                            <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio $</label>
+                            <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-400 font-bold text-xs font-mono">$</span>
+                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-neutral-50/70 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Margen propio $</label>
+                            <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </div>
+
+    {/* 🚀 BOTÓN 2: GENERADOR INTELIGENTE (BREVE, CONCENTRADO Y CON CONTEO EN VIVO) */}
+    <button 
+        type="button"
+        id="tour-step-2-generate" 
+        onClick={addVariantGroup} 
+        className={`w-full bg-neutral-950 text-white py-3 rounded-xl hover:bg-black active:scale-[0.99] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${getUniversalSpotlightClass('tour-step-2-generate')}`}
+    >
+        <Plus size={14} strokeWidth={2.5} className="shrink-0" />
+        <span>
+            {sizeTags.length > 0 ? `Generar ${sizeTags.length} Variantes` : 'Generar Variantes'}
+        </span>
+    </button>
+</div>
 
                                     {/* LISTADO DE VARIANTES CREADAS CON ANCLAJE SPOTLIGHT */}
                                     <div
@@ -1792,8 +1981,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                     )}
                                                                 </div>
                                                                 <div className="min-w-0 space-y-0.5">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        {v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent' && <div className="w-2.5 h-2.5 rounded-full border border-neutral-300 shrink-0 shadow-xs" style={{ backgroundColor: v.color_hex }}></div>}
+                                                                    <div className="flex items-center gap-2">
+                                                                        {/* 🚀 ELITE: Renderizado inteligente uni/bi-color */}
+                                                                        {renderVariantColor(v.color_hex)}
                                                                         <p className="font-bold text-xs text-neutral-900 truncate">{v.color_name}</p>
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-1.5">
@@ -1891,18 +2081,29 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                                         className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300"
                                                                                     />
                                                                                 </div>
-                                                                                <div className="sm:col-span-3">
-                                                                                    <div className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 flex justify-between items-center">
-                                                                                        <span>Atributo de opción</span>
-                                                                                        <label className="flex items-center gap-1 cursor-pointer">
-                                                                                            <input type="checkbox" checked={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'} onChange={(e) => updateVariantOverride(v.id, 'color_hex', e.target.checked ? '#000000' : 'transparent')} className="accent-neutral-900" />
-                                                                                            <span className="text-[10px] font-bold text-neutral-700">Lleva Color</span>
-                                                                                        </label>
+                                                                                {/* 🚀 ELITE: Edición con alerta protectora de integridad */}
+                                                                                <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider font-mono">
+                                                                                            Ajustar Colorway del SKU
+                                                                                        </span>
+                                                                                        {variants.filter(item => item.color_name === v.color_name).length > 1 && (
+                                                                                            <span className="text-[9px] font-mono font-bold text-neutral-400">
+                                                                                                Grupo: {v.color_name} ({variants.filter(item => item.color_name === v.color_name).length} tallas)
+                                                                                            </span>
+                                                                                        )}
                                                                                     </div>
-                                                                                    <div className="flex items-center gap-2 bg-white border border-neutral-200/50 rounded-lg p-1 transition-colors">
-                                                                                        {v.color_hex !== 'transparent' && v.color_hex !== '#transparent' && <input type="color" value={v.color_hex} onChange={e => updateVariantOverride(v.id, 'color_hex', e.target.value)} className="w-6 h-6 rounded shrink-0 border-none cursor-pointer bg-transparent" />}
-                                                                                        <input type="text" value={v.color_name} onChange={e => updateVariantOverride(v.id, 'color_name', e.target.value)} className="flex-1 bg-transparent border-none text-xs font-bold outline-none text-neutral-900 px-1" />
-                                                                                    </div>
+
+                                                                                    <EliteVariantColorPicker
+                                                                                        useColor={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'}
+                                                                                        onToggleColor={(checked: boolean) => updateVariantOverride(v.id, 'color_hex', checked ? '#000000' : 'transparent')}
+                                                                                        colorName={v.color_name}
+                                                                                        colorHex={v.color_hex === 'transparent' || v.color_hex === '#transparent' ? '#000000' : v.color_hex}
+                                                                                        onChange={(name: string, hex: string) => {
+                                                                                            // 🚀 LLAMADA AL INTERCEPTOR PROTEGIDO
+                                                                                            handleVariantColorChangeWithGuard(v, name, hex);
+                                                                                        }}
+                                                                                    />
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -1933,21 +2134,21 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                                         </div>
 
                                                                     </div>
-                                                               
-                                                            </motion.div>
-                                                            
-                                                        )}
-                                                        
-                                                    </AnimatePresence>
 
-                                                </div>
-                                                
-                                        ))}
-                                        
+                                                                </motion.div>
+
+                                                            )}
+
+                                                        </AnimatePresence>
+
+                                                    </div>
+
+                                                ))}
+
+                                            </div>
+
+                                        )}
                                     </div>
-                                    
-                                    )}
-                                      </div>
                                 </div>
                             )}
                         </>

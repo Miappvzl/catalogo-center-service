@@ -19,6 +19,7 @@ import { generateSmartSKU } from '@/utils/skuGenerator'
 import Swal from 'sweetalert2'
 import SkuFeatureModal from '@/components/admin/SkuFeatureModal'
 import SkuHelpBanner from '@/components/admin/SkuHelpBanner'
+import { getVariantSwatchStyle } from '@/utils/ColorUtils'
 
 interface SkuRow {
     key: string
@@ -30,6 +31,7 @@ interface SkuRow {
     variantLabel: string | null
     sku: string
     stock: number
+    colorHex?: string | null
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -77,7 +79,7 @@ export default function SkuMatrixPage() {
                 .select(`
                     id, name, category, image_url, stock, sku,
                     product_variants (
-                        id, size, color_name, variant_image, stock, sku
+                        id, size, color_name, color_hex, variant_image, stock, sku
                     )
                 `)
                 .eq('store_id', store.id)
@@ -98,6 +100,7 @@ export default function SkuMatrixPage() {
                         variantLabel: null,
                         sku: p.sku || '',
                         stock: p.stock || 0
+                        
                     })
                 } else {
                     p.product_variants.forEach((v: any) => {
@@ -111,7 +114,8 @@ export default function SkuMatrixPage() {
                             image: v.variant_image || p.image_url || '',
                             variantLabel: labelParts.length > 0 ? labelParts.join(' / ') : 'Variante',
                             sku: v.sku || '',
-                            stock: v.stock || 0
+                            stock: v.stock || 0,
+                            colorHex: v.color_hex || null // 👈 INYECCIÓN AQUÍ
                         })
                     })
                 }
@@ -561,18 +565,23 @@ export default function SkuMatrixPage() {
                                                     </div>
                                                 </td>
 
-                                                <td className="py-3 px-4">
-                                                    {row.variantLabel ? (
-                                                        <span className="inline-flex items-center bg-neutral-50 border border-neutral-200/60 text-neutral-700 text-[10px] font-mono font-bold px-2 py-0.5 rounded leading-none">
-                                                            {row.variantLabel}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] text-neutral-400 font-medium font-mono">
-                                                            Base
-                                                        </span>
-                                                    )}
-                                                </td>
-
+                                               <td className="py-3 px-4">
+    {row.variantLabel ? (
+        <span className="inline-flex items-center gap-1.5 bg-neutral-50 border border-neutral-200/60 text-neutral-700 text-[10px] font-mono font-bold px-2 py-1 rounded leading-none">
+            {row.colorHex && row.colorHex !== 'transparent' && (
+                <span 
+                    className="w-2.5 h-2.5 rounded-full border border-neutral-300 shrink-0" 
+                    style={getVariantSwatchStyle(row.colorHex)} 
+                />
+            )}
+            <span>{row.variantLabel}</span>
+        </span>
+    ) : (
+        <span className="text-[10px] text-neutral-400 font-medium font-mono">
+            Base
+        </span>
+    )}
+</td>
                                                 <td className="py-3 px-4 text-center font-mono font-bold text-xs text-neutral-800 tabular-nums">
                                                     {row.stock}
                                                 </td>

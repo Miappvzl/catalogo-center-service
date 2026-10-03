@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { Zain } from 'next/font/google'
 import TaxCatalogToggle from '@/components/admin/TaxCatalogToggle'
+import { getVariantSwatchStyle } from '@/utils/ColorUtils'
 
 interface InventoryItem {
     rowId: string;
@@ -543,10 +544,14 @@ export default function InventoryPage() {
                                                                     {/* Variantes & SKU en Móvil */}
                                                                     {!isRestaurant ? (
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
-                                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-                                                                                <span className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" style={{ background: item.hex }}></span>
-                                                                                <span className="truncate max-w-[50px]">{item.color}</span>
-                                                                            </div>
+                                                                           <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+            {/* 🚀 FIX: Soporte Bicolor y Sólido con validación CSS */}
+            <span 
+                className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" 
+                style={getVariantSwatchStyle(item.hex)}
+            />
+            <span className="truncate max-w-[80px]">{item.color}</span>
+        </div>
                                                                             <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
                                                                                 <span>{item.size}</span>
                                                                             </div>
@@ -577,12 +582,16 @@ export default function InventoryPage() {
                                                             </Link>
                                                         </td>
                                                         
-                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[110px]">
-                                                                    <span className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0" style={{ background: item.hex }}></span>
-                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
-                                                                </div>
+                                                     <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+    <div className="flex items-center gap-1.5">
+        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
+            {/* 🚀 FIX: Renderizado de gradiente a 135deg para bicolores */}
+            <span 
+                className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0" 
+                style={getVariantSwatchStyle(item.hex)}
+            />
+            <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+        </div>
                                                                 <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
                                                                     <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">Talla: {item.size}</span>
                                                                 </div>

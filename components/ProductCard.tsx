@@ -2,6 +2,7 @@
 'use client'
 
 import { getOptimizedUrl } from '@/utils/cdn';
+import { getVariantSwatchStyle } from '@/utils/ColorUtils';
 import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState, memo, useCallback } from 'react'
@@ -683,18 +684,23 @@ function ProductCardComponent({
           <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
         </button>
 
-        {uniqueColors.length > 1 && (
-          <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/60 p-1.5 rounded-full shadow-sm pointer-events-none">
-            {uniqueColors.slice(0, 3).map((colorHex, idx) => (
-              <div key={idx} className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm" style={{ backgroundColor: colorHex }} />
-            ))}
-            {uniqueColors.length > 3 && (
-              <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
-                +{uniqueColors.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+       {/* 🚀 ELITE FIX: Soporte Bicolor / Sólido en catálogo */}
+{uniqueColors.length > 1 && (
+  <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/60 p-1.5 rounded-full shadow-sm pointer-events-none">
+    {uniqueColors.slice(0, 3).map((colorHex, idx) => (
+      <div 
+        key={idx} 
+        className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm" 
+        style={getVariantSwatchStyle(colorHex)} 
+      />
+    ))}
+    {uniqueColors.length > 3 && (
+      <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
+        +{uniqueColors.length - 3}
+      </span>
+    )}
+  </div>
+)}
       </div>
      {/* 🚀 FICHA UNIVERSAL: ARQUITECTURA DE 3 RANURAS RÍGIDAS (CERO DIENTES DE SIERRA) */}
       <div className="flex flex-col flex-1 pt-3 pb-1 justify-between min-w-0">
