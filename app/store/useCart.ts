@@ -78,10 +78,12 @@ export const useCart = create<CartState>()(
           const productId = product.id;
           const currentMaxStock = variant ? Number(variant.stock) : Number(product.stock || 9999);
           
-          // 🚀 GENERACIÓN DE ID ÚNICO: Si es comida, el ID del carrito debe incluir los modificadores
-          // para que una "Hamburguesa (Sin Cebolla)" no se sume con una "Hamburguesa (Con Tocino)"
-          const modifiersString = foodModifiers ? JSON.stringify(foodModifiers.map(m => m.optionId).sort()) : 'base';
-          const uniqueId = `${productId}-${variantId || 'base'}-${modifiersString}-${foodNotes || 'nonotes'}`;
+      
+        // 🚀 GENERACIÓN DE ID ÚNICO BLINDADO (Evita colisiones entre cajas con surtidos diferentes)
+const modifiersString = foodModifiers 
+    ? JSON.stringify(foodModifiers.map(m => `${m.optionId}-${m.name}`).sort()) 
+    : 'base';
+const uniqueId = `${productId}-${variantId || 'base'}-${modifiersString}-${foodNotes || 'nonotes'}`;
           
           const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId);
 

@@ -387,24 +387,47 @@ export default function CheckoutProcess({
         msg += `NOMBRE: ${clientData.name}\n`;
         msg += `CONTACTO: ${clientData.phone}\n\n`;
 
-        msg += `*DETALLE DE COMPRA*\n`;
+       msg += `*DETALLE DE COMPRA*\n`;
         cartEngine.processedItems.forEach((item: any) => {
+            // Buscamos el ítem original del carrito para extraer foodModifiers
+            const originalItem = items.find(i => i.id === item.id);
+            const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
+
             const pt = item.finalListPrice < item.listPrice
                 ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
                 : `*$${item.listPrice.toFixed(2)}*`;
 
-            const itemName = `${item.quantity}x ${item.name}`;
-            const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : ""; // 🚀 AÑADIDO: SKU Visible
-
-            // Si tiene variante, colocamos el nombre limpio y la variante abajo alineada con el precio
-            if (item.variantInfo && item.variantInfo !== 'N/A') {
-                msg += `${skuText}${itemName}\n`;
-                msg += row(`  Var: ${item.variantInfo}`, pt);
-            } else {
+            const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : "";
+            
+            // 🚀 SI ES COMIDA (FoodTech)
+            if (isFoodItem) {
+                const itemName = `*${item.quantity}x ${item.name}*`;
                 msg += row(`${skuText}${itemName}`, pt);
+
+                // Desglosamos los modificadores cuantitativos matemáticamente
+                originalItem?.foodModifiers?.forEach((mod: any) => {
+                    const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
+                    // Si el cliente pidió 2 cajas, el cocinero debe saber que son "2 x 3x Arequipe = 6x Arequipe"
+                    // Multiplicamos la cantidad del carrito por el texto base del modificador
+                    const cleanModName = mod.name.includes('x ') 
+                        ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
+                        : `${item.quantity}x ${mod.name}`;
+                    
+                    msg += `  └ ${cleanModName} ${modPrice}\n`;
+                });
+            } 
+            // 👕 SI ES RETAIL O NORMAL
+            else {
+                const itemName = `${item.quantity}x ${item.name}`;
+                if (item.variantInfo && item.variantInfo !== 'N/A') {
+                    msg += `${skuText}${itemName}\n`;
+                    msg += row(`  Var: ${item.variantInfo}`, pt);
+                } else {
+                    msg += row(`${skuText}${itemName}`, pt);
+                }
             }
 
-            // 🚀 INYECCIÓN DE NOTAS DE COCINA EN WHATSAPP (PAGO FLASH)
+            // Notas de cocina (Aplica para ambos)
             if (item.foodNotes) {
                 msg += `  ⚠️ Nota: ${item.foodNotes}\n`;
             }
@@ -1101,11 +1124,25 @@ const taxAmountCashUSD = applyTax
             // Generar WhatsApp (Intacto)
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
           cartEngine.processedItems.forEach((item: any) => {
+                const originalItem = items.find(i => i.id === item.id);
+                const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
+                
                 const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
                 const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : ""; 
-                message += `🔸 ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
                 
-                // 🚀 INYECCIÓN DE NOTAS DE COCINA EN WHATSAPP (PAGO MANUAL)
+                if (isFoodItem) {
+                    message += `🔸 ${skuText}*${item.quantity}x ${item.name}* ${priceText}\n`;
+          originalItem?.foodModifiers?.forEach((mod: any) => {
+                        const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
+                        const cleanModName = mod.name.includes('x ') 
+                            ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
+                            : `${item.quantity}x ${mod.name}`;
+                        message += `   └ ${cleanModName} ${modPrice}\n`;
+                    });
+                } else {
+                    message += `🔸 ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
+                }
+
                 if (item.foodNotes) {
                     message += `   ⚠️ *Nota:* ${item.foodNotes}\n`;
                 }
