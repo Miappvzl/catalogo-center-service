@@ -668,19 +668,16 @@ export default function RestaurantInterface({
         const targetBtn = document.getElementById(targetId)
 
         if (container && targetBtn) {
-            // Ancho óptimo de la pastilla deslizante
-            const pillWidth = 28
-            // Cálculo del offset directo en el árbol de renderizado (sin layout thrashing)
+            // 🚀 UI FIX: Pastilla reducida proporcionalmente al nuevo carril compacto
+            const pillWidth = 20
             const targetLeft = targetBtn.offsetLeft + (targetBtn.offsetWidth - pillWidth) / 2
 
-            // 🚀 PERF FIX: Mutación directa en Compositor GPU sin forzar re-render en React
             if (mobileIndicatorRef.current) {
                 mobileIndicatorRef.current.style.transform = `translate3d(${targetLeft}px, 0, 0)`
                 mobileIndicatorRef.current.style.width = `${pillWidth}px`
                 mobileIndicatorRef.current.style.opacity = '1'
             }
 
-            // Desplazamiento absoluto no acumulativo
             const targetScrollLeft = targetBtn.offsetLeft - (container.clientWidth / 2) + (targetBtn.offsetWidth / 2)
             container.scrollTo({
                 left: Math.max(0, targetScrollLeft),
@@ -875,32 +872,32 @@ export default function RestaurantInterface({
                             aria-label="Selector de categorías"
                             className="w-full py-2 overflow-hidden"
                         >
-                         {/* 🚀 CARRIL MÓVIL DE ALTO RENDIMIENTO (60/120 FPS NATIVO) */}
+                      {/* 🚀 CARRIL MÓVIL COMPACTO Y DE ALTO RENDIMIENTO (Escala 48px) */}
                             <div 
                                 id="mobile-categories-rail"
-                                className="relative flex items-start gap-4 sm:gap-5 overflow-x-auto no-scrollbar pl-6 pr-6 pt-1 pb-4 snap-x snap-mandatory scroll-pl-6"
+                                className="relative flex items-start gap-3 sm:gap-4 overflow-x-auto no-scrollbar pl-4 pr-4 pt-1 pb-3 snap-x snap-mandatory scroll-pl-4"
                             >
                                 <button 
                                     type="button"
                                     id="rail-cat-todos"
                                     onClick={() => handleScrollToSection('Todos')} 
-                                    className="flex flex-col items-center gap-1.5 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
+                                    className="flex flex-col items-center gap-1 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
                                 >
                                     <div 
-                                        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 bg-[var(--store-surface)] shadow-[var(--shadow-ui)] ${
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 bg-[var(--store-surface)] shadow-2xs ${
                                             activeCategory === 'Todos' 
-                                                ? 'border-2 border-[var(--store-primary)] ring-4 ring-[var(--store-primary)]/15 scale-105' 
+                                                ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105' 
                                                 : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
                                         }`}
                                     >
                                         <Utensils 
-                                            size={20} 
+                                            size={16} 
                                             strokeWidth={2} 
                                             className={activeCategory === 'Todos' ? 'text-[var(--store-primary)]' : 'text-[var(--store-surface-text)]'} 
                                         />
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className={`text-[11px] tracking-tight leading-tight transition-colors duration-200 ${
+                                        <span className={`text-[10px] tracking-tight leading-tight transition-colors duration-200 ${
                                             activeCategory === 'Todos' 
                                                 ? 'text-[var(--store-primary)] font-black' 
                                                 : 'text-[var(--store-surface-text)] font-semibold'
@@ -920,12 +917,12 @@ export default function RestaurantInterface({
                                             type="button"
                                             id={`rail-cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                                             onClick={() => handleScrollToSection(cat)} 
-                                            className="flex flex-col items-center gap-1.5 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
+                                            className="flex flex-col items-center gap-1 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
                                         >
                                             <div 
-                                                className={`w-16 h-16 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200 relative bg-[var(--store-surface)] shadow-[var(--shadow-ui)] ${
+                                                className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200 relative bg-[var(--store-surface)] shadow-2xs ${
                                                     isActive 
-                                                        ? 'border-2 border-[var(--store-primary)] ring-4 ring-[var(--store-primary)]/15 scale-105' 
+                                                        ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105' 
                                                         : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
                                                 }`}
                                             >
@@ -934,17 +931,17 @@ export default function RestaurantInterface({
                                                         src={getOptimizedUrl(imgUrl)} 
                                                         alt={cat} 
                                                         fill 
-                                                        sizes="64px" 
-                                                        className="object-cover p-1.5 rounded-full" 
+                                                        sizes="48px" 
+                                                        className="object-cover p-1 rounded-full" 
                                                     />
                                                 ) : (
-                                                    <span className="text-[10px] font-black uppercase text-[var(--store-surface-text)] opacity-40 tracking-wider">
+                                                    <span className="text-[9px] font-black uppercase text-[var(--store-surface-text)] opacity-40 tracking-wider">
                                                         {cat.substring(0, 3)}
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="flex flex-col items-center max-w-[72px]">
-                                                <span className={`text-[11px] tracking-tight truncate w-full text-center leading-tight transition-colors duration-200 ${
+                                            <div className="flex flex-col items-center max-w-[58px]">
+                                                <span className={`text-[10px] tracking-tight truncate w-full text-center leading-tight transition-colors duration-200 ${
                                                     isActive 
                                                         ? 'text-[var(--store-primary)] font-black' 
                                                         : 'text-[var(--store-surface-text)] font-semibold'
@@ -956,10 +953,10 @@ export default function RestaurantInterface({
                                     )
                                 })}
 
-                                {/* 🚀 PASTILLA MAGNÉTICA DESLIZANTE EN GPU (Zero Jank - Curva iOS Nativa) */}
+                                {/* 🚀 PASTILLA MAGNÉTICA GPU COMPACTA */}
                                 <span 
                                     ref={mobileIndicatorRef}
-                                    className="absolute bottom-1 h-1 bg-[var(--store-primary)] rounded-full transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform pointer-events-none opacity-0 shadow-xs"
+                                    className="absolute bottom-0.5 h-0.5 bg-[var(--store-primary)] rounded-full transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform pointer-events-none opacity-0"
                                     style={{ left: 0 }}
                                 />
                             </div>

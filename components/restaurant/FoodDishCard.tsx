@@ -230,25 +230,27 @@ function FoodDishCardComponent({
         )
     }
 
-    // =========================================================================
-    // VARIANTE GRID (Cuadrícula Especializada / Inspiración Chick-fil-A)
+     // =========================================================================
+    // VARIANTE GRID (Alta Fidelidad y Rendimiento Móvil 120fps)
     // =========================================================================
     return (
-      <motion.div
-            whileHover={{ y: -3 }}
-            transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+        <div
             onClick={() => !isOutOfStock && onOpenModal(product)}
-            // 🚀 PERF FIX: transition-all por transition-colors. Libera trabajo a la GPU.
-            className={`w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 transition-colors duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group relative shadow-[var(--shadow-ui)] ${
+            // 🚀 PERF FIX: Reemplazado motion.div por div nativo con hover CSS.
+            // Inyectamos content-visibility: auto para omitir el costo de render de tarjetas fuera de pantalla.
+            className={`w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 md:hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group relative shadow-[var(--shadow-ui)] ${
                 isOutOfStock ? 'opacity-50 grayscale-[30%]' : ''
             }`}
-            style={{ borderRadius: 'var(--radius-card)' }}
+            style={{ 
+                borderRadius: 'var(--radius-card)',
+                contentVisibility: 'auto',
+                containIntrinsicSize: '0 290px'
+            }}
         >
-               {/* Contenedor Visual (Fotografía Protagónica) */}
+            {/* Contenedor Visual (Fotografía Protagónica) */}
             <div 
                 ref={imageRef}
                 className="relative aspect-square w-full overflow-hidden"
-
                 style={{
                     backgroundColor: 'color-mix(in srgb, var(--store-surface) 80%, var(--store-bg))'
                 }}
@@ -261,7 +263,8 @@ function FoodDishCardComponent({
                         priority={isPriorityImage}
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         onLoad={() => setIsImageLoaded(true)}
-                        className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 will-change-transform ${
+                        // 🚀 PERF FIX: Eliminado will-change-transform para no asfixiar la memoria VRAM del móvil
+                        className={`object-cover transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105 ${
                             isImageLoaded ? 'opacity-100' : 'opacity-0'
                         }`}
                     />
@@ -271,7 +274,7 @@ function FoodDishCardComponent({
                     </div>
                 )}
 
-                {/* Badges Flotantes */}
+                {/* Badges Flotantes (Sin backdrop-blur para no castigar la GPU) */}
                 <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
                     {isOutOfStock ? (
                         <span className="bg-neutral-950/90 text-white text-[8px] sm:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
@@ -283,12 +286,7 @@ function FoodDishCardComponent({
                         </span>
                     ) : product.shipping_badge_title ? (
                         <span 
-                            className="text-[8px] sm:text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-xs backdrop-blur-xs flex items-center gap-1 font-mono border"
-                            style={{
-                                backgroundColor: 'color-mix(in srgb, var(--store-surface) 90%, transparent)',
-                                borderColor: 'color-mix(in srgb, var(--store-border) 60%, transparent)',
-                                color: 'var(--store-text-main)'
-                            }}
+                            className="text-[8px] sm:text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 font-mono border bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)]/80"
                         >
                             <Clock size={10} className="opacity-70" /> 
                             <span>{product.shipping_badge_title}</span>
@@ -296,8 +294,7 @@ function FoodDishCardComponent({
                     ) : null}
                 </div>
 
-                {/* Botón Favorito Sutil */}
-               {/* Botón Favorito Dinámico */}
+                {/* Botón Favorito Dinámico (GPU-friendly sin backdrop-filter) */}
                 <button
                     type="button"
                     onClick={handleToggleFav}
@@ -305,19 +302,18 @@ function FoodDishCardComponent({
                     style={{
                         color: isFavorite ? 'var(--store-action-favorite)' : 'var(--store-surface-text)',
                         backgroundColor: isFavorite 
-                            ? 'color-mix(in srgb, var(--store-surface) 95%, transparent)' 
-                            : 'color-mix(in srgb, var(--store-surface) 80%, transparent)'
+                            ? 'var(--store-surface)' 
+                            : 'color-mix(in srgb, var(--store-surface) 90%, var(--store-bg))'
                     }}
-                    className="absolute top-2.5 right-2.5 z-10 p-2 rounded-full transition-transform active:scale-90 shadow-2xs backdrop-blur-xs border border-[var(--store-border)]/30"
+                    className="absolute top-2 right-2 z-10 p-1.5 rounded-full transition-transform active:scale-90 shadow-xs border border-[var(--store-border)]/40"
                 >
                     <Heart 
-                        size={14} 
+                        size={13} 
                         strokeWidth={2.2} 
                         className={isFavorite ? 'fill-current' : ''} 
                     />
                 </button>
             </div>
-
             {/* Ficha Descriptiva y Acción de Compra */}
             <div className="p-3.5 sm:p-4 flex flex-col flex-1 justify-between gap-2.5">
                 <div>
@@ -402,7 +398,7 @@ function FoodDishCardComponent({
                     )}
                 </div>
             </div>
-        </motion.div>
+        </div>
     )
 }
 
