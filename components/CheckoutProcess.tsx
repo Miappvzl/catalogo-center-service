@@ -348,14 +348,14 @@ export default function CheckoutProcess({
         let deliveryInfoFull = "Servicio en Local / Experiencia";
         let finalShippingMethod = "service";
 
-        if (isFoodTech) {
+       if (isFoodTech) {
             finalShippingMethod = clientData.deliveryType;
             if (clientData.deliveryType === "dine_in") {
-                deliveryInfoFull = `📍 COMER EN EL LOCAL - MESA: ${clientData.tableNumber || "No indicada"}`;
+                deliveryInfoFull = `📍 CONSUMO EN EL LOCAL (Salón / Barra)`;
             } else if (clientData.deliveryType === "pickup") {
-                deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Barra)`;
+                deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Mostrador)`;
             } else if (clientData.deliveryType === "local_delivery") {
-                deliveryInfoFull = `🛵 DELIVERY: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
+                deliveryInfoFull = `🛵 DELIVERY LOCAL: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
             }
         } else if (needsShipping) {
             // Lógica original de retail
@@ -387,7 +387,7 @@ export default function CheckoutProcess({
         msg += `NOMBRE: ${clientData.name}\n`;
         msg += `CONTACTO: ${clientData.phone}\n\n`;
 
-       msg += `*DETALLE DE COMPRA*\n`;
+        msg += `*DETALLE DE COMPRA*\n`;
         cartEngine.processedItems.forEach((item: any) => {
             // Buscamos el ítem original del carrito para extraer foodModifiers
             const originalItem = items.find(i => i.id === item.id);
@@ -398,7 +398,7 @@ export default function CheckoutProcess({
                 : `*$${item.listPrice.toFixed(2)}*`;
 
             const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : "";
-            
+
             // 🚀 SI ES COMIDA (FoodTech)
             if (isFoodItem) {
                 const itemName = `*${item.quantity}x ${item.name}*`;
@@ -409,13 +409,13 @@ export default function CheckoutProcess({
                     const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
                     // Si el cliente pidió 2 cajas, el cocinero debe saber que son "2 x 3x Arequipe = 6x Arequipe"
                     // Multiplicamos la cantidad del carrito por el texto base del modificador
-                    const cleanModName = mod.name.includes('x ') 
+                    const cleanModName = mod.name.includes('x ')
                         ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
                         : `${item.quantity}x ${mod.name}`;
-                    
+
                     msg += `  └ ${cleanModName} ${modPrice}\n`;
                 });
-            } 
+            }
             // 👕 SI ES RETAIL O NORMAL
             else {
                 const itemName = `${item.quantity}x ${item.name}`;
@@ -573,12 +573,12 @@ export default function CheckoutProcess({
     const taxableCashNominal = cartEngine.totalCashNominal * taxableRatio;
 
     // El IVA se calcula EXCLUSIVAMENTE sobre la porción gravable segura
-   const taxAmountListUSD = applyTax
-    ? Number((safeTaxableSubtotalList * listDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
-    : 0;
-const taxAmountCashUSD = applyTax
-    ? Number((taxableCashNominal * cashDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
-    : 0;
+    const taxAmountListUSD = applyTax
+        ? Number((safeTaxableSubtotalList * listDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
+        : 0;
+    const taxAmountCashUSD = applyTax
+        ? Number((taxableCashNominal * cashDiscountMultiplier * (taxPercentage / 100)).toFixed(2))
+        : 0;
 
     const totalListUSD = totalListUSD_base + taxAmountListUSD + tipAmountUSD;
     const totalCashUSD = totalCashUSD_base + taxAmountCashUSD + tipAmountUSD;
@@ -864,9 +864,7 @@ const taxAmountCashUSD = applyTax
         if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
 
-        if (isFoodTech && clientData.deliveryType === "dine_in" && !clientData.tableNumber) {
-            newErrors.tableNumber = "Indica el número o nombre de tu mesa";
-        }
+    
         if (isStrictTax && wantsFiscalData) {
             if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
             if (!clientData.fiscalAddress) newErrors.fiscalAddress = "La Dirección Fiscal es obligatoria";
@@ -972,7 +970,7 @@ const taxAmountCashUSD = applyTax
                 }),
             );
 
-          // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
+            // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
 
@@ -993,7 +991,7 @@ const taxAmountCashUSD = applyTax
                 else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
             }
 
-          // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
+            // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
             if (appliedCreditUSD > 0) {
                 uploadedPayments.push({
                     method: "Crédito de Tienda",
@@ -1010,7 +1008,7 @@ const taxAmountCashUSD = applyTax
             // 🚀 ADAPTADOR ESTRICTO DE DATOS (Frontend State -> PostgreSQL Enum Constraint)
             const rawFulfillment = isFoodTech ? clientData.deliveryType : finalShippingMethod;
             let strictFulfillmentType = 'pickup'; // Fallback seguro por defecto (Aplica también para 'service' / Intangibles)
-            
+
             if (rawFulfillment === 'courier') strictFulfillmentType = 'shipping';
             else if (rawFulfillment === 'local_delivery') strictFulfillmentType = 'delivery';
             else if (rawFulfillment === 'dine_in') strictFulfillmentType = 'dine_in';
@@ -1023,12 +1021,12 @@ const taxAmountCashUSD = applyTax
                     body: JSON.stringify({
                         storeId, clientData,
                         orderData: {
-                            total_usd: Number(grandTotalUSD.toFixed(2)), 
-                            total_bs: Number(grandTotalBs.toFixed(2)), 
-                            exchange_rate: activeRate, 
-                            currency_type: currency, 
-                            shipping_method: rawFulfillment, 
-                            delivery_info: deliveryInfoFull, 
+                            total_usd: Number(grandTotalUSD.toFixed(2)),
+                            total_bs: Number(grandTotalBs.toFixed(2)),
+                            exchange_rate: activeRate,
+                            currency_type: currency,
+                            shipping_method: rawFulfillment,
+                            delivery_info: deliveryInfoFull,
                             fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
                             table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
                         },
@@ -1054,38 +1052,38 @@ const taxAmountCashUSD = applyTax
                     const userEmail = changeEmail || currentUser?.email || 'No provisto';
                     deliveryInfoFull += ` | ⚠️ VUELTO VIRTUAL: $${expectedChange.toFixed(2)} (Entregó: $${tenderedAmount.toFixed(2)} | Correo: ${userEmail})`;
                 }
-              const { data: insertedOrder, error: orderError } = await supabase
+                const { data: insertedOrder, error: orderError } = await supabase
                     .from("orders")
                     .insert({
-                        store_id: storeId, 
-                        customer_id: currentUser ? currentUser.id : null, 
-                        customer_name: clientData.name, 
-                        customer_phone: clientData.phone, 
-                        total_usd: Number(grandTotalUSD.toFixed(2)), 
-                        total_bs: Number(grandTotalBs.toFixed(2)), 
-                        exchange_rate: activeRate, 
-                        currency_type: currency, 
-                        status: "pending", 
-                        payment_method: finalPaymentMethod, 
-                        split_payments: uploadedPayments, 
-                        shipping_method: rawFulfillment, 
+                        store_id: storeId,
+                        customer_id: currentUser ? currentUser.id : null,
+                        customer_name: clientData.name,
+                        customer_phone: clientData.phone,
+                        total_usd: Number(grandTotalUSD.toFixed(2)),
+                        total_bs: Number(grandTotalBs.toFixed(2)),
+                        exchange_rate: activeRate,
+                        currency_type: currency,
+                        status: "pending",
+                        payment_method: finalPaymentMethod,
+                        split_payments: uploadedPayments,
+                        shipping_method: rawFulfillment,
                         fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
                         table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
-                        tip_amount_usd: isFoodTech ? Number(tipAmountUSD.toFixed(2)) : 0, 
-                        delivery_info: deliveryInfoFull, 
-                        shipping_cost: Number(deliveryCost.toFixed(2)), 
-                        discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)), 
-                        affiliate_code: affiliateCode || null, 
-                        document_type: isStrictTax ? "invoice" : "note", 
-                        is_tax_applied: applyTax, 
-                        tax_percentage: applyTax ? taxPercentage : 0, 
-                        subtotal_usd: Number(totalListUSD_base.toFixed(2)), 
-                        tax_amount_usd: Number(taxAmountListUSD.toFixed(2)), 
-                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)), 
-                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)), 
-                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)), 
-                        fx_savings_usd: Number(actualFxSavings.toFixed(2)), 
-                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null, 
+                        tip_amount_usd: isFoodTech ? Number(tipAmountUSD.toFixed(2)) : 0,
+                        delivery_info: deliveryInfoFull,
+                        shipping_cost: Number(deliveryCost.toFixed(2)),
+                        discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                        affiliate_code: affiliateCode || null,
+                        document_type: isStrictTax ? "invoice" : "note",
+                        is_tax_applied: applyTax,
+                        tax_percentage: applyTax ? taxPercentage : 0,
+                        subtotal_usd: Number(totalListUSD_base.toFixed(2)),
+                        tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
+                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                        fx_savings_usd: Number(actualFxSavings.toFixed(2)),
+                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null,
                         customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
                     }).select().single();
 
@@ -1123,18 +1121,18 @@ const taxAmountCashUSD = applyTax
 
             // Generar WhatsApp (Intacto)
             let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
-          cartEngine.processedItems.forEach((item: any) => {
+            cartEngine.processedItems.forEach((item: any) => {
                 const originalItem = items.find(i => i.id === item.id);
                 const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
-                
+
                 const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
-                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : ""; 
-                
+                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : "";
+
                 if (isFoodItem) {
                     message += `🔸 ${skuText}*${item.quantity}x ${item.name}* ${priceText}\n`;
-          originalItem?.foodModifiers?.forEach((mod: any) => {
+                    originalItem?.foodModifiers?.forEach((mod: any) => {
                         const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
-                        const cleanModName = mod.name.includes('x ') 
+                        const cleanModName = mod.name.includes('x ')
                             ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
                             : `${item.quantity}x ${mod.name}`;
                         message += `   └ ${cleanModName} ${modPrice}\n`;
@@ -1416,55 +1414,59 @@ const taxAmountCashUSD = applyTax
                         </h2>
 
                         <div className="grid grid-cols-1 gap-3" id="field-deliveryType">
-                            {isFoodTech ? (
-                                // OPCIONES EXCLUSIVAS DE RESTAURANTE
+                          {isFoodTech ? (
+                                // 🚀 OPCIONES DE RESTAURANTE SUJETAS A LA CONFIGURACIÓN REAL DEL COMERCIO
                                 <>
-                                    {/* Opcion: Comer en el Local */}
-                                    <div
-                                        onClick={() => {
-                                            setClientData({ ...clientData, deliveryType: "dine_in", addressDetail: "" });
-                                            setSelectedDeliveryZone("");
-                                            setErrors(prev => ({ ...prev, tableNumber: "", deliveryZone: "", addressDetail: "" }));
-                                        }}
-                                        className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "dine_in"
-                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
-                                            }`}
-                                    >
-                                        <Store size={20} className={clientData.deliveryType === "dine_in" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
-                                        <div>
-                                            <p className="font-bold text-sm text-[var(--store-text-main)]">Comer en el Local</p>
-                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Servicio directo a tu mesa.</p>
+                                    {/* 1. Comer en el Local (Solo si está activo en el admin) */}
+                                    {shipping.methods?.dine_in !== false && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "dine_in", addressDetail: "" });
+                                                setSelectedDeliveryZone("");
+                                                setErrors(prev => ({ ...prev, deliveryZone: "", addressDetail: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "dine_in"
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                }`}
+                                        >
+                                            <Store size={20} className={clientData.deliveryType === "dine_in" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Comer en el Local</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Consumo en salón o barra.</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Opcion: Para Llevar */}
-                                    <div
-                                        onClick={() => {
-                                            setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
-                                            setSelectedDeliveryZone("");
-                                            setErrors(prev => ({ ...prev, tableNumber: "", deliveryZone: "", addressDetail: "" }));
-                                        }}
-                                        className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
-                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
-                                            }`}
-                                    >
-                                        <Package size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
-                                        <div>
-                                            <p className="font-bold text-sm text-[var(--store-text-main)]">Para Llevar (Pick-up)</p>
-                                            <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Retira en barra cuando esté listo.</p>
+                                    {/* 2. Para Llevar (Solo si está activo en el admin) */}
+                                    {shipping.methods?.pickup !== false && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
+                                                setSelectedDeliveryZone("");
+                                                setErrors(prev => ({ ...prev, deliveryZone: "", addressDetail: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                }`}
+                                        >
+                                            <Package size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Para Llevar (Pick-up)</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Retiro en mostrador.</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Opcion: Delivery Local */}
+                                    {/* 3. Delivery Local (Solo si tiene zonas configuradas) */}
                                     {shipping.methods?.delivery && deliveryZones.length > 0 && (
                                         <div
                                             onClick={() => {
                                                 setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
-                                                setErrors(prev => ({ ...prev, tableNumber: "", pickup: "" }));
+                                                setErrors(prev => ({ ...prev, pickup: "" }));
                                             }}
-                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
+                                            className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
                                                     ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
                                                     : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
                                                 }`}
@@ -1472,7 +1474,7 @@ const taxAmountCashUSD = applyTax
                                             <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
                                             <div>
                                                 <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
-                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu domicilio.</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu dirección.</p>
                                             </div>
                                         </div>
                                     )}
@@ -1533,30 +1535,10 @@ const taxAmountCashUSD = applyTax
                             )}
                         </div>
 
-                        {/* CAMPO DE NUMERO DE MESA (DINE-IN) */}
+                       {/* 🚀 CONFIRMACIÓN LIMPIA PARA CONSUMO EN SALÓN (CERO INPUTS MOLESTOS) */}
                         {isFoodTech && clientData.deliveryType === "dine_in" && (
-                            <div id="field-tableNumber" className="space-y-2 pt-2 animate-in fade-in">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] block">
-                                    Número o Nombre de la Mesa *
-                                </label>
-                                <input
-                                    maxLength={20}
-                                    value={clientData.tableNumber || ""}
-                                    onChange={(e) => {
-                                        setClientData({ ...clientData, tableNumber: e.target.value });
-                                        if (errors.tableNumber) setErrors(prev => ({ ...prev, tableNumber: "" }));
-                                    }}
-                                    className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/60 ${errors.tableNumber
-                                            ? "border-red-500 text-red-600 focus:border-red-500"
-                                            : "border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
-                                        }`}
-                                    placeholder="Ej: Mesa 4, Barra 2, Terraza..."
-                                />
-                                {errors.tableNumber && (
-                                    <p className="text-red-500 text-[10px] font-bold mt-1 px-1">
-                                        {errors.tableNumber}
-                                    </p>
-                                )}
+                            <div className="p-3.5 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]/50 text-[11px] font-medium text-[var(--store-surface-text)] animate-in fade-in">
+                                🍽️ Tu orden será preparada para servir en el local.
                             </div>
                         )}
 
@@ -1863,8 +1845,8 @@ const taxAmountCashUSD = applyTax
                                     type="button"
                                     onClick={() => setTipPercentage(pct)}
                                     className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
-                                            ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
-                                            : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
+                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
+                                        : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
                                         }`}
                                 >
                                     {pct === 0 ? "0%" : `${pct}%`}
@@ -2657,7 +2639,7 @@ const taxAmountCashUSD = applyTax
                     {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
                     <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
                         <div className="w-full h-[52px] relative flex justify-end md:justify-center">
-                         <motion.button
+                            <motion.button
                                 layout
                                 onClick={handleCheckout}
                                 disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}

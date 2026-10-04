@@ -35,15 +35,15 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
     const [loading, setLoading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
 
-    const [config, setConfig] = useState({
-        methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true },
+ const [config, setConfig] = useState({
+        methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true, dine_in: true },
         main_address: '',
         pickup_locations: [] as string[],
         delivery_zones: [] as { id: string, name: string, cost: number }[],
         show_badge: true,
         global_badge_title: '',
         global_badge_desc: '',
-        national_shipping_is_free: false // 🚀 NUEVO: Estado de Envío Gratis
+        national_shipping_is_free: false
     })
 
     const [newLocation, setNewLocation] = useState('')
@@ -51,10 +51,14 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
 
     useEffect(() => {
         if (initialData) {
-            setConfig(prev => ({
+           setConfig(prev => ({
                 ...prev,
                 ...initialData,
-                methods: { ...prev.methods, ...initialData.methods },
+                methods: { 
+                    ...prev.methods, 
+                    ...initialData.methods,
+                    dine_in: initialData?.methods?.dine_in ?? (isRestaurant ? true : false)
+                },
                 main_address: initialData.main_address || '',
                 delivery_zones: initialData.delivery_zones || [],
                 pickup_locations: initialData.pickup_locations || [],
@@ -187,15 +191,41 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                     </div>
                     )}
 
-                {/* 2. DELIVERY & PICKUP */}
-                    <div className={`space-y-4 ${!isRestaurant ? 'pt-4 border-t border-neutral-100/50' : ''}`}>
-                        <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
-                            {isRestaurant ? 'Modalidades de Despacho y Entrega' : 'Entrega Local en Ciudad'}
-                        </h4>
+             {/* 2. DELIVERY, PICKUP & SALÓN */}
+                <div className={`space-y-4 ${!isRestaurant ? 'pt-4 border-t border-neutral-100/50' : ''}`}>
+                    <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
+                        {isRestaurant ? 'Modalidades de Servicio y Despacho' : 'Entrega Local en Ciudad'}
+                    </h4>
+
+                    {isRestaurant ? (
+                        /* 🍔 MODO RESTAURANTE: 3 MODALIDADES CLARAS */
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <FlatToggle 
+                                active={config.methods.dine_in} 
+                                label="Comer en el Local" 
+                                subtitle="Consumo en salón o barra" 
+                                onClick={() => toggleMethod('dine_in')} 
+                            />
+                            <FlatToggle 
+                                active={config.methods.pickup} 
+                                label="Para Llevar" 
+                                subtitle="Retiro en mostrador" 
+                                onClick={() => toggleMethod('pickup')} 
+                            />
+                            <FlatToggle 
+                                active={config.methods.delivery} 
+                                label="Delivery Tarifado" 
+                                subtitle="Envío por zonas de entrega" 
+                                onClick={() => toggleMethod('delivery')} 
+                            />
+                        </div>
+                    ) : (
+                        /* 👕 MODO RETAIL: EXACTAMENTE IGUAL AL ORIGINAL (CERO IMPACTO) */
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FlatToggle active={config.methods.pickup} label="Retiro Presencial" subtitle="Entrega en tienda (Sin costo)" onClick={() => toggleMethod('pickup')} />
                             <FlatToggle active={config.methods.delivery} label="Delivery Tarifado" subtitle="Costo variable por zona" onClick={() => toggleMethod('delivery')} />
                         </div>
+                    )}
 
                         {/* DIRECCIONES DE PICKUP */}
                         {config.methods.pickup && (
