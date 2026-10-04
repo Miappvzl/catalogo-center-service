@@ -15,8 +15,10 @@ export interface StoreHoursConfig {
   schedule?: Record<string, DayShift>
 }
 
+// 🚀 FIX: Reincorporamos statusLabel para StoreHeader y RestaurantHeader
 export interface StoreHoursEvaluation {
   isOpen: boolean
+  statusLabel: string // "Abierto" | "Cerrado"
   detailLabel: string
 }
 
@@ -45,23 +47,23 @@ function formatTime12h(timeStr?: string): string {
   const m = mStr || '00'
   const ampm = h >= 12 ? 'PM' : 'AM'
   h = h % 12
-  h = h ? h : 12 // la hora '0' debe ser '12'
+  h = h ? h : 12
   return `${h}:${m} ${ampm}`
 }
 
 export function evaluateStoreHours(storeHours?: StoreHoursConfig): StoreHoursEvaluation {
   if (!storeHours) {
-    return { isOpen: true, detailLabel: 'Abierto 24/7' }
+    return { isOpen: true, statusLabel: 'Abierto', detailLabel: 'Abierto 24/7' }
   }
 
   // 1. Interruptor de Pausa de Emergencia
   if (storeHours.is_temporarily_closed) {
-    return { isOpen: false, detailLabel: 'Pausado temporalmente' }
+    return { isOpen: false, statusLabel: 'Cerrado', detailLabel: 'Pausado temporalmente' }
   }
 
   const schedule = storeHours.schedule
   if (!schedule) {
-    return { isOpen: true, detailLabel: 'Horario continuo' }
+    return { isOpen: true, statusLabel: 'Abierto', detailLabel: 'Horario continuo' }
   }
 
   const timezone = storeHours.timezone || 'America/Caracas'
@@ -100,76 +102,108 @@ export function evaluateStoreHours(storeHours?: StoreHoursConfig): StoreHoursEva
 
   // 3. 🌙 COMPROBACIÓN 1: ¿Estamos en la madrugada del turno de ayer que cruzó medianoche?
   if (yesterdaySchedule && yesterdaySchedule.isOpen) {
-    // Turno 1 de ayer
     const yOpen = timeToMinutes(yesterdaySchedule.open)
     const yClose = timeToMinutes(yesterdaySchedule.close)
     if (yClose < yOpen && currentMinutes < yClose) {
-      return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(yesterdaySchedule.close)}` }
+      return { 
+        isOpen: true, 
+        statusLabel: 'Abierto', 
+        detailLabel: `Cierra a las ${formatTime12h(yesterdaySchedule.close)}` 
+      }
     }
-    // Turno 2 de ayer (si aplica)
     if (yesterdaySchedule.hasSecondShift && yesterdaySchedule.open2 && yesterdaySchedule.close2) {
       const yOpen2 = timeToMinutes(yesterdaySchedule.open2)
       const yClose2 = timeToMinutes(yesterdaySchedule.close2)
       if (yClose2 < yOpen2 && currentMinutes < yClose2) {
-        return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(yesterdaySchedule.close2)}` }
+        return { 
+          isOpen: true, 
+          statusLabel: 'Abierto', 
+          detailLabel: `Cierra a las ${formatTime12h(yesterdaySchedule.close2)}` 
+        }
       }
     }
   }
 
   // 4. COMPROBACIÓN 2: ¿Estamos dentro de los turnos de hoy?
   if (todaySchedule && todaySchedule.isOpen) {
-
-    // 🚀 REGLA DE ORO 24/7: Si está configurado de 00:00 a 23:59, está abierto siempre
+    // 🚀 REGLA DE ORO 24/7
     if (todaySchedule.open === '00:00' && (todaySchedule.close === '23:59' || todaySchedule.close === '00:00')) {
-      return { isOpen: true, detailLabel: 'Abierto 24 horas' }
+      return { 
+        isOpen: true, 
+        statusLabel: 'Abierto', 
+        detailLabel: 'Abierto 24 horas' 
+      }
     }
-    // Turno 1 de hoy
+
     const tOpen = timeToMinutes(todaySchedule.open)
     const tClose = timeToMinutes(todaySchedule.close)
 
     if (tClose > tOpen) {
-      // Horario normal (ej: 09:00 a 22:00)
       if (currentMinutes >= tOpen && currentMinutes < tClose) {
-        return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close)}` }
+        return { 
+          isOpen: true, 
+          statusLabel: 'Abierto', 
+          detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close)}` 
+        }
       }
     } else if (tClose < tOpen) {
-      // 🌙 Horario trasnochador que cruza medianoche (ej: 18:00 a 03:00)
+      // 🌙 Cruce de medianoche
       if (currentMinutes >= tOpen) {
-        return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close)}` }
+        return { 
+          isOpen: true, 
+          statusLabel: 'Abierto', 
+          detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close)}` 
+        }
       }
     }
 
-    // Turno 2 de hoy (si aplica)
+    // Turno 2 de hoy
     if (todaySchedule.hasSecondShift && todaySchedule.open2 && todaySchedule.close2) {
       const tOpen2 = timeToMinutes(todaySchedule.open2)
       const tClose2 = timeToMinutes(todaySchedule.close2)
 
       if (tClose2 > tOpen2) {
         if (currentMinutes >= tOpen2 && currentMinutes < tClose2) {
-          return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close2)}` }
+          return { 
+            isOpen: true, 
+            statusLabel: 'Abierto', 
+            detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close2)}` 
+          }
         }
       } else if (tClose2 < tOpen2) {
         if (currentMinutes >= tOpen2) {
-          return { isOpen: true, detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close2)}` }
+          return { 
+            isOpen: true, 
+            statusLabel: 'Abierto', 
+            detailLabel: `Cierra a las ${formatTime12h(todaySchedule.close2)}` 
+          }
         }
       }
     }
 
     // Si aún no abre hoy
     if (currentMinutes < tOpen) {
-      return { isOpen: false, detailLabel: `Abre hoy a las ${formatTime12h(todaySchedule.open)}` }
+      return { 
+        isOpen: false, 
+        statusLabel: 'Cerrado', 
+        detailLabel: `Abre hoy a las ${formatTime12h(todaySchedule.open)}` 
+      }
     }
 
-    // Si hay segundo turno y estamos en el intermedio
+    // Intermedio entre turno 1 y 2
     if (todaySchedule.hasSecondShift && todaySchedule.open2) {
       const tOpen2 = timeToMinutes(todaySchedule.open2)
       if (currentMinutes < tOpen2 && currentMinutes >= tClose) {
-        return { isOpen: false, detailLabel: `Abre de nuevo a las ${formatTime12h(todaySchedule.open2)}` }
+        return { 
+          isOpen: false, 
+          statusLabel: 'Cerrado', 
+          detailLabel: `Abre de nuevo a las ${formatTime12h(todaySchedule.open2)}` 
+        }
       }
     }
   }
 
-  // 5. COMPROBACIÓN 3: Determinar cuándo vuelve a abrir en los próximos días
+  // 5. COMPROBACIÓN 3: Determinar cuándo vuelve a abrir
   for (let i = 1; i <= 7; i++) {
     const nextDayIndex = (currentDayIndex + i) % 7
     const nextDayKey = DAYS_ORDER[nextDayIndex]
@@ -177,9 +211,13 @@ export function evaluateStoreHours(storeHours?: StoreHoursConfig): StoreHoursEva
 
     if (nextSchedule && nextSchedule.isOpen) {
       const dayName = i === 1 ? 'mañana' : `el ${DAY_LABELS[nextDayKey]}`
-      return { isOpen: false, detailLabel: `Abre ${dayName} a las ${formatTime12h(nextSchedule.open)}` }
+      return { 
+        isOpen: false, 
+        statusLabel: 'Cerrado', 
+        detailLabel: `Abre ${dayName} a las ${formatTime12h(nextSchedule.open)}` 
+      }
     }
   }
 
-  return { isOpen: false, detailLabel: 'Cerrado' }
+  return { isOpen: false, statusLabel: 'Cerrado', detailLabel: 'Cerrado' }
 }
