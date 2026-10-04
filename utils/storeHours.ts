@@ -15,13 +15,15 @@ export interface StoreHoursConfig {
   schedule?: Record<string, DayShift>
 }
 
-// 🚀 FIX: Reincorporamos statusLabel para StoreHeader y RestaurantHeader
-export interface StoreHoursEvaluation {
+// 🚀 CONTRATO DE ESTADO COMPATIBLE CON RESTAURANT HEADER Y STORE HEADER
+export interface StoreScheduleStatus {
   isOpen: boolean
   statusLabel: string // "Abierto" | "Cerrado"
   detailLabel: string
 }
 
+// Exportamos también el alias para que ningún archivo quede huérfano
+export type StoreHoursEvaluation = StoreScheduleStatus
 const DAYS_ORDER = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 const DAY_LABELS: Record<string, string> = {
