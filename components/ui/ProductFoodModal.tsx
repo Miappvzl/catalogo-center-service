@@ -64,7 +64,8 @@ export default function ProductFoodModal({
     product,
     activeRate = 0
 }: ProductFoodModalProps) {
-    const { addItem } = useCart()
+    // 🚀 PERF FIX: Selector atómico estricto. Protege el árbol del Modal de re-renders no deseados.
+    const addItem = useCart(state => state.addItem)
 
     const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOption[]>>({})
     const [notes, setNotes] = useState('')
@@ -251,7 +252,7 @@ export default function ProductFoodModal({
         }
 
         // 🚀 ELITE: Agrupador para WhatsApp y Cierres (Convierte [Opt, Opt] en "2x Opt")
-        const flatModifiers: FoodSelectedModifier[] = Object.values(selectedOptions)
+      const flatModifiers: FoodSelectedModifier[] = Object.values(selectedOptions)
             .flat()
             .reduce((acc: any[], opt) => {
                 const existing = acc.find(m => m.optionId === opt.id)
@@ -276,15 +277,18 @@ export default function ProductFoodModal({
                 priceAdjustment: m.priceAdjustment
             }))
 
-        addItem(product, null, quantity, flatModifiers, notes.trim() !== '' ? notes : undefined)
+        // 🚀 PERF FIX: requestAnimationFrame asegura que la mutación masiva de agregar al carrito
+        // no congele el cierre visual del modal.
+        requestAnimationFrame(() => {
+            addItem(product, null, quantity, flatModifiers, notes.trim() !== '' ? notes : undefined)
 
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(30)
-        }
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(30)
+            }
 
-        onClose()
+            onClose()
+        })
     }
-
     if (!product) return null
 
     return (

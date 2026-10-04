@@ -85,13 +85,21 @@ const modifiersString = foodModifiers
     : 'base';
 const uniqueId = `${productId}-${variantId || 'base'}-${modifiersString}-${foodNotes || 'nonotes'}`;
           
-          const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId);
+         const existingItemIndex = state.items.findIndex((i) => i.id === uniqueId);
 
           if (existingItemIndex > -1) {
             const newItems = [...state.items];
             const currentItem = newItems[existingItemIndex];
             const requestedQuantity = currentItem.quantity + quantity;
-            currentItem.quantity = Math.min(requestedQuantity, currentMaxStock);
+            
+            // 🚀 PERF FIX: Clonación profunda del objeto modificado. 
+            // NUNCA mutar directamente "currentItem.quantity". Esto garantiza que React
+            // detecte el cambio de referencia en memoria y actualice la UI sin fallas.
+            newItems[existingItemIndex] = {
+                ...currentItem,
+                quantity: Math.min(requestedQuantity, currentMaxStock)
+            };
+            
             return { items: newItems };
           } else {
             // 🚀 MATEMÁTICA DE COMIDA: Sumamos el precio base + los extras

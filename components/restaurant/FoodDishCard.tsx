@@ -29,7 +29,8 @@ function FoodDishCardComponent({
     isFavorite = false,
     layoutVariant = 'grid'
 }: FoodDishCardProps) {
-    const { addItem } = useCart()
+    // 🚀 PERF FIX: Selector atómico. Evita que las 50 tarjetas se repinten cuando el carrito cambie.
+    const addItem = useCart(state => state.addItem)
     const [isImageLoaded, setIsImageLoaded] = useState(false)
     const [justAdded, setJustAdded] = useState(false)
     const imageRef = useRef<HTMLDivElement>(null) // 🚀 Referencia geométrica de origen
@@ -71,25 +72,28 @@ function FoodDishCardComponent({
             return
         }
   // Si es un plato directo sin extras, calculamos la parábola hacia el carrito
-        if (imageRef.current) {
+       if (imageRef.current) {
             const startRect = imageRef.current.getBoundingClientRect()
             const src = product.image_url ? getOptimizedUrl(product.image_url) : ''
             document.dispatchEvent(new CustomEvent('flyToCart', { detail: { startRect, src } }))
         }
 
-        addItem(product, null, 1)
+        // 🚀 PERF FIX: requestAnimationFrame separa la lectura del DOM (getBoundingClientRect)
+        // de la mutación de React (addItem). Esto salva el "Layout Thrashing" y elimina el stuttering.
+        requestAnimationFrame(() => {
+            addItem(product, null, 1)
 
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(30)
-        }
-        // Feedback visual en el botón
-        setJustAdded(true)
-        setTimeout(() => setJustAdded(false), 800)
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(30)
+            }
+            // Feedback visual en el botón
+            setJustAdded(true)
+            setTimeout(() => setJustAdded(false), 800)
 
-        // Evento global para animaciones de carrito y contador
-        document.dispatchEvent(new CustomEvent('cartImpact'))
+            // Evento global para animaciones de carrito y contador
+            document.dispatchEvent(new CustomEvent('cartImpact'))
+        })
     }, [isOutOfStock, hasModifiers, product, onOpenModal, addItem])
-
     // =========================================================================
     // VARIANTE HORIZONTAL (Estilo Lista Compacta / Formato UberEats)
     // =========================================================================
@@ -99,7 +103,8 @@ function FoodDishCardComponent({
                 whileHover={{ y: -2 }}
                 transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                 onClick={() => !isOutOfStock && onOpenModal(product)}
-                className={`w-full p-4 sm:p-5 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 transition-all cursor-pointer flex items-center justify-between gap-4 group relative shadow-[var(--shadow-ui)] ${
+                // 🚀 PERF FIX: transition-all por transition-colors para no chocar con el "y: -2" de Framer Motion
+                className={`w-full p-4 sm:p-5 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 transition-colors duration-200 cursor-pointer flex items-center justify-between gap-4 group relative shadow-[var(--shadow-ui)] ${
                     isOutOfStock ? 'opacity-50 grayscale-[30%]' : ''
                 }`}
                 style={{ borderRadius: 'var(--radius-card)' }}
@@ -233,7 +238,8 @@ function FoodDishCardComponent({
             whileHover={{ y: -3 }}
             transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
             onClick={() => !isOutOfStock && onOpenModal(product)}
-            className={`w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 transition-all cursor-pointer flex flex-col justify-between overflow-hidden group relative shadow-[var(--shadow-ui)] ${
+            // 🚀 PERF FIX: transition-all por transition-colors. Libera trabajo a la GPU.
+            className={`w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/40 transition-colors duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group relative shadow-[var(--shadow-ui)] ${
                 isOutOfStock ? 'opacity-50 grayscale-[30%]' : ''
             }`}
             style={{ borderRadius: 'var(--radius-card)' }}

@@ -418,17 +418,19 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
             }`}
         >
-           {isRestaurant ? (
+             {isRestaurant ? (
                 /* PÍLDORA FLOTANTE DE ALTA DENSIDAD EN ESCRITORIO (ANCLADA A LA DERECHA) */
                 <div className="hidden md:block fixed bottom-6 right-8 z-50 pointer-events-auto">
                     {items.length > 0 ? (
                         <motion.button
+                            data-cart-target="true" // 🚀 UX FIX: Este atributo atrae la parábola hacia este botón.
                             whileHover={{ scale: 1.03 }}
                             whileTap={{ scale: 0.96 }}
                             onClick={() => setIsOpen(true)}
                             className="h-14 px-6 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center gap-4 shadow-[0_16px_36px_-6px_rgba(0,0,0,0.35)] border border-white/10 active:opacity-95 transition-all cursor-pointer"
                         >
-                            <div className="relative flex items-center justify-center shrink-0">
+                            {/* 🚀 UX FIX: Añadimos animate={cartControls} para que reaccione al impacto y haga el rebote físico. */}
+                            <motion.div animate={cartControls} className="relative flex items-center justify-center shrink-0">
                                 <ShoppingBag size={20} strokeWidth={2.2} />
                                 {totalItemsCount > 0 && (
                                     <span 
@@ -442,7 +444,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                         {totalItemsCount}
                                     </span>
                                 )}
-                            </div>
+                            </motion.div>
 
                             <span className="font-bold text-xs uppercase tracking-wider">Ver Pedido</span>
 

@@ -6,7 +6,8 @@ import { useCart } from '@/app/store/useCart'
 import { calculateCartEngine } from '@/utils/cartLogic'
 
 export default function FloatingFoodBar({ rates, promotions, storeConfig }: any) {
-    const { items } = useCart()
+    // 🚀 PERF FIX: Selector atómico.
+    const items = useCart(state => state.items)
     const [mounted, setMounted] = useState(false)
     const [isPulsing, setIsPulsing] = useState(false)
     const prevItemsCount = useRef(0)
