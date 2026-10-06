@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// 🚀 EJECUCIÓN DINÁMICA EN TIEMPO REAL
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
@@ -10,11 +14,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  // Soporta tanto GOOGLE_MAPS_API_KEY como NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = (
+    process.env.GOOGLE_MAPS_API_KEY || 
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 
+    ''
+  ).trim();
 
   if (!apiKey) {
-    console.error('[Preziso Google API] Falta la API Key en .env.local');
+    console.error('[Preziso Google API] Falta la API Key en el entorno de Vercel');
     return NextResponse.json({ results: [] });
   }
 
@@ -25,7 +32,6 @@ export async function GET(request: NextRequest) {
       regionCode: 'VE',
     };
 
-    // Sesgo geográfico si hay coordenadas
     if (lat && lon) {
       requestBody.locationBias = {
         circle: {
@@ -38,7 +44,6 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 🚀 PETICIÓN A "PLACES API (NEW)" - La API moderna que tienes habilitada
     const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
