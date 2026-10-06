@@ -131,14 +131,41 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 3. MOTOR DE SUBDOMINIOS
-  const isSubdomain = hostname !== currentEnvDomain && 
-                      hostname !== `www.${currentEnvDomain}` && 
-                      hostname.endsWith(`.${currentEnvDomain}`)
+   // 3. MOTOR DE SUBDOMINIOS (Soporta Localhost, sslip.io y Producción)
+  let isSubdomain = false;
+  let subdomain = "";
 
-  if (isSubdomain) {
-    const subdomain = hostname.replace(`.${currentEnvDomain}`, '')
-    
+  // Extraemos el host limpio de puertos (ej: "theo.192.168.1.8.sslip.io:3000" -> "theo.192.168.1.8.sslip.io")
+  const cleanHost = hostname.split(':')[0];
+
+  if (process.env.NODE_ENV === 'production') {
+    isSubdomain = cleanHost !== 'preziso.shop' && 
+                  cleanHost !== 'www.preziso.shop' && 
+                  cleanHost.endsWith('.preziso.shop');
+    if (isSubdomain) {
+      subdomain = cleanHost.replace('.preziso.shop', '');
+    }
+  } else {
+    // 🖥️ ENTORNO DE DESARROLLO (Celular o PC)
+    if (cleanHost.endsWith('.sslip.io')) {
+      // Para la URL de tu teléfono: theo.192.168.1.8.sslip.io
+      // Removemos la parte final fija para obtener el subdominio dinámicamente
+      const baseDomain = "192.168.1.8.sslip.io"; 
+      
+      if (cleanHost !== baseDomain) {
+        isSubdomain = true;
+        subdomain = cleanHost.replace(`.${baseDomain}`, ''); // Resultado: "theo"
+      }
+    } else {
+      // Caso estándar en tu PC: theo.localhost
+      isSubdomain = cleanHost.endsWith('.localhost');
+      if (isSubdomain) {
+        subdomain = cleanHost.replace('.localhost', '');
+      }
+    }
+  }
+
+  if (isSubdomain && subdomain) {
     if (!pathname.startsWith('/_next') && !pathname.startsWith('/api') && !pathname.includes('.')) {
         const rewriteResponse = NextResponse.rewrite(new URL(`/${subdomain}${pathname === '/' ? '' : pathname}`, request.url))
         
@@ -154,6 +181,7 @@ export async function proxy(request: NextRequest) {
         return rewriteResponse
     }
   }
+
 
   return response
 }
