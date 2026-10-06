@@ -325,28 +325,69 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     gpsError,
   } = useDeliveryStore();
 
-  // 🚀 PRIORIDAD 1: Clave inyectada por el servidor (0ms latencia)
   const [googleApiKey, setGoogleApiKey] = useState<string>(
     config?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   );
 
+  // 🚀 TELEMETRÍA DE DIAGNÓSTICO EN TIEMPO REAL
+  const [diagnostic, setDiagnostic] = useState<{
+    envKey: string;
+    ssrPropKey: string;
+    endpointStatus: string;
+    endpointKeyPreview: string;
+    errorMessage: string;
+  }>({
+    envKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Presente en Bundle' : 'Vacía / No inyectada',
+    ssrPropKey: config?.google_maps_api_key ? 'Presente en SSR' : 'Vacía en Props',
+    endpointStatus: 'Consultando...',
+    endpointKeyPreview: '',
+    errorMessage: '',
+  });
+
   useEffect(() => {
     setMounted(true);
     
-    // Si aún no la tiene, sincronizar desde config o consultar endpoint con timeout
-    if (!googleApiKey) {
-      if (config?.google_maps_api_key) {
-        setGoogleApiKey(config.google_maps_api_key);
-      } else {
-        fetch('/api/geocode/config')
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.key) setGoogleApiKey(data.key);
-          })
-          .catch(() => {});
-      }
+    // Si ya la tiene por variable o SSR, la fijamos de inmediato
+    const existing = config?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    if (existing) {
+      setGoogleApiKey(existing);
+      return;
     }
-  }, [googleApiKey, config?.google_maps_api_key]);
+
+    // Consulta activa con diagnóstico detallado
+    fetch('/api/geocode/config')
+      .then(async (res) => {
+        const status = `${res.status} ${res.statusText}`;
+        if (!res.ok) {
+          setDiagnostic((prev) => ({
+            ...prev,
+            endpointStatus: status,
+            errorMessage: `El endpoint respondió con error HTTP ${res.status}`,
+          }));
+          return;
+        }
+
+        const data = await res.json();
+        const serverKey = data.key || '';
+
+        setDiagnostic((prev) => ({
+          ...prev,
+          endpointStatus: status,
+          endpointKeyPreview: serverKey ? `${serverKey.slice(0, 8)}... (${serverKey.length} chars)` : 'VACÍA (El servidor no tiene la variable)',
+        }));
+
+        if (serverKey) {
+          setGoogleApiKey(serverKey);
+        }
+      })
+      .catch((err) => {
+        setDiagnostic((prev) => ({
+          ...prev,
+          endpointStatus: 'Fallo de Conexión',
+          errorMessage: err.message || 'No se pudo conectar con el servidor',
+        }));
+      });
+  }, [config?.google_maps_api_key]);
 
   useEffect(() => {
     if (isOpenModal) {
@@ -360,18 +401,16 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   }, [isOpenModal]);
 
   // =========================================================================
-  // MODAL FLOTANTE PORTAL (Renderizado en document.body)
+  // MODAL FLOTANTE PORTAL (Con Panel de Telemetría Integrado)
   // =========================================================================
   const modalContent = isOpenModal && mounted ? createPortal(
     <div className="fixed inset-0 z-999999 flex items-center justify-center p-0 md:p-6 lg:p-8 animate-in fade-in duration-200">
       
-      {/* Backdrop con desenfoque */}
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
         onClick={() => setIsOpenModal(false)}
       />
 
-      {/* Contenedor del Modal */}
       <div className="relative w-full h-[100dvh] md:h-[88vh] md:max-w-5xl bg-[var(--store-bg)] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-white/10 z-10">
         
         {/* Barra Superior */}
@@ -399,7 +438,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
           </button>
         </div>
 
-        {/* 🚀 CONDICIÓN GATED: Solo monta el motor de Google cuando la clave existe */}
+        {/* 🚀 CONDICIÓN: Si la clave está lista muestra el mapa; si no, muestra el Inspector de Diagnóstico */}
         {googleApiKey ? (
           <GoogleMapInnerPicker
             apiKey={googleApiKey}
@@ -409,9 +448,59 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
             isFullscreen={true}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-zinc-50 dark:bg-zinc-900 gap-2">
-            <Loader2 className="animate-spin text-zinc-400" size={28} />
-            <span className="text-[11px] font-mono text-zinc-400">Verificando credenciales de mapa...</span>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-zinc-50 dark:bg-zinc-900 gap-4">
+            <div className="w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 text-left font-mono text-xs space-y-3 shadow-lg">
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+                <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 font-sans">
+                  🔍 Telemetría de Diagnóstico de Credenciales
+                </span>
+                <span className="text-[10px] text-zinc-400">Preziso Engine</span>
+              </div>
+
+              <div className="space-y-2 text-[11px] leading-relaxed">
+                <p className="flex justify-between">
+                  <span className="text-zinc-500">1. Client Bundle Env:</span>
+                  <strong className={diagnostic.envKey.includes('Presente') ? 'text-emerald-600' : 'text-rose-600'}>
+                    {diagnostic.envKey}
+                  </strong>
+                </p>
+
+                <p className="flex justify-between">
+                  <span className="text-zinc-500">2. Server SSR Prop:</span>
+                  <strong className={diagnostic.ssrPropKey.includes('Presente') ? 'text-emerald-600' : 'text-rose-600'}>
+                    {diagnostic.ssrPropKey}
+                  </strong>
+                </p>
+
+                <p className="flex justify-between">
+                  <span className="text-zinc-500">3. Ruta /api/geocode/config:</span>
+                  <strong className={diagnostic.endpointStatus.includes('200') ? 'text-emerald-600' : 'text-amber-600'}>
+                    {diagnostic.endpointStatus}
+                  </strong>
+                </p>
+
+                <p className="flex justify-between">
+                  <span className="text-zinc-500">4. Clave devuelta por Servidor:</span>
+                  <strong className={diagnostic.endpointKeyPreview.includes('...') ? 'text-emerald-600' : 'text-rose-600'}>
+                    {diagnostic.endpointKeyPreview || 'Sin datos'}
+                  </strong>
+                </p>
+
+                {diagnostic.errorMessage && (
+                  <p className="p-2 bg-rose-50 text-rose-700 rounded-lg text-[10px] border border-rose-200">
+                    ⚠️ {diagnostic.errorMessage}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-5 py-2.5 bg-zinc-950 text-white rounded-xl text-xs font-bold font-sans hover:bg-black transition-all"
+            >
+              Reintentar Conexión
+            </button>
           </div>
         )}
 
