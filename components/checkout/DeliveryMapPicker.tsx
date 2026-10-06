@@ -38,7 +38,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const {
+const {
     customerCoords,
     gpsAccuracyMeters,
     resolution,
@@ -48,8 +48,19 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     detectCurrentGPSLocation,
   } = useDeliveryStore();
 
+  const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
+  // Diagnóstico en consola del navegador
+  useEffect(() => {
+    if (!googleApiKey) {
+      console.warn('⚠️ [Preziso Checkout] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY llegó vacía al bundle.');
+    } else {
+      console.log('✅ [Preziso Checkout] API Key de Google Maps cargada:', googleApiKey.slice(0, 8) + '...');
+    }
+  }, [googleApiKey]);
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
+    googleMapsApiKey: googleApiKey,
     libraries: LIBRARIES,
     language: 'es',
     region: 'VE',
@@ -202,9 +213,14 @@ const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
           </button>
         </div>
 
-        {/* Lienzo de Google Maps (Toma todo el alto disponible) */}
-        <div className="relative flex-1 w-full bg-[var(--store-surface)] overflow-hidden">
-          {!isLoaded ? (
+       <div className="relative flex-1 w-full bg-[var(--store-surface)] overflow-hidden">
+          {!googleApiKey ? (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-zinc-50 dark:bg-zinc-900 gap-2">
+              <AlertCircle size={28} className="text-amber-500" />
+              <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Clave de Google Maps no detectada en este despliegue</p>
+              <p className="text-[11px] text-zinc-500 max-w-xs">Verifica que NEXT_PUBLIC_GOOGLE_MAPS_API_KEY esté activa en Vercel para todos los entornos.</p>
+            </div>
+          ) : !isLoaded ? (
             <div className="w-full h-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 animate-pulse">
               <Loader2 className="animate-spin text-zinc-400" size={32} />
             </div>
