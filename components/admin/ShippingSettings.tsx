@@ -439,7 +439,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
 
                             {/* VISTA CONDICIONAL: RADAR INTELIGENTE */}
                             {config.delivery_config.mode === 'radar' && (
-                                <div className="bg-neutral-50/50 p-4 md:p-5 rounded-2xl border border-neutral-200/80 animate-in fade-in duration-200">
+                                <div className="bg-neutral-50/50 p-2 md:p-5 rounded-2xl border border-neutral-200/80 animate-in fade-in duration-200">
                                     <AdminDeliveryZoneManager
                                         deliveryConfig={config.delivery_config}
                                         onChange={(updatedDeliveryConfig) => {

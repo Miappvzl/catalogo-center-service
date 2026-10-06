@@ -111,7 +111,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   }
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col h-full space-y-6">
+    <div className="bg-white p-4 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col h-full space-y-6">
       
       {/* HEADER PRINCIPAL */}
       <div>
