@@ -48,14 +48,24 @@ const {
     detectCurrentGPSLocation,
   } = useDeliveryStore();
 
-  const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  // 🚀 FAIL-SAFE INGESTION: Si el bundle del cliente no tiene la clave, la obtiene del servidor
+  const [googleApiKey, setGoogleApiKey] = useState<string>(
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+  );
 
-  // Diagnóstico en consola del navegador
   useEffect(() => {
+    setMounted(true);
+    
+    // Si la variable no vino en el build del cliente, consultamos al backend seguro
     if (!googleApiKey) {
-      console.warn('⚠️ [Preziso Checkout] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY llegó vacía al bundle.');
-    } else {
-      console.log('✅ [Preziso Checkout] API Key de Google Maps cargada:', googleApiKey.slice(0, 8) + '...');
+      fetch('/api/geocode/config')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.key) {
+            setGoogleApiKey(data.key);
+          }
+        })
+        .catch((err) => console.error('[Preziso Key Ingestion] Error:', err));
     }
   }, [googleApiKey]);
 
@@ -65,10 +75,6 @@ const {
     language: 'es',
     region: 'VE',
   });
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Bloqueo de scroll cuando el modal está activo
   useEffect(() => {
