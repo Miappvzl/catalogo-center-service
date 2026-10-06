@@ -325,25 +325,28 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     gpsError,
   } = useDeliveryStore();
 
-  // 🚀 FAIL-SAFE DE LLAVE: Si el bundle del cliente no tiene la clave, la obtiene de /api/geocode/config
+  // 🚀 PRIORIDAD 1: Clave inyectada por el servidor (0ms latencia)
   const [googleApiKey, setGoogleApiKey] = useState<string>(
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+    config?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   );
 
   useEffect(() => {
     setMounted(true);
     
+    // Si aún no la tiene, sincronizar desde config o consultar endpoint con timeout
     if (!googleApiKey) {
-      fetch('/api/geocode/config')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.key) {
-            setGoogleApiKey(data.key);
-          }
-        })
-        .catch((err) => console.error('[Preziso Key Ingestion] Error:', err));
+      if (config?.google_maps_api_key) {
+        setGoogleApiKey(config.google_maps_api_key);
+      } else {
+        fetch('/api/geocode/config')
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.key) setGoogleApiKey(data.key);
+          })
+          .catch(() => {});
+      }
     }
-  }, [googleApiKey]);
+  }, [googleApiKey, config?.google_maps_api_key]);
 
   useEffect(() => {
     if (isOpenModal) {

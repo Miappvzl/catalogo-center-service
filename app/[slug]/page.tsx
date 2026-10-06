@@ -177,13 +177,18 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
   if (productsResponse.error) {
     console.error("🚨 ERROR DE PRODUCTOS SUPABASE:", productsResponse.error);
   }
+// 🚀 INYECCIÓN SÍNCRONA DE API KEY (El servidor de Vercel siempre la tiene)
+  const storeWithMapsKey = {
+    ...store,
+    google_maps_api_key: process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  };
 
   const props = {
-    store,
+    store: storeWithMapsKey,
     products: productsResponse.data || [],
     rates: ratesResponse.data || { usd_rate: 0, eur_rate: 0 },
     promotions: promotionsResponse.data || [],
-    collections: collectionsResponse.data || [] // 🚀 PASAMOS COLECCIONES A LAS INTERFACES
+    collections: collectionsResponse.data || []
   }
 
   return store.store_type === 'restaurant' 

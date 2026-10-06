@@ -210,14 +210,15 @@ const normalizedRings = rawRings.map((z: any, idx: number) => ({
 
 const isRadarMode = dc.mode === 'radar' || (!dc.mode && Boolean(dc.store_location));
 
-        return {
+ return {
             enabled: sc.methods?.delivery ?? true,
             mode: isRadarMode ? 'radar' : 'manual',
+            google_maps_api_key: storeConfig?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
             store_location: dc.store_location || sc.store_location || null,
             rings: normalizedRings,
             zones: normalizedRings,
         };
-    }, [storeConfig?.shipping_config]);
+    }, [storeConfig?.shipping_config, storeConfig?.google_maps_api_key]);
 
 const deliveryZones = deliveryConfig.rings || [];
 

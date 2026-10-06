@@ -18,10 +18,10 @@ export interface DeliveryRing {
   color: string;       // Color del anillo en el mapa (hex)
   is_active: boolean;
 }
-
 export interface DeliveryConfig {
   enabled: boolean;
-  mode?: 'radar' | 'manual'; // Dual-Engine: 'radar' (Google Maps) | 'manual' (Lista Clásica)
+  mode?: 'radar' | 'manual';
+  google_maps_api_key?: string; // 🚀 Inyección síncrona desde el servidor
   store_location: {
     lat: number;
     lng: number;
