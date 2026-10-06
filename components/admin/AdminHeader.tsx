@@ -12,34 +12,52 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
   const router = useRouter()
   const supabase = getSupabase()
 
-  // Estados del Smart Header
+// Estados del Smart Header
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  const [isModalActive, setIsModalActive] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const lastScrollY = useRef(0)
   const [userEmail, setUserEmail] = useState<string>('')
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) setUserEmail(user.email || '')
-    }
-    fetchUser()
-  }, [supabase])
-
   const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR'
   const isTrial = store?.subscription_status === 'trial'
 
-// 🚀 MOTOR DE SCROLL ULTRA-FLUIDO (Cero re-renderizados innecesarios, cero jitter)
+  // 🚀 DETECCIÓN INTELIGENTE DE MODALES ACTIVOS (Oculta el header para despejar la vista)
+  useEffect(() => {
+    const checkModalState = () => {
+      if (typeof document === 'undefined') return;
+      const isLocked = 
+        document.body.style.overflow === 'hidden' || 
+        document.body.classList.contains('overflow-hidden') ||
+        document.body.style.getPropertyValue('overflow') === 'hidden';
+      
+      const hasOverlay = !!document.querySelector('[class*="z-[999999]"], [class*="z-[99999]"], [class*="z-[80]"], [class*="z-[70]"]');
+      setIsModalActive(isLocked || hasOverlay);
+    };
+
+    checkModalState();
+
+    const observer = new MutationObserver(() => checkModalState());
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // 🚀 MOTOR DE SCROLL ULTRA-FLUIDO (Cero re-renderizados innecesarios, cero jitter)
   useEffect(() => {
     let lastScrollY = window.scrollY
     let isVisible = true
-    const SCROLL_THRESHOLD = 15 // Ignora micro-oscilaciones del dedo menores a 15px
+    const SCROLL_THRESHOLD = 15
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       const diff = currentScrollY - lastScrollY
 
-      // 1. En la parte superior siempre visible
       if (currentScrollY <= 20) {
         if (!isVisible) {
           setIsHeaderVisible(true)
@@ -49,17 +67,13 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
         return
       }
 
-      // 2. Si el movimiento es menor al umbral, no hacer nada (evita micro-cortes)
       if (Math.abs(diff) < SCROLL_THRESHOLD) return
 
-      // 3. Bajando con decisión -> Ocultar SOLO si estaba visible
       if (diff > 0 && isVisible) {
         setIsHeaderVisible(false)
         setIsProfileOpen(false)
         isVisible = false
-      } 
-      // 4. Subiendo con decisión -> Mostrar SOLO si estaba oculto
-      else if (diff < 0 && !isVisible) {
+      } else if (diff < 0 && !isVisible) {
         setIsHeaderVisible(true)
         isVisible = true
       }
@@ -67,7 +81,6 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
       lastScrollY = currentScrollY
     }
 
-    // passive: true le garantiza al navegador que el scroll nativo no esperará por JS
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -75,10 +88,10 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
     <>
       {store && <SubscriptionBanner store={store} />}
 
-      {/* HEADER STICKY CON ANIMACIÓN Y CONTENCIÓN */}
+      {/* HEADER STICKY CON ANIMACIÓN Y CONTENCIÓN (Oculto cuando hay modal activo) */}
       <header 
         className={`bg-white sticky top-0 z-40 w-full px-3 sm:px-4 md:px-8 py-3 md:py-3.5 flex justify-between items-center transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border-b border-neutral-200/50 ${
-          isHeaderVisible ? 'translate-y-0 shadow-xs' : '-translate-y-full'
+          isHeaderVisible && !isModalActive ? 'translate-y-0 shadow-xs' : '-translate-y-full'
         }`}
       >
         

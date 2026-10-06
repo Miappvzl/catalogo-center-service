@@ -33,6 +33,10 @@ import { Icon } from "@iconify/react";
 import { MrwIcon } from "@/components/ui/icons/MrwIcon";
 import { ZoomIcon } from "@/components/ui/icons/ZoomIcon";
 import { TealcaIcon } from "@/components/ui/icons/TealcaIcon";
+// 🚀 MOTOR GEOESPACIAL PREZISO ($0 USD)
+import { DeliveryMapPicker } from "./checkout/DeliveryMapPicker";
+import { useDeliveryStore } from "@/app/store/useDeliveryStore";
+import { DeliveryConfig } from "@/utils/geoUtils";
 
 // --- TIPOS ESTRICTOS ---
 export interface CheckoutProcessProps {
@@ -188,7 +192,48 @@ export default function CheckoutProcess({
         min_items: 6,
         discount_percentage: 15,
     };
-    const deliveryZones = shipping.delivery_zones || [];
+
+   // 🚀 ADAPTADOR GEOESPACIAL RADIAL ($0 USD)
+const deliveryConfig: DeliveryConfig = useMemo(() => {
+const sc = storeConfig?.shipping_config || {};
+const dc = sc.delivery_config || {};
+const rawRings = dc.rings || sc.rings || dc.zones || sc.delivery_zones || [];
+
+const normalizedRings = rawRings.map((z: any, idx: number) => ({
+        id: z.id || `ring-${idx}`,
+        name: z.name || `Zona ${idx + 1}`,
+        max_km: Number(z.max_km || (idx + 1) * 4),
+        price_usd: Number(z.price_usd ?? z.cost ?? 0),
+        color: z.color || '#3b82f6',
+        is_active: z.is_active ?? true,
+    }));
+
+const isRadarMode = dc.mode === 'radar' || (!dc.mode && Boolean(dc.store_location));
+
+        return {
+            enabled: sc.methods?.delivery ?? true,
+            mode: isRadarMode ? 'radar' : 'manual',
+            store_location: dc.store_location || sc.store_location || null,
+            rings: normalizedRings,
+            zones: normalizedRings,
+        };
+    }, [storeConfig?.shipping_config]);
+
+const deliveryZones = deliveryConfig.rings || [];
+
+    // 🚀 STORE GEOESPACIAL REACTIVO
+    const {
+        customerCoords,
+        sectorName,
+        addressLine,
+        referencePoint,
+        resolution: deliveryResolution,
+        setCustomerCoords,
+        setSectorName,
+        setAddressLine,
+        setReferencePoint,
+        getOrderDeliveryPayload
+    } = useDeliveryStore();
 
     // 🚀 LECTOR DE POLÍTICA DE ENVÍO
     const nationalShippingLabel = shipping.national_shipping_is_free ? "(Envío Gratis)" : "(Cobro en Destino)";
@@ -348,15 +393,15 @@ export default function CheckoutProcess({
         let deliveryInfoFull = "Servicio en Local / Experiencia";
         let finalShippingMethod = "service";
 
-       if (isFoodTech) {
-            finalShippingMethod = clientData.deliveryType;
-            if (clientData.deliveryType === "dine_in") {
-                deliveryInfoFull = `📍 CONSUMO EN EL LOCAL (Salón / Barra)`;
-            } else if (clientData.deliveryType === "pickup") {
-                deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Mostrador)`;
-            } else if (clientData.deliveryType === "local_delivery") {
-                deliveryInfoFull = `🛵 DELIVERY LOCAL: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
-            }
+        if (isFoodTech) {
+     if (clientData.deliveryType === "dine_in") {
+  deliveryInfoFull = "📍 CONSUMO EN EL LOCAL (Salón / Barra)";
+} else if (clientData.deliveryType === "pickup") {
+  deliveryInfoFull = "🛍️ PARA LLEVAR (Retiro en Mostrador)";
+} else if (clientData.deliveryType === "local_delivery") {
+  deliveryInfoFull = `🛵 DELIVERY LOCAL: ${(deliveryZones || []).find((z: any) => z.id === selectedDeliveryZone)?.name || sectorName || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || referencePoint || "N/A"}`;
+}
+
         } else if (needsShipping) {
             // Lógica original de retail
             finalShippingMethod = clientData.deliveryType;
@@ -515,16 +560,27 @@ export default function CheckoutProcess({
     }, [items]);
 
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>("");
-
+// 🚀 CÁLCULO ADAPTATIVO (RADAR INTELIGENTE VS LISTA MANUAL CLÁSICA)
     const deliveryCost = useMemo(() => {
-        if (clientData.deliveryType === "local_delivery" && selectedDeliveryZone) {
-            const zone = deliveryZones.find(
-                (z: any) => z.id === selectedDeliveryZone,
-            );
-            return zone ? Number(zone.cost) : 0;
+        if (clientData.deliveryType === "local_delivery") {
+            // Si la tienda usa el Radar de Google Maps y el cliente ubicó su pin
+            if (deliveryConfig.mode === 'radar' && deliveryConfig.store_location) {
+                if (deliveryResolution.status === 'in_zone') {
+                    return Number(deliveryResolution.price_usd) || 0;
+                }
+                return 0;
+            }
+
+            // Modo Clásico Manual: Tarifa fija según la zona seleccionada en la lista
+            if (selectedDeliveryZone) {
+                const manualList = storeConfig?.shipping_config?.delivery_zones || deliveryZones || [];
+                const zone = manualList.find((z: any) => z.id === selectedDeliveryZone);
+                return zone ? Number(zone.cost ?? zone.price_usd ?? 0) : 0;
+            }
+            return 0;
         }
         return 0;
-    }, [clientData.deliveryType, selectedDeliveryZone, deliveryZones]);
+    }, [clientData.deliveryType, deliveryConfig, deliveryResolution, selectedDeliveryZone, deliveryZones, storeConfig?.shipping_config]);
 
     // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
     const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
@@ -864,7 +920,7 @@ export default function CheckoutProcess({
         if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
 
-    
+
         if (isStrictTax && wantsFiscalData) {
             if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
             if (!clientData.fiscalAddress) newErrors.fiscalAddress = "La Dirección Fiscal es obligatoria";
@@ -890,7 +946,19 @@ export default function CheckoutProcess({
                 if (!clientData.addressDetail) newErrors.addressDetail = "Requerido";
                 if (!clientData.identityCard) newErrors.identityCard = "Requerido para envíos";
             }
-            if (clientData.deliveryType === "local_delivery" && !selectedDeliveryZone) newErrors.deliveryZone = "Selecciona tu zona";
+            if (clientData.deliveryType === "local_delivery") {
+                if (!customerCoords) {
+                    newErrors.deliveryMap = "Ubica tu dirección en el mapa interactivo";
+                } else if (deliveryResolution.status === 'out_of_coverage') {
+                    newErrors.deliveryMap = "Tu ubicación está fuera del rango de cobertura";
+                }
+                if (!clientData.addressDetail && !addressLine) {
+                    newErrors.addressDetail = "Ingresa tu calle, edificio o número de casa";
+                }
+                if (!clientData.reference && !referencePoint) {
+                    newErrors.reference = "El punto de referencia es obligatorio para el repartidor";
+                }
+            }
         }
 
         // 🚀 NUEVO: Validación orgánica (Permite avanzar si el saldo cubre todo)
@@ -970,9 +1038,13 @@ export default function CheckoutProcess({
                 }),
             );
 
-            // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
+            // 🚀 RESOLUCIÓN DE LOGÍSTICA Y PAYLOAD GEOESPACIAL DE DESPACHO
             let deliveryInfoFull = "Servicio en Local / Experiencia";
             let finalShippingMethod = "service";
+            const deliveryPayload = getOrderDeliveryPayload();
+            const effectiveAddress = clientData.addressDetail || addressLine;
+            const effectiveReference = clientData.reference || referencePoint || "Sin punto de referencia";
+            const effectiveSector = sectorName || deliveryResolution.zone?.name || "Zona Local";
 
             if (isFoodTech) {
                 finalShippingMethod = clientData.deliveryType;
@@ -981,15 +1053,39 @@ export default function CheckoutProcess({
                 } else if (clientData.deliveryType === "pickup") {
                     deliveryInfoFull = `🛍️ PARA LLEVAR (Retiro en Barra)`;
                 } else if (clientData.deliveryType === "local_delivery") {
-                    deliveryInfoFull = `🛵 DELIVERY LOCAL: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || "N/A"}`;
+                    deliveryInfoFull = `🛵 DELIVERY: [${effectiveSector}] ${effectiveAddress}. Ref: ${effectiveReference}`;
+                    if (deliveryPayload?.navigation_url) {
+                        deliveryInfoFull += ` | 🗺️ GPS Motorizado: ${deliveryPayload.navigation_url}`;
+                    }
                 }
             } else if (needsShipping) {
-                // LÓGICA ORIGINAL DE TIENDAS RETAIL
                 finalShippingMethod = clientData.deliveryType;
-                if (clientData.deliveryType === "courier") deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
-                else if (clientData.deliveryType === "local_delivery") deliveryInfoFull = `Delivery a: ${deliveryZones.find((z: any) => z.id === selectedDeliveryZone)?.name || "Zona"} - ${clientData.addressDetail}, ${clientData.city}. Ref: ${clientData.reference || "N/A"} | Tlf: ${clientData.phone}`;
-                else if (clientData.deliveryType === "pickup") deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+                if (clientData.deliveryType === "courier") {
+                    deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
+                } else if (clientData.deliveryType === "local_delivery") {
+                    deliveryInfoFull = `🛵 DELIVERY: [${effectiveSector}] ${effectiveAddress}. Ref: ${effectiveReference}`;
+                    if (deliveryPayload?.navigation_url) {
+                        deliveryInfoFull += ` | 🗺️ GPS Motorizado: ${deliveryPayload.navigation_url}`;
+                    }
+                } else if (clientData.deliveryType === "pickup") {
+                    deliveryInfoFull = `Punto de Retiro: ${clientData.addressDetail}`;
+                }
             }
+
+            // Payload estructurado para orders.shipping_details
+            const structuredShippingDetails = clientData.deliveryType === "local_delivery" && deliveryPayload ? {
+                ...deliveryPayload,
+                address_line: effectiveAddress,
+                reference_point: effectiveReference,
+                sector_name: effectiveSector,
+            } : {
+                deliveryType: clientData.deliveryType,
+                courier: clientData.courier,
+                state: clientData.state,
+                city: clientData.city,
+                addressDetail: clientData.addressDetail,
+                reference: clientData.reference
+            };
 
             // 🚀 INYECTAR CRÉDITO DE TIENDA COMO PAGO MIXTO
             if (appliedCreditUSD > 0) {
@@ -1085,8 +1181,8 @@ export default function CheckoutProcess({
                         fx_savings_usd: Number(actualFxSavings.toFixed(2)),
                         customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null,
                         customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
+                        shipping_details: structuredShippingDetails,
                     }).select().single();
-
                 if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
                 order = insertedOrder;
             }
@@ -1414,7 +1510,7 @@ export default function CheckoutProcess({
                         </h2>
 
                         <div className="grid grid-cols-1 gap-3" id="field-deliveryType">
-                          {isFoodTech ? (
+                            {isFoodTech ? (
                                 // 🚀 OPCIONES DE RESTAURANTE SUJETAS A LA CONFIGURACIÓN REAL DEL COMERCIO
                                 <>
                                     {/* 1. Comer en el Local (Solo si está activo en el admin) */}
@@ -1426,8 +1522,8 @@ export default function CheckoutProcess({
                                                 setErrors(prev => ({ ...prev, deliveryZone: "", addressDetail: "" }));
                                             }}
                                             className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "dine_in"
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
                                                 }`}
                                         >
                                             <Store size={20} className={clientData.deliveryType === "dine_in" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -1447,8 +1543,8 @@ export default function CheckoutProcess({
                                                 setErrors(prev => ({ ...prev, deliveryZone: "", addressDetail: "" }));
                                             }}
                                             className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
                                                 }`}
                                         >
                                             <Package size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -1459,47 +1555,60 @@ export default function CheckoutProcess({
                                         </div>
                                     )}
 
-                                    {/* 3. Delivery Local (Solo si tiene zonas configuradas) */}
-                                    {shipping.methods?.delivery && deliveryZones.length > 0 && (
-                                        <div
-                                            onClick={() => {
-                                                setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
-                                                setErrors(prev => ({ ...prev, pickup: "" }));
-                                            }}
-                                            className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
-                                                }`}
-                                        >
-                                            <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
-                                            <div>
-                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
-                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu dirección.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                // OPCIONES ORIGINALES DE RETAIL (TIENDA FISICA, DELIVERY, AGENCIAS)
-                                <>
-                                    {shipping.methods?.pickup && (
-                                        <div
-                                            onClick={() => {
-                                                setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
-                                                setSelectedDeliveryZone("");
-                                                setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
-                                            }}
-                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
-                                        >
-                                            <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
-                                            <div>
-                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
-                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
-                                            </div>
-                                        </div>
-                                    )}
+                                   {/* 3. Delivery Local (Solo si está activo) */}
+{shipping.methods?.delivery && (
+  <div
+    onClick={() => {
+      setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
+      setErrors(prev => ({ ...prev, pickup: "" }));
+    }}
+    className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${
+      clientData.deliveryType === "local_delivery"
+        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+    }`}
+  >
+    <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+    <div>
+      <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+      <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu dirección.</p>
+    </div>
+  </div>
+)}
+</>
+) : (
+// OPCIONES ORIGINALES DE RETAIL (TIENDA FISICA, DELIVERY, AGENCIAS)
+<>
+{shipping.methods?.pickup && (
+  <div
+    onClick={() => {
+      setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
+      setSelectedDeliveryZone("");
+      setErrors(prev => ({
+        ...prev,
+        pickup: "",
+        courier: "",
+        deliveryZone: "",
+        addressDetail: "",
+        city: "",
+        state: ""
+      }));
+    }}
+    className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${
+      clientData.deliveryType === "pickup"
+        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+    }`}
+  >
+    <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}   />
+    <div>
+      <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+      <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
+    </div>
+  </div>
+)}
 
-                                    {shipping.methods?.delivery && deliveryZones.length > 0 && (
+{shipping.methods?.delivery && (
                                         <div
                                             onClick={() => {
                                                 setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
@@ -1535,7 +1644,7 @@ export default function CheckoutProcess({
                             )}
                         </div>
 
-                       {/* 🚀 CONFIRMACIÓN LIMPIA PARA CONSUMO EN SALÓN (CERO INPUTS MOLESTOS) */}
+                        {/* 🚀 CONFIRMACIÓN LIMPIA PARA CONSUMO EN SALÓN (CERO INPUTS MOLESTOS) */}
                         {isFoodTech && clientData.deliveryType === "dine_in" && (
                             <div className="p-3.5 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]/50 text-[11px] font-medium text-[var(--store-surface-text)] animate-in fade-in">
                                 🍽️ Tu orden será preparada para servir en el local.
@@ -1632,510 +1741,585 @@ export default function CheckoutProcess({
                             </div>
                         )}
 
-                        {clientData.deliveryType === "local_delivery" && (
+                 {clientData.deliveryType === "local_delivery" && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                                <div id="field-deliveryZone">
-                                    <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.deliveryZone ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
-                                        Selecciona tu zona *
-                                    </label>
-                                    <AnimatePresence>
-                                        {errors.deliveryZone && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.deliveryZone}</motion.p>}
-                                    </AnimatePresence>
+                                
+                                {/* 🚀 BIFURCACIÓN DUAL-ENGINE: RADAR VS LISTA MANUAL */}
+                                {deliveryConfig.mode === 'radar' && deliveryConfig.store_location ? (
+                                    <div id="field-deliveryMap">
+                                        <label className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${errors.deliveryMap ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
+                                            Ubicación de Entrega en el Mapa *
+                                        </label>
+                                        <AnimatePresence>
+                                            {errors.deliveryMap && (
+                                                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-3 px-1">
+                                                    {errors.deliveryMap}
+                                                </motion.p>
+                                            )}
+                                        </AnimatePresence>
 
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {deliveryZones.map((z: any) => (
-                                            <button
-                                                key={z.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setSelectedDeliveryZone(z.id);
-                                                    if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
-                                                }}
-                                                className={`flex justify-between items-center px-5 py-4 rounded-xl transition-all duration-150 shadow-none font-bold ${selectedDeliveryZone === z.id
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
-                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                    } ${errors.deliveryZone && !selectedDeliveryZone ? '!border-red-500/80 bg-red-50/10' : ''}`}
-                                            >
-                                                <span className="text-sm">{z.name}</span>
-                                                <span className="font-black text-sm text-[var(--store-text-main)]">
-                                                    +{currencySymbol}{Number(z.cost).toFixed(2)}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {selectedDeliveryZone && (
-                                    <div className="grid grid-cols-1 gap-6 animate-in fade-in pt-2">
-                                        <div id="field-addressDetail" className="w-full relative">
-                                            <input
-                                                value={clientData.addressDetail}
-                                                onChange={(e) => {
-                                                    setClientData({ ...clientData, addressDetail: e.target.value });
-                                                    if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
-                                                }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                placeholder="Dirección exacta *"
+                                        {/* Filtro FinOps: Solo se descarga el mapa tras ingresar Nombre y Teléfono */}
+                                        {clientData.name.trim().length >= 3 && clientData.phone.trim().length >= 7 ? (
+                                            <DeliveryMapPicker
+                                                config={deliveryConfig}
+                                                currencySymbol={currencySymbol}
                                             />
-                                            <AnimatePresence>
-                                                {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
-                                            </AnimatePresence>
-                                        </div>
-                                        <div className="w-full relative">
-                                            <input
-                                                value={clientData.reference}
-                                                onChange={(e) => setClientData({ ...clientData, reference: e.target.value })}
-                                                className="w-full bg-transparent border-0 border-b border-[var(--store-border)] py-3 text-base font-bold text-[var(--store-text-main)] outline-none focus:ring-0 focus:border-[var(--store-primary)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                placeholder="Punto de referencia (Opcional)"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {clientData.deliveryType === "courier" && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                                <div id="field-courier">
-                                    <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.courier ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
-                                        Agencia de Envío *
-                                    </label>
-                                    <AnimatePresence>
-                                        {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
-                                    </AnimatePresence>
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {activeCouriers.map((c) => {
-                                            const LogoComponent = CourierLogos[c];
-                                            const isSelected = clientData.courier === c;
-
-                                            return (
-                                                <button
-                                                    key={c}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setClientData({ ...clientData, courier: c });
-                                                        if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
-                                                    }}
-                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
-                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
-                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                        } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
-                                                >
-                                                    {LogoComponent && (
-                                                        <div className="h-6 w-full flex items-center justify-center px-4">
-                                                            <LogoComponent className="h-full w-auto max-w-full" />
-                                                        </div>
-                                                    )}
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        {c}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                {clientData.courier && (
-                                    <div className="space-y-6 animate-in fade-in pt-2">
-                                        <div id="field-identityCard" className="w-full relative">
-                                            <input
-                                                maxLength={15}
-                                                value={clientData.identityCard}
-                                                onChange={(e) => {
-                                                    setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
-                                                    if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
-                                                }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                placeholder="Cédula de Identidad *"
-                                            />
-                                            <AnimatePresence>
-                                                {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
-                                            </AnimatePresence>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div id="field-state" className="w-full relative">
-                                                <input
-                                                    maxLength={40}
-                                                    value={clientData.state}
-                                                    onChange={(e) => {
-                                                        setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
-                                                        if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
-                                                    }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                    placeholder="Estado *"
-                                                />
-                                                <AnimatePresence>
-                                                    {errors.state && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.state}</motion.p>}
-                                                </AnimatePresence>
+                                        ) : (
+                                            <div className="p-4 rounded-2xl border-2 border-dashed border-[var(--store-border)] bg-[var(--store-surface)]/50 text-center space-y-1.5 animate-in fade-in">
+                                                <p className="text-xs font-bold text-[var(--store-text-main)]">
+                                                    📍 Mapa en Espera
+                                                </p>
+                                                <p className="text-[11px] text-[var(--store-surface-text)] font-medium max-w-xs mx-auto">
+                                                    Ingresa tu <strong>Nombre</strong> y <strong>Teléfono</strong> arriba para activar la ubicación en el mapa.
+                                                </p>
                                             </div>
-
-                                            <div id="field-city" className="w-full relative">
-                                                <input
-                                                    maxLength={40}
-                                                    value={clientData.city}
-                                                    onChange={(e) => {
-                                                        setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
-                                                        if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
-                                                    }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                    placeholder="Ciudad *"
-                                                />
-                                                <AnimatePresence>
-                                                    {errors.city && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.city}</motion.p>}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
-
-                                        <div id="field-addressDetail" className="w-full relative">
-                                            <input
-                                                maxLength={150}
-                                                value={clientData.addressDetail}
-                                                onChange={(e) => {
-                                                    setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
-                                                    if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
-                                                }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                placeholder="Dirección exacta *"
-                                            />
-                                            <AnimatePresence>
-                                                {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
-                                            </AnimatePresence>
-                                        </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
-                        <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
-                            {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
-                            <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
-                        </div>
-                        <div className="flex flex-col">
-                            {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
-                            <h3 className="font-black text-sm text-[var(--store-text-main)]">
-                                {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
-                            </h3>
-                            <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
-                                {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
-                            </p>
-                        </div>
-                    </div>
-                )}
+                                ) : (
+                                    /* MODO CLÁSICO MANUAL: SELECTOR DE SECTORES RETROCOMPATIBLE */
+                                    <div id="field-deliveryZone" className="space-y-3">
+                                        <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.deliveryZone ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
+                                            Selecciona tu zona de entrega *
+                                        </label>
+                                        <AnimatePresence>
+                                            {errors.deliveryZone && (
+                                                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-2 px-1">
+                                                    {errors.deliveryZone}
+                                                </motion.p>
+                                            )}
+                                        </AnimatePresence>
 
-                {/* MODULO DE PROPINAS (SOLO RESTAURANTES) */}
-                {isFoodTech && (
-                    <div className="space-y-3 pt-2">
-                        <div className="flex justify-between items-baseline border-b border-[var(--store-border)] pb-2">
-                            <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
-                                Propina para el Servicio (Opcional)
-                            </h2>
-                            {tipAmountUSD > 0 && (
-                                <span className="text-xs font-mono font-bold text-[var(--store-text-main)]">
-                                    +${tipAmountUSD.toFixed(2)} USD
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-2">
-                            {[0, 5, 10, 15].map((pct) => (
-                                <button
-                                    key={pct}
-                                    type="button"
-                                    onClick={() => setTipPercentage(pct)}
-                                    className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
-                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
-                                        : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
-                                        }`}
-                                >
-                                    {pct === 0 ? "0%" : `${pct}%`}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
-                <div className="space-y-6">
-                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">
-                        Pagos
-                    </h2>
-
-                    {isFullyCoveredByCredit ? (
-                        // 🚀 BLOQUE EXCLUSIVO: 100% CUBIERTO POR CRÉDITO (Clean Look, Sombras Ultradiufuminadas)
-                        <div className="bg-emerald-50/40 p-6 rounded-3xl border border-emerald-100/50 flex flex-col gap-4 animate-in fade-in shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-                            <div className="flex items-start gap-4">
-                                <div className="p-2.5 bg-black text-white rounded-full shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                                    <Check size={18} strokeWidth={3} className="text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest mb-1">Compra 100% Cubierta</h3>
-                                    <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                                        Tu Crédito de Tienda cubre la totalidad de la orden (${grandTotalUSD_before_credit.toFixed(2)} USD). No necesitas seleccionar ningún otro método de pago ni realizar transferencias.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        // 🚀 FLUJO DE PAGO NORMAL (Si aún queda saldo pendiente)
-                        <>
-                            {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
-                            {allowSplitPayments && (
-                                <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setPaymentMode("single");
-                                            setSplitPayments([]);
-                                            setActivePaymentInput(null);
-                                            if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                        }}
-                                        className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "single" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
-                                    >
-                                        Pago Único
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setPaymentMode("split");
-                                            setSplitPayments([]);
-                                            setActivePaymentInput(null);
-                                            if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                        }}
-                                        className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "split" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
-                                    >
-                                        Pago Mixto
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
-                            {remainingListUSD > 0.01 ? (
-                                <div className="py-4 flex flex-col items-center justify-center text-center">
-                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">
-                                        Total Pendiente
-                                    </span>
-                                    <div className="flex items-baseline justify-center gap-1.5">
-                                        <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">
-                                            Bs
-                                        </span>
-                                        <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
-                                            {remainingBs.toLocaleString("es-VE", {
-                                                maximumFractionDigits: 2,
+                                        <div className="grid grid-cols-1 gap-2.5">
+                                            {(storeConfig?.shipping_config?.delivery_zones || []).map((zone: any) => {
+                                                const isSelected = selectedDeliveryZone === zone.id;
+                                                return (
+                                                    <button
+                                                        key={zone.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedDeliveryZone(zone.id);
+                                                            if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
+                                                        }}
+                                                        className={`flex justify-between items-center px-4 py-3.5 rounded-xl transition-all duration-150 font-bold ${
+                                                            isSelected
+                                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
+                                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                        }`}
+                                                    >
+                                                        <span className="text-xs sm:text-sm">{zone.name}</span>
+                                                        <span className="font-black text-xs sm:text-sm text-[var(--store-text-main)]">
+                                                            +{currencySymbol}{Number(zone.cost || zone.price_usd || 0).toFixed(2)}
+                                                        </span>
+                                                    </button>
+                                                );
                                             })}
-                                        </span>
-                                    </div>
-                                    <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">
-                                        Ref: ${remainingListUSD.toFixed(2)}
-                                    </span>
-
-                                    {/* Nudge sin caja */}
-                                    {remainingListUSD > 0.01 && fxMultiplier > 1 && (
-                                        <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
-                                            {isHardCurrencyPayment
-                                                ? "Resta en Divisa"
-                                                : "Si pagas en divisa"}
-                                            :{" "}
-                                            <span className="font-black">
-                                                ${remainingCashUSD.toFixed(2)}
-                                            </span>
-                                        </span>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
-                                    <Check
-                                        size={40}
-                                        strokeWidth={2}
-                                        className="mb-4 text-[var(--store-incentive)]"
-                                    />
-                                    <p className="font-black text-2xl tracking-tight">
-                                        Monto Cubierto
-                                    </p>
-                                    <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
-                                        {paymentMode === "single"
-                                            ? "Adjunta el comprobante para finalizar."
-                                            : "El total ha sido cubierto. Envía el pedido."}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* 2. LISTA DE PAGOS AÑADIDOS */}
-                            <AnimatePresence>
-                                {paymentMode === "split" && splitPayments.length > 0 && (
-                                    <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
-                                        {splitPayments.map((block) => {
-                                            const requiresReceipt =
-                                                receiptConfig.strict_mode &&
-                                                block.method !== "Efectivo" &&
-                                                block.method !== "Pago Flash" &&
-                                                block.method !== "PayPal";
-
-                                            return (
-                                                <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: "auto" }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    key={block.id}
-                                                    className="py-5 overflow-hidden"
-                                                >
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-3 text-[var(--store-text-main)]">
-                                                            <span className="font-bold text-sm">
-                                                                {block.method}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">
-                                                                {block.currency === "usd"
-                                                                    ? `$${block.amount.toFixed(2)}`
-                                                                    : `Bs ${block.amount.toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removePaymentBlock(block.id)}
-                                                                className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"
-                                                            >
-                                                                <Trash2 size={18} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {requiresReceipt && (
-                                                        <div className="mt-4 pt-2">
-                                                            {!block.receiptFile ? (
-                                                                <div className="relative">
-                                                                    <input
-                                                                        type="file"
-                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                                        accept="image/*"
-                                                                        onChange={(e) =>
-                                                                            e.target.files &&
-                                                                            handleAttachReceipt(
-                                                                                block.id,
-                                                                                e.target.files[0],
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                    <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
-                                                                        <Upload size={14} /> Subir Capture de{" "}
-                                                                        {block.method} *
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
-                                                                    <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
-                                                                        <Check
-                                                                            size={16}
-                                                                            className="shrink-0 text-[var(--store-incentive)]"
-                                                                        />
-                                                                        <span className="text-xs font-bold truncate">
-                                                                            {block.receiptFile.name}
-                                                                        </span>
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() =>
-                                                                            handleAttachReceipt(block.id, null)
-                                                                        }
-                                                                        className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"
-                                                                    >
-                                                                        <X size={14} strokeWidth={3} />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </motion.div>
-                                            );
-                                        })}
+                                        </div>
                                     </div>
                                 )}
+                            {/* Formulario de Detalle y Punto de Referencia */}
+                        <div className="grid grid-cols-1 gap-6 pt-2">
+                            <div id="field-addressDetail" className="w-full relative">
+                                <input
+                                    maxLength={150}
+                                    value={clientData.addressDetail}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setClientData({ ...clientData, addressDetail: val });
+                                        setAddressLine(val);
+                                        if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                    placeholder="Avenida, Calle, Edificio / Casa, Piso o Nro *"
+                                />
+                                <AnimatePresence>
+                                    {errors.addressDetail && (
+                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
+                                            {errors.addressDetail}
+                                        </motion.p>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <div id="field-reference" className="w-full relative">
+                                <input
+                                    maxLength={150}
+                                    value={clientData.reference}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setClientData({ ...clientData, reference: val });
+                                        setReferencePoint(val);
+                                        if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
+                                    }}
+                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                    placeholder="Punto de referencia obligatorio (ej: portón negro frente a la panadería) *"
+                                />
+                                <AnimatePresence>
+                                    {errors.reference && (
+                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
+                                            {errors.reference}
+                                        </motion.p>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {clientData.deliveryType === "courier" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                        <div id="field-courier">
+                            <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.courier ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
+                                Agencia de Envío *
+                            </label>
+                            <AnimatePresence>
+                                {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
                             </AnimatePresence>
 
-                            {/* 3. SELECTOR DE MÉTODOS */}
-                            {(paymentMode === "single" || remainingListUSD > 0.01) && (
-                                <div id="field-payment" className="mt-4">
-                                    <AnimatePresence>
-                                        {errors.payment && (
-                                            <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-2 px-1">
-                                                {errors.payment}
-                                            </motion.p>
-                                        )}
-                                    </AnimatePresence>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
-                                        {activePaymentMethods.map((pm) => {
-                                            const config = getPaymentConfig(pm);
-                                            const isSelected = activePaymentInput === pm;
+                            <div className="grid grid-cols-3 gap-3">
+                                {activeCouriers.map((c) => {
+                                    const LogoComponent = CourierLogos[c];
+                                    const isSelected = clientData.courier === c;
 
-                                            return (
-                                                <button
-                                                    key={pm}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        openPaymentInput(pm);
-                                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                                    }}
-                                                    className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
-                                                >
-                                                    <config.icon
-                                                        size={20}
-                                                        className={
-                                                            isSelected
-                                                                ? "text-[var(--store-surface)]"
-                                                                : errors.payment && !isSelected ? "text-red-500" : "text-[var(--store-text-main)]"
-                                                        }
-                                                    />{" "}
-                                                    {pm}
-                                                </button>
-                                            );
-                                        })}
+                                    return (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            onClick={() => {
+                                                setClientData({ ...clientData, courier: c });
+                                                if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
+                                            }}
+                                            className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
+                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
+                                        >
+                                            {LogoComponent && (
+                                                <div className="h-6 w-full flex items-center justify-center px-4">
+                                                    <LogoComponent className="h-full w-auto max-w-full" />
+                                                </div>
+                                            )}
+                                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                                {c}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        {clientData.courier && (
+                            <div className="space-y-6 animate-in fade-in pt-2">
+                                <div id="field-identityCard" className="w-full relative">
+                                    <input
+                                        maxLength={15}
+                                        value={clientData.identityCard}
+                                        onChange={(e) => {
+                                            setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
+                                            if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
+                                        }}
+                                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                        placeholder="Cédula de Identidad *"
+                                    />
+                                    <AnimatePresence>
+                                        {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div id="field-state" className="w-full relative">
+                                        <input
+                                            maxLength={40}
+                                            value={clientData.state}
+                                            onChange={(e) => {
+                                                setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
+                                                if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
+                                            }}
+                                            className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            placeholder="Estado *"
+                                        />
+                                        <AnimatePresence>
+                                            {errors.state && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.state}</motion.p>}
+                                        </AnimatePresence>
+                                    </div>
+
+                                    <div id="field-city" className="w-full relative">
+                                        <input
+                                            maxLength={40}
+                                            value={clientData.city}
+                                            onChange={(e) => {
+                                                setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
+                                                if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
+                                            }}
+                                            className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            placeholder="Ciudad *"
+                                        />
+                                        <AnimatePresence>
+                                            {errors.city && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.city}</motion.p>}
+                                        </AnimatePresence>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* 4. EL PORTAL DE PAGO INLINE */}
-                            <AnimatePresence>
-                                {activePaymentInput && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="overflow-hidden"
-                                    >
-                                        {(() => {
-                                            const singlePaymentBlock =
-                                                paymentMode === "single"
-                                                    ? splitPayments.find(
-                                                        (p) => p.method === activePaymentInput,
-                                                    )
-                                                    : null;
+                                <div id="field-addressDetail" className="w-full relative">
+                                    <input
+                                        maxLength={150}
+                                        value={clientData.addressDetail}
+                                        onChange={(e) => {
+                                            setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
+                                            if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
+                                        }}
+                                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                        placeholder="Dirección exacta *"
+                                    />
+                                    <AnimatePresence>
+                                        {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+            ) : (
+            <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
+                <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
+                    {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
+                    <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
+                </div>
+                <div className="flex flex-col">
+                    {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
+                    <h3 className="font-black text-sm text-[var(--store-text-main)]">
+                        {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
+                    </h3>
+                    <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
+                        {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
+                    </p>
+                </div>
+            </div>
+                )}
 
-                                            return (
-                                                <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
-                                                    {activePaymentInput === "Pago Flash" ? (
-                                                        <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
-                                                            <div className="bg-white p-2.5 rounded-xl border border-gray-100 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-                                                                <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
+            {/* MODULO DE PROPINAS (SOLO RESTAURANTES) */}
+            {isFoodTech && (
+                <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-baseline border-b border-[var(--store-border)] pb-2">
+                        <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
+                            Propina para el Servicio (Opcional)
+                        </h2>
+                        {tipAmountUSD > 0 && (
+                            <span className="text-xs font-mono font-bold text-[var(--store-text-main)]">
+                                +${tipAmountUSD.toFixed(2)} USD
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                        {[0, 5, 10, 15].map((pct) => (
+                            <button
+                                key={pct}
+                                type="button"
+                                onClick={() => setTipPercentage(pct)}
+                                className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
+                                    ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
+                                    : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
+                                    }`}
+                            >
+                                {pct === 0 ? "0%" : `${pct}%`}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
+            <div className="space-y-6">
+                <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">
+                    Pagos
+                </h2>
+
+                {isFullyCoveredByCredit ? (
+                    // 🚀 BLOQUE EXCLUSIVO: 100% CUBIERTO POR CRÉDITO (Clean Look, Sombras Ultradiufuminadas)
+                    <div className="bg-emerald-50/40 p-6 rounded-3xl border border-emerald-100/50 flex flex-col gap-4 animate-in fade-in shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                        <div className="flex items-start gap-4">
+                            <div className="p-2.5 bg-black text-white rounded-full shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                                <Check size={18} strokeWidth={3} className="text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest mb-1">Compra 100% Cubierta</h3>
+                                <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+                                    Tu Crédito de Tienda cubre la totalidad de la orden (${grandTotalUSD_before_credit.toFixed(2)} USD). No necesitas seleccionar ningún otro método de pago ni realizar transferencias.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // 🚀 FLUJO DE PAGO NORMAL (Si aún queda saldo pendiente)
+                    <>
+                        {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
+                        {allowSplitPayments && (
+                            <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPaymentMode("single");
+                                        setSplitPayments([]);
+                                        setActivePaymentInput(null);
+                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                    }}
+                                    className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "single" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
+                                >
+                                    Pago Único
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPaymentMode("split");
+                                        setSplitPayments([]);
+                                        setActivePaymentInput(null);
+                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                    }}
+                                    className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "split" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
+                                >
+                                    Pago Mixto
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
+                        {remainingListUSD > 0.01 ? (
+                            <div className="py-4 flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">
+                                    Total Pendiente
+                                </span>
+                                <div className="flex items-baseline justify-center gap-1.5">
+                                    <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">
+                                        Bs
+                                    </span>
+                                    <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                        {remainingBs.toLocaleString("es-VE", {
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </span>
+                                </div>
+                                <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">
+                                    Ref: ${remainingListUSD.toFixed(2)}
+                                </span>
+
+                                {/* Nudge sin caja */}
+                                {remainingListUSD > 0.01 && fxMultiplier > 1 && (
+                                    <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
+                                        {isHardCurrencyPayment
+                                            ? "Resta en Divisa"
+                                            : "Si pagas en divisa"}
+                                        :{" "}
+                                        <span className="font-black">
+                                            ${remainingCashUSD.toFixed(2)}
+                                        </span>
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
+                                <Check
+                                    size={40}
+                                    strokeWidth={2}
+                                    className="mb-4 text-[var(--store-incentive)]"
+                                />
+                                <p className="font-black text-2xl tracking-tight">
+                                    Monto Cubierto
+                                </p>
+                                <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
+                                    {paymentMode === "single"
+                                        ? "Adjunta el comprobante para finalizar."
+                                        : "El total ha sido cubierto. Envía el pedido."}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* 2. LISTA DE PAGOS AÑADIDOS */}
+                        <AnimatePresence>
+                            {paymentMode === "split" && splitPayments.length > 0 && (
+                                <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
+                                    {splitPayments.map((block) => {
+                                        const requiresReceipt =
+                                            receiptConfig.strict_mode &&
+                                            block.method !== "Efectivo" &&
+                                            block.method !== "Pago Flash" &&
+                                            block.method !== "PayPal";
+
+                                        return (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                key={block.id}
+                                                className="py-5 overflow-hidden"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-3 text-[var(--store-text-main)]">
+                                                        <span className="font-bold text-sm">
+                                                            {block.method}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-6">
+                                                        <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">
+                                                            {block.currency === "usd"
+                                                                ? `$${block.amount.toFixed(2)}`
+                                                                : `Bs ${block.amount.toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removePaymentBlock(block.id)}
+                                                            className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {requiresReceipt && (
+                                                    <div className="mt-4 pt-2">
+                                                        {!block.receiptFile ? (
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="file"
+                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                    accept="image/*"
+                                                                    onChange={(e) =>
+                                                                        e.target.files &&
+                                                                        handleAttachReceipt(
+                                                                            block.id,
+                                                                            e.target.files[0],
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
+                                                                    <Upload size={14} /> Subir Capture de{" "}
+                                                                    {block.method} *
+                                                                </div>
                                                             </div>
-                                                            <p className="text-xs font-medium text-gray-500 leading-relaxed">
-                                                                <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
-                                                                Transfiere desde tu banco y tu orden se aprobará en segundos.
-                                                            </p>
-                                                        </div>
-                                                    ) : activePaymentInput === "PayPal" ? (
-                                                        <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
-                                                            <PayPalGateway
-                                                                storeId={storeId}
-                                                                clientId={payments.paypal?.client_id}
-                                                                amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
-                                                                onSuccess={(transactionId) => {
-                                                                    const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
+                                                        ) : (
+                                                            <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                    <Check
+                                                                        size={16}
+                                                                        className="shrink-0 text-[var(--store-incentive)]"
+                                                                    />
+                                                                    <span className="text-xs font-bold truncate">
+                                                                        {block.receiptFile.name}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        handleAttachReceipt(block.id, null)
+                                                                    }
+                                                                    className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"
+                                                                >
+                                                                    <X size={14} strokeWidth={3} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </AnimatePresence>
 
-                                                                    setSplitPayments(prevPayments => {
-                                                                        if (paymentMode === "single") {
-                                                                            return [{
+                        {/* 3. SELECTOR DE MÉTODOS */}
+                        {(paymentMode === "single" || remainingListUSD > 0.01) && (
+                            <div id="field-payment" className="mt-4">
+                                <AnimatePresence>
+                                    {errors.payment && (
+                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-2 px-1">
+                                            {errors.payment}
+                                        </motion.p>
+                                    )}
+                                </AnimatePresence>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
+                                    {activePaymentMethods.map((pm) => {
+                                        const config = getPaymentConfig(pm);
+                                        const isSelected = activePaymentInput === pm;
+
+                                        return (
+                                            <button
+                                                key={pm}
+                                                type="button"
+                                                onClick={() => {
+                                                    openPaymentInput(pm);
+                                                    if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                                }}
+                                                className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
+                                            >
+                                                <config.icon
+                                                    size={20}
+                                                    className={
+                                                        isSelected
+                                                            ? "text-[var(--store-surface)]"
+                                                            : errors.payment && !isSelected ? "text-red-500" : "text-[var(--store-text-main)]"
+                                                    }
+                                                />{" "}
+                                                {pm}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. EL PORTAL DE PAGO INLINE */}
+                        <AnimatePresence>
+                            {activePaymentInput && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    {(() => {
+                                        const singlePaymentBlock =
+                                            paymentMode === "single"
+                                                ? splitPayments.find(
+                                                    (p) => p.method === activePaymentInput,
+                                                )
+                                                : null;
+
+                                        return (
+                                            <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
+                                                {activePaymentInput === "Pago Flash" ? (
+                                                    <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
+                                                        <div className="bg-white p-2.5 rounded-xl border border-gray-100 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                                                            <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
+                                                        </div>
+                                                        <p className="text-xs font-medium text-gray-500 leading-relaxed">
+                                                            <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
+                                                            Transfiere desde tu banco y tu orden se aprobará en segundos.
+                                                        </p>
+                                                    </div>
+                                                ) : activePaymentInput === "PayPal" ? (
+                                                    <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
+                                                        <PayPalGateway
+                                                            storeId={storeId}
+                                                            clientId={payments.paypal?.client_id}
+                                                            amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
+                                                            onSuccess={(transactionId) => {
+                                                                const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
+
+                                                                setSplitPayments(prevPayments => {
+                                                                    if (paymentMode === "single") {
+                                                                        return [{
+                                                                            id: `pay-${Date.now()}`,
+                                                                            method: "PayPal",
+                                                                            amount: finalAmount,
+                                                                            currency: "usd",
+                                                                            isHardCurrency: true,
+                                                                            receiptFile: null,
+                                                                            receipt_url: `PayPal TxID: ${transactionId}`
+                                                                        }];
+                                                                    } else {
+                                                                        return [
+                                                                            ...prevPayments,
+                                                                            {
                                                                                 id: `pay-${Date.now()}`,
                                                                                 method: "PayPal",
                                                                                 amount: finalAmount,
@@ -2143,673 +2327,661 @@ export default function CheckoutProcess({
                                                                                 isHardCurrency: true,
                                                                                 receiptFile: null,
                                                                                 receipt_url: `PayPal TxID: ${transactionId}`
-                                                                            }];
-                                                                        } else {
-                                                                            return [
-                                                                                ...prevPayments,
-                                                                                {
-                                                                                    id: `pay-${Date.now()}`,
-                                                                                    method: "PayPal",
-                                                                                    amount: finalAmount,
-                                                                                    currency: "usd",
-                                                                                    isHardCurrency: true,
-                                                                                    receiptFile: null,
-                                                                                    receipt_url: `PayPal TxID: ${transactionId}`
-                                                                                }
-                                                                            ];
-                                                                        }
-                                                                    });
-
-                                                                    setActivePaymentInput(null);
-                                                                    setPaymentAmount("");
-                                                                    setAutoSubmitTrigger(true);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    ) : paymentMode === "split" ? (
-                                                        <>
-                                                            <div className="flex justify-between items-end gap-6">
-                                                                <div className="relative flex-1 group">
-                                                                    <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">
-                                                                        Monto con {activePaymentInput}
-                                                                    </label>
-                                                                    <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
-                                                                        <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
-                                                                            {hardCurrencyMethods.includes(
-                                                                                activePaymentInput,
-                                                                            )
-                                                                                ? "$"
-                                                                                : "Bs"}
-                                                                        </span>
-                                                                        <input
-                                                                            type="text"
-                                                                            inputMode="decimal"
-                                                                            autoFocus
-                                                                            value={
-                                                                                paymentAmount
-                                                                                    ? paymentAmount
-                                                                                        .split(".")
-                                                                                        .map((p, i) =>
-                                                                                            i === 0
-                                                                                                ? p.replace(
-                                                                                                    /\B(?=(\d{3})+(?!\d))/g,
-                                                                                                    ".",
-                                                                                                )
-                                                                                                : p,
-                                                                                        )
-                                                                                        .join(",")
-                                                                                    : ""
                                                                             }
-                                                                            onChange={(e) => {
-                                                                                let val = e.target.value;
-                                                                                val = val.replace(/\./g, "");
-                                                                                val = val.replace(/,/g, ".");
-                                                                                val = val.replace(/[^0-9.]/g, "");
-                                                                                const parts = val.split(".");
-                                                                                if (parts.length > 2)
-                                                                                    val =
-                                                                                        parts[0] +
-                                                                                        "." +
-                                                                                        parts.slice(1).join("");
-                                                                                if (parts[1] && parts[1].length > 2)
-                                                                                    val =
-                                                                                        parts[0] +
-                                                                                        "." +
-                                                                                        parts[1].substring(0, 2);
-                                                                                if (val.length > 12) return;
-                                                                                setPaymentAmount(val);
-                                                                            }}
-                                                                            className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                                            placeholder="0,00"
-                                                                        />
+                                                                        ];
+                                                                    }
+                                                                });
+
+                                                                setActivePaymentInput(null);
+                                                                setPaymentAmount("");
+                                                                setAutoSubmitTrigger(true);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ) : paymentMode === "split" ? (
+                                                    <>
+                                                        <div className="flex justify-between items-end gap-6">
+                                                            <div className="relative flex-1 group">
+                                                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">
+                                                                    Monto con {activePaymentInput}
+                                                                </label>
+                                                                <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
+                                                                    <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
+                                                                        {hardCurrencyMethods.includes(
+                                                                            activePaymentInput,
+                                                                        )
+                                                                            ? "$"
+                                                                            : "Bs"}
+                                                                    </span>
+                                                                    <input
+                                                                        type="text"
+                                                                        inputMode="decimal"
+                                                                        autoFocus
+                                                                        value={
+                                                                            paymentAmount
+                                                                                ? paymentAmount
+                                                                                    .split(".")
+                                                                                    .map((p, i) =>
+                                                                                        i === 0
+                                                                                            ? p.replace(
+                                                                                                /\B(?=(\d{3})+(?!\d))/g,
+                                                                                                ".",
+                                                                                            )
+                                                                                            : p,
+                                                                                    )
+                                                                                    .join(",")
+                                                                                : ""
+                                                                        }
+                                                                        onChange={(e) => {
+                                                                            let val = e.target.value;
+                                                                            val = val.replace(/\./g, "");
+                                                                            val = val.replace(/,/g, ".");
+                                                                            val = val.replace(/[^0-9.]/g, "");
+                                                                            const parts = val.split(".");
+                                                                            if (parts.length > 2)
+                                                                                val =
+                                                                                    parts[0] +
+                                                                                    "." +
+                                                                                    parts.slice(1).join("");
+                                                                            if (parts[1] && parts[1].length > 2)
+                                                                                val =
+                                                                                    parts[0] +
+                                                                                    "." +
+                                                                                    parts[1].substring(0, 2);
+                                                                            if (val.length > 12) return;
+                                                                            setPaymentAmount(val);
+                                                                        }}
+                                                                        className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                                        placeholder="0,00"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={confirmPaymentBlock}
+                                                                className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0"
+                                                            >
+                                                                Añadir
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    (() => {
+                                                        const canUploadReceipt = activePaymentInput !== "Efectivo" && activePaymentInput !== "Pago Flash";
+                                                        const isMandatory =
+                                                            receiptConfig.strict_mode && canUploadReceipt;
+
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">
+                                                                            Total a cancelar
+                                                                        </p>
+                                                                        <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                                                            {hardCurrencyMethods.includes(activePaymentInput)
+                                                                                ? `$${targetCashAmount.toFixed(2)}`
+                                                                                : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={confirmPaymentBlock}
-                                                                    className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0"
-                                                                >
-                                                                    Añadir
-                                                                </button>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        (() => {
-                                                            const canUploadReceipt = activePaymentInput !== "Efectivo" && activePaymentInput !== "Pago Flash";
-                                                            const isMandatory =
-                                                                receiptConfig.strict_mode && canUploadReceipt;
 
-                                                            return (
-                                                                <>
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div>
-                                                                            <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">
-                                                                                Total a cancelar
-                                                                            </p>
-                                                                            <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
-                                                                                {hardCurrencyMethods.includes(activePaymentInput)
-                                                                                    ? `$${targetCashAmount.toFixed(2)}`
-                                                                                    : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {canUploadReceipt && singlePaymentBlock && (
-                                                                        <div className="pt-2">
-                                                                            {!singlePaymentBlock.receiptFile ? (
-                                                                                <div className="relative">
-                                                                                    <input
-                                                                                        type="file"
-                                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                                                        accept="image/*"
-                                                                                        onChange={(e) =>
-                                                                                            e.target.files &&
-                                                                                            handleAttachReceipt(
-                                                                                                singlePaymentBlock.id,
-                                                                                                e.target.files[0],
-                                                                                            )
-                                                                                        }
-                                                                                    />
-                                                                                    <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
-                                                                                        <Upload size={16} /> Subir Capture de{" "}
-                                                                                        {activePaymentInput}{" "}
-                                                                                        {isMandatory ? (
-                                                                                            "*"
-                                                                                        ) : (
-                                                                                            <span className="font-medium text-[var(--store-surface-text)]">
-                                                                                                (Opcional)
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
-                                                                                    <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
-                                                                                        <Check
-                                                                                            size={16}
-                                                                                            className="shrink-0 text-[var(--store-incentive)]"
-                                                                                        />
-                                                                                        <span className="text-xs font-bold truncate">
-                                                                                            {singlePaymentBlock.receiptFile.name}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() =>
-                                                                                            handleAttachReceipt(
-                                                                                                singlePaymentBlock.id,
-                                                                                                null,
-                                                                                            )
-                                                                                        }
-                                                                                        className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"
-                                                                                    >
-                                                                                        <X size={16} />
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
-                                                                    {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
-                                                                        <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
-                                                                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
-                                                                                ¿Con cuánto vas a pagar? (Monto en Billetes)
-                                                                            </label>
-
-                                                                            <div className="flex flex-wrap gap-2 mb-4">
-                                                                                {smartTenderOptions.map((amount, idx) => {
-                                                                                    const isExact = amount === targetCashAmount;
-                                                                                    return (
-                                                                                        <button
-                                                                                            key={idx}
-                                                                                            type="button"
-                                                                                            onClick={() => setTenderedAmountStr(amount.toString())}
-                                                                                            className={`px-4 py-2.5 rounded-md text-xs font-bold transition-all border ${tenderedAmountStr === amount.toString() ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:bg-[var(--store-primary)/10] hover:text-[var(--store-primary)]'}`}
-                                                                                        >
-                                                                                            ${amount.toFixed(2)} {isExact && '(Exacto)'}
-                                                                                        </button>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-
-                                                                            <div className="relative flex items-center">
-                                                                                <span className="absolute left-5 text-[var(--store-text-main)] font-black text-lg">$</span>
+                                                                {canUploadReceipt && singlePaymentBlock && (
+                                                                    <div className="pt-2">
+                                                                        {!singlePaymentBlock.receiptFile ? (
+                                                                            <div className="relative">
                                                                                 <input
-                                                                                    type="text"
-                                                                                    inputMode="decimal"
-                                                                                    value={tenderedAmountStr}
-                                                                                    onChange={(e) => {
-                                                                                        const val = e.target.value.replace(/[^0-9.,]/g, '');
-                                                                                        setTenderedAmountStr(val);
-                                                                                    }}
-                                                                                    placeholder={targetCashAmount.toFixed(2)}
-                                                                                    className={`w-full bg-white border focus:border-black rounded-2xl py-4 pl-12 pr-4 text-xl font-black text-[var(--store-text-main)] outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] ${tenderedAmount < targetCashAmount && tenderedAmountStr !== '' ? 'border-red-500 text-red-600' : 'border-gray-200'}`}
+                                                                                    type="file"
+                                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                                    accept="image/*"
+                                                                                    onChange={(e) =>
+                                                                                        e.target.files &&
+                                                                                        handleAttachReceipt(
+                                                                                            singlePaymentBlock.id,
+                                                                                            e.target.files[0],
+                                                                                        )
+                                                                                    }
                                                                                 />
+                                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
+                                                                                    <Upload size={16} /> Subir Capture de{" "}
+                                                                                    {activePaymentInput}{" "}
+                                                                                    {isMandatory ? (
+                                                                                        "*"
+                                                                                    ) : (
+                                                                                        <span className="font-medium text-[var(--store-surface-text)]">
+                                                                                            (Opcional)
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
-
-                                                                            <div className="mt-3 px-1">
-                                                                                {tenderedAmountStr === '' ? null : tenderedAmount < targetCashAmount ? (
-                                                                                    <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> Faltan ${(targetCashAmount - tenderedAmount).toFixed(2)}</p>
-                                                                                ) : tenderedAmount === targetCashAmount ? (
-                                                                                    <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><Check size={14} /> Monto exacto. No requiere vuelto.</p>
-                                                                                ) : changeError ? (
-                                                                                    <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> {changeError}</p>
-                                                                                ) : null}
+                                                                        ) : (
+                                                                            <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                                <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                                    <Check
+                                                                                        size={16}
+                                                                                        className="shrink-0 text-[var(--store-incentive)]"
+                                                                                    />
+                                                                                    <span className="text-xs font-bold truncate">
+                                                                                        {singlePaymentBlock.receiptFile.name}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        handleAttachReceipt(
+                                                                                            singlePaymentBlock.id,
+                                                                                            null,
+                                                                                        )
+                                                                                    }
+                                                                                    className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"
+                                                                                >
+                                                                                    <X size={16} />
+                                                                                </button>
                                                                             </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
 
-                                                                            <AnimatePresence>
-                                                                                {expectedChange > 0 && !changeError && (
-                                                                                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                                                                                        <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
-                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vuelto a tu favor</span>
-                                                                                            <span className="font-black text-2xl text-black tracking-tight">${expectedChange.toFixed(2)}</span>
-                                                                                        </div>
+                                                                {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
+                                                                {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
+                                                                    <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
+                                                                        <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
+                                                                            ¿Con cuánto vas a pagar? (Monto en Billetes)
+                                                                        </label>
 
-                                                                                        <p className="text-[10px] text-gray-500 font-medium leading-relaxed mb-5">
-                                                                                            * El saldo a favor es un crédito de consumo exclusivo para esta tienda, sin fecha de caducidad. No equivale a dinero electrónico ni es canjeable por divisas físicas.
-                                                                                        </p>
+                                                                        <div className="flex flex-wrap gap-2 mb-4">
+                                                                            {smartTenderOptions.map((amount, idx) => {
+                                                                                const isExact = amount === targetCashAmount;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={idx}
+                                                                                        type="button"
+                                                                                        onClick={() => setTenderedAmountStr(amount.toString())}
+                                                                                        className={`px-4 py-2.5 rounded-md text-xs font-bold transition-all border ${tenderedAmountStr === amount.toString() ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:bg-[var(--store-primary)/10] hover:text-[var(--store-primary)]'}`}
+                                                                                    >
+                                                                                        ${amount.toFixed(2)} {isExact && '(Exacto)'}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
 
-                                                                                        <label className="flex items-start gap-4 cursor-pointer group bg-gray-50 p-4 rounded-2xl border border-transparent hover:bg-gray-100 transition-colors">
-                                                                                            <input
-                                                                                                type="checkbox"
-                                                                                                checked={isVirtualChangeAccepted}
-                                                                                                onChange={(e) => setIsVirtualChangeAccepted(e.target.checked)}
-                                                                                                className="mt-0.5 w-5 h-5 accent-black rounded-md border-gray-300 cursor-pointer"
-                                                                                            />
-                                                                                            <span className={`text-xs font-bold leading-snug transition-colors ${errors.virtualChange && !isVirtualChangeAccepted ? 'text-red-600' : 'text-gray-900 group-hover:text-black'}`}>
-                                                                                                Acepto recibir mi vuelto de ${expectedChange.toFixed(2)} como Crédito de Tienda.
-                                                                                            </span>
-                                                                                        </label>
+                                                                        <div className="relative flex items-center">
+                                                                            <span className="absolute left-5 text-[var(--store-text-main)] font-black text-lg">$</span>
+                                                                            <input
+                                                                                type="text"
+                                                                                inputMode="decimal"
+                                                                                value={tenderedAmountStr}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                                                                    setTenderedAmountStr(val);
+                                                                                }}
+                                                                                placeholder={targetCashAmount.toFixed(2)}
+                                                                                className={`w-full bg-white border focus:border-black rounded-2xl py-4 pl-12 pr-4 text-xl font-black text-[var(--store-text-main)] outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] ${tenderedAmount < targetCashAmount && tenderedAmountStr !== '' ? 'border-red-500 text-red-600' : 'border-gray-200'}`}
+                                                                            />
+                                                                        </div>
 
-                                                                                        <AnimatePresence>
-                                                                                            {isVirtualChangeAccepted && !currentUser && (
-                                                                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-5 pt-5 border-t border-gray-100 overflow-hidden">
-                                                                                                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${errors.otp && !otpVerified ? 'text-red-500' : 'text-gray-400'}`}>Protege tu saldo (Autenticación)</span>
+                                                                        <div className="mt-3 px-1">
+                                                                            {tenderedAmountStr === '' ? null : tenderedAmount < targetCashAmount ? (
+                                                                                <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> Faltan ${(targetCashAmount - tenderedAmount).toFixed(2)}</p>
+                                                                            ) : tenderedAmount === targetCashAmount ? (
+                                                                                <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><Check size={14} /> Monto exacto. No requiere vuelto.</p>
+                                                                            ) : changeError ? (
+                                                                                <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> {changeError}</p>
+                                                                            ) : null}
+                                                                        </div>
 
-                                                                                                    {!otpSent ? (
+                                                                        <AnimatePresence>
+                                                                            {expectedChange > 0 && !changeError && (
+                                                                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                                                                                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
+                                                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vuelto a tu favor</span>
+                                                                                        <span className="font-black text-2xl text-black tracking-tight">${expectedChange.toFixed(2)}</span>
+                                                                                    </div>
+
+                                                                                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed mb-5">
+                                                                                        * El saldo a favor es un crédito de consumo exclusivo para esta tienda, sin fecha de caducidad. No equivale a dinero electrónico ni es canjeable por divisas físicas.
+                                                                                    </p>
+
+                                                                                    <label className="flex items-start gap-4 cursor-pointer group bg-gray-50 p-4 rounded-2xl border border-transparent hover:bg-gray-100 transition-colors">
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            checked={isVirtualChangeAccepted}
+                                                                                            onChange={(e) => setIsVirtualChangeAccepted(e.target.checked)}
+                                                                                            className="mt-0.5 w-5 h-5 accent-black rounded-md border-gray-300 cursor-pointer"
+                                                                                        />
+                                                                                        <span className={`text-xs font-bold leading-snug transition-colors ${errors.virtualChange && !isVirtualChangeAccepted ? 'text-red-600' : 'text-gray-900 group-hover:text-black'}`}>
+                                                                                            Acepto recibir mi vuelto de ${expectedChange.toFixed(2)} como Crédito de Tienda.
+                                                                                        </span>
+                                                                                    </label>
+
+                                                                                    <AnimatePresence>
+                                                                                        {isVirtualChangeAccepted && !currentUser && (
+                                                                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-5 pt-5 border-t border-gray-100 overflow-hidden">
+                                                                                                <span className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${errors.otp && !otpVerified ? 'text-red-500' : 'text-gray-400'}`}>Protege tu saldo (Autenticación)</span>
+
+                                                                                                {!otpSent ? (
+                                                                                                    <div className="flex flex-col sm:flex-row gap-3">
+                                                                                                        <input
+                                                                                                            type="email"
+                                                                                                            placeholder="Tu correo electrónico"
+                                                                                                            value={changeEmail}
+                                                                                                            onChange={(e) => setChangeEmail(e.target.value.toLowerCase().trim())}
+                                                                                                            // w-full para móvil, flex-1 para desktop
+                                                                                                            className={`w-full sm:flex-1 bg-white border rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none focus:border-black transition-colors ${errors.otp ? 'border-red-500' : 'border-gray-200'}`}
+                                                                                                        />
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={handleSendOtp}
+                                                                                                            disabled={isOtpProcessing || !changeEmail}
+                                                                                                            // w-full en móvil, w-auto en desktop, shrink-0 para evitar compresión, py-3.5 para igualar altura del input
+                                                                                                            className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center"
+                                                                                                        >
+                                                                                                            {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Verificar'}
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <div className="flex flex-col gap-3">
+                                                                                                        <p className="text-[11px] text-gray-500 font-medium">Ingresa el código de 6 dígitos enviado a <strong className="text-black">{changeEmail}</strong></p>
                                                                                                         <div className="flex flex-col sm:flex-row gap-3">
                                                                                                             <input
-                                                                                                                type="email"
-                                                                                                                placeholder="Tu correo electrónico"
-                                                                                                                value={changeEmail}
-                                                                                                                onChange={(e) => setChangeEmail(e.target.value.toLowerCase().trim())}
+                                                                                                                type="text"
+                                                                                                                maxLength={6}
+                                                                                                                placeholder="000000"
+                                                                                                                value={otpCode}
+                                                                                                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                                                                                                                 // w-full para móvil, flex-1 para desktop
-                                                                                                                className={`w-full sm:flex-1 bg-white border rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none focus:border-black transition-colors ${errors.otp ? 'border-red-500' : 'border-gray-200'}`}
+                                                                                                                className="w-full sm:flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-center tracking-[0.7em] font-black text-xl text-gray-900 outline-none focus:border-black transition-colors"
                                                                                                             />
                                                                                                             <button
                                                                                                                 type="button"
-                                                                                                                onClick={handleSendOtp}
-                                                                                                                disabled={isOtpProcessing || !changeEmail}
-                                                                                                                // w-full en móvil, w-auto en desktop, shrink-0 para evitar compresión, py-3.5 para igualar altura del input
-                                                                                                                className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center"
+                                                                                                                onClick={handleVerifyOtp}
+                                                                                                                disabled={isOtpProcessing || otpCode.length < 6}
+                                                                                                                // w-full en móvil, w-auto en desktop, min-w-[120px] y shrink-0 para proteger el layout
+                                                                                                                className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center sm:min-w-[120px]"
                                                                                                             >
-                                                                                                                {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Verificar'}
+                                                                                                                {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
                                                                                                             </button>
                                                                                                         </div>
-                                                                                                    ) : (
-                                                                                                        <div className="flex flex-col gap-3">
-                                                                                                            <p className="text-[11px] text-gray-500 font-medium">Ingresa el código de 6 dígitos enviado a <strong className="text-black">{changeEmail}</strong></p>
-                                                                                                            <div className="flex flex-col sm:flex-row gap-3">
-                                                                                                                <input
-                                                                                                                    type="text"
-                                                                                                                    maxLength={6}
-                                                                                                                    placeholder="000000"
-                                                                                                                    value={otpCode}
-                                                                                                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                                                                                    // w-full para móvil, flex-1 para desktop
-                                                                                                                    className="w-full sm:flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-center tracking-[0.7em] font-black text-xl text-gray-900 outline-none focus:border-black transition-colors"
-                                                                                                                />
-                                                                                                                <button
-                                                                                                                    type="button"
-                                                                                                                    onClick={handleVerifyOtp}
-                                                                                                                    disabled={isOtpProcessing || otpCode.length < 6}
-                                                                                                                    // w-full en móvil, w-auto en desktop, min-w-[120px] y shrink-0 para proteger el layout
-                                                                                                                    className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center sm:min-w-[120px]"
-                                                                                                                >
-                                                                                                                    {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
-                                                                                                                </button>
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                    )}
-                                                                                                </motion.div>
-                                                                                            )}
-                                                                                        </AnimatePresence>
-                                                                                    </motion.div>
-                                                                                )}
-                                                                            </AnimatePresence>
-                                                                        </div>
-                                                                    )}
-                                                                </>
-                                                            );
-                                                        })()
-                                                    )}
-
-                                                    {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
-                                                    {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                        <div className="bg-[var(--store-surface)] border-2 border-[var(--store-border)] rounded-xl p-4.5 shadow-none mt-4 animate-in fade-in">
-                                                            <div className="flex justify-between items-center mb-2.5">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">
-                                                                    {activePaymentInput === 'Efectivo' ? 'Instrucciones de Pago' : 'Datos para Transferir'}
-                                                                </span>
-
-                                                                {activePaymentInput !== 'Efectivo' && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || "")}
-                                                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60 transition-all active:scale-95 text-[10px] font-mono font-bold uppercase shadow-none"
-                                                                    >
-                                                                        {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                                                                        <span>{copied ? "Copiado" : "Copiar"}</span>
-                                                                    </button>
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </motion.div>
+                                                                                        )}
+                                                                                    </AnimatePresence>
+                                                                                </motion.div>
+                                                                            )}
+                                                                        </AnimatePresence>
+                                                                    </div>
                                                                 )}
-                                                            </div>
-                                                            <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
-                                                                {payments[paymentKeysMap[activePaymentInput]]?.details}
-                                                            </p>
+                                                            </>
+                                                        );
+                                                    })()
+                                                )}
+
+                                                {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
+                                                {payments[paymentKeysMap[activePaymentInput]]?.details && (
+                                                    <div className="bg-[var(--store-surface)] border-2 border-[var(--store-border)] rounded-xl p-4.5 shadow-none mt-4 animate-in fade-in">
+                                                        <div className="flex justify-between items-center mb-2.5">
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">
+                                                                {activePaymentInput === 'Efectivo' ? 'Instrucciones de Pago' : 'Datos para Transferir'}
+                                                            </span>
+
+                                                            {activePaymentInput !== 'Efectivo' && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || "")}
+                                                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60 transition-all active:scale-95 text-[10px] font-mono font-bold uppercase shadow-none"
+                                                                >
+                                                                    {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                                    <span>{copied ? "Copiado" : "Copiar"}</span>
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* El fragmento se cierra correctamente aquí para balancear el bloque normal */}
-                        </>
-                    )}
-                </div>
-
-                {/* 🚀 NUEVO: EL RESUMEN FINANCIERO SE MUEVE AL SCROLL */}
-                {/* Ahora hace scroll natural con el contenido, liberando el 40% de la pantalla */}
-                <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
-                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">
-                        Resumen de la Orden
-                    </h2>
-
-                    <div className="flex flex-col gap-3">
-                        <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
-                            <span>Subtotal (Precio de Lista)</span>
-                            <span
-                                className={
-                                    cartEngine.listPromoDiscounts > 0
-                                        ? "line-through decoration-[var(--store-border)]"
-                                        : ""
-                                }
-                            >
-                                {currencySymbol}
-                                {cartEngine.totalListNominal.toFixed(2)}
-                            </span>
-                        </div>
-
-                        {cartEngine.listPromoDiscounts > 0 && (
-                            <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
-                                <span>Descuento de Campaña</span>
-                                <span>
-                                    -{currencySymbol}
-                                    {cartEngine.listPromoDiscounts.toFixed(2)}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* 🚀 INYECCIÓN DEL RENGLÓN DE IMPUESTO (SOLO SI APLICA) */}
-                        {applyTax && taxAmountListUSD > 0 && (
-                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2">
-                                <span>I.V.A ({taxPercentage}%)</span>
-                                <span>
-                                    +{currencySymbol}
-                                    {taxAmountListUSD.toFixed(2)}
-                                </span>
-                            </div>
-                        )}
-
-                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]">
-                            <span>Subtotal Neto</span>
-                            <span>
-                                {currencySymbol}
-                                {cartEngine.finalBsModeUSD.toFixed(2)}
-                            </span>
-                        </div>
-
-                        {wholesaleDiscountList > 0 && (
-                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
-                                <span>Descuento Mayorista</span>
-                                <span>
-                                    -{currencySymbol}
-                                    {wholesaleDiscountList.toFixed(2)}
-                                </span>
-                            </div>
-                        )}
-
-                        <AnimatePresence>
-                            {isHardCurrencyPayment && actualFxSavings > 0 && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]"
-                                >
-                                    <span>Beneficio Pago en Divisa</span>
-                                    <span>
-                                        -{currencySymbol}
-                                        {actualFxSavings.toFixed(2)}
-                                    </span>
+                                                        <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
+                                                            {payments[paymentKeysMap[activePaymentInput]]?.details}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        {deliveryCost > 0 && (
-                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
-                                <span>Delivery / Envío</span>
-                                <span>
-                                    +{currencySymbol}
-                                    {deliveryCost.toFixed(2)}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* LINEA DE PROPINA EN PANTALLA */}
-                        {isFoodTech && tipAmountUSD > 0 && (
-                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
-                                <span>Propina ({tipPercentage}%)</span>
-                                <span className="font-mono">
-                                    +{currencySymbol}{tipAmountUSD.toFixed(2)}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* 🚀 TARJETA DE CRÉDITO APLICADO (Dentro de la lista de subtotales) */}
-                        <AnimatePresence>
-                            {appliedCreditUSD > 0 && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/50 overflow-hidden">
-                                    <span>Crédito de Tienda Aplicado</span>
-                                    <span>-{currencySymbol}{appliedCreditUSD.toFixed(2)}</span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
-                    {availableCredit > 0 && (
-                        <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60'}`}>
-                                    <Wallet size={18} strokeWidth={2.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-black text-[var(--store-text-main)]">Usar Saldo a Favor</span>
-                                    <span className="text-[11px] font-bold text-[var(--store-surface-text)]">Disponible: ${availableCredit.toFixed(2)}</span>
-                                </div>
-                            </div>
-                            <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-[var(--store-border)]'}`}>
-                                <div className={`w-4 h-4 bg-[var(--store-surface)] rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-            </div>{" "}
-            {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */}
-            {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
-            {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
-            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                <div className="flex items-center gap-5">
-                    {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
-                    <div
-                        className="flex flex-col shrink-0"
-                        style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
-                    >
-                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
-                            Total Final
-                        </span>
-                        <div className="flex items-end gap-2">
-                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
-                                {currencySymbol}{grandTotalUSD.toFixed(2)}
-                            </span>
-                        </div>
-                        <span
-                            style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
-                            className="text-[11px] font-bold text-[var(--store-surface-text)] mt-1.5 leading-none tabular-nums !normal-case"
-                        >
-                            Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                    </div>
-
-                    {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
-                    <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
-                        <div className="w-full h-[52px] relative flex justify-end md:justify-center">
-                            <motion.button
-                                layout
-                                onClick={handleCheckout}
-                                disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-primary)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
-                                    ? "w-full bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] !border-transparent cursor-not-allowed opacity-80"
-                                    : checkoutState !== 'idle'
-                                        ? "w-[52px] bg-[var(--store-primary)] text-[var(--store-primary-text)] mx-auto shrink-0"
-                                        : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90"
-                                    }`}
-                            >
-                                {!storeHoursStatus.isOpen ? (
-                                    <span>Cerrado • {storeHoursStatus.detailLabel}</span>
-                                ) : (
-                                    <AnimatePresence mode="wait">
-                                        {checkoutState === 'validating' ? (
-                                            <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
-                                                <Loader2 className="animate-spin" size={20} />
-                                            </motion.div>
-                                        ) : checkoutState === 'processing' ? (
-                                            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                                <Loader2 className="animate-spin text-white/50" size={20} />
-                                            </motion.div>
-                                        ) : checkoutState === 'success' ? (
-                                            <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
-                                                <Check className="text-white" size={20} strokeWidth={3} />
-                                            </motion.div>
-                                        ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
-                                            // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
-                                            <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
-                                                <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
-                                            </motion.div>
-                                        ) : missingReceipts && isPaidInFull ? (
-                                            <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                                <Upload size={16} className="mb-0.5" /> Adjunta Recibos
-                                            </motion.div>
-                                        ) : activePaymentInput === "Pago Flash" ? (
-                                            <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                                <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                                <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                )}
-                            </motion.button>
-                            {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
-                            <AnimatePresence>
-                                {checkoutState === 'validating' && (
-                                    <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-surface-text)] whitespace-nowrap">
-                                        Validando seguridad...
-                                    </motion.span>
-                                )}
-                                {checkoutState === 'processing' && (
-                                    <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-text-main)] whitespace-nowrap">
-                                        Generando orden cifrada...
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* 🚀 MICRO-NUDGE DE ERROR VIVO (Aparece si falta algún dato) */}
-                        <AnimatePresence>
-                            {/* 🚀 ARQUITECTURA: filter(Boolean) destruye strings vacíos y undefineds fantasma */}
-                            {Object.values(errors).filter(Boolean).length > 0 && (
-                                <motion.span
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase"
-                                >
-                                    falta rellenar datos
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                        {/* El fragmento se cierra correctamente aquí para balancear el bloque normal */}
+                    </>
+                )}
             </div>
-            {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */}
-            {/* 🚀 MODAL P2P PAGO FLASH (UX MINIMALISTA & FLUIDO) */}
-            <AnimatePresence mode="wait">
-                {p2pStep !== 'idle' && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 bg-black/30 backdrop-blur-md" onClick={() => p2pStep === 'step1' && setP2pStep('idle')} />
 
-                        <motion.div
-                            initial={{ scale: 0.96, opacity: 0, y: 10 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.96, opacity: 0, y: 10 }}
-                            transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
-                            className="relative bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col border border-gray-100/50"
+            {/* 🚀 NUEVO: EL RESUMEN FINANCIERO SE MUEVE AL SCROLL */}
+            {/* Ahora hace scroll natural con el contenido, liberando el 40% de la pantalla */}
+            <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
+                <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">
+                    Resumen de la Orden
+                </h2>
+
+                <div className="flex flex-col gap-3">
+                    <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
+                        <span>Subtotal (Precio de Lista)</span>
+                        <span
+                            className={
+                                cartEngine.listPromoDiscounts > 0
+                                    ? "line-through decoration-[var(--store-border)]"
+                                    : ""
+                            }
                         >
-                            <AnimatePresence mode="wait">
-                                {/* PASO 1: INSTRUCCIONES */}
-                                {p2pStep === 'step1' && (
-                                    <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
-                                        <div className="p-7 text-center">
-                                            <h3 className="font-black text-xl text-gray-900 tracking-tight mb-1.5">Transfiere el total</h3>
-                                            <p className="text-xs text-gray-500 font-medium mb-6">Realiza el pago móvil exacto a estos datos.</p>
-                                            <p className="text-[40px] font-black text-gray-900 tracking-tighter mb-8 leading-none">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                            {currencySymbol}
+                            {cartEngine.totalListNominal.toFixed(2)}
+                        </span>
+                    </div>
 
-                                            <div className="space-y-4 text-left">
-                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                                    <span className="text-xs text-gray-500 font-medium">Banco Destino</span>
-                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.bank || '0102'}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                                    <span className="text-xs text-gray-500 font-medium">Cédula / RIF</span>
-                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.dni}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-xs text-gray-500 font-medium">Teléfono</span>
-                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.phone}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
-                                            <button onClick={() => setP2pStep('idle')} className="px-5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancelar</button>
-                                            <button onClick={() => setP2pStep('step2')} className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-sm">Ya transferí</button>
-                                        </div>
-                                    </motion.div>
-                                )}
+                    {cartEngine.listPromoDiscounts > 0 && (
+                        <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
+                            <span>Descuento de Campaña</span>
+                            <span>
+                                -{currencySymbol}
+                                {cartEngine.listPromoDiscounts.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
-                                {/* PASO 2: VERIFICACIÓN */}
-                                {p2pStep === 'step2' && (
-                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                                        <div className="p-7">
-                                            <div className="flex items-center gap-3 mb-6">
-                                                <button onClick={() => setP2pStep('step1')} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"><ArrowLeft size={16} /></button>
-                                                <div>
-                                                    <h3 className="font-black text-lg text-gray-900 tracking-tight leading-none">Verifica tu pago</h3>
-                                                    <p className="text-[10px] text-gray-500 font-medium mt-1">Ingresa los datos desde donde enviaste el dinero.</p>
-                                                </div>
-                                            </div>
+                    {/* 🚀 INYECCIÓN DEL RENGLÓN DE IMPUESTO (SOLO SI APLICA) */}
+                    {applyTax && taxAmountListUSD > 0 && (
+                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2">
+                            <span>I.V.A ({taxPercentage}%)</span>
+                            <span>
+                                +{currencySymbol}
+                                {taxAmountListUSD.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
-                                            <div className="space-y-3">
-                                                <select value={p2pForm.bankCode} onChange={e => setP2pForm({ ...p2pForm, bankCode: e.target.value })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
-                                                    <option value="" disabled>¿Desde qué banco pagaste?</option>
-                                                    <option value="0102">Banco de Venezuela (0102)</option>
-                                                    <option value="0134">Banesco (0134)</option>
-                                                    <option value="0105">Mercantil (0105)</option>
-                                                    <option value="0108">Provincial (0108)</option>
-                                                </select>
+                    <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]">
+                        <span>Subtotal Neto</span>
+                        <span>
+                            {currencySymbol}
+                            {cartEngine.finalBsModeUSD.toFixed(2)}
+                        </span>
+                    </div>
 
-                                                <div className="flex gap-2">
-                                                    <select value={p2pForm.phoneCode} onChange={e => setP2pForm({ ...p2pForm, phoneCode: e.target.value })} className="w-24 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
-                                                        <option value="0414">0414</option><option value="0424">0424</option><option value="0412">0412</option><option value="0416">0416</option><option value="0426">0426</option>
-                                                    </select>
-                                                    <input placeholder="Teléfono" value={p2pForm.phone} onChange={e => setP2pForm({ ...p2pForm, phone: e.target.value.replace(/\D/g, '') })} maxLength={7} className="flex-1 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
-                                                </div>
+                    {wholesaleDiscountList > 0 && (
+                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
+                            <span>Descuento Mayorista</span>
+                            <span>
+                                -{currencySymbol}
+                                {wholesaleDiscountList.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
-                                                <input placeholder="Cédula del titular de la cuenta" value={p2pForm.document} onChange={e => setP2pForm({ ...p2pForm, document: e.target.value.replace(/\D/g, '') })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+                    <AnimatePresence>
+                        {isHardCurrencyPayment && actualFxSavings > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]"
+                            >
+                                <span>Beneficio Pago en Divisa</span>
+                                <span>
+                                    -{currencySymbol}
+                                    {actualFxSavings.toFixed(2)}
+                                </span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                                                <input placeholder="Últimos 6 dígitos de Referencia" value={p2pForm.reference} onChange={e => setP2pForm({ ...p2pForm, reference: e.target.value.replace(/\D/g, '') })} maxLength={8} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-black text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm tracking-widest text-center" />
-                                            </div>
-                                        </div>
+                    {deliveryCost > 0 && (
+                        <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                            <span>Delivery / Envío</span>
+                            <span>
+                                +{currencySymbol}
+                                {deliveryCost.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
-                                        <div className="p-4 bg-gray-50 border-t border-gray-100">
-                                            <button onClick={handleVerifyP2P} disabled={isVerifying} className="w-full bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
-                                                {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.div>
+                    {/* LINEA DE PROPINA EN PANTALLA */}
+                    {isFoodTech && tipAmountUSD > 0 && (
+                        <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                            <span>Propina ({tipPercentage}%)</span>
+                            <span className="font-mono">
+                                +{currencySymbol}{tipAmountUSD.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* 🚀 TARJETA DE CRÉDITO APLICADO (Dentro de la lista de subtotales) */}
+                    <AnimatePresence>
+                        {appliedCreditUSD > 0 && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/50 overflow-hidden">
+                                <span>Crédito de Tienda Aplicado</span>
+                                <span>-{currencySymbol}{appliedCreditUSD.toFixed(2)}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
+                {availableCredit > 0 && (
+                    <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60'}`}>
+                                <Wallet size={18} strokeWidth={2.5} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-sm font-black text-[var(--store-text-main)]">Usar Saldo a Favor</span>
+                                <span className="text-[11px] font-bold text-[var(--store-surface-text)]">Disponible: ${availableCredit.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-[var(--store-border)]'}`}>
+                            <div className={`w-4 h-4 bg-[var(--store-surface)] rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </div>
                     </div>
                 )}
-            </AnimatePresence>
-        </motion.div>
+
+            </div>
+        </div>{ " " }
+    {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */ }
+    {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */ }
+    {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */ }
+    <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-5">
+            {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
+            <div
+                className="flex flex-col shrink-0"
+                style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+            >
+                <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
+                    Total Final
+                </span>
+                <div className="flex items-end gap-2">
+                    <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                        {currencySymbol}{grandTotalUSD.toFixed(2)}
+                    </span>
+                </div>
+                <span
+                    style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                    className="text-[11px] font-bold text-[var(--store-surface-text)] mt-1.5 leading-none tabular-nums !normal-case"
+                >
+                    Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+            </div>
+
+            {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
+            <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
+                <div className="w-full h-[52px] relative flex justify-end md:justify-center">
+                    <motion.button
+                        layout
+                        onClick={handleCheckout}
+                        disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
+                        className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-primary)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
+                            ? "w-full bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] !border-transparent cursor-not-allowed opacity-80"
+                            : checkoutState !== 'idle'
+                                ? "w-[52px] bg-[var(--store-primary)] text-[var(--store-primary-text)] mx-auto shrink-0"
+                                : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90"
+                            }`}
+                    >
+                        {!storeHoursStatus.isOpen ? (
+                            <span>Cerrado • {storeHoursStatus.detailLabel}</span>
+                        ) : (
+                            <AnimatePresence mode="wait">
+                                {checkoutState === 'validating' ? (
+                                    <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
+                                        <Loader2 className="animate-spin" size={20} />
+                                    </motion.div>
+                                ) : checkoutState === 'processing' ? (
+                                    <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <Loader2 className="animate-spin text-white/50" size={20} />
+                                    </motion.div>
+                                ) : checkoutState === 'success' ? (
+                                    <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
+                                        <Check className="text-white" size={20} strokeWidth={3} />
+                                    </motion.div>
+                                ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
+                                    // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
+                                    <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
+                                        <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
+                                    </motion.div>
+                                ) : missingReceipts && isPaidInFull ? (
+                                    <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <Upload size={16} className="mb-0.5" /> Adjunta Recibos
+                                    </motion.div>
+                                ) : activePaymentInput === "Pago Flash" ? (
+                                    <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
+                                    </motion.div>
+                                ) : (
+                                    <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                        <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        )}
+                    </motion.button>
+                    {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
+                    <AnimatePresence>
+                        {checkoutState === 'validating' && (
+                            <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-surface-text)] whitespace-nowrap">
+                                Validando seguridad...
+                            </motion.span>
+                        )}
+                        {checkoutState === 'processing' && (
+                            <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-text-main)] whitespace-nowrap">
+                                Generando orden cifrada...
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* 🚀 MICRO-NUDGE DE ERROR VIVO (Aparece si falta algún dato) */}
+                <AnimatePresence>
+                    {/* 🚀 ARQUITECTURA: filter(Boolean) destruye strings vacíos y undefineds fantasma */}
+                    {Object.values(errors).filter(Boolean).length > 0 && (
+                        <motion.span
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase"
+                        >
+                            falta rellenar datos
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </div>
+        </div>
+    </div>
+    {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */ }
+    {/* 🚀 MODAL P2P PAGO FLASH (UX MINIMALISTA & FLUIDO) */ }
+    <AnimatePresence mode="wait">
+        {p2pStep !== 'idle' && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 bg-black/30 backdrop-blur-md" onClick={() => p2pStep === 'step1' && setP2pStep('idle')} />
+
+                <motion.div
+                    initial={{ scale: 0.96, opacity: 0, y: 10 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.96, opacity: 0, y: 10 }}
+                    transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
+                    className="relative bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col border border-gray-100/50"
+                >
+                    <AnimatePresence mode="wait">
+                        {/* PASO 1: INSTRUCCIONES */}
+                        {p2pStep === 'step1' && (
+                            <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+                                <div className="p-7 text-center">
+                                    <h3 className="font-black text-xl text-gray-900 tracking-tight mb-1.5">Transfiere el total</h3>
+                                    <p className="text-xs text-gray-500 font-medium mb-6">Realiza el pago móvil exacto a estos datos.</p>
+                                    <p className="text-[40px] font-black text-gray-900 tracking-tighter mb-8 leading-none">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+
+                                    <div className="space-y-4 text-left">
+                                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                            <span className="text-xs text-gray-500 font-medium">Banco Destino</span>
+                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.bank || '0102'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                            <span className="text-xs text-gray-500 font-medium">Cédula / RIF</span>
+                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.dni}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500 font-medium">Teléfono</span>
+                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.phone}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
+                                    <button onClick={() => setP2pStep('idle')} className="px-5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancelar</button>
+                                    <button onClick={() => setP2pStep('step2')} className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-sm">Ya transferí</button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* PASO 2: VERIFICACIÓN */}
+                        {p2pStep === 'step2' && (
+                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                                <div className="p-7">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <button onClick={() => setP2pStep('step1')} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"><ArrowLeft size={16} /></button>
+                                        <div>
+                                            <h3 className="font-black text-lg text-gray-900 tracking-tight leading-none">Verifica tu pago</h3>
+                                            <p className="text-[10px] text-gray-500 font-medium mt-1">Ingresa los datos desde donde enviaste el dinero.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <select value={p2pForm.bankCode} onChange={e => setP2pForm({ ...p2pForm, bankCode: e.target.value })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                            <option value="" disabled>¿Desde qué banco pagaste?</option>
+                                            <option value="0102">Banco de Venezuela (0102)</option>
+                                            <option value="0134">Banesco (0134)</option>
+                                            <option value="0105">Mercantil (0105)</option>
+                                            <option value="0108">Provincial (0108)</option>
+                                        </select>
+
+                                        <div className="flex gap-2">
+                                            <select value={p2pForm.phoneCode} onChange={e => setP2pForm({ ...p2pForm, phoneCode: e.target.value })} className="w-24 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                                <option value="0414">0414</option><option value="0424">0424</option><option value="0412">0412</option><option value="0416">0416</option><option value="0426">0426</option>
+                                            </select>
+                                            <input placeholder="Teléfono" value={p2pForm.phone} onChange={e => setP2pForm({ ...p2pForm, phone: e.target.value.replace(/\D/g, '') })} maxLength={7} className="flex-1 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+                                        </div>
+
+                                        <input placeholder="Cédula del titular de la cuenta" value={p2pForm.document} onChange={e => setP2pForm({ ...p2pForm, document: e.target.value.replace(/\D/g, '') })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+
+                                        <input placeholder="Últimos 6 dígitos de Referencia" value={p2pForm.reference} onChange={e => setP2pForm({ ...p2pForm, reference: e.target.value.replace(/\D/g, '') })} maxLength={8} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-black text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm tracking-widest text-center" />
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-gray-50 border-t border-gray-100">
+                                    <button onClick={handleVerifyP2P} disabled={isVerifying} className="w-full bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+                                        {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
+        </motion.div >
     );
 }

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -170,4 +171,21 @@ input:-webkit-autofill:active {
 .animate-fade-in-up {
   animation: fadeInUp 0.45s cubic-bezier(0.25, 1, 0.5, 1) forwards;
   will-change: transform, opacity;
+}
+
+/* Píldoras Flotantes Estilo Meta Ads en el Mapa */
+.meta-radius-pill {
+  background: rgba(17, 24, 39, 0.9) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 9999px !important;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.meta-radius-pill::before {
+  display: none !important;
 }

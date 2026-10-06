@@ -29,6 +29,7 @@ import PushNotificationManager from "@/components/admin/PushNotificationManager"
 import TodaySalesWidget from "@/components/admin/TodaySalesWidget";
 import FeatureCollectionModal from "@/components/admin/FeatureCollectionModal";
 import { BentoGridWrapper, FadeInBlock } from "@/components/admin/DashboardAnimations";
+import { DeliveryRadarFeatureModal } from "@/components/admin/DeliveryRadarFeatureModal";
 
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
@@ -728,6 +729,7 @@ return (
                                     })
                                 )}
                             </div>
+                            <DeliveryRadarFeatureModal/>
                         </FadeInBlock>
                     </BentoGridWrapper>
                 )}

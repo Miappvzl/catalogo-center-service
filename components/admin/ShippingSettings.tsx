@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, useEffect } from 'react'
 import { Truck, MapPin, Save, Loader2, AlertTriangle, Plus, Trash2, DollarSign, Store, Activity, AlertCircle } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
@@ -7,6 +6,10 @@ import { motion } from 'framer-motion'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Swal from 'sweetalert2'
 import { NumberInput } from '../NumberInput'
+import { AdminDeliveryZoneManager } from './AdminDeliveryZoneManager'
+import { DeliveryConfig } from '@/utils/geoUtils'
+import { DeliveryRadarAnnouncementModal } from '../DeliveryRadarAnnouncementeModal'
+import { Compass, ListOrdered, Sparkles, HelpCircle } from 'lucide-react'
 
 interface ShippingSettingsProps {
     storeId: string
@@ -35,11 +38,27 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
     const [loading, setLoading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
 
- const [config, setConfig] = useState({
+    const [showRadarModal, setShowRadarModal] = useState(false);
+
+    const [config, setConfig] = useState({
         methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true, dine_in: true },
         main_address: '',
         pickup_locations: [] as string[],
         delivery_zones: [] as { id: string, name: string, cost: number }[],
+        delivery_config: {
+            enabled: true,
+            mode: 'manual' as 'radar' | 'manual',
+            store_location: null as { lat: number; lng: number; address: string } | null,
+            rings: [
+                { id: 'r1', name: 'Zona 1 (Cercana)', max_km: 3.0, price_usd: 1.50, color: '#3f3f46', is_active: true },
+                { id: 'r2', name: 'Zona 2 (Media)', max_km: 7.0, price_usd: 3.00, color: '#52525b', is_active: true },
+                { id: 'r3', name: 'Zona 3 (Extendida)', max_km: 12.0, price_usd: 5.00, color: '#71717a', is_active: true },
+            ],
+            zones: [],
+            max_radius_km: 15,
+            fallback_price_usd: 5.0,
+            allow_outside_zones: true,
+        } as DeliveryConfig,
         show_badge: true,
         global_badge_title: '',
         global_badge_desc: '',
@@ -51,25 +70,55 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
 
     useEffect(() => {
         if (initialData) {
-           setConfig(prev => ({
+            const rawDeliveryConfig = initialData.delivery_config || {};
+            const rawRings = rawDeliveryConfig.rings || rawDeliveryConfig.zones || initialData.delivery_zones || [];
+
+            const normalizedRings = rawRings.map((z: any, idx: number) => ({
+                id: z.id || `ring-${idx}`,
+                name: z.name || `Zona ${idx + 1}`,
+                max_km: Number(z.max_km || (idx + 1) * 4),
+                price_usd: Number(z.price_usd ?? z.cost ?? 2.5),
+                color: z.color || '#3f3f46',
+                is_active: z.is_active ?? true,
+            }));
+
+            // Si la tienda ya tenía sede fijada o seleccionó radar, arrancamos en radar; si no, en manual para proteger retrocompatibilidad
+            const effectiveMode: 'radar' | 'manual' = rawDeliveryConfig.mode || (rawDeliveryConfig.store_location ? 'radar' : 'manual');
+
+            const parsedDeliveryConfig: DeliveryConfig = {
+                enabled: initialData.methods?.delivery ?? true,
+                mode: effectiveMode,
+                store_location: rawDeliveryConfig.store_location || null,
+                rings: normalizedRings.length > 0 ? normalizedRings : [
+                    { id: 'r1', name: 'Zona 1 (Cercana)', max_km: 3.0, price_usd: 1.50, color: '#3f3f46', is_active: true },
+                    { id: 'r2', name: 'Zona 2 (Media)', max_km: 7.0, price_usd: 3.00, color: '#52525b', is_active: true },
+                    { id: 'r3', name: 'Zona 3 (Extendida)', max_km: 12.0, price_usd: 5.00, color: '#71717a', is_active: true },
+                ],
+                zones: normalizedRings,
+                max_radius_km: Number(rawDeliveryConfig.max_radius_km || 15),
+                fallback_price_usd: Number(rawDeliveryConfig.fallback_price_usd || 5.0),
+                allow_outside_zones: rawDeliveryConfig.allow_outside_zones ?? true,
+            };
+
+            setConfig(prev => ({
                 ...prev,
                 ...initialData,
-                methods: { 
-                    ...prev.methods, 
+                methods: {
+                    ...prev.methods,
                     ...initialData.methods,
                     dine_in: initialData?.methods?.dine_in ?? (isRestaurant ? true : false)
                 },
                 main_address: initialData.main_address || '',
                 delivery_zones: initialData.delivery_zones || [],
+                delivery_config: parsedDeliveryConfig,
                 pickup_locations: initialData.pickup_locations || [],
                 show_badge: initialData.show_badge ?? true,
                 global_badge_title: initialData.global_badge_title || '',
                 global_badge_desc: initialData.global_badge_desc || '',
-                national_shipping_is_free: initialData.national_shipping_is_free || false // 🚀 Sincronización
+                national_shipping_is_free: initialData.national_shipping_is_free || false
             }))
         }
-    }, [initialData])
-
+    }, [initialData, isRestaurant])
     const handleSave = async () => {
         if (!storeId || !isDirty) return
         setLoading(true)
@@ -140,7 +189,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
     }
 
     return (
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col h-full space-y-6">
+        <div className="bg-white p-4 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col h-full space-y-6">
 
             {/* HEADER DE SECCIÓN */}
             <div>
@@ -151,12 +200,12 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                 <p className="text-xs text-neutral-400 mt-1">Configure las opciones de entrega y tarifas de despacho para sus compradores.</p>
             </div>
 
-           
 
-                <div className="flex-1 space-y-6">
 
-                    {/* 1. MÉTODOS DE ENVÍO NACIONAL */}
-                    {!isRestaurant && (
+            <div className="flex-1 space-y-6">
+
+                {/* 1. MÉTODOS DE ENVÍO NACIONAL */}
+                {!isRestaurant && (
                     <div className="space-y-3">
                         <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Empresas de Envío Nacional</h4>
 
@@ -189,9 +238,9 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                             <FlatToggle active={config.methods.tealca} label="TEALCA" onClick={() => toggleMethod('tealca')} />
                         </div>
                     </div>
-                    )}
+                )}
 
-             {/* 2. DELIVERY, PICKUP & SALÓN */}
+                {/* 2. DELIVERY, PICKUP & SALÓN */}
                 <div className={`space-y-4 ${!isRestaurant ? 'pt-4 border-t border-neutral-100/50' : ''}`}>
                     <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">
                         {isRestaurant ? 'Modalidades de Servicio y Despacho' : 'Entrega Local en Ciudad'}
@@ -200,23 +249,23 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                     {isRestaurant ? (
                         /* 🍔 MODO RESTAURANTE: 3 MODALIDADES CLARAS */
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <FlatToggle 
-                                active={config.methods.dine_in} 
-                                label="Comer en el Local" 
-                                subtitle="Consumo en salón o barra" 
-                                onClick={() => toggleMethod('dine_in')} 
+                            <FlatToggle
+                                active={config.methods.dine_in}
+                                label="Comer en el Local"
+                                subtitle="Consumo en salón o barra"
+                                onClick={() => toggleMethod('dine_in')}
                             />
-                            <FlatToggle 
-                                active={config.methods.pickup} 
-                                label="Para Llevar" 
-                                subtitle="Retiro en mostrador" 
-                                onClick={() => toggleMethod('pickup')} 
+                            <FlatToggle
+                                active={config.methods.pickup}
+                                label="Para Llevar"
+                                subtitle="Retiro en mostrador"
+                                onClick={() => toggleMethod('pickup')}
                             />
-                            <FlatToggle 
-                                active={config.methods.delivery} 
-                                label="Delivery Tarifado" 
-                                subtitle="Envío por zonas de entrega" 
-                                onClick={() => toggleMethod('delivery')} 
+                            <FlatToggle
+                                active={config.methods.delivery}
+                                label="Delivery Tarifado"
+                                subtitle="Envío por zonas de entrega"
+                                onClick={() => toggleMethod('delivery')}
                             />
                         </div>
                     ) : (
@@ -227,71 +276,200 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                         </div>
                     )}
 
-                        {/* DIRECCIONES DE PICKUP */}
-                        {config.methods.pickup && (
-                            <div className="pt-2 animate-in slide-in-from-top-2 duration-200">
-                                <div className="bg-neutral-50/50 p-4 md:p-5 rounded-lg border border-neutral-200/50 space-y-5">
+                    {/* DIRECCIONES DE PICKUP */}
+                    {config.methods.pickup && (
+                        <div className="pt-2 animate-in slide-in-from-top-2 duration-200">
+                            <div className="bg-neutral-50/50 p-4 md:p-5 rounded-lg border border-neutral-200/50 space-y-5">
 
-                                    {/* Dirección Principal */}
-                                    <div>
-                                        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                                            <Store size={14} className="text-neutral-400" /> Dirección de Sede Principal
-                                        </label>
+                                {/* Dirección Principal */}
+                                <div>
+                                    <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <Store size={14} className="text-neutral-400" /> Dirección de Sede Principal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ingrese la ubicación física de su establecimiento comercial"
+                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:border-neutral-400 outline-none transition-all"
+                                        value={config.main_address || ''}
+                                        onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, main_address: e.target.value })) }}
+                                    />
+                                </div>
+
+                                {/* Puntos Alternativos */}
+                                <div className="pt-4 border-t border-neutral-200/60">
+                                    <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                        <MapPin size={14} className="text-neutral-400" /> Puntos de entrega o pick-up adicionales
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row gap-2">
                                         <input
                                             type="text"
-                                            placeholder="Ingrese la ubicación física de su establecimiento comercial"
-                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:border-neutral-400 outline-none transition-all"
-                                            value={config.main_address || ''}
-                                            onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, main_address: e.target.value })) }}
+                                            placeholder="Ej: C.C. San Ignacio, Nivel Jardín, Chacao"
+                                            className="flex-1 min-w-0 bg-white border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:border-neutral-400 outline-none transition-all"
+                                            value={newLocation}
+                                            onChange={(e) => setNewLocation(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && addLocation()}
                                         />
+                                        <button onClick={addLocation} className="shrink-0 bg-neutral-950 text-white px-4 py-2.5 rounded-lg text-xs font-semibold hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-xs">
+                                            <Plus size={14} />
+                                            <span>Agregar</span>
+                                        </button>
+                                    </div>
+                                    {config.pickup_locations.length > 0 && (
+                                        <ul className="space-y-1.5 pt-4">
+                                            {config.pickup_locations.map((loc, idx) => (
+                                                <li key={idx} className="flex justify-between items-center gap-3 bg-white px-3.5 py-2 rounded-lg border border-neutral-200/50 text-xs animate-in fade-in duration-200 shadow-xs">
+                                                    <span className="flex-1 min-w-0 truncate font-semibold text-neutral-800">{loc}</span>
+                                                    <button onClick={() => removeLocation(idx)} className="shrink-0 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-md transition-colors">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {/* GESTOR DUAL-ENGINE: RADAR DESTACADO VS LISTA MANUAL */}
+                    {config.methods.delivery && (
+                        <div className="pt-2 space-y-4 animate-in slide-in-from-top-2 duration-200">
+
+                            {/* SELECTOR DE MODALIDAD (DESTACANDO EL RADAR CON GOOGLE MAPS) */}
+                            <div className="space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-black text-neutral-900 uppercase tracking-wider flex items-center gap-1.5">
+                                        Modalidad de Cálculo de Delivery
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRadarModal(true)}
+                                        className="text-[11px] font-bold text-neutral-500 hover:text-neutral-900 flex items-center gap-1 transition-colors"
+                                    >
+                                        <Sparkles size={12} className="text-amber-500" />
+                                        <span>¿Por qué usar el Radar?</span>
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                    {/* OPCIÓN 1: RADAR INTELIGENTE (DESTACADA / RECOMENDADA) */}
+                                    <div
+                                        onClick={() => {
+                                            setIsDirty(true);
+                                            setConfig(prev => ({
+                                                ...prev,
+                                                delivery_config: { ...prev.delivery_config, mode: 'radar' }
+                                            }));
+                                        }}
+                                        className={`relative cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between gap-3 active:scale-[0.99] ${config.delivery_config.mode === 'radar'
+                                                ? 'border-neutral-950 bg-neutral-950 text-white shadow-md'
+                                                : 'border-neutral-200 bg-neutral-50/50 hover:border-neutral-300 text-neutral-800'
+                                            }`}
+                                    >
+                                        <div>
+                                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Compass size={16} className={config.delivery_config.mode === 'radar' ? 'text-amber-400' : 'text-neutral-600'} />
+                                                    <span className="font-black text-xs uppercase tracking-wider">
+                                                        Radar con Google Maps
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${config.delivery_config.mode === 'radar'
+                                                        ? 'bg-amber-400 text-neutral-950'
+                                                        : 'bg-neutral-200 text-neutral-700'
+                                                    }`}>
+                                                    Recomendado
+                                                </span>
+                                            </div>
+                                            <p className={`text-[11px] leading-relaxed ${config.delivery_config.mode === 'radar' ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                                                Calcula el precio automáticamente según la distancia en kilómetros. Evita pérdidas y despachos fallidos.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 text-[10px] font-mono font-semibold pt-1 border-t border-white/10">
+                                            <span>✓ Búsqueda oficial Google</span>
+                                            <span>•</span>
+                                            <span>✓ Sin sorpresas para el motorizado</span>
+                                        </div>
                                     </div>
 
-                                    {/* Puntos Alternativos */}
-                                    <div className="pt-4 border-t border-neutral-200/60">
-                                        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                                            <MapPin size={14} className="text-neutral-400" /> Puntos de entrega o pick-up adicionales
-                                        </label>
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="Ej: C.C. San Ignacio, Nivel Jardín, Chacao"
-                                                className="flex-1 min-w-0 bg-white border border-neutral-200/50 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-900 focus:border-neutral-400 outline-none transition-all"
-                                                value={newLocation}
-                                                onChange={(e) => setNewLocation(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && addLocation()}
-                                            />
-                                            <button onClick={addLocation} className="shrink-0 bg-neutral-950 text-white px-4 py-2.5 rounded-lg text-xs font-semibold hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-xs">
-                                                <Plus size={14} />
-                                                <span>Agregar</span>
-                                            </button>
+                                    {/* OPCIÓN 2: LISTA MANUAL CLÁSICA (RETROCOMPATIBLE) */}
+                                    <div
+                                        onClick={() => {
+                                            setIsDirty(true);
+                                            setConfig(prev => ({
+                                                ...prev,
+                                                delivery_config: { ...prev.delivery_config, mode: 'manual' }
+                                            }));
+                                        }}
+                                        className={`relative cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between gap-3 active:scale-[0.99] ${config.delivery_config.mode === 'manual'
+                                                ? 'border-neutral-950 bg-neutral-950 text-white shadow-md'
+                                                : 'border-neutral-200 bg-neutral-50/50 hover:border-neutral-300 text-neutral-800'
+                                            }`}
+                                    >
+                                        <div>
+                                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <ListOrdered size={16} className={config.delivery_config.mode === 'manual' ? 'text-neutral-300' : 'text-neutral-600'} />
+                                                    <span className="font-black text-xs uppercase tracking-wider">
+                                                        Lista de Sectores
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${config.delivery_config.mode === 'manual'
+                                                        ? 'bg-neutral-800 text-neutral-300'
+                                                        : 'bg-neutral-100 text-neutral-500'
+                                                    }`}>
+                                                    Clásico
+                                                </span>
+                                            </div>
+                                            <p className={`text-[11px] leading-relaxed ${config.delivery_config.mode === 'manual' ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                                                Escribe el nombre de tus zonas y asígnales una tarifa plana fija sin importar los kilómetros exactos.
+                                            </p>
                                         </div>
-                                        {config.pickup_locations.length > 0 && (
-                                            <ul className="space-y-1.5 pt-4">
-                                                {config.pickup_locations.map((loc, idx) => (
-                                                    <li key={idx} className="flex justify-between items-center gap-3 bg-white px-3.5 py-2 rounded-lg border border-neutral-200/50 text-xs animate-in fade-in duration-200 shadow-xs">
-                                                        <span className="flex-1 min-w-0 truncate font-semibold text-neutral-800">{loc}</span>
-                                                        <button onClick={() => removeLocation(idx)} className="shrink-0 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-md transition-colors">
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
+
+                                        <div className="flex items-center gap-2 text-[10px] font-mono font-semibold pt-1 border-t border-white/10 text-neutral-400">
+                                            <span>Ideal para tarifas planas por municipio</span>
+                                        </div>
                                     </div>
 
                                 </div>
                             </div>
-                        )}
 
-                        {/* ZONAS DE DELIVERY */}
-                        {config.methods.delivery && (
-                            <div className="pt-2 animate-in slide-in-from-top-2 duration-200">
-                                <div className="bg-neutral-50/50 p-4 md:p-5 rounded-lg border border-neutral-200/50 space-y-4">
+                            {/* VISTA CONDICIONAL: RADAR INTELIGENTE */}
+                            {config.delivery_config.mode === 'radar' && (
+                                <div className="bg-neutral-50/50 p-4 md:p-5 rounded-2xl border border-neutral-200/80 animate-in fade-in duration-200">
+                                    <AdminDeliveryZoneManager
+                                        deliveryConfig={config.delivery_config}
+                                        onChange={(updatedDeliveryConfig) => {
+                                            setIsDirty(true);
+                                            setConfig((prev) => ({
+                                                ...prev,
+                                                delivery_config: updatedDeliveryConfig,
+                                                delivery_zones: (updatedDeliveryConfig.rings || []).map((z) => ({
+                                                    id: z.id,
+                                                    name: z.name,
+                                                    cost: z.price_usd,
+                                                })),
+                                            }));
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* VISTA CONDICIONAL: LISTA MANUAL CLÁSICA (RETROCOMPATIBLE AL 100%) */}
+                            {config.delivery_config.mode === 'manual' && (
+                                <div className="bg-neutral-50/50 p-4 md:p-5 rounded-2xl border border-neutral-200/80 space-y-4 animate-in fade-in duration-200">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <Activity size={14} className="text-neutral-400" /> Tarifas de Envío por Zona
+                                        <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Activity size={14} className="text-neutral-400" /> Tarifas Fijas por Sector
                                         </label>
-                                        <button onClick={addDeliveryZone} className="bg-neutral-950 text-white px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-black transition-colors flex items-center gap-1 shadow-xs">
+                                        <button
+                                            type="button"
+                                            onClick={addDeliveryZone}
+                                            className="bg-neutral-950 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-black transition-colors flex items-center gap-1 shadow-xs"
+                                        >
                                             <Plus size={13} />
                                             <span>Crear Zona</span>
                                         </button>
@@ -299,31 +477,35 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
 
                                     <div className="space-y-2">
                                         {config.delivery_zones.length === 0 ? (
-                                            <div className="text-center py-5 text-neutral-400 text-xs font-medium bg-white rounded-lg border border-dashed border-neutral-200/50">
-                                                No hay zonas de entrega configuradas actualmente.
+                                            <div className="text-center py-6 text-neutral-400 text-xs font-medium bg-white rounded-xl border border-dashed border-neutral-200">
+                                                No hay sectores configurados. Haz clic en &quot;Crear Zona&quot; para agregar uno.
                                             </div>
                                         ) : (
                                             config.delivery_zones.map((zone) => (
-                                                <div key={zone.id} className="flex items-center gap-2.5 bg-white p-1.5 rounded-lg border border-neutral-200/50 animate-in fade-in transition-colors shadow-xs">
+                                                <div key={zone.id} className="flex items-center gap-2.5 bg-white p-2 rounded-xl border border-neutral-200 shadow-2xs">
                                                     <div className="flex-1">
                                                         <input
                                                             value={zone.name}
                                                             onChange={(e) => updateDeliveryZone(zone.id, 'name', e.target.value)}
-                                                            placeholder="Escriba la zona geográfica (Ej: Las Mercedes)"
-                                                            className="w-full bg-transparent px-2 py-1.5 text-xs font-bold outline-none text-neutral-900 placeholder:text-neutral-300"
+                                                            placeholder="Nombre del sector (Ej: Chacao, Altamira, Prebo)"
+                                                            className="w-full bg-transparent px-2 py-1 text-xs font-bold outline-none text-neutral-900 placeholder:text-neutral-300"
                                                         />
                                                     </div>
-                                                    <div className="w-24 relative shrink-0 bg-neutral-50 rounded-md border border-neutral-200/50 focus-within:border-neutral-400 transition-colors">
+                                                    <div className="w-24 relative shrink-0 bg-neutral-50 rounded-lg border border-neutral-200 focus-within:border-neutral-400 transition-colors">
                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">
                                                             <DollarSign size={12} />
                                                         </span>
                                                         <NumberInput
                                                             value={zone.cost}
                                                             onChangeValue={(val) => updateDeliveryZone(zone.id, 'cost', val)}
-                                                            className="w-full bg-transparent pl-6 pr-2.5 py-1.5 text-xs font-bold outline-none text-neutral-900 text-center font-mono"
+                                                            className="w-full bg-transparent pl-6 pr-2 py-1 text-xs font-bold outline-none text-neutral-900 text-center font-mono"
                                                         />
                                                     </div>
-                                                    <button onClick={() => removeDeliveryZone(zone.id)} className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeDeliveryZone(zone.id)}
+                                                        className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                                                    >
                                                         <Trash2 size={15} />
                                                     </button>
                                                 </div>
@@ -331,79 +513,93 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                                         )}
                                     </div>
                                 </div>
+                            )}
+
+                            {/* Modal de Anuncio */}
+                            <DeliveryRadarAnnouncementModal
+                                isOpen={showRadarModal}
+                                onClose={() => setShowRadarModal(false)}
+                                onActivateRadar={() => {
+                                    setIsDirty(true);
+                                    setConfig(prev => ({
+                                        ...prev,
+                                        delivery_config: { ...prev.delivery_config, mode: 'radar' }
+                                    }));
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS (SOLO RETAIL) */}
+            {!isRestaurant && (
+                <div className="space-y-3 pt-4 border-t border-neutral-200/50 w-full overflow-hidden">
+                    <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Visualización en Ficha de Producto</h4>
+                    <div className="bg-neutral-50/50 p-4 sm:p-5 rounded-lg border border-neutral-200/50 space-y-4 w-full">
+                        <FlatToggle
+                            active={config.show_badge}
+                            label="Etiqueta Informativa de Envío"
+                            subtitle="Aparece debajo de la línea de precios en el producto."
+                            onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }}
+                        />
+
+                        {config.show_badge && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 w-full pt-1">
+                                <div className="w-full min-w-0">
+                                    <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Encabezado (Máx 20 caracteres)</label>
+                                    <input
+                                        type="text"
+                                        maxLength={20}
+                                        placeholder="Ej: Entrega Express"
+                                        value={config.global_badge_title}
+                                        onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_title: e.target.value })) }}
+                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
+                                    />
+                                </div>
+                                <div className="w-full min-w-0">
+                                    <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Descripción (Máx 50 caracteres)</label>
+                                    <input
+                                        type="text"
+                                        maxLength={50}
+                                        placeholder="Ej: Despacho garantizado en 24 horas"
+                                        value={config.global_badge_desc}
+                                        onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
+                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
+                                    />
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
-
-              {/* 3. MENSAJE GLOBAL DE ENTREGA EN PRODUCTOS (SOLO RETAIL) */}
-                {!isRestaurant && (
-                    <div className="space-y-3 pt-4 border-t border-neutral-200/50 w-full overflow-hidden">
-                        <h4 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block">Visualización en Ficha de Producto</h4>
-                        <div className="bg-neutral-50/50 p-4 sm:p-5 rounded-lg border border-neutral-200/50 space-y-4 w-full">
-                            <FlatToggle
-                                active={config.show_badge}
-                                label="Etiqueta Informativa de Envío"
-                                subtitle="Aparece debajo de la línea de precios en el producto."
-                                onClick={() => { setIsDirty(true); setConfig(prev => ({ ...prev, show_badge: !prev.show_badge })) }}
-                            />
-
-                            {config.show_badge && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200 w-full pt-1">
-                                    <div className="w-full min-w-0">
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Encabezado (Máx 20 caracteres)</label>
-                                        <input
-                                            type="text"
-                                            maxLength={20}
-                                            placeholder="Ej: Entrega Express"
-                                            value={config.global_badge_title}
-                                            onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_title: e.target.value })) }}
-                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
-                                        />
-                                    </div>
-                                    <div className="w-full min-w-0">
-                                        <label className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block truncate">Descripción (Máx 50 caracteres)</label>
-                                        <input
-                                            type="text"
-                                            maxLength={50}
-                                            placeholder="Ej: Despacho garantizado en 24 horas"
-                                            value={config.global_badge_desc}
-                                            onChange={(e) => { setIsDirty(true); setConfig(prev => ({ ...prev, global_badge_desc: e.target.value })) }}
-                                            className="w-full bg-white border border-neutral-200/50 rounded-lg px-3 py-2 text-xs font-semibold focus:border-neutral-400 outline-none transition-colors placeholder:text-neutral-300"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+            )}
 
 
-                {/* FOOTER DE ACCIÓN */}
-                <div className="mt-8 pt-5 border-t border-neutral-200/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-2 text-xs font-medium">
-                        {isDirty ? (
-                            <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded">
-                                <AlertCircle size={12} />
-                                Tiene cambios sin guardar en logística
-                            </span>
-                        ) : (
-                            <span className="text-neutral-400">La configuración de despacho está consolidada.</span>
-                        )}
-                    </div>
-
-                    <button
-                        onClick={handleSave}
-                        disabled={loading || !isDirty}
-                        className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${isDirty
-                                ? 'bg-neutral-950 text-white hover:bg-black active:scale-[0.98]'
-                                : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                            }`}
-                    >
-                        {loading ? <Loader2 className="animate-spin" size={13} /> : <Save size={13} />}
-                        Guardar Logística
-                    </button>
+            {/* FOOTER DE ACCIÓN */}
+            <div className="mt-8 pt-5 border-t border-neutral-200/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2 text-xs font-medium">
+                    {isDirty ? (
+                        <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded">
+                            <AlertCircle size={12} />
+                            Tiene cambios sin guardar en logística
+                        </span>
+                    ) : (
+                        <span className="text-neutral-400">La configuración de despacho está consolidada.</span>
+                    )}
                 </div>
+
+                <button
+                    onClick={handleSave}
+                    disabled={loading || !isDirty}
+                    className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${isDirty
+                        ? 'bg-neutral-950 text-white hover:bg-black active:scale-[0.98]'
+                        : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                        }`}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={13} /> : <Save size={13} />}
+                    Guardar Logística
+                </button>
             </div>
-            )
+        </div>
+    )
 }
