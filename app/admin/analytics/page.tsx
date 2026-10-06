@@ -187,7 +187,7 @@ export default async function AnalyticsDashboard() {
             </div>
 
             {/* EMBUDO DE CONVERSIÓN VISUAL */}
-            <div className="bg-white p-6 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+            <div className="bg-white p-4 md:p-8 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
                 <div>
                     <span className="inline-flex items-center gap-1 bg-neutral-100 text-neutral-600 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded mb-2">
                         <Sparkles size={11} className="text-neutral-500" /> Comportamiento de Compra

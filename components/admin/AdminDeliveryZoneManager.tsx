@@ -313,7 +313,7 @@ export const AdminDeliveryZoneManager: React.FC<AdminDeliveryZoneManagerProps> =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-            <span className="text-xs font-black tracking-tight uppercase">Piloto de Despacho</span>
+            <span className="text-xs font-bold tracking-tight uppercase">Piloto de Despacho</span>
           </div>
           <span className="text-[10px] font-mono text-zinc-400">1-Clic Setup</span>
         </div>
@@ -349,8 +349,8 @@ export const AdminDeliveryZoneManager: React.FC<AdminDeliveryZoneManagerProps> =
           {/* PASO 1: SEDE CENTRAL (Plana, limpia) */}
           <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4 space-y-2.5">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-[10px] flex items-center justify-center font-mono font-black">1</span>
-              <h4 className="text-xs font-black uppercase tracking-wider text-zinc-950 dark:text-zinc-100">Sede de Despacho</h4>
+              <span className="w-5 h-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-[10px] flex items-center justify-center font-mono font-bold">1</span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-950 dark:text-zinc-100">Sede de Despacho</h4>
             </div>
 
             <div className="flex gap-2">
@@ -393,8 +393,8 @@ export const AdminDeliveryZoneManager: React.FC<AdminDeliveryZoneManagerProps> =
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-[10px] flex items-center justify-center font-mono font-black">2</span>
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-950 dark:text-zinc-100">Escalones de Tarifa</h4>
+                <span className="w-5 h-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-[10px] flex items-center justify-center font-mono font-bold">2</span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-950 dark:text-zinc-100">Escalones de Tarifa</h4>
               </div>
 
               <button

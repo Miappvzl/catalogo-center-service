@@ -279,7 +279,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                     {/* DIRECCIONES DE PICKUP */}
                     {config.methods.pickup && (
                         <div className="pt-2 animate-in slide-in-from-top-2 duration-200">
-                            <div className="bg-neutral-50/50 p-4 md:p-5 rounded-lg border border-neutral-200/50 space-y-5">
+                            <div className="bg-neutral-50/50 p-4 mb-6 md:p-5 rounded-lg border border-neutral-200/50 space-y-5">
 
                                 {/* Dirección Principal */}
                                 <div>
@@ -339,7 +339,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                             {/* SELECTOR DE MODALIDAD (DESTACANDO EL RADAR CON GOOGLE MAPS) */}
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-[11px] font-black text-neutral-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <label className="text-[11px] font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5">
                                         Modalidad de Cálculo de Delivery
                                     </label>
                                     <button
@@ -372,7 +372,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                                             <div className="flex items-center justify-between gap-2 mb-1.5">
                                                 <div className="flex items-center gap-2">
                                                     <Compass size={16} className={config.delivery_config.mode === 'radar' ? 'text-amber-400' : 'text-neutral-600'} />
-                                                    <span className="font-black text-xs uppercase tracking-wider">
+                                                    <span className="font-bold text-xs uppercase tracking-wider">
                                                         Radar con Google Maps
                                                     </span>
                                                 </div>
@@ -413,7 +413,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
                                             <div className="flex items-center justify-between gap-2 mb-1.5">
                                                 <div className="flex items-center gap-2">
                                                     <ListOrdered size={16} className={config.delivery_config.mode === 'manual' ? 'text-neutral-300' : 'text-neutral-600'} />
-                                                    <span className="font-black text-xs uppercase tracking-wider">
+                                                    <span className="font-bold text-xs uppercase tracking-wider">
                                                         Lista de Sectores
                                                     </span>
                                                 </div>
@@ -439,7 +439,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
 
                             {/* VISTA CONDICIONAL: RADAR INTELIGENTE */}
                             {config.delivery_config.mode === 'radar' && (
-                                <div className="bg-neutral-50/50 p-2 md:p-5 rounded-2xl border border-neutral-200/80 animate-in fade-in duration-200">
+                                <div className="p-1 md:p-5  animate-in fade-in duration-200">
                                     <AdminDeliveryZoneManager
                                         deliveryConfig={config.delivery_config}
                                         onChange={(updatedDeliveryConfig) => {
