@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
-import { X, Plus, Minus, Check, ShoppingBag, AlertCircle, Heart, Clock } from 'lucide-react'
+import { X, Plus, Minus, Check, ShoppingBag, AlertCircle, Heart, Clock, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { useCart, FoodSelectedModifier } from '@/app/store/useCart'
@@ -67,12 +67,15 @@ export default function ProductFoodModal({
     // 🚀 PERF FIX: Selector atómico estricto. Protege el árbol del Modal de re-renders no deseados.
     const addItem = useCart(state => state.addItem)
 
-    const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOption[]>>({})
+const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOption[]>>({})
     const [notes, setNotes] = useState('')
     const [quantity, setQuantity] = useState(1)
     const [shakeError, setShakeError] = useState(false)
     const [isDesktop, setIsDesktop] = useState(false)
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+    const [canOverflow, setCanOverflow] = useState(false)
     const modalHeroRef = useRef<HTMLDivElement>(null)
+    const descRef = useRef<HTMLParagraphElement>(null)
 
     // 🚀 HERO IMAGE SWAPPING REACTIVO: Si el comensal selecciona un relleno o extra con foto, cambia la foto principal
     const activeDisplayImage = useMemo(() => {
@@ -125,14 +128,33 @@ export default function ProductFoodModal({
         return () => window.removeEventListener('resize', handleResize)
     }, [])
 
-    useEffect(() => {
+useEffect(() => {
         if (isOpen) {
             setSelectedOptions({})
             setNotes('')
             setQuantity(1)
             setShakeError(false)
+            setIsDescriptionExpanded(false)
+
+            // 🚀 Medición DOM milimétrica: Comprueba si el texto supera las 2 líneas físicamente
+            const checkOverflow = () => {
+                if (descRef.current) {
+                    const isClamped = descRef.current.scrollHeight > descRef.current.clientHeight + 1
+                    setCanOverflow(isClamped)
+                }
+            }
+
+            const timer = setTimeout(checkOverflow, 60)
+            window.addEventListener('resize', checkOverflow)
+
+            return () => {
+                clearTimeout(timer)
+                window.removeEventListener('resize', checkOverflow)
+            }
+        } else {
+            setCanOverflow(false)
         }
-    }, [isOpen, product])
+    }, [isOpen, product?.description])
 
     const handleToggleOption = useCallback((group: ModifierGroup, option: ModifierOption) => {
         if (!option.is_available) return
@@ -252,7 +274,7 @@ export default function ProductFoodModal({
         }
 
         // 🚀 ELITE: Agrupador para WhatsApp y Cierres (Convierte [Opt, Opt] en "2x Opt")
-      const flatModifiers: FoodSelectedModifier[] = Object.values(selectedOptions)
+        const flatModifiers: FoodSelectedModifier[] = Object.values(selectedOptions)
             .flat()
             .reduce((acc: any[], opt) => {
                 const existing = acc.find(m => m.optionId === opt.id)
@@ -324,8 +346,8 @@ export default function ProductFoodModal({
                             borderBottomRightRadius: '0px',
                         }}
                         className={`relative bg-[var(--store-surface)] overflow-hidden shadow-2xl z-10 border-l border-[var(--store-border)]/40 will-change-transform ${isDesktop
-                                ? 'w-full md:w-[780px] lg:w-[840px] xl:w-[880px] h-full grid grid-cols-12'
-                                : 'w-full h-[100dvh] max-h-[100dvh] flex flex-col'
+                            ? 'w-full md:w-[780px] lg:w-[840px] xl:w-[880px] h-full grid grid-cols-12'
+                            : 'w-full h-[100dvh] max-h-[100dvh] flex flex-col'
                             }`}
                     >
                         {/* ========================================================= */}
@@ -412,10 +434,29 @@ export default function ProductFoodModal({
                                     <h2 className="text-xl sm:text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-tight">
                                         {product.name}
                                     </h2>
-                                    {product.description && (
-                                        <p className="text-xs text-[var(--store-surface-text)] leading-relaxed font-normal pt-0.5 line-clamp-2">
-                                            {product.description}
-                                        </p>
+                                {product.description && (
+                                        <div className="pt-0.5">
+                                            <p
+                                                ref={descRef}
+                                                className={`text-xs text-[var(--store-surface-text)] leading-relaxed font-normal transition-all ${isDescriptionExpanded ? '' : 'line-clamp-2'}`}
+                                            >
+                                                {product.description}
+                                            </p>
+                                            {canOverflow && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--store-text-main)]/80 hover:text-[var(--store-text-main)] transition-colors mt-0.5 active:scale-95 cursor-pointer py-0.5"
+                                                    aria-label={isDescriptionExpanded ? "Ver menos" : "Ver descripción completa"}
+                                                >
+                                                    <span>{isDescriptionExpanded ? "Ver menos" : "Ver más"}</span>
+                                                    <ChevronDown
+                                                        size={12}
+                                                        className={`transition-transform duration-200 ${isDescriptionExpanded ? 'rotate-180' : ''}`}
+                                                    />
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                     <div className="flex items-baseline gap-2 pt-1">
                                         <span className="text-lg sm:text-xl font-mono font-black text-[var(--store-text-main)]">
@@ -477,173 +518,172 @@ export default function ProductFoodModal({
                                 )}
 
                                 {/* Grupos de Modificadores */}
-                              {product.modifier_groups?.map((group: ModifierGroup, gIdx: number) => {
-    const selectedCount = selectedOptions[group.id]?.length || 0
-    const isSatisfied = !group.is_required || selectedCount >= group.min_selections
-    
-    // 🚀 Detección Inteligente del Modo de Selección
-    const isSingleChoice = group.selection_type === 'single' || (!group.selection_type && group.max_selections === 1)
-    const isQuantity = group.selection_type === 'quantity'
+                                {product.modifier_groups?.map((group: ModifierGroup, gIdx: number) => {
+                                    const selectedCount = selectedOptions[group.id]?.length || 0
+                                    const isSatisfied = !group.is_required || selectedCount >= group.min_selections
 
-    return (
-        <div key={group.id} className="space-y-3">
-            <div className="flex items-center justify-between border-b border-[var(--store-border)]/40 pb-2 gap-2">
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
-                            {gIdx + 1}
-                        </span>
-                        <h3 className="font-bold text-sm sm:text-base text-[var(--store-text-main)] tracking-tight truncate">
-                            {group.name}
-                        </h3>
-                    </div>
-                    {/* Leyenda Dinámica de Cupos */}
-                    <span className="text-[10px] text-[var(--store-surface-text)] font-medium mt-1 block pl-7">
-                        {isQuantity 
-                            ? `Selecciona ${group.min_selections === group.max_selections ? `exactamente ${group.max_selections}` : `hasta ${group.max_selections}`} (Llevas ${selectedCount})`
-                            : isSingleChoice 
-                                ? 'Selecciona 1 opción' 
-                                : `Selecciona hasta ${group.max_selections} opciones`
-                        }
-                    </span>
-                </div>
+                                    // 🚀 Detección Inteligente del Modo de Selección
+                                    const isSingleChoice = group.selection_type === 'single' || (!group.selection_type && group.max_selections === 1)
+                                    const isQuantity = group.selection_type === 'quantity'
 
-                <span 
-                    className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0 font-mono transition-colors"
-                    style={{
-                        backgroundColor: group.is_required
-                            ? (isSatisfied ? 'color-mix(in srgb, #10b981 12%, var(--store-surface))' : 'color-mix(in srgb, #f43f5e 12%, var(--store-surface))')
-                            : (selectedCount > 0 ? 'color-mix(in srgb, var(--store-primary) 10%, var(--store-surface))' : 'color-mix(in srgb, var(--store-border) 40%, var(--store-surface))'),
-                        color: group.is_required
-                            ? (isSatisfied ? '#059669' : '#e11d48')
-                            : (selectedCount > 0 ? 'var(--store-primary)' : 'var(--store-surface-text)')
-                    }}
-                >
-                    {group.is_required ? (isSatisfied ? 'Listo' : 'Requerido') : (selectedCount > 0 ? `${selectedCount} añadido${selectedCount > 1 ? 's' : ''}` : 'Opcional')}
-                </span>
-            </div>
+                                    return (
+                                        <div key={group.id} className="space-y-3">
+                                            <div className="flex items-center justify-between border-b border-[var(--store-border)]/40 pb-2 gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-5 h-5 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                                                            {gIdx + 1}
+                                                        </span>
+                                                        <h3 className="font-bold text-sm sm:text-base text-[var(--store-text-main)] tracking-tight truncate">
+                                                            {group.name}
+                                                        </h3>
+                                                    </div>
+                                                    {/* Leyenda Dinámica de Cupos */}
+                                                    <span className="text-[10px] text-[var(--store-surface-text)] font-medium mt-1 block pl-7">
+                                                        {isQuantity
+                                                            ? `Selecciona ${group.min_selections === group.max_selections ? `exactamente ${group.max_selections}` : `hasta ${group.max_selections}`} (Llevas ${selectedCount})`
+                                                            : isSingleChoice
+                                                                ? 'Selecciona 1 opción'
+                                                                : `Selecciona hasta ${group.max_selections} opciones`
+                                                        }
+                                                    </span>
+                                                </div>
 
-            <div className="space-y-2">
-                {group.modifier_options.map((option) => {
-                    const currentSelectedArray = selectedOptions[group.id] || []
-                    const optCount = currentSelectedArray.filter(o => o.id === option.id).length
-                    
-                    const isSelected = isQuantity ? optCount > 0 : Boolean(currentSelectedArray.some(o => o.id === option.id))
-                    const canIncrement = selectedCount < group.max_selections
-                    // Deshabilitado si no está seleccionado y no hay más cupos
-                    const isDisabled = (!isQuantity && !isSelected && !canIncrement) || (isQuantity && !canIncrement && optCount === 0)
-                    const priceExtra = Number(option.price_adjustment_usd || 0)
+                                                <span
+                                                    className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0 font-mono transition-colors"
+                                                    style={{
+                                                        backgroundColor: group.is_required
+                                                            ? (isSatisfied ? 'color-mix(in srgb, #10b981 12%, var(--store-surface))' : 'color-mix(in srgb, #f43f5e 12%, var(--store-surface))')
+                                                            : (selectedCount > 0 ? 'color-mix(in srgb, var(--store-primary) 10%, var(--store-surface))' : 'color-mix(in srgb, var(--store-border) 40%, var(--store-surface))'),
+                                                        color: group.is_required
+                                                            ? (isSatisfied ? '#059669' : '#e11d48')
+                                                            : (selectedCount > 0 ? 'var(--store-primary)' : 'var(--store-surface-text)')
+                                                    }}
+                                                >
+                                                    {group.is_required ? (isSatisfied ? 'Listo' : 'Requerido') : (selectedCount > 0 ? `${selectedCount} añadido${selectedCount > 1 ? 's' : ''}` : 'Opcional')}
+                                                </span>
+                                            </div>
 
-                    // Controlador Mágico según Modo
-                    const handleClickRow = () => {
-                        if (!option.is_available) return;
-                        if (isQuantity) {
-                            if (canIncrement) handleIncrementOption(group, option);
-                            else if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 40, 20]);
-                        } else {
-                            if (!isDisabled) handleToggleOption(group, option);
-                        }
-                    }
+                                            <div className="space-y-2">
+                                                {group.modifier_options.map((option) => {
+                                                    const currentSelectedArray = selectedOptions[group.id] || []
+                                                    const optCount = currentSelectedArray.filter(o => o.id === option.id).length
 
-                    return (
-                        <div
-                            key={option.id}
-                            onClick={handleClickRow}
-                            className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border transition-all select-none ${
-                                !option.is_available 
-                                    ? 'opacity-40 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/40' 
-                                    : isDisabled && !isSelected
-                                        ? 'opacity-60 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/20'
-                                        : 'cursor-pointer hover:border-[var(--store-primary)]/50 active:scale-[0.99]'
-                            }`}
-                            style={{
-                                backgroundColor: isSelected ? 'color-mix(in srgb, var(--store-primary) 6%, var(--store-surface))' : 'var(--store-surface)',
-                                borderColor: isSelected ? 'var(--store-primary)' : 'color-mix(in srgb, var(--store-border) 60%, transparent)'
-                            }}
-                        >
-                            <div className="flex items-center gap-3 min-w-0 pr-3">
-                                {/* Ocultamos Checkbox/Radio si es modo Cantidad */}
-                                {!isQuantity && (
-                                    <div 
-                                        className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${isSingleChoice ? 'rounded-full' : 'rounded-md'}`}
-                                        style={{
-                                            borderWidth: '2px',
-                                            borderColor: isSelected ? 'var(--store-primary)' : 'var(--store-border)',
-                                            backgroundColor: isSelected ? 'var(--store-primary)' : 'transparent'
-                                        }}
-                                    >
-                                        {isSelected && (isSingleChoice ? <span className="w-2 h-2 rounded-full bg-[var(--store-primary-text)]" /> : <Check size={12} strokeWidth={3} className="text-[var(--store-primary-text)]" />)}
-                                    </div>
-                                )}
+                                                    const isSelected = isQuantity ? optCount > 0 : Boolean(currentSelectedArray.some(o => o.id === option.id))
+                                                    const canIncrement = selectedCount < group.max_selections
+                                                    // Deshabilitado si no está seleccionado y no hay más cupos
+                                                    const isDisabled = (!isQuantity && !isSelected && !canIncrement) || (isQuantity && !canIncrement && optCount === 0)
+                                                    const priceExtra = Number(option.price_adjustment_usd || 0)
 
-                                {option.image_url && (
-                                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[var(--store-bg)] border border-[var(--store-border)]/50 shrink-0 shadow-2xs">
-                                        <Image src={getOptimizedUrl(option.image_url)} alt={option.name} fill sizes="44px" className="object-cover" />
-                                    </div>
-                                )}
+                                                    // Controlador Mágico según Modo
+                                                    const handleClickRow = () => {
+                                                        if (!option.is_available) return;
+                                                        if (isQuantity) {
+                                                            if (canIncrement) handleIncrementOption(group, option);
+                                                            else if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 40, 20]);
+                                                        } else {
+                                                            if (!isDisabled) handleToggleOption(group, option);
+                                                        }
+                                                    }
 
-                                <span className={`text-xs sm:text-sm font-semibold leading-snug truncate ${isSelected ? 'text-[var(--store-text-main)] font-bold' : 'text-[var(--store-text-main)]/90'}`}>
-                                    {option.name}
-                                </span>
-                            </div>
+                                                    return (
+                                                        <div
+                                                            key={option.id}
+                                                            onClick={handleClickRow}
+                                                            className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border transition-all select-none ${!option.is_available
+                                                                    ? 'opacity-40 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/40'
+                                                                    : isDisabled && !isSelected
+                                                                        ? 'opacity-60 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/20'
+                                                                        : 'cursor-pointer hover:border-[var(--store-primary)]/50 active:scale-[0.99]'
+                                                                }`}
+                                                            style={{
+                                                                backgroundColor: isSelected ? 'color-mix(in srgb, var(--store-primary) 6%, var(--store-surface))' : 'var(--store-surface)',
+                                                                borderColor: isSelected ? 'var(--store-primary)' : 'color-mix(in srgb, var(--store-border) 60%, transparent)'
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center gap-3 min-w-0 pr-3">
+                                                                {/* Ocultamos Checkbox/Radio si es modo Cantidad */}
+                                                                {!isQuantity && (
+                                                                    <div
+                                                                        className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${isSingleChoice ? 'rounded-full' : 'rounded-md'}`}
+                                                                        style={{
+                                                                            borderWidth: '2px',
+                                                                            borderColor: isSelected ? 'var(--store-primary)' : 'var(--store-border)',
+                                                                            backgroundColor: isSelected ? 'var(--store-primary)' : 'transparent'
+                                                                        }}
+                                                                    >
+                                                                        {isSelected && (isSingleChoice ? <span className="w-2 h-2 rounded-full bg-[var(--store-primary-text)]" /> : <Check size={12} strokeWidth={3} className="text-[var(--store-primary-text)]" />)}
+                                                                    </div>
+                                                                )}
 
-                            {/* 🚀 BOTONES CUANTITATIVOS VS PRECIO TEXTUAL */}
-                            {isQuantity ? (
-                                <div className="shrink-0 flex items-center gap-2.5 pl-2" onClick={e => e.stopPropagation()}>
-                                    {priceExtra > 0 && optCount === 0 && (
-                                        <span className="text-xs font-bold font-mono text-[var(--store-text-main)]/70">
-                                            +${priceExtra.toFixed(2)} c/u
-                                        </span>
-                                    )}
-                                    
-                                    {optCount > 0 ? (
-                                        <div className="flex items-center bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl p-0.5 shadow-sm">
-                                            <button 
-                                                type="button" 
-                                                onClick={(e) => { e.stopPropagation(); handleDecrementOption(group, option); }} 
-                                                className="w-8 h-8 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-lg transition-all active:scale-90"
-                                            >
-                                                <Minus size={14} strokeWidth={2.5}/>
-                                            </button>
-                                            <span className="w-7 text-center text-xs font-black text-[var(--store-text-main)] tabular-nums">
-                                                {optCount}
-                                            </span>
-                                            <button 
-                                                type="button" 
-                                                onClick={(e) => { e.stopPropagation(); if (canIncrement) handleIncrementOption(group, option); }} 
-                                                disabled={!canIncrement} 
-                                                className="w-8 h-8 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-lg transition-all active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent"
-                                            >
-                                                <Plus size={14} strokeWidth={2.5}/>
-                                            </button>
+                                                                {option.image_url && (
+                                                                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[var(--store-bg)] border border-[var(--store-border)]/50 shrink-0 shadow-2xs">
+                                                                        <Image src={getOptimizedUrl(option.image_url)} alt={option.name} fill sizes="44px" className="object-cover" />
+                                                                    </div>
+                                                                )}
+
+                                                                <span className={`text-xs sm:text-sm font-semibold leading-snug truncate ${isSelected ? 'text-[var(--store-text-main)] font-bold' : 'text-[var(--store-text-main)]/90'}`}>
+                                                                    {option.name}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* 🚀 BOTONES CUANTITATIVOS VS PRECIO TEXTUAL */}
+                                                            {isQuantity ? (
+                                                                <div className="shrink-0 flex items-center gap-2.5 pl-2" onClick={e => e.stopPropagation()}>
+                                                                    {priceExtra > 0 && optCount === 0 && (
+                                                                        <span className="text-xs font-bold font-mono text-[var(--store-text-main)]/70">
+                                                                            +${priceExtra.toFixed(2)} c/u
+                                                                        </span>
+                                                                    )}
+
+                                                                    {optCount > 0 ? (
+                                                                        <div className="flex items-center bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl p-0.5 shadow-sm">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => { e.stopPropagation(); handleDecrementOption(group, option); }}
+                                                                                className="w-8 h-8 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-lg transition-all active:scale-90"
+                                                                            >
+                                                                                <Minus size={14} strokeWidth={2.5} />
+                                                                            </button>
+                                                                            <span className="w-7 text-center text-xs font-black text-[var(--store-text-main)] tabular-nums">
+                                                                                {optCount}
+                                                                            </span>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => { e.stopPropagation(); if (canIncrement) handleIncrementOption(group, option); }}
+                                                                                disabled={!canIncrement}
+                                                                                className="w-8 h-8 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-lg transition-all active:scale-90 disabled:opacity-30 disabled:hover:bg-transparent"
+                                                                            >
+                                                                                <Plus size={14} strokeWidth={2.5} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => { e.stopPropagation(); if (canIncrement) handleIncrementOption(group, option); }}
+                                                                            disabled={!canIncrement}
+                                                                            className="w-9 h-9 flex items-center justify-center bg-[var(--store-bg)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] rounded-xl text-[var(--store-text-main)] transition-all active:scale-90 disabled:opacity-30 shadow-2xs"
+                                                                        >
+                                                                            <Plus size={16} strokeWidth={2.5} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                priceExtra > 0 && (
+                                                                    <div className="shrink-0 text-right pl-2">
+                                                                        <span className="text-xs sm:text-sm font-bold font-mono text-[var(--store-text-main)] bg-[var(--store-bg)] px-2.5 py-1 rounded-lg border border-[var(--store-border)]/40 shadow-2xs">
+                                                                            +${priceExtra.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <button 
-                                            type="button" 
-                                            onClick={(e) => { e.stopPropagation(); if (canIncrement) handleIncrementOption(group, option); }} 
-                                            disabled={!canIncrement} 
-                                            className="w-9 h-9 flex items-center justify-center bg-[var(--store-bg)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] rounded-xl text-[var(--store-text-main)] transition-all active:scale-90 disabled:opacity-30 shadow-2xs"
-                                        >
-                                            <Plus size={16} strokeWidth={2.5} />
-                                        </button>
-                                    )}
-                                </div>
-                            ) : (
-                                priceExtra > 0 && (
-                                    <div className="shrink-0 text-right pl-2">
-                                        <span className="text-xs sm:text-sm font-bold font-mono text-[var(--store-text-main)] bg-[var(--store-bg)] px-2.5 py-1 rounded-lg border border-[var(--store-border)]/40 shadow-2xs">
-                                            +${priceExtra.toFixed(2)}
-                                        </span>
-                                    </div>
-                                )
-                            )}
-                        </div>
-                    )
-                })}
-            </div>
-        </div>
-    )
-})}
+                                    )
+                                })}
 
                                 {/* Instrucciones de Cocina */}
                                 <div className="space-y-3 pt-2">
@@ -727,8 +767,8 @@ export default function ProductFoodModal({
                                         onClick={handleAddToCart}
                                         style={{ borderRadius: 'var(--radius-btn, 9999px)' }}
                                         className={`flex-1 h-12 px-4 sm:px-6 transition-all flex items-center justify-between border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] select-none ${isValid
-                                                ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-95 active:scale-[0.98] cursor-pointer'
-                                                : 'bg-neutral-100 text-neutral-400 border-neutral-200/80 cursor-not-allowed'
+                                            ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-95 active:scale-[0.98] cursor-pointer'
+                                            : 'bg-neutral-100 text-neutral-400 border-neutral-200/80 cursor-not-allowed'
                                             }`}
                                     >
                                         <div className="flex items-center gap-2 min-w-0 pr-2">

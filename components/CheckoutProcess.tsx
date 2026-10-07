@@ -165,13 +165,13 @@ export default function CheckoutProcess({
     const [pfOriginPhone, setPfOriginPhone] = useState('');
     const [pfReference, setPfReference] = useState('');
 
-    // 🚀 LÓGICA DE PORTAPAPELES (Para el Brand Portal)
-    const [copied, setCopied] = useState(false);
-    const handleCopy = (text: string) => {
+// 🚀 LÓGICA DE PORTAPAPELES CON IDENTIFICADOR DINÁMICO
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const handleCopy = (text: string, key: string = 'default') => {
         if (!text) return;
         navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setCopiedKey(key);
+        setTimeout(() => setCopiedKey(null), 2000);
     };
 
     const isEurMode = currency === "eur";
@@ -792,9 +792,9 @@ const deliveryZones = deliveryConfig.rings || [];
     // 🚀 MATRIZ DE CONTRASTE ABSOLUTO: Inmune a primarios blancos o transparentes
     const getPaymentConfig = (pm: string) => {
         const baseSelected =
-            "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl shadow-sm scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
+            "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl  scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
         const baseIdle =
-            "bg-[var(--store-surface)] text-[var(--store-text-main)] border-2 border-[var(--store-border)] hover:border-[var(--store-text-main)]/60 hover:bg-[var(--store-text-main)]/[0.02] rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]";
+            "bg-[var(--store-surface)] text-[var(--store-text-main)] border-2 border-[var(--store-text-main)]/30 hover:border-[var(--store-text-main)]/60 hover:bg-[var(--store-text-main)]/[0.02] rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]";
         switch (pm) {
             case "Transferencia":
                 return {
@@ -1388,7 +1388,7 @@ const deliveryZones = deliveryConfig.rings || [];
                             setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, "") });
                             if (errors.name) setErrors(prev => ({ ...prev, name: "" }));
                         }}
-                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
+                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30  text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
                         placeholder="Nombre completo *"
                     />
                     <AnimatePresence>
@@ -1404,7 +1404,7 @@ const deliveryZones = deliveryConfig.rings || [];
                             setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, "") });
                             if (errors.phone) setErrors(prev => ({ ...prev, phone: "" }));
                         }}
-                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
+                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30  text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
                         placeholder="Teléfono / WhatsApp *"
                     />
                     <AnimatePresence>
@@ -1525,7 +1525,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                             }}
                                             className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "dine_in"
                                                 ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
                                                 }`}
                                         >
                                             <Store size={20} className={clientData.deliveryType === "dine_in" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -1546,7 +1546,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                             }}
                                             className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
                                                 ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+                                                : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
                                                 }`}
                                         >
                                             <Package size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -1567,7 +1567,7 @@ const deliveryZones = deliveryConfig.rings || [];
     className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${
       clientData.deliveryType === "local_delivery"
         ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+        : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
     }`}
   >
     <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -1599,7 +1599,7 @@ const deliveryZones = deliveryConfig.rings || [];
     className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${
       clientData.deliveryType === "pickup"
         ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"
+        : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
     }`}
   >
     <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}   />
@@ -1684,13 +1684,13 @@ const deliveryZones = deliveryConfig.rings || [];
                                                 }}
                                                 className={`group flex items-start gap-3.5 p-4 rounded-xl cursor-pointer transition-all duration-150 shadow-none ${isSelected
                                                     ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] scale-[1.01]"
-                                                    : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50 hover:bg-[var(--store-text-main)]/[0.02]"
+                                                    : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
                                                     }`}
                                             >
                                                 {/* Indicador Óptico Custom (Cero Radios Nativos Deformes) */}
                                                 <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${isSelected
                                                     ? "border-[var(--store-text-main)] bg-[var(--store-text-main)]"
-                                                    : "border-[var(--store-border)] bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
+                                                    : "border-[var(--store-text-main)]/30 bg-[var(--store-surface)] group-hover:border-[var(--store-text-main)]/60"
                                                     }`}>
                                                     {isSelected && <div className="w-2 h-2 rounded-full bg-[var(--store-surface)]" />}
                                                 </div>
@@ -1830,7 +1830,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                         setAddressLine(val);
                                         if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                     }}
-                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                    className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                     placeholder="Avenida, Calle, Edificio / Casa, Piso o Nro *"
                                 />
                                 <AnimatePresence>
@@ -1852,7 +1852,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                         setReferencePoint(val);
                                         if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
                                     }}
-                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                    className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                     placeholder="Punto de referencia obligatorio (ej: portón negro frente a la panadería) *"
                                 />
                                 <AnimatePresence>
@@ -2020,7 +2020,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                 onClick={() => setTipPercentage(pct)}
                                 className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
                                     ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
-                                    : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/50"
+                                    : "border-[var(--store-text-main)]/30  bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60"
                                     }`}
                             >
                                 {pct === 0 ? "0%" : `${pct}%`}
@@ -2251,7 +2251,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                                     openPaymentInput(pm);
                                                     if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
                                                 }}
-                                                className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
+                                                className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl border-2 transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
                                             >
                                                 <config.icon
                                                     size={20}
@@ -2444,7 +2444,7 @@ const deliveryZones = deliveryConfig.rings || [];
                                                                                         )
                                                                                     }
                                                                                 />
-                                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
+                                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-text-main)]/60 flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
                                                                                     <Upload size={16} /> Subir Capture de{" "}
                                                                                     {activePaymentInput}{" "}
                                                                                     {isMandatory ? (
@@ -2619,28 +2619,176 @@ const deliveryZones = deliveryConfig.rings || [];
                                                     })()
                                                 )}
 
-                                                {/* 🚀 RECIBO DE DATOS BANCARIOS / INSTRUCCIONES DINÁMICAS */}
+                                           {/* 🚀 PANEL COMPACTO DE TRANSFERENCIA / CON COPIADO DE MONTO Y COPIAR TODO (TIPADO ESTRICTO) */}
                                                 {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                    <div className="bg-[var(--store-surface)] border-2 border-[var(--store-border)] rounded-xl p-4.5 shadow-none mt-4 animate-in fade-in">
-                                                        <div className="flex justify-between items-center mb-2.5">
-                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)]">
-                                                                {activePaymentInput === 'Efectivo' ? 'Instrucciones de Pago' : 'Datos para Transferir'}
-                                                            </span>
+                                                    <div className="bg-[var(--store-surface)] border-2 border-[var(--store-text-main)]/20 rounded-2xl p-3 sm:p-3.5 shadow-none mt-3 animate-in fade-in space-y-2">
+                                                        {(() => {
+                                                            const isHardCurrency = hardCurrencyMethods.includes(activePaymentInput);
+                                                            const formattedTotal = isHardCurrency
+                                                                ? `$ ${targetCashAmount.toFixed(2)}`
+                                                                : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                            
+                                                            const rawNumericAmount = isHardCurrency
+                                                                ? targetCashAmount.toFixed(2)
+                                                                : (targetListAmount * activeRate).toFixed(2);
 
-                                                            {activePaymentInput !== 'Efectivo' && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleCopy(payments[paymentKeysMap[activePaymentInput]]?.details || "")}
-                                                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60 transition-all active:scale-95 text-[10px] font-mono font-bold uppercase shadow-none"
-                                                                >
-                                                                    {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                                                                    <span>{copied ? "Copiado" : "Copiar"}</span>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm font-bold text-[var(--store-text-main)] leading-relaxed whitespace-pre-wrap select-all">
-                                                            {payments[paymentKeysMap[activePaymentInput]]?.details}
-                                                        </p>
+                                                            const rawText: string = payments[paymentKeysMap[activePaymentInput]]?.details || '';
+                                                            const rawChunks: string[] = rawText.includes('\n')
+                                                                ? rawText.split('\n')
+                                                                : rawText.split(/[,;|]/);
+
+                                                            interface ParsedPaymentItem {
+                                                                label: string | null;
+                                                                value: string;
+                                                                textToCopy: string;
+                                                            }
+
+                                                            const parsedItems: ParsedPaymentItem[] = rawChunks
+                                                                .map((c: string) => c.trim())
+                                                                .filter(Boolean)
+                                                                .map((item: string): ParsedPaymentItem => {
+                                                                    const hasColon = item.includes(':');
+                                                                    let label = hasColon ? item.split(':')[0].trim() : null;
+                                                                    let value = hasColon ? item.split(':').slice(1).join(':').trim() : item;
+
+                                                                    if (!label) {
+                                                                        const clean = value.replace(/[\s-]/g, '');
+
+                                                                        // 🚀 1. DETECCIÓN EXCLUSIVA PARA BINANCE
+                                                                        if (activePaymentInput === 'Binance') {
+                                                                            if (/^\d{6,12}$/.test(clean)) {
+                                                                                label = 'Binance Pay ID (UID)';
+                                                                            } else if (/@/.test(value)) {
+                                                                                label = 'Correo Binance Pay';
+                                                                            } else {
+                                                                                label = 'ID / Correo Binance';
+                                                                            }
+                                                                        }
+                                                                        // 🚀 2. DETECCIÓN EXCLUSIVA PARA ZELLE
+                                                                        else if (activePaymentInput === 'Zelle') {
+                                                                            if (/@/.test(value)) {
+                                                                                label = 'Correo Zelle';
+                                                                            } else if (/^\+?\d{10,15}$/.test(clean)) {
+                                                                                label = 'Teléfono Zelle';
+                                                                            } else {
+                                                                                label = 'Titular Zelle';
+                                                                            }
+                                                                        }
+                                                                        // 🚀 3. DETECCIÓN PARA PAGO MÓVIL Y TRANSFERENCIAS
+                                                                        else {
+                                                                            if (/^(0412|0414|0424|0416|0426|\+58)\d+/.test(clean)) {
+                                                                                label = 'Teléfono / Pago Móvil';
+                                                                            } else if (/^(V|E|J|G|P)?-?\d{6,9}$/i.test(clean) && !clean.startsWith('04')) {
+                                                                                label = 'Documento / RIF';
+                                                                            } else if (/^\d{20}$/.test(clean)) {
+                                                                                label = 'Número de Cuenta';
+                                                                            } else if (/banco|venezuela|banesco|mercantil|provincial|bnc|bancaribe|banplus|plaza|100%|tesoro|exterior|bancamiga|0102|0134|0105|0108/i.test(value)) {
+                                                                                label = 'Banco Destino';
+                                                                            } else if (/@/.test(value)) {
+                                                                                label = 'Correo Electrónico';
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    return { label, value: value || item, textToCopy: value || item };
+                                                                });
+
+                                                            const copyAllText = [
+                                                                `Monto: ${formattedTotal}`,
+                                                                ...parsedItems.map((i: ParsedPaymentItem) => i.label ? `${i.label}: ${i.value}` : i.value)
+                                                            ].join('\n');
+
+                                                            return (
+                                                                <>
+                                                                    {/* CABECERA CON BOTÓN "COPIAR TODO" */}
+                                                                    <div className="flex justify-between items-center px-1 pb-1">
+                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-surface-text)]">
+                                                                            {activePaymentInput === 'Efectivo' ? 'Instrucciones' : 'Datos para Transferir'}
+                                                                        </span>
+
+                                                                        {activePaymentInput !== 'Efectivo' && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleCopy(copyAllText, 'all')}
+                                                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+                                                                                    copiedKey === 'all'
+                                                                                        ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                        : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                }`}
+                                                                            >
+                                                                                {copiedKey === 'all' ? <Check size={11} strokeWidth={3} /> : <Copy size={11} strokeWidth={2} />}
+                                                                                <span>{copiedKey === 'all' ? 'Todo Copiado' : 'Copiar Todo'}</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="flex flex-col gap-1.5">
+                                                                        {/* 💰 FILA 1: MONTO EXACTO */}
+                                                                        {activePaymentInput !== 'Efectivo' && (
+                                                                            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-text-main)]/[0.04] border border-[var(--store-text-main)]/15 gap-2">
+                                                                                <div className="flex flex-col min-w-0">
+                                                                                    <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-text-main)] truncate leading-none mb-0.5">
+                                                                                        Monto a Transferir
+                                                                                    </span>
+                                                                                    <span className="text-xs sm:text-sm font-black text-[var(--store-text-main)] font-mono tabular-nums select-all">
+                                                                                        {formattedTotal}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleCopy(rawNumericAmount, 'amount')}
+                                                                                    className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${
+                                                                                        copiedKey === 'amount'
+                                                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                            : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                    }`}
+                                                                                    title="Copiar monto exacto"
+                                                                                >
+                                                                                    {copiedKey === 'amount' ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* 📋 FILAS DINÁMICAS DE CADA DATO */}
+                                                                        {parsedItems.map((item: ParsedPaymentItem, idx: number) => {
+                                                                            const isItemCopied = copiedKey === `item-${idx}`;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={idx}
+                                                                                    className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]/30 transition-all gap-2"
+                                                                                >
+                                                                                    <div className="flex flex-col min-w-0 pr-1">
+                                                                                        {item.label && (
+                                                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] truncate leading-none mb-0.5">
+                                                                                                {item.label}
+                                                                                            </span>
+                                                                                        )}
+                                                                                        <span className="text-xs sm:text-sm font-bold text-[var(--store-text-main)] font-mono truncate select-all leading-tight">
+                                                                                            {item.value}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {activePaymentInput !== 'Efectivo' && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => handleCopy(item.textToCopy, `item-${idx}`)}
+                                                                                            className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${
+                                                                                                isItemCopied
+                                                                                                    ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                            }`}
+                                                                                            title={`Copiar ${item.label || 'dato'}`}
+                                                                                        >
+                                                                                            {isItemCopied ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 )}
                                             </div>

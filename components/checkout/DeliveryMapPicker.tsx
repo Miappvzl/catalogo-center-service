@@ -244,10 +244,10 @@ const GoogleMapInnerPicker: React.FC<{
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <CheckCircle2 size={20} className="shrink-0" style={{ color: 'var(--store-incentive, #059669)' }} />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wider truncate">
+                  <span className="text-xs font-black text-black uppercase tracking-wider truncate">
                     {resolution.ring?.name}
                   </span>
-                  <span className="text-[10px] font-bold text-[var(--store-surface-text)] truncate">
+                  <span className="text-[10px] font-bold text-black truncate">
                     A {resolution.distance_km} km de distancia de la tienda
                   </span>
                 </div>
@@ -412,19 +412,19 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
       
       <div 
         onClick={() => setIsOpenModal(true)}
-        className="group relative cursor-pointer p-4 rounded-2xl border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60 transition-all shadow-sm active:scale-[0.99] flex items-center justify-between gap-4"
+        className="group relative cursor-pointer p-4 rounded-2xl border-2 border-[var(--store-text-main)]/30 bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60 transition-all  active:scale-[0.99] flex items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3.5 min-w-0 flex-1">
           <div 
-            className="p-3 rounded-xl shrink-0 transition-transform group-hover:scale-105 shadow-sm"
+            className="p-3 rounded-xl shrink-0 transition-transform group-hover:scale-105"
             style={{ 
               backgroundColor: customerCoords && resolution.status === 'in_zone' 
-                ? 'var(--store-incentive, #059669)' 
-                : 'var(--store-primary)',
+                ? 'var(--store-primary-text)' 
+                : 'color-mix(in srgb, var(--store-primary) 5%, transparent)',
               color: 'var(--store-primary-text)' 
             }}
           >
-            <MapPin size={20} strokeWidth={2.5} />
+            <MapPin size={20} strokeWidth={2.5}  className="text-[var(--store-text-main)]" />
           </div>
 
           <div className="flex flex-col min-w-0">
@@ -434,7 +434,7 @@ export const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
                   <span className="font-bold text-xs uppercase tracking-wider text-[var(--store-text-main)] truncate">
                     {resolution.ring?.name}
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-20 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded">
                     +{currencySymbol}{resolution.price_usd.toFixed(2)}
                   </span>
                 </div>

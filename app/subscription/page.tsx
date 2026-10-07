@@ -476,7 +476,7 @@ function SubscriptionContent() {
                                                     isCopied={copiedId === 'pm_tlf'}
                                                 />
                                                 <TactileDataRow 
-                                                    label="Cédula / RIF" 
+                                                    label="Documento / RIF" 
                                                     value={PREZISO_BILLING.pagoMovil.cedula} 
                                                     onCopy={() => copyToClipboard(PREZISO_BILLING.pagoMovil.cedula, 'pm_ci')}
                                                     isCopied={copiedId === 'pm_ci'}
