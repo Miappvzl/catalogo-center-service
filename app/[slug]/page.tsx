@@ -177,10 +177,12 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
   if (productsResponse.error) {
     console.error("🚨 ERROR DE PRODUCTOS SUPABASE:", productsResponse.error);
   }
-// 🚀 INYECCIÓN SÍNCRONA DE API KEY (El servidor de Vercel siempre la tiene)
+// 🚀 INYECCIÓN SÍNCRONA DIRECTA DESDE SUPABASE APP_CONFIG (0ms Latencia / Inmune a Vercel)
+  const resolvedGoogleMapsKey = ratesResponse.data?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
   const storeWithMapsKey = {
     ...store,
-    google_maps_api_key: process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    google_maps_api_key: resolvedGoogleMapsKey,
   };
 
   const props = {

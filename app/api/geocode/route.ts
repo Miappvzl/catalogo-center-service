@@ -14,14 +14,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  const apiKey = (
+let apiKey = (
     process.env.GOOGLE_MAPS_API_KEY || 
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 
     ''
   ).trim();
 
+  // 🚀 FAIL-SAFE SUPABASE: Si Vercel no tiene la variable, la leemos de app_config
   if (!apiKey) {
-    console.error('[Preziso Google API] Falta la API Key en el entorno de Vercel');
+    try {
+      const { createPublicCachedClient } = await import('@/utils/supabaseServer');
+      const supabase = createPublicCachedClient();
+      const { data } = await supabase.from('app_config').select('google_maps_api_key').limit(1).single();
+      if (data?.google_maps_api_key) {
+        apiKey = data.google_maps_api_key.trim();
+      }
+    } catch {
+      // Continuar
+    }
+  }
+
+  if (!apiKey) {
+    console.error('[Preziso Google API] Falta la API Key en Vercel y en Supabase app_config');
     return NextResponse.json({ results: [] });
   }
 
@@ -44,12 +58,16 @@ export async function GET(request: NextRequest) {
       };
     }
 
+ // 🚀 REENVÍO DE CABECERA REFERER: Permite validar las restricciones de dominio de Google Cloud
+    const originReferer = request.headers.get('referer') || request.headers.get('origin') || 'http://localhost:3000/';
+
     const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask': 'places.id,places.displayName.text,places.formattedAddress,places.location',
+        'Referer': originReferer,
       },
       body: JSON.stringify(requestBody),
       cache: 'no-store',
