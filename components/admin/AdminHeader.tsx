@@ -123,14 +123,15 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
         {/* ACCIONES DERECHA */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
 
-           <button
+           {/* Micro-Terminal Chip de Cobro Rápido (Diseño Awwwards / Linear) */}
+          <button
             type="button"
             onClick={() => openQuickCheckout()}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-neutral-950 hover:bg-neutral-850 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-xs shrink-0"
+            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-50 active:scale-95 border border-neutral-200 text-neutral-800 hover:text-neutral-950 rounded-xl text-xs font-medium transition-all shadow-2xs shrink-0"
             title="Generar cobro rápido"
           >
-            <Plus size={14} strokeWidth={2} />
-            <span className="hidden sm:inline">Cobro Rápido</span>
+            <Zap size={13} strokeWidth={2} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+            <span className="tracking-tight">Cobrar</span>
           </button>
           {store?.id && <NotificationBell storeId={store.id} />}
 

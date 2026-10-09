@@ -83,7 +83,7 @@ export const useQuickCheckout = create<QuickCheckoutState>((set, get) => ({
   // Estado Inicial
   isOpen: false,
   step: 'composer',
-  mode: 'custom_amount',
+  mode: 'catalog', // 🚀 Cambiado: Catálogo por defecto
   isLoading: false,
   error: null,
 
@@ -93,18 +93,19 @@ export const useQuickCheckout = create<QuickCheckoutState>((set, get) => ({
 
   allowSplitPayments: false,
   minSplitAmount: '',
-  expiresInMinutes: 1440, // 24 horas por defecto
+  expiresInMinutes: 1440,
 
   generatedLink: null,
 
   // Control de UI
-  openQuickCheckout: (initialMode = 'custom_amount') =>
+  openQuickCheckout: (initialMode = 'catalog') => // 🚀 Cambiado
     set({
       isOpen: true,
       step: 'composer',
       mode: initialMode,
       error: null,
     }),
+
 
   closeQuickCheckout: () =>
     set({
@@ -222,7 +223,7 @@ export const useQuickCheckout = create<QuickCheckoutState>((set, get) => ({
     set({
       isOpen: false,
       step: 'composer',
-      mode: 'custom_amount',
+      mode: 'catalog', // 🚀 Cambiado
       isLoading: false,
       error: null,
       amountInput: '',

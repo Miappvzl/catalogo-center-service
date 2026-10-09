@@ -143,81 +143,63 @@ export function QuickCheckoutSheet({ storeId }: QuickCheckoutSheetProps) {
     };
 
 
-    // Cargar productos del catálogo cuando se activa el modo catálogo
-    useEffect(() => {
-        if (isOpen && mode === 'catalog') {
-            const fetchCatalog = async () => {
-                setIsLoadingProducts(true);
-                try {
-                    let targetStoreId = storeId;
-                    if (!targetStoreId) {
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (user) {
-                            const { data: userStore } = await supabase
-                                .from('stores')
-                                .select('id')
-                                .eq('user_id', user.id)
-                                .single();
-                            targetStoreId = userStore?.id;
-                        }
-                    }
+     // Cargar productos del catálogo (con Delay Anti-Lag para móviles)
+  useEffect(() => {
+    if (isOpen && mode === 'catalog') {
+      // 🚀 OPTIMIZACIÓN: Esperamos 350ms a que termine la animación del modal antes de 
+      // saturar el DOM y la red. Esto garantiza 60 FPS fluidos al abrir el Bottom Sheet.
+      const timer = setTimeout(() => {
+        const fetchCatalog = async () => {
+          setIsLoadingProducts(true);
+          try {
+            let targetStoreId = storeId;
+            if (!targetStoreId) {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data: userStore } = await supabase.from('stores').select('id').eq('user_id', user.id).single();
+                targetStoreId = userStore?.id;
+              }
+            }
 
-                    if (!targetStoreId) {
-                        setIsLoadingProducts(false);
-                        return;
-                    }
+            if (!targetStoreId) {
+              setIsLoadingProducts(false);
+              return;
+            }
 
-                    // Consulta paralela: Productos, Promociones activas y Configuración Mayorista
-                    const [productsRes, promosRes, storeRes] = await Promise.all([
-                        supabase
-                            .from('products')
-                            .select(`
-                id, name, usd_cash_price, usd_penalty, image_url, stock, category, 
-                wholesale_active, wholesale_min_qty, wholesale_discount_pct, 
-                is_tax_exempt, requires_shipping,
-                product_variants(*),
-                product_modifier_groups(
-                  display_order,
-                  modifier_groups(
-                    *,
-                    modifier_options(*)
-                  )
-                )
-              `)
-                            .eq('store_id', targetStoreId)
-                            .eq('status', 'active')
-                            .order('name', { ascending: true }),
-                        supabase
-                            .from('promotions')
-                            .select('*')
-                            .eq('store_id', targetStoreId)
-                            .eq('is_active', true),
-                        supabase
-                            .from('stores')
-                            .select('wholesale_config, store_type')
-                            .eq('id', targetStoreId)
-                            .single()
-                    ]);
+            const [productsRes, promosRes, storeRes] = await Promise.all([
+              supabase
+                .from('products')
+                .select(`
+                  id, name, usd_cash_price, usd_penalty, image_url, stock, category, 
+                  wholesale_active, wholesale_min_qty, wholesale_discount_pct, 
+                  is_tax_exempt, requires_shipping,
+                  product_variants(*),
+                  product_modifier_groups(display_order, modifier_groups(*, modifier_options(*)))
+                `)
+                .eq('store_id', targetStoreId)
+                .eq('status', 'active')
+                .order('name', { ascending: true }),
+              supabase.from('promotions').select('*').eq('store_id', targetStoreId).eq('is_active', true),
+              supabase.from('stores').select('wholesale_config, store_type').eq('id', targetStoreId).single()
+            ]);
 
-                    if (productsRes.data) setProducts(productsRes.data);
-                    if (promosRes.data) setPromotions(promosRes.data);
-                    if (storeRes.data?.wholesale_config) {
-                        setWholesaleConfig(storeRes.data.wholesale_config);
-                    }
-                    if (storeRes.data?.store_type === 'services') {
-                        setRequiresShippingCustom(false);
-                    }
-                } catch {
-                    // Fallback silencioso
-                } finally {
-                    setIsLoadingProducts(false);
-                }
-            };
+            if (productsRes.data) setProducts(productsRes.data);
+            if (promosRes.data) setPromotions(promosRes.data);
+            if (storeRes.data?.wholesale_config) setWholesaleConfig(storeRes.data.wholesale_config);
+            if (storeRes.data?.store_type === 'services') setRequiresShippingCustom(false);
+          } catch {
+            // Fallback silencioso
+          } finally {
+            setIsLoadingProducts(false);
+          }
+        };
 
-            fetchCatalog();
-        }
-    }, [isOpen, mode, storeId]);
+        fetchCatalog();
+      }, 350); // ⏱️ El retraso mágico
 
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, mode, storeId]);
     // Filtrado de productos por búsqueda
     const filteredProducts = useMemo(() => {
         if (!searchQuery.trim()) return products;
@@ -940,33 +922,36 @@ export function QuickCheckoutSheet({ storeId }: QuickCheckoutSheetProps) {
         );
     };
 
-    return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                    <div
-                        key="quick-checkout-modal-root"
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-                    >
-                        {/* Fondo translúcido */}
-                        <motion.div
-                            key="quick-checkout-backdrop"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={closeQuickCheckout}
-                            className="fixed inset-0 bg-neutral-950/40 backdrop-blur-xs transition-opacity"
-                        />
+  return (
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div
+            key="quick-checkout-modal-root"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          >
+            {/* 🚀 Fondo oscurecido sin backdrop-blur (Ahorra RAM en celulares) */}
+            <motion.div
+              key="quick-checkout-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeQuickCheckout}
+              className="fixed inset-0 bg-neutral-950/60 transition-opacity"
+            />
 
-                        {/* Contenedor Modal / Bottom Sheet */}
-                        <motion.div
-                            key="quick-checkout-drawer"
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-                            className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-xl border border-neutral-200/90 shadow-2xl z-10 overflow-hidden max-h-[92vh] flex flex-col"
-                        >
+            {/* Contenedor Modal: Aceleración GPU y Tween ultraligero */}
+            <motion.div
+              key="quick-checkout-drawer"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              // 🚀 Animación Tween (Cúbica) en vez de Spring. No ahoga el procesador.
+              transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.4 }}
+              // 🚀 transform-gpu forzará al móvil a usar la tarjeta gráfica
+              className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-xl border border-neutral-200/90 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] z-10 overflow-hidden max-h-[92vh] flex flex-col transform-gpu will-change-transform"
+            >
                             {/* Cabecera Sobria */}
                             <div className="flex items-center justify-between p-4 border-b border-neutral-200/80 bg-white">
                                 <div>
