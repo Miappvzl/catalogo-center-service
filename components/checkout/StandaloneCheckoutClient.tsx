@@ -108,13 +108,13 @@ export default function StandaloneCheckoutClient({
     return calculateCartEngine(overrideItems, [], isStrictTax, wholesaleConfig);
   }, [overrideItems, isStrictTax, wholesaleConfig]);
 
-  return (
+return (
     <div
       style={themeVariables}
-      className="min-h-screen w-full bg-[#F8F9FA] flex flex-col items-center justify-center p-3 sm:p-6 md:p-8 antialiased selection:bg-neutral-950 selection:text-white"
+      className="min-h-screen w-full bg-[#F8F9FA] flex flex-col items-center justify-center py-6 sm:py-10 md:py-14 px-3 sm:px-6 antialiased selection:bg-neutral-950 selection:text-white"
     >
-      {/* Contenedor Tarjeta Standalone Centrado */}
-      <div className="w-full max-w-lg bg-white rounded-2xl border border-neutral-200/90 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col my-auto">
+      {/* Contenedor Tarjeta Standalone Centrado con Encuadre Flotante */}
+      <div className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl border border-neutral-200/90 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col my-auto max-h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-7rem)]">
         
         {/* Cabecera Editorial del Comercio */}
         <header className="px-5 py-4 border-b border-neutral-150 flex items-center justify-between bg-white shrink-0">
@@ -210,8 +210,8 @@ export default function StandaloneCheckoutClient({
         )}
 
 
-        {/* Cuerpo Dinámico: Éxito vs Checkout Activo */}
-        <div className="flex-1 w-full flex flex-col min-h-[580px] max-h-[85vh] overflow-hidden">
+         {/* Cuerpo Dinámico: Éxito vs Checkout Activo con Altura Adaptativa */}
+        <div className="flex-1 w-full min-h-0 flex flex-col overflow-hidden">
           <AnimatePresence mode="wait">
             {orderSuccess ? (
               <motion.div

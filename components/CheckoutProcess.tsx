@@ -1705,7 +1705,7 @@ export default function CheckoutProcess({
                                                 setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
                                                 setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
                                             }}
-                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-2 border-[var(--store-text-main)]/30 bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"}`}
                                         >
                                             <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
                                             <div>
@@ -1722,7 +1722,7 @@ export default function CheckoutProcess({
                                                 setSelectedDeliveryZone("");
                                                 setErrors(prev => ({ ...prev, pickup: "", courier: "", deliveryZone: "", addressDetail: "", city: "", state: "" }));
                                             }}
-                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "courier" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/50"}`}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "courier" ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]" : "border-2 border-[var(--store-text-main)]/30 bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"}`}
                                         >
                                             <Package size={20} className={clientData.deliveryType === "courier" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
                                             <div>
@@ -1980,7 +1980,7 @@ export default function CheckoutProcess({
                                                     }}
                                                     className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
                                                         ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
-                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                        : "border-2 border-[var(--store-text-main)]/30 bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
                                                         } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
                                                 >
                                                     {LogoComponent && (
@@ -2006,7 +2006,7 @@ export default function CheckoutProcess({
                                                     setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
                                                     if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
                                                 }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                 placeholder="Cédula de Identidad *"
                                             />
                                             <AnimatePresence>
@@ -2023,7 +2023,7 @@ export default function CheckoutProcess({
                                                         setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
                                                         if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
                                                     }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                     placeholder="Estado *"
                                                 />
                                                 <AnimatePresence>
@@ -2039,7 +2039,7 @@ export default function CheckoutProcess({
                                                         setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
                                                         if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
                                                     }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                     placeholder="Ciudad *"
                                                 />
                                                 <AnimatePresence>
@@ -2056,7 +2056,7 @@ export default function CheckoutProcess({
                                                     setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
                                                     if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                                 }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                 placeholder="Dirección exacta *"
                                             />
                                             <AnimatePresence>
