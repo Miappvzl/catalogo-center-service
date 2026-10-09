@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminNavigation from '@/components/admin/AdminNavigation'
 import FiscalGatekeeper from '@/components/admin/FiscalGatekeeper' // 🚀 INYECCIÓN AQUÍ
+import QuickCheckoutSheet from '@/components/admin/QuickCheckoutSheet'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
@@ -45,6 +46,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       {/* 🚀 EL MURO DE CONTENCIÓN (Solo renderiza si es necesario) */}
       <FiscalGatekeeper store={store} />
+        <QuickCheckoutSheet storeId={store.id} />
 
       {/* 🚀 FIX 1: w-full, max-w-full y overflow-x-clip para blindar el viewport sin crear contexto de scroll que rompa sticky */}
       <div className="flex min-h-screen w-full max-w-full bg-[#F8F9FA] selection:bg-black selection:text-white relative overflow-x-clip">

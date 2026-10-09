@@ -48,17 +48,20 @@ export interface CheckoutProcessProps {
     cartEngine: any;
     wholesaleDiscountList: number;
     wholesaleDiscountCash: number;
-    affiliateCode?: string | null; // 🚀 NUEVO
-    affiliateDiscountList?: number; // 🚀 NUEVO
-    affiliateDiscountCash?: number; // 🚀 NUEVO
+    affiliateCode?: string | null;
+    affiliateDiscountList?: number;
+    affiliateDiscountCash?: number;
     onSuccess: (
         orderNumber: number,
         whatsappUrl: string,
         orderId: string,
-    ) => void; // 🚀 AÑADE orderId AQUÍ
+    ) => void;
     onBack: () => void;
+    // Props de Aislamiento para Enlaces de Pago Rápido
+    isQuickLinkMode?: boolean;
+    quickLinkId?: string;
+    overrideItems?: any[];
 }
-
 interface PaymentBlock {
     id: string;
     method: string;
@@ -152,12 +155,17 @@ export default function CheckoutProcess({
     affiliateCode,
     affiliateDiscountList,
     affiliateDiscountCash,
+    isQuickLinkMode = false,
+    quickLinkId,
+    overrideItems,
 }: CheckoutProcessProps) {
     const storeHoursStatus = useMemo(() => {
         if (storeConfig?.store_type !== 'restaurant') return { isOpen: true, detailLabel: '' };
         return evaluateStoreHours(storeConfig?.store_hours);
     }, [storeConfig]);
-    const { items, clearCart } = useCart();
+    const { items: globalCartItems, clearCart } = useCart();
+    // Aislamiento: Si es Quick Link, usa los productos del link y no toca el carrito del navegador
+    const items = isQuickLinkMode && overrideItems ? overrideItems : globalCartItems;
     const [checkoutState, setCheckoutState] = useState<'idle' | 'validating' | 'processing' | 'success'>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({}); // 🚀 MOTOR DE ERRORES ORGÁNICOS
     const [supabase] = useState(() => getSupabase());
@@ -165,7 +173,7 @@ export default function CheckoutProcess({
     const [pfOriginPhone, setPfOriginPhone] = useState('');
     const [pfReference, setPfReference] = useState('');
 
-// 🚀 LÓGICA DE PORTAPAPELES CON IDENTIFICADOR DINÁMICO
+    // 🚀 LÓGICA DE PORTAPAPELES CON IDENTIFICADOR DINÁMICO
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const handleCopy = (text: string, key: string = 'default') => {
         if (!text) return;
@@ -193,22 +201,22 @@ export default function CheckoutProcess({
         discount_percentage: 15,
     };
 
-   // 🚀 ADAPTADOR GEOESPACIAL RADIAL ($0 USD)
-const deliveryConfig: DeliveryConfig = useMemo(() => {
-const sc = storeConfig?.shipping_config || {};
-const dc = sc.delivery_config || {};
-const rawRings = dc.rings || sc.rings || dc.zones || sc.delivery_zones || [];
+    // 🚀 ADAPTADOR GEOESPACIAL RADIAL ($0 USD)
+    const deliveryConfig: DeliveryConfig = useMemo(() => {
+        const sc = storeConfig?.shipping_config || {};
+        const dc = sc.delivery_config || {};
+        const rawRings = dc.rings || sc.rings || dc.zones || sc.delivery_zones || [];
 
-const normalizedRings = rawRings.map((z: any, idx: number) => ({
-        id: z.id || `ring-${idx}`,
-        name: z.name || `Zona ${idx + 1}`,
-        max_km: Number(z.max_km || (idx + 1) * 4),
-        price_usd: Number(z.price_usd ?? z.cost ?? 0),
-        color: z.color || '#3b82f6',
-        is_active: z.is_active ?? true,
-    }));
+        const normalizedRings = rawRings.map((z: any, idx: number) => ({
+            id: z.id || `ring-${idx}`,
+            name: z.name || `Zona ${idx + 1}`,
+            max_km: Number(z.max_km || (idx + 1) * 4),
+            price_usd: Number(z.price_usd ?? z.cost ?? 0),
+            color: z.color || '#3b82f6',
+            is_active: z.is_active ?? true,
+        }));
 
-const isRadarMode = dc.mode === 'radar' || (!dc.mode && Boolean(dc.store_location));
+        const isRadarMode = dc.mode === 'radar' || (!dc.mode && Boolean(dc.store_location));
         const activeGoogleKey = storeConfig?.google_maps_api_key || dc.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
         return {
@@ -221,7 +229,7 @@ const isRadarMode = dc.mode === 'radar' || (!dc.mode && Boolean(dc.store_locatio
         };
     }, [storeConfig?.shipping_config, storeConfig?.google_maps_api_key]);
 
-const deliveryZones = deliveryConfig.rings || [];
+    const deliveryZones = deliveryConfig.rings || [];
 
     // 🚀 STORE GEOESPACIAL REACTIVO
     const {
@@ -396,13 +404,13 @@ const deliveryZones = deliveryConfig.rings || [];
         let finalShippingMethod = "service";
 
         if (isFoodTech) {
-     if (clientData.deliveryType === "dine_in") {
-  deliveryInfoFull = "📍 CONSUMO EN EL LOCAL (Salón / Barra)";
-} else if (clientData.deliveryType === "pickup") {
-  deliveryInfoFull = "🛍️ PARA LLEVAR (Retiro en Mostrador)";
-} else if (clientData.deliveryType === "local_delivery") {
-  deliveryInfoFull = `🛵 DELIVERY LOCAL: ${(deliveryZones || []).find((z: any) => z.id === selectedDeliveryZone)?.name || sectorName || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || referencePoint || "N/A"}`;
-}
+            if (clientData.deliveryType === "dine_in") {
+                deliveryInfoFull = "📍 CONSUMO EN EL LOCAL (Salón / Barra)";
+            } else if (clientData.deliveryType === "pickup") {
+                deliveryInfoFull = "🛍️ PARA LLEVAR (Retiro en Mostrador)";
+            } else if (clientData.deliveryType === "local_delivery") {
+                deliveryInfoFull = `🛵 DELIVERY LOCAL: ${(deliveryZones || []).find((z: any) => z.id === selectedDeliveryZone)?.name || sectorName || "Zona"} - ${clientData.addressDetail}. Ref: ${clientData.reference || referencePoint || "N/A"}`;
+            }
 
         } else if (needsShipping) {
             // Lógica original de retail
@@ -427,7 +435,10 @@ const deliveryZones = deliveryConfig.rings || [];
         };
 
         // 2. Construcción Estructural del Ticket
-        let msg = `*TICKET DE ORDEN #${orderNum}*\n`;
+         const ticketHeader = isQuickLinkMode 
+            ? `*TICKET DE COBRO RÁPIDO #${orderNum}*` 
+            : `*TICKET DE ORDEN #${orderNum}*`;
+        let msg = `${ticketHeader}\n============================\n\n`;
         msg += `============================\n\n`;
 
         msg += `*DATOS DEL CLIENTE*\n`;
@@ -515,27 +526,45 @@ const deliveryZones = deliveryConfig.rings || [];
 
         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     };
-    // --- ESTADOS LOGÍSTICOS ---
-    const [clientData, setClientData] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem(`pz_checkout_${storeId}`);
-            if (saved) return JSON.parse(saved);
-        }
-        return {
-            name: "",
-            deliveryType: isFoodTech ? "dine_in" : "pickup", // 🚀 Default adaptado
-            tableNumber: "", // 🚀 NUEVO: Número de Mesa
-            courier: "",
-            identityCard: "",
-            phone: "",
-            notes: "",
-            state: "",
-            city: "",
-            addressDetail: "",
-            reference: "",
-            fiscalAddress: "",
-        };
+    // 1. Estado determinista idéntico en SSR y Cliente (Cero Hydration Mismatch)
+    const [clientData, setClientData] = useState({
+        name: "",
+        deliveryType: isFoodTech ? "dine_in" : "pickup",
+        tableNumber: "",
+        courier: "",
+        identityCard: "",
+        phone: "",
+        notes: "",
+        state: "",
+        city: "",
+        addressDetail: "",
+        reference: "",
+        fiscalAddress: "",
     });
+
+    const isHydratedStorageRef = useRef(false);
+
+    // 2. Carga segura de sessionStorage POST-HIDRATACIÓN (Solo en modo tienda regular)
+    useEffect(() => {
+        if (!isQuickLinkMode) {
+            const saved = sessionStorage.getItem(`pz_checkout_${storeId}`);
+            if (saved) {
+                try {
+                    setClientData(JSON.parse(saved));
+                } catch {
+                    // Ignorar JSON corrupto
+                }
+            }
+        }
+        isHydratedStorageRef.current = true;
+    }, [storeId, isQuickLinkMode]);
+
+    // 3. Persistencia anti-frustración (Solo guarda una vez hidratado)
+    useEffect(() => {
+        if (isHydratedStorageRef.current && !isQuickLinkMode) {
+            sessionStorage.setItem(`pz_checkout_${storeId}`, JSON.stringify(clientData));
+        }
+    }, [clientData, storeId, isQuickLinkMode]);
 
     // 🚀 FASE 2: PERSISTENCIA ANTI-FRUSTRACIÓN (Guarda en caché en tiempo real)
     useEffect(() => {
@@ -562,7 +591,7 @@ const deliveryZones = deliveryConfig.rings || [];
     }, [items]);
 
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>("");
-// 🚀 CÁLCULO ADAPTATIVO (RADAR INTELIGENTE VS LISTA MANUAL CLÁSICA)
+    // 🚀 CÁLCULO ADAPTATIVO (RADAR INTELIGENTE VS LISTA MANUAL CLÁSICA)
     const deliveryCost = useMemo(() => {
         if (clientData.deliveryType === "local_delivery") {
             // Si la tienda usa el Radar de Google Maps y el cliente ubicó su pin
@@ -587,21 +616,34 @@ const deliveryZones = deliveryConfig.rings || [];
     // --- MOTOR LIQUID-SPLIT (CON AFILIADOS E IVA) ---
     const taxPercentage = storeConfig?.default_tax_percentage ?? 16;
 
+    // --- REEMPLAZAR EL BLOQUE DE CÁLCULO DE SUBTOTOLES (Aprox. líneas 320 a 345) ---
     const totalDiscountsList =
         wholesaleDiscountList + (affiliateDiscountList || 0);
     const totalDiscountsCash =
         wholesaleDiscountCash + (affiliateDiscountCash || 0);
 
-    const totalListUSD_base = Math.max(
+    // 1. Neto de Lista sin delivery (Base real a cobrar antes de impuestos)
+    const netListWithoutDelivery = Math.max(
         0,
-        cartEngine.finalBsModeUSD - totalDiscountsList + deliveryCost,
+        cartEngine.finalBsModeUSD - totalDiscountsList
     );
-    const totalCashUSD_base = Math.max(
-        0,
-        cartEngine.finalCashModeUSD - totalDiscountsCash + deliveryCost,
-    );
-    // 🚀 NUEVO: CÁLCULO DE PROPINA SOBRE EL SUBTOTAL (Sin impuestos ni delivery)
-    const subtotalForTip = Math.max(0, cartEngine.finalCashModeUSD - totalDiscountsCash);
+
+    // 2. Cálculo del spread cambiario proporcional (Margen de divisa)
+    const nominalList = cartEngine.totalListNominal || 1;
+    const nominalCash = cartEngine.totalCashNominal || 1;
+    const fxSpreadRatio = nominalList > 0 ? (nominalList - nominalCash) / nominalList : 0;
+
+    // 3. El descuento en divisa se aplica proporcionalmente sobre el neto ($30 * 4% = $1.20)
+    const proportionalCashDiscount = Number((netListWithoutDelivery * fxSpreadRatio).toFixed(2));
+
+    const totalListUSD_base = netListWithoutDelivery + deliveryCost;
+    const totalCashUSD_base = Math.max(0, netListWithoutDelivery - proportionalCashDiscount + deliveryCost);
+
+    // Subtotal Neto contable para la UI
+    const trueSubtotalNeto = netListWithoutDelivery;
+
+    // Cálculo de Propina sobre el Subtotal Neto
+    const subtotalForTip = netListWithoutDelivery;
     const tipAmountUSD = isFoodTech ? Number((subtotalForTip * (tipPercentage / 100)).toFixed(2)) : 0;
 
     // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
@@ -789,6 +831,28 @@ const deliveryZones = deliveryConfig.rings || [];
             splitPayments.map((p) => (p.id === id ? { ...p, receiptFile: file } : p)),
         );
     };
+
+    // 🚀 SINCRONIZACIÓN REACTIVA ANTI-DESFASE (Actualiza el pago si cambia el delivery o impuestos)
+    useEffect(() => {
+        if (paymentMode === "single" && activePaymentInput) {
+            const isHard = hardCurrencyMethods.includes(activePaymentInput);
+            const currentTargetAmount = isHard ? totalCashUSD : Number((totalListUSD * activeRate).toFixed(2));
+
+            setSplitPayments(prev => {
+                if (prev.length === 1 && prev[0].method === activePaymentInput) {
+                    if (prev[0].amount !== currentTargetAmount) {
+                        return [{
+                            ...prev[0],
+                            amount: currentTargetAmount
+                        }];
+                    }
+                }
+                return prev;
+            });
+        }
+    }, [paymentMode, activePaymentInput, totalCashUSD, totalListUSD, activeRate]);
+
+
     // 🚀 MATRIZ DE CONTRASTE ABSOLUTO: Inmune a primarios blancos o transparentes
     const getPaymentConfig = (pm: string) => {
         const baseSelected =
@@ -1189,18 +1253,25 @@ const deliveryZones = deliveryConfig.rings || [];
                 order = insertedOrder;
             }
 
-            const orderItemsPayload = items.map((item) => ({
-                order_id: order.id,
-                product_id: item.productId,
-                product_name: item.name,
-                variant_info: item.variantInfo || "N/A",
-                quantity: item.quantity,
-                price_at_purchase: item.basePrice,
-                variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
-                sku: item.sku || null,
-                modifiers_selected: item.foodModifiers || [], // 🚀 INYECCIÓN FOODTECH: Modificadores a JSONB
-                customer_notes: item.foodNotes || null        // 🚀 INYECCIÓN FOODTECH: Notas
-            }));
+            const orderItemsPayload = items.map((item) => {
+                const numericProductId = item.productId && !isNaN(Number(item.productId)) && Number(item.productId) > 0
+                    ? Number(item.productId)
+                    : null;
+
+                return {
+                    order_id: order.id,
+                    product_id: numericProductId,
+                    product_name: item.name,
+                    variant_info: item.variantInfo || "N/A",
+                    quantity: item.quantity,
+                    price_at_purchase: item.basePrice,
+                    variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
+                    sku: item.sku || null,
+                    modifiers_selected: item.foodModifiers || [],
+                    customer_notes: item.foodNotes || null
+                };
+            });
+
 
             const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
 
@@ -1218,7 +1289,10 @@ const deliveryZones = deliveryConfig.rings || [];
             await fetch("/api/web-push/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeId, orderNumber: order.order_number, totalUsd: grandTotalUSD.toFixed(2), customerName: clientData.name }) }).catch(() => { });
 
             // Generar WhatsApp (Intacto)
-            let message = `*PEDIDO #${order.order_number}*\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*CARRITO:*\n`;
+              const ticketHeader = isQuickLinkMode 
+                ? `*COBRO RÁPIDO #${order.order_number}*` 
+                : `*PEDIDO #${order.order_number}*`;
+            let message = `${ticketHeader}\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*DETALLE DEL PEDIDO:*\n`;
             cartEngine.processedItems.forEach((item: any) => {
                 const originalItem = items.find(i => i.id === item.id);
                 const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
@@ -1270,12 +1344,24 @@ const deliveryZones = deliveryConfig.rings || [];
 
             const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
-            // 🚀 MUTACIÓN ATÓMICA DEL SALDO A FAVOR (Corregido sin encadenar .catch)
+            // Sincronización con payment_links si la orden provino de un enlace rápido
+            if (isQuickLinkMode && quickLinkId) {
+                await supabase
+                    .from('payment_links')
+                    .update({
+                        status: 'paid',
+                        paid_amount_usd: Number(grandTotalUSD.toFixed(2)),
+                        order_id: order.id
+                    })
+                    .eq('id', quickLinkId);
+            }
+
+            // Mutación atómica de saldo a favor
             if (appliedCreditUSD > 0 && currentUser && !isAutomatedGateway) {
                 const { error: rpcError } = await supabase.rpc('process_store_credit', {
                     p_customer_id: currentUser.id,
                     p_store_id: storeId,
-                    p_amount_usd: -appliedCreditUSD, // NEGATIVO para restar
+                    p_amount_usd: -appliedCreditUSD,
                     p_description: `Usado en orden #${order.order_number}`,
                     p_order_id: order.id
                 });
@@ -1284,11 +1370,16 @@ const deliveryZones = deliveryConfig.rings || [];
                     console.error('Error descontando saldo (RPC):', rpcError);
                 }
             }
-            sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
-            clearCart();
-            // 🚀 3. CONFIRMACIÓN FINAL SENSORIAL (Check verde en el botón)
+
+            sessionStorage.removeItem(`pz_checkout_${storeId}`);
+
+            // Protección: Solo vacía el carrito web si NO es una compra por Quick Link
+            if (!isQuickLinkMode) {
+                clearCart();
+            }
+
+            // Confirmación Sensorial
             setCheckoutState('success');
-            // 🚀 HÁPTICA: Doble pulso clásico de éxito (Corto, Pausa, Corto)
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 50, 20]);
 
             setTimeout(() => {
@@ -1557,60 +1648,58 @@ const deliveryZones = deliveryConfig.rings || [];
                                         </div>
                                     )}
 
-                                   {/* 3. Delivery Local (Solo si está activo) */}
-{shipping.methods?.delivery && (
-  <div
-    onClick={() => {
-      setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
-      setErrors(prev => ({ ...prev, pickup: "" }));
-    }}
-    className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${
-      clientData.deliveryType === "local_delivery"
-        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-        : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
-    }`}
-  >
-    <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
-    <div>
-      <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
-      <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu dirección.</p>
-    </div>
-  </div>
-)}
-</>
-) : (
-// OPCIONES ORIGINALES DE RETAIL (TIENDA FISICA, DELIVERY, AGENCIAS)
-<>
-{shipping.methods?.pickup && (
-  <div
-    onClick={() => {
-      setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
-      setSelectedDeliveryZone("");
-      setErrors(prev => ({
-        ...prev,
-        pickup: "",
-        courier: "",
-        deliveryZone: "",
-        addressDetail: "",
-        city: "",
-        state: ""
-      }));
-    }}
-    className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${
-      clientData.deliveryType === "pickup"
-        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-        : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
-    }`}
-  >
-    <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"}   />
-    <div>
-      <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
-      <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
-    </div>
-  </div>
-)}
+                                    {/* 3. Delivery Local (Solo si está activo) */}
+                                    {shipping.methods?.delivery && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
+                                                setErrors(prev => ({ ...prev, pickup: "" }));
+                                            }}
+                                            className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                    : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
+                                                }`}
+                                        >
+                                            <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Delivery Local</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Envío directo a tu dirección.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // OPCIONES ORIGINALES DE RETAIL (TIENDA FISICA, DELIVERY, AGENCIAS)
+                                <>
+                                    {shipping.methods?.pickup && (
+                                        <div
+                                            onClick={() => {
+                                                setClientData({ ...clientData, deliveryType: "pickup", addressDetail: "" });
+                                                setSelectedDeliveryZone("");
+                                                setErrors(prev => ({
+                                                    ...prev,
+                                                    pickup: "",
+                                                    courier: "",
+                                                    deliveryZone: "",
+                                                    addressDetail: "",
+                                                    city: "",
+                                                    state: ""
+                                                }));
+                                            }}
+                                            className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
+                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                    : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
+                                                }`}
+                                        >
+                                            <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
+                                            <div>
+                                                <p className="font-bold text-sm text-[var(--store-text-main)]">Retiro Personal</p>
+                                                <p className="text-xs mt-0.5 text-[var(--store-surface-text)]">Busca tu pedido gratis en tienda.</p>
+                                            </div>
+                                        </div>
+                                    )}
 
-{shipping.methods?.delivery && (
+                                    {shipping.methods?.delivery && (
                                         <div
                                             onClick={() => {
                                                 setClientData({ ...clientData, deliveryType: "local_delivery", addressDetail: "" });
@@ -1743,9 +1832,9 @@ const deliveryZones = deliveryConfig.rings || [];
                             </div>
                         )}
 
-                 {clientData.deliveryType === "local_delivery" && (
+                        {clientData.deliveryType === "local_delivery" && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                                
+
                                 {/* 🚀 BIFURCACIÓN DUAL-ENGINE: RADAR VS LISTA MANUAL */}
                                 {deliveryConfig.mode === 'radar' && deliveryConfig.store_location ? (
                                     <div id="field-deliveryMap">
@@ -1802,11 +1891,10 @@ const deliveryZones = deliveryConfig.rings || [];
                                                             setSelectedDeliveryZone(zone.id);
                                                             if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
                                                         }}
-                                                        className={`flex justify-between items-center px-4 py-3.5 rounded-xl transition-all duration-150 font-bold ${
-                                                            isSelected
+                                                        className={`flex justify-between items-center px-4 py-3.5 rounded-xl transition-all duration-150 font-bold ${isSelected
                                                                 ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
                                                                 : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <span className="text-xs sm:text-sm">{zone.name}</span>
                                                         <span className="font-black text-xs sm:text-sm text-[var(--store-text-main)]">
@@ -1818,510 +1906,498 @@ const deliveryZones = deliveryConfig.rings || [];
                                         </div>
                                     </div>
                                 )}
-                            {/* Formulario de Detalle y Punto de Referencia */}
-                        <div className="grid grid-cols-1 gap-6 pt-2">
-                            <div id="field-addressDetail" className="w-full relative">
-                                <input
-                                    maxLength={150}
-                                    value={clientData.addressDetail}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setClientData({ ...clientData, addressDetail: val });
-                                        setAddressLine(val);
-                                        if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
-                                    }}
-                                    className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                    placeholder="Avenida, Calle, Edificio / Casa, Piso o Nro *"
-                                />
-                                <AnimatePresence>
-                                    {errors.addressDetail && (
-                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
-                                            {errors.addressDetail}
-                                        </motion.p>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-
-                            <div id="field-reference" className="w-full relative">
-                                <input
-                                    maxLength={150}
-                                    value={clientData.reference}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setClientData({ ...clientData, reference: val });
-                                        setReferencePoint(val);
-                                        if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
-                                    }}
-                                    className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                    placeholder="Punto de referencia obligatorio (ej: portón negro frente a la panadería) *"
-                                />
-                                <AnimatePresence>
-                                    {errors.reference && (
-                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
-                                            {errors.reference}
-                                        </motion.p>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {clientData.deliveryType === "courier" && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
-                        <div id="field-courier">
-                            <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.courier ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
-                                Agencia de Envío *
-                            </label>
-                            <AnimatePresence>
-                                {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
-                            </AnimatePresence>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                {activeCouriers.map((c) => {
-                                    const LogoComponent = CourierLogos[c];
-                                    const isSelected = clientData.courier === c;
-
-                                    return (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => {
-                                                setClientData({ ...clientData, courier: c });
-                                                if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
+                                {/* Formulario de Detalle y Punto de Referencia */}
+                                <div className="grid grid-cols-1 gap-6 pt-2">
+                                    <div id="field-addressDetail" className="w-full relative">
+                                        <input
+                                            maxLength={150}
+                                            value={clientData.addressDetail}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setClientData({ ...clientData, addressDetail: val });
+                                                setAddressLine(val);
+                                                if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                             }}
-                                            className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
-                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
-                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
-                                                } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
-                                        >
-                                            {LogoComponent && (
-                                                <div className="h-6 w-full flex items-center justify-center px-4">
-                                                    <LogoComponent className="h-full w-auto max-w-full" />
-                                                </div>
+                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            placeholder="Avenida, Calle, Edificio / Casa, Piso o Nro *"
+                                        />
+                                        <AnimatePresence>
+                                            {errors.addressDetail && (
+                                                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
+                                                    {errors.addressDetail}
+                                                </motion.p>
                                             )}
-                                            <span className="text-[10px] font-black uppercase tracking-widest">
-                                                {c}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        {clientData.courier && (
-                            <div className="space-y-6 animate-in fade-in pt-2">
-                                <div id="field-identityCard" className="w-full relative">
-                                    <input
-                                        maxLength={15}
-                                        value={clientData.identityCard}
-                                        onChange={(e) => {
-                                            setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
-                                            if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
-                                        }}
-                                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                        placeholder="Cédula de Identidad *"
-                                    />
-                                    <AnimatePresence>
-                                        {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
-                                    </AnimatePresence>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div id="field-state" className="w-full relative">
-                                        <input
-                                            maxLength={40}
-                                            value={clientData.state}
-                                            onChange={(e) => {
-                                                setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
-                                                if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
-                                            }}
-                                            className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                            placeholder="Estado *"
-                                        />
-                                        <AnimatePresence>
-                                            {errors.state && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.state}</motion.p>}
                                         </AnimatePresence>
                                     </div>
 
-                                    <div id="field-city" className="w-full relative">
+                                    <div id="field-reference" className="w-full relative">
                                         <input
-                                            maxLength={40}
-                                            value={clientData.city}
+                                            maxLength={150}
+                                            value={clientData.reference}
                                             onChange={(e) => {
-                                                setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
-                                                if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
+                                                const val = e.target.value;
+                                                setClientData({ ...clientData, reference: val });
+                                                setReferencePoint(val);
+                                                if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
                                             }}
-                                            className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                            placeholder="Ciudad *"
+                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            placeholder="Punto de referencia obligatorio (ej: portón negro frente a la panadería) *"
                                         />
                                         <AnimatePresence>
-                                            {errors.city && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.city}</motion.p>}
+                                            {errors.reference && (
+                                                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">
+                                                    {errors.reference}
+                                                </motion.p>
+                                            )}
                                         </AnimatePresence>
                                     </div>
                                 </div>
+                            </div>
+                        )}
 
-                                <div id="field-addressDetail" className="w-full relative">
-                                    <input
-                                        maxLength={150}
-                                        value={clientData.addressDetail}
-                                        onChange={(e) => {
-                                            setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
-                                            if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
-                                        }}
-                                        className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                        placeholder="Dirección exacta *"
-                                    />
+                        {clientData.deliveryType === "courier" && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-4">
+                                <div id="field-courier">
+                                    <label className={`text-[10px] font-bold uppercase tracking-widest block mb-1 ${errors.courier ? 'text-red-500' : 'text-[var(--store-surface-text)]'}`}>
+                                        Agencia de Envío *
+                                    </label>
                                     <AnimatePresence>
-                                        {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
+                                        {errors.courier && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-4 px-1">{errors.courier}</motion.p>}
                                     </AnimatePresence>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-            ) : (
-            <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
-                <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
-                    {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
-                    <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
-                </div>
-                <div className="flex flex-col">
-                    {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
-                    <h3 className="font-black text-sm text-[var(--store-text-main)]">
-                        {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
-                    </h3>
-                    <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
-                        {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
-                    </p>
-                </div>
-            </div>
-                )}
 
-            {/* MODULO DE PROPINAS (SOLO RESTAURANTES) */}
-            {isFoodTech && (
-                <div className="space-y-3 pt-2">
-                    <div className="flex justify-between items-baseline border-b border-[var(--store-border)] pb-2">
-                        <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
-                            Propina para el Servicio (Opcional)
-                        </h2>
-                        {tipAmountUSD > 0 && (
-                            <span className="text-xs font-mono font-bold text-[var(--store-text-main)]">
-                                +${tipAmountUSD.toFixed(2)} USD
-                            </span>
-                        )}
-                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {activeCouriers.map((c) => {
+                                            const LogoComponent = CourierLogos[c];
+                                            const isSelected = clientData.courier === c;
 
-                    <div className="grid grid-cols-4 gap-2">
-                        {[0, 5, 10, 15].map((pct) => (
-                            <button
-                                key={pct}
-                                type="button"
-                                onClick={() => setTipPercentage(pct)}
-                                className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
-                                    ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
-                                    : "border-[var(--store-text-main)]/30  bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60"
-                                    }`}
-                            >
-                                {pct === 0 ? "0%" : `${pct}%`}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
-            <div className="space-y-6">
-                <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">
-                    Pagos
-                </h2>
-
-                {isFullyCoveredByCredit ? (
-                    // 🚀 BLOQUE EXCLUSIVO: 100% CUBIERTO POR CRÉDITO (Clean Look, Sombras Ultradiufuminadas)
-                    <div className="bg-emerald-50/40 p-6 rounded-3xl border border-emerald-100/50 flex flex-col gap-4 animate-in fade-in shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-                        <div className="flex items-start gap-4">
-                            <div className="p-2.5 bg-black text-white rounded-full shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                                <Check size={18} strokeWidth={3} className="text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest mb-1">Compra 100% Cubierta</h3>
-                                <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                                    Tu Crédito de Tienda cubre la totalidad de la orden (${grandTotalUSD_before_credit.toFixed(2)} USD). No necesitas seleccionar ningún otro método de pago ni realizar transferencias.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    // 🚀 FLUJO DE PAGO NORMAL (Si aún queda saldo pendiente)
-                    <>
-                        {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
-                        {allowSplitPayments && (
-                            <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPaymentMode("single");
-                                        setSplitPayments([]);
-                                        setActivePaymentInput(null);
-                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                    }}
-                                    className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "single" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
-                                >
-                                    Pago Único
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPaymentMode("split");
-                                        setSplitPayments([]);
-                                        setActivePaymentInput(null);
-                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                    }}
-                                    className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "split" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
-                                >
-                                    Pago Mixto
-                                </button>
-                            </div>
-                        )}
-
-                        {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
-                        {remainingListUSD > 0.01 ? (
-                            <div className="py-4 flex flex-col items-center justify-center text-center">
-                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">
-                                    Total Pendiente
-                                </span>
-                                <div className="flex items-baseline justify-center gap-1.5">
-                                    <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">
-                                        Bs
-                                    </span>
-                                    <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
-                                        {remainingBs.toLocaleString("es-VE", {
-                                            maximumFractionDigits: 2,
+                                            return (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setClientData({ ...clientData, courier: c });
+                                                        if (errors.courier) setErrors(prev => ({ ...prev, courier: "" }));
+                                                    }}
+                                                    className={`flex flex-col items-center justify-center gap-3 py-4 rounded-xl transition-all duration-150 shadow-none group active:scale-[0.98] ${isSelected
+                                                        ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)] scale-[1.02]"
+                                                        : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                        } ${errors.courier && !isSelected ? '!border-red-500/80 bg-red-50/10' : ''}`}
+                                                >
+                                                    {LogoComponent && (
+                                                        <div className="h-6 w-full flex items-center justify-center px-4">
+                                                            <LogoComponent className="h-full w-auto max-w-full" />
+                                                        </div>
+                                                    )}
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                        {c}
+                                                    </span>
+                                                </button>
+                                            );
                                         })}
-                                    </span>
+                                    </div>
                                 </div>
-                                <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">
-                                    Ref: ${remainingListUSD.toFixed(2)}
-                                </span>
+                                {clientData.courier && (
+                                    <div className="space-y-6 animate-in fade-in pt-2">
+                                        <div id="field-identityCard" className="w-full relative">
+                                            <input
+                                                maxLength={15}
+                                                value={clientData.identityCard}
+                                                onChange={(e) => {
+                                                    setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
+                                                    if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
+                                                }}
+                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                placeholder="Cédula de Identidad *"
+                                            />
+                                            <AnimatePresence>
+                                                {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
+                                            </AnimatePresence>
+                                        </div>
 
-                                {/* Nudge sin caja */}
-                                {remainingListUSD > 0.01 && fxMultiplier > 1 && (
-                                    <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
-                                        {isHardCurrencyPayment
-                                            ? "Resta en Divisa"
-                                            : "Si pagas en divisa"}
-                                        :{" "}
-                                        <span className="font-black">
-                                            ${remainingCashUSD.toFixed(2)}
-                                        </span>
-                                    </span>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div id="field-state" className="w-full relative">
+                                                <input
+                                                    maxLength={40}
+                                                    value={clientData.state}
+                                                    onChange={(e) => {
+                                                        setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
+                                                        if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
+                                                    }}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    placeholder="Estado *"
+                                                />
+                                                <AnimatePresence>
+                                                    {errors.state && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.state}</motion.p>}
+                                                </AnimatePresence>
+                                            </div>
+
+                                            <div id="field-city" className="w-full relative">
+                                                <input
+                                                    maxLength={40}
+                                                    value={clientData.city}
+                                                    onChange={(e) => {
+                                                        setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
+                                                        if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
+                                                    }}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    placeholder="Ciudad *"
+                                                />
+                                                <AnimatePresence>
+                                                    {errors.city && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.city}</motion.p>}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+
+                                        <div id="field-addressDetail" className="w-full relative">
+                                            <input
+                                                maxLength={150}
+                                                value={clientData.addressDetail}
+                                                onChange={(e) => {
+                                                    setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
+                                                    if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
+                                                }}
+                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                placeholder="Dirección exacta *"
+                                            />
+                                            <AnimatePresence>
+                                                {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
+                                            </AnimatePresence>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
-                                <Check
-                                    size={40}
-                                    strokeWidth={2}
-                                    className="mb-4 text-[var(--store-incentive)]"
-                                />
-                                <p className="font-black text-2xl tracking-tight">
-                                    Monto Cubierto
-                                </p>
-                                <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
-                                    {paymentMode === "single"
-                                        ? "Adjunta el comprobante para finalizar."
-                                        : "El total ha sido cubierto. Envía el pedido."}
-                                </p>
-                            </div>
                         )}
+                    </div>
+                ) : (
+                    <div className="mt-6 p-5 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl flex items-start gap-4">
+                        <div className="p-3 bg-[var(--store-surface)] rounded-full shrink-0 border border-[var(--store-border)]/50">
+                            {/* 🚀 Usamos Sparkles (Magia/Servicio) en lugar de Coffee */}
+                            <Sparkle size={20} className="text-[var(--store-primary)]" strokeWidth={2} />
+                        </div>
+                        <div className="flex flex-col">
+                            {/* 🚀 Leemos de la BD. Si el tenant no lo ha personalizado, usamos el fallback neutral */}
+                            <h3 className="font-black text-sm text-[var(--store-text-main)]">
+                                {storeConfig?.shipping_config?.service_title || "Servicio / Experiencia"}
+                            </h3>
+                            <p className="text-[11px] text-[var(--store-surface-text)] font-medium mt-1 leading-relaxed">
+                                {storeConfig?.shipping_config?.service_desc || "Los artículos de tu carrito corresponden a servicios, eventos o productos intangibles. No requieren logística de envío."}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
-                        {/* 2. LISTA DE PAGOS AÑADIDOS */}
-                        <AnimatePresence>
-                            {paymentMode === "split" && splitPayments.length > 0 && (
-                                <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
-                                    {splitPayments.map((block) => {
-                                        const requiresReceipt =
-                                            receiptConfig.strict_mode &&
-                                            block.method !== "Efectivo" &&
-                                            block.method !== "Pago Flash" &&
-                                            block.method !== "PayPal";
+                {/* MODULO DE PROPINAS (SOLO RESTAURANTES) */}
+                {isFoodTech && (
+                    <div className="space-y-3 pt-2">
+                        <div className="flex justify-between items-baseline border-b border-[var(--store-border)] pb-2">
+                            <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest">
+                                Propina para el Servicio (Opcional)
+                            </h2>
+                            {tipAmountUSD > 0 && (
+                                <span className="text-xs font-mono font-bold text-[var(--store-text-main)]">
+                                    +${tipAmountUSD.toFixed(2)} USD
+                                </span>
+                            )}
+                        </div>
 
-                                        return (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: "auto" }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                key={block.id}
-                                                className="py-5 overflow-hidden"
-                                            >
-                                                <div className="flex justify-between items-center">
-                                                    <div className="flex items-center gap-3 text-[var(--store-text-main)]">
-                                                        <span className="font-bold text-sm">
-                                                            {block.method}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">
-                                                            {block.currency === "usd"
-                                                                ? `$${block.amount.toFixed(2)}`
-                                                                : `Bs ${block.amount.toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removePaymentBlock(block.id)}
-                                                            className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </div>
+                        <div className="grid grid-cols-4 gap-2">
+                            {[0, 5, 10, 15].map((pct) => (
+                                <button
+                                    key={pct}
+                                    type="button"
+                                    onClick={() => setTipPercentage(pct)}
+                                    className={`py-2.5 rounded-xl font-bold text-xs transition-all border-2 active:scale-95 ${tipPercentage === pct
+                                        ? "border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-surface)]"
+                                        : "border-[var(--store-text-main)]/30  bg-[var(--store-surface)] text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/60"
+                                        }`}
+                                >
+                                    {pct === 0 ? "0%" : `${pct}%`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-                                                {requiresReceipt && (
-                                                    <div className="mt-4 pt-2">
-                                                        {!block.receiptFile ? (
-                                                            <div className="relative">
-                                                                <input
-                                                                    type="file"
-                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                                    accept="image/*"
-                                                                    onChange={(e) =>
-                                                                        e.target.files &&
-                                                                        handleAttachReceipt(
-                                                                            block.id,
-                                                                            e.target.files[0],
-                                                                        )
-                                                                    }
-                                                                />
-                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
-                                                                    <Upload size={14} /> Subir Capture de{" "}
-                                                                    {block.method} *
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
-                                                                <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
-                                                                    <Check
-                                                                        size={16}
-                                                                        className="shrink-0 text-[var(--store-incentive)]"
-                                                                    />
-                                                                    <span className="text-xs font-bold truncate">
-                                                                        {block.receiptFile.name}
-                                                                    </span>
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        handleAttachReceipt(block.id, null)
-                                                                    }
-                                                                    className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"
-                                                                >
-                                                                    <X size={14} strokeWidth={3} />
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        );
-                                    })}
+                {/* 🚀 PAGOS (Modo Único / Mixto) - BRUTALIST UI */}
+                <div className="space-y-6">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-3">
+                        Pagos
+                    </h2>
+
+                    {isFullyCoveredByCredit ? (
+                        // 🚀 BLOQUE EXCLUSIVO: 100% CUBIERTO POR CRÉDITO (Clean Look, Sombras Ultradiufuminadas)
+                        <div className="bg-emerald-50/40 p-6 rounded-3xl border border-emerald-100/50 flex flex-col gap-4 animate-in fade-in shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                            <div className="flex items-start gap-4">
+                                <div className="p-2.5 bg-black text-white rounded-full shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                                    <Check size={18} strokeWidth={3} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest mb-1">Compra 100% Cubierta</h3>
+                                    <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+                                        Tu Crédito de Tienda cubre la totalidad de la orden (${grandTotalUSD_before_credit.toFixed(2)} USD). No necesitas seleccionar ningún otro método de pago ni realizar transferencias.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        // 🚀 FLUJO DE PAGO NORMAL (Si aún queda saldo pendiente)
+                        <>
+                            {/* 🚀 BIFURCADOR (Tabs Tipográficas Limpias) */}
+                            {allowSplitPayments && (
+                                <div className="flex gap-6 border-b border-[var(--store-border)] w-full mb-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPaymentMode("single");
+                                            setSplitPayments([]);
+                                            setActivePaymentInput(null);
+                                            if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                        }}
+                                        className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "single" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
+                                    >
+                                        Pago Único
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPaymentMode("split");
+                                            setSplitPayments([]);
+                                            setActivePaymentInput(null);
+                                            if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                        }}
+                                        className={`pb-3 text-xs font-black uppercase tracking-widest transition-all ${paymentMode === "split" ? "border-b-2 border-[var(--store-primary)] text-[var(--store-text-main)]" : "text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] border-b-2 border-transparent"}`}
+                                    >
+                                        Pago Mixto
+                                    </button>
                                 </div>
                             )}
-                        </AnimatePresence>
 
-                        {/* 3. SELECTOR DE MÉTODOS */}
-                        {(paymentMode === "single" || remainingListUSD > 0.01) && (
-                            <div id="field-payment" className="mt-4">
-                                <AnimatePresence>
-                                    {errors.payment && (
-                                        <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-2 px-1">
-                                            {errors.payment}
-                                        </motion.p>
+                            {/* 1. EL LEDGER TIPOGRÁFICO MONOLÍTICO */}
+                            {remainingListUSD > 0.01 ? (
+                                <div className="py-4 flex flex-col items-center justify-center text-center">
+                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-4">
+                                        Total Pendiente
+                                    </span>
+                                    <div className="flex items-baseline justify-center gap-1.5">
+                                        <span className="text-xl md:text-2xl font-bold text-[var(--store-surface-text)]">
+                                            Bs
+                                        </span>
+                                        <span className="font-black text-5xl md:text-6xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                            {remainingBs.toLocaleString("es-VE", {
+                                                maximumFractionDigits: 2,
+                                            })}
+                                        </span>
+                                    </div>
+                                    <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">
+                                        Ref: ${remainingListUSD.toFixed(2)}
+                                    </span>
+
+                                    {/* Nudge sin caja */}
+                                    {remainingListUSD > 0.01 && fxMultiplier > 1 && (
+                                        <span className="text-xs font-bold text-[var(--store-incentive)] mt-4 tracking-wide">
+                                            {isHardCurrencyPayment
+                                                ? "Resta en Divisa"
+                                                : "Si pagas en divisa"}
+                                            :{" "}
+                                            <span className="font-black">
+                                                ${remainingCashUSD.toFixed(2)}
+                                            </span>
+                                        </span>
                                     )}
-                                </AnimatePresence>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
-                                    {activePaymentMethods.map((pm) => {
-                                        const config = getPaymentConfig(pm);
-                                        const isSelected = activePaymentInput === pm;
-
-                                        return (
-                                            <button
-                                                key={pm}
-                                                type="button"
-                                                onClick={() => {
-                                                    openPaymentInput(pm);
-                                                    if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
-                                                }}
-                                                className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl border-2 transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
-                                            >
-                                                <config.icon
-                                                    size={20}
-                                                    className={
-                                                        isSelected
-                                                            ? "text-[var(--store-surface)]"
-                                                            : errors.payment && !isSelected ? "text-red-500" : "text-[var(--store-text-main)]"
-                                                    }
-                                                />{" "}
-                                                {pm}
-                                            </button>
-                                        );
-                                    })}
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="py-8 flex flex-col items-center justify-center text-center text-[var(--store-text-main)]">
+                                    <Check
+                                        size={40}
+                                        strokeWidth={2}
+                                        className="mb-4 text-[var(--store-incentive)]"
+                                    />
+                                    <p className="font-black text-2xl tracking-tight">
+                                        Monto Cubierto
+                                    </p>
+                                    <p className="text-sm font-medium text-[var(--store-surface-text)] mt-2">
+                                        {paymentMode === "single"
+                                            ? "Adjunta el comprobante para finalizar."
+                                            : "El total ha sido cubierto. Envía el pedido."}
+                                    </p>
+                                </div>
+                            )}
 
-                        {/* 4. EL PORTAL DE PAGO INLINE */}
-                        <AnimatePresence>
-                            {activePaymentInput && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    {(() => {
-                                        const singlePaymentBlock =
-                                            paymentMode === "single"
-                                                ? splitPayments.find(
-                                                    (p) => p.method === activePaymentInput,
-                                                )
-                                                : null;
+                            {/* 2. LISTA DE PAGOS AÑADIDOS */}
+                            <AnimatePresence>
+                                {paymentMode === "split" && splitPayments.length > 0 && (
+                                    <div className="divide-y divide-[var(--store-border)] border-t border-b border-[var(--store-border)] py-2 mt-4">
+                                        {splitPayments.map((block) => {
+                                            const requiresReceipt =
+                                                receiptConfig.strict_mode &&
+                                                block.method !== "Efectivo" &&
+                                                block.method !== "Pago Flash" &&
+                                                block.method !== "PayPal";
 
-                                        return (
-                                            <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
-                                                {activePaymentInput === "Pago Flash" ? (
-                                                    <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
-                                                        <div className="bg-white p-2.5 rounded-xl border border-gray-100 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-                                                            <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
+                                            return (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: "auto" }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    key={block.id}
+                                                    className="py-5 overflow-hidden"
+                                                >
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-3 text-[var(--store-text-main)]">
+                                                            <span className="font-bold text-sm">
+                                                                {block.method}
+                                                            </span>
                                                         </div>
-                                                        <p className="text-xs font-medium text-gray-500 leading-relaxed">
-                                                            <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
-                                                            Transfiere desde tu banco y tu orden se aprobará en segundos.
-                                                        </p>
+                                                        <div className="flex items-center gap-6">
+                                                            <span className="font-black text-lg text-[var(--store-text-main)] tracking-tight">
+                                                                {block.currency === "usd"
+                                                                    ? `$${block.amount.toFixed(2)}`
+                                                                    : `Bs ${block.amount.toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removePaymentBlock(block.id)}
+                                                                className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                ) : activePaymentInput === "PayPal" ? (
-                                                    <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
-                                                        <PayPalGateway
-                                                            storeId={storeId}
-                                                            clientId={payments.paypal?.client_id}
-                                                            amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
-                                                            onSuccess={(transactionId) => {
-                                                                const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
 
-                                                                setSplitPayments(prevPayments => {
-                                                                    if (paymentMode === "single") {
-                                                                        return [{
-                                                                            id: `pay-${Date.now()}`,
-                                                                            method: "PayPal",
-                                                                            amount: finalAmount,
-                                                                            currency: "usd",
-                                                                            isHardCurrency: true,
-                                                                            receiptFile: null,
-                                                                            receipt_url: `PayPal TxID: ${transactionId}`
-                                                                        }];
-                                                                    } else {
-                                                                        return [
-                                                                            ...prevPayments,
-                                                                            {
+                                                    {requiresReceipt && (
+                                                        <div className="mt-4 pt-2">
+                                                            {!block.receiptFile ? (
+                                                                <div className="relative">
+                                                                    <input
+                                                                        type="file"
+                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                        accept="image/*"
+                                                                        onChange={(e) =>
+                                                                            e.target.files &&
+                                                                            handleAttachReceipt(
+                                                                                block.id,
+                                                                                e.target.files[0],
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    <div className="w-full py-4 border-b border-dashed border-[var(--store-border)] flex items-center justify-center gap-2 font-bold text-[11px] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-all cursor-pointer">
+                                                                        <Upload size={14} /> Subir Capture de{" "}
+                                                                        {block.method} *
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                    <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                        <Check
+                                                                            size={16}
+                                                                            className="shrink-0 text-[var(--store-incentive)]"
+                                                                        />
+                                                                        <span className="text-xs font-bold truncate">
+                                                                            {block.receiptFile.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleAttachReceipt(block.id, null)
+                                                                        }
+                                                                        className="p-1.5 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] rounded-full transition-colors shrink-0"
+                                                                    >
+                                                                        <X size={14} strokeWidth={3} />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* 3. SELECTOR DE MÉTODOS */}
+                            {(paymentMode === "single" || remainingListUSD > 0.01) && (
+                                <div id="field-payment" className="mt-4">
+                                    <AnimatePresence>
+                                        {errors.payment && (
+                                            <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mb-2 px-1">
+                                                {errors.payment}
+                                            </motion.p>
+                                        )}
+                                    </AnimatePresence>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1 rounded-lg transition-colors border-0">
+                                        {activePaymentMethods.map((pm) => {
+                                            const config = getPaymentConfig(pm);
+                                            const isSelected = activePaymentInput === pm;
+
+                                            return (
+                                                <button
+                                                    key={pm}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        openPaymentInput(pm);
+                                                        if (errors.payment) setErrors(prev => ({ ...prev, payment: "" }));
+                                                    }}
+                                                    className={`flex items-center justify-center gap-2 px-4 py-4 text-xs font-bold rounded-xl border-2 transition-all duration-150 active:scale-[0.98] ${isSelected ? config.btnSelected : config.btnIdle} ${errors.payment && !isSelected ? 'border-red-500/50 hover:border-red-500 text-red-600' : ''}`}
+                                                >
+                                                    <config.icon
+                                                        size={20}
+                                                        className={
+                                                            isSelected
+                                                                ? "text-[var(--store-surface)]"
+                                                                : errors.payment && !isSelected ? "text-red-500" : "text-[var(--store-text-main)]"
+                                                        }
+                                                    />{" "}
+                                                    {pm}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 4. EL PORTAL DE PAGO INLINE */}
+                            <AnimatePresence>
+                                {activePaymentInput && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        {(() => {
+                                            const singlePaymentBlock =
+                                                paymentMode === "single"
+                                                    ? splitPayments.find(
+                                                        (p) => p.method === activePaymentInput,
+                                                    )
+                                                    : null;
+
+                                            return (
+                                                <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
+                                                    {activePaymentInput === "Pago Flash" ? (
+                                                        <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
+                                                            <div className="bg-white p-2.5 rounded-xl border border-gray-100 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                                                                <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
+                                                            </div>
+                                                            <p className="text-xs font-medium text-gray-500 leading-relaxed">
+                                                                <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
+                                                                Transfiere desde tu banco y tu orden se aprobará en segundos.
+                                                            </p>
+                                                        </div>
+                                                    ) : activePaymentInput === "PayPal" ? (
+                                                        <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
+                                                            <PayPalGateway
+                                                                storeId={storeId}
+                                                                clientId={payments.paypal?.client_id}
+                                                                amount={paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount || "0")}
+                                                                onSuccess={(transactionId) => {
+                                                                    const finalAmount = paymentMode === "single" ? totalCashUSD : parseFloat(paymentAmount);
+
+                                                                    setSplitPayments(prevPayments => {
+                                                                        if (paymentMode === "single") {
+                                                                            return [{
                                                                                 id: `pay-${Date.now()}`,
                                                                                 method: "PayPal",
                                                                                 amount: finalAmount,
@@ -2329,809 +2405,800 @@ const deliveryZones = deliveryConfig.rings || [];
                                                                                 isHardCurrency: true,
                                                                                 receiptFile: null,
                                                                                 receipt_url: `PayPal TxID: ${transactionId}`
-                                                                            }
-                                                                        ];
-                                                                    }
-                                                                });
-
-                                                                setActivePaymentInput(null);
-                                                                setPaymentAmount("");
-                                                                setAutoSubmitTrigger(true);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                ) : paymentMode === "split" ? (
-                                                    <>
-                                                        <div className="flex justify-between items-end gap-6">
-                                                            <div className="relative flex-1 group">
-                                                                <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">
-                                                                    Monto con {activePaymentInput}
-                                                                </label>
-                                                                <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
-                                                                    <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
-                                                                        {hardCurrencyMethods.includes(
-                                                                            activePaymentInput,
-                                                                        )
-                                                                            ? "$"
-                                                                            : "Bs"}
-                                                                    </span>
-                                                                    <input
-                                                                        type="text"
-                                                                        inputMode="decimal"
-                                                                        autoFocus
-                                                                        value={
-                                                                            paymentAmount
-                                                                                ? paymentAmount
-                                                                                    .split(".")
-                                                                                    .map((p, i) =>
-                                                                                        i === 0
-                                                                                            ? p.replace(
-                                                                                                /\B(?=(\d{3})+(?!\d))/g,
-                                                                                                ".",
-                                                                                            )
-                                                                                            : p,
-                                                                                    )
-                                                                                    .join(",")
-                                                                                : ""
+                                                                            }];
+                                                                        } else {
+                                                                            return [
+                                                                                ...prevPayments,
+                                                                                {
+                                                                                    id: `pay-${Date.now()}`,
+                                                                                    method: "PayPal",
+                                                                                    amount: finalAmount,
+                                                                                    currency: "usd",
+                                                                                    isHardCurrency: true,
+                                                                                    receiptFile: null,
+                                                                                    receipt_url: `PayPal TxID: ${transactionId}`
+                                                                                }
+                                                                            ];
                                                                         }
-                                                                        onChange={(e) => {
-                                                                            let val = e.target.value;
-                                                                            val = val.replace(/\./g, "");
-                                                                            val = val.replace(/,/g, ".");
-                                                                            val = val.replace(/[^0-9.]/g, "");
-                                                                            const parts = val.split(".");
-                                                                            if (parts.length > 2)
-                                                                                val =
-                                                                                    parts[0] +
-                                                                                    "." +
-                                                                                    parts.slice(1).join("");
-                                                                            if (parts[1] && parts[1].length > 2)
-                                                                                val =
-                                                                                    parts[0] +
-                                                                                    "." +
-                                                                                    parts[1].substring(0, 2);
-                                                                            if (val.length > 12) return;
-                                                                            setPaymentAmount(val);
-                                                                        }}
-                                                                        className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
-                                                                        placeholder="0,00"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={confirmPaymentBlock}
-                                                                className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0"
-                                                            >
-                                                                Añadir
-                                                            </button>
+                                                                    });
+
+                                                                    setActivePaymentInput(null);
+                                                                    setPaymentAmount("");
+                                                                    setAutoSubmitTrigger(true);
+                                                                }}
+                                                            />
                                                         </div>
-                                                    </>
-                                                ) : (
-                                                    (() => {
-                                                        const canUploadReceipt = activePaymentInput !== "Efectivo" && activePaymentInput !== "Pago Flash";
-                                                        const isMandatory =
-                                                            receiptConfig.strict_mode && canUploadReceipt;
-
-                                                        return (
-                                                            <>
-                                                                <div className="flex justify-between items-start">
-                                                                    <div>
-                                                                        <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">
-                                                                            Total a cancelar
-                                                                        </p>
-                                                                        <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
-                                                                            {hardCurrencyMethods.includes(activePaymentInput)
-                                                                                ? `$${targetCashAmount.toFixed(2)}`
-                                                                                : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
-                                                                        </p>
+                                                    ) : paymentMode === "split" ? (
+                                                        <>
+                                                            <div className="flex justify-between items-end gap-6">
+                                                                <div className="relative flex-1 group">
+                                                                    <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-2 block">
+                                                                        Monto con {activePaymentInput}
+                                                                    </label>
+                                                                    <div className="flex items-baseline border-b-2 border-[var(--store-border)] group-focus-within:border-[var(--store-primary)] transition-colors pb-2">
+                                                                        <span className="font-black text-3xl text-[var(--store-surface-text)] mr-2">
+                                                                            {hardCurrencyMethods.includes(
+                                                                                activePaymentInput,
+                                                                            )
+                                                                                ? "$"
+                                                                                : "Bs"}
+                                                                        </span>
+                                                                        <input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            autoFocus
+                                                                            value={
+                                                                                paymentAmount
+                                                                                    ? paymentAmount
+                                                                                        .split(".")
+                                                                                        .map((p, i) =>
+                                                                                            i === 0
+                                                                                                ? p.replace(
+                                                                                                    /\B(?=(\d{3})+(?!\d))/g,
+                                                                                                    ".",
+                                                                                                )
+                                                                                                : p,
+                                                                                        )
+                                                                                        .join(",")
+                                                                                    : ""
+                                                                            }
+                                                                            onChange={(e) => {
+                                                                                let val = e.target.value;
+                                                                                val = val.replace(/\./g, "");
+                                                                                val = val.replace(/,/g, ".");
+                                                                                val = val.replace(/[^0-9.]/g, "");
+                                                                                const parts = val.split(".");
+                                                                                if (parts.length > 2)
+                                                                                    val =
+                                                                                        parts[0] +
+                                                                                        "." +
+                                                                                        parts.slice(1).join("");
+                                                                                if (parts[1] && parts[1].length > 2)
+                                                                                    val =
+                                                                                        parts[0] +
+                                                                                        "." +
+                                                                                        parts[1].substring(0, 2);
+                                                                                if (val.length > 12) return;
+                                                                                setPaymentAmount(val);
+                                                                            }}
+                                                                            className="w-full bg-transparent font-black text-3xl md:text-4xl accent-[var(--store-primary)] h-4 border-0 py-6  text-[var(--store-text-main)] outline-none focus:ring-0 focus:shadow-none focus:border-[var(--store-border)] transition-colors rounded-none placeholder:text-[var(--store-surface-text)]"
+                                                                            placeholder="0,00"
+                                                                        />
                                                                     </div>
                                                                 </div>
-
-                                                                {canUploadReceipt && singlePaymentBlock && (
-                                                                    <div className="pt-2">
-                                                                        {!singlePaymentBlock.receiptFile ? (
-                                                                            <div className="relative">
-                                                                                <input
-                                                                                    type="file"
-                                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                                                    accept="image/*"
-                                                                                    onChange={(e) =>
-                                                                                        e.target.files &&
-                                                                                        handleAttachReceipt(
-                                                                                            singlePaymentBlock.id,
-                                                                                            e.target.files[0],
-                                                                                        )
-                                                                                    }
-                                                                                />
-                                                                                <div className="w-full py-4 border-b border-dashed border-[var(--store-text-main)]/60 flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
-                                                                                    <Upload size={16} /> Subir Capture de{" "}
-                                                                                    {activePaymentInput}{" "}
-                                                                                    {isMandatory ? (
-                                                                                        "*"
-                                                                                    ) : (
-                                                                                        <span className="font-medium text-[var(--store-surface-text)]">
-                                                                                            (Opcional)
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
-                                                                                <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
-                                                                                    <Check
-                                                                                        size={16}
-                                                                                        className="shrink-0 text-[var(--store-incentive)]"
-                                                                                    />
-                                                                                    <span className="text-xs font-bold truncate">
-                                                                                        {singlePaymentBlock.receiptFile.name}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() =>
-                                                                                        handleAttachReceipt(
-                                                                                            singlePaymentBlock.id,
-                                                                                            null,
-                                                                                        )
-                                                                                    }
-                                                                                    className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"
-                                                                                >
-                                                                                    <X size={16} />
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
-                                                                {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
-                                                                    <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
-                                                                        <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
-                                                                            ¿Con cuánto vas a pagar? (Monto en Billetes)
-                                                                        </label>
-
-                                                                        <div className="flex flex-wrap gap-2 mb-4">
-                                                                            {smartTenderOptions.map((amount, idx) => {
-                                                                                const isExact = amount === targetCashAmount;
-                                                                                return (
-                                                                                    <button
-                                                                                        key={idx}
-                                                                                        type="button"
-                                                                                        onClick={() => setTenderedAmountStr(amount.toString())}
-                                                                                        className={`px-4 py-2.5 rounded-md text-xs font-bold transition-all border ${tenderedAmountStr === amount.toString() ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:bg-[var(--store-primary)/10] hover:text-[var(--store-primary)]'}`}
-                                                                                    >
-                                                                                        ${amount.toFixed(2)} {isExact && '(Exacto)'}
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-
-                                                                        <div className="relative flex items-center">
-                                                                            <span className="absolute left-5 text-[var(--store-text-main)] font-black text-lg">$</span>
-                                                                            <input
-                                                                                type="text"
-                                                                                inputMode="decimal"
-                                                                                value={tenderedAmountStr}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value.replace(/[^0-9.,]/g, '');
-                                                                                    setTenderedAmountStr(val);
-                                                                                }}
-                                                                                placeholder={targetCashAmount.toFixed(2)}
-                                                                                className={`w-full bg-white border focus:border-black rounded-2xl py-4 pl-12 pr-4 text-xl font-black text-[var(--store-text-main)] outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] ${tenderedAmount < targetCashAmount && tenderedAmountStr !== '' ? 'border-red-500 text-red-600' : 'border-gray-200'}`}
-                                                                            />
-                                                                        </div>
-
-                                                                        <div className="mt-3 px-1">
-                                                                            {tenderedAmountStr === '' ? null : tenderedAmount < targetCashAmount ? (
-                                                                                <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> Faltan ${(targetCashAmount - tenderedAmount).toFixed(2)}</p>
-                                                                            ) : tenderedAmount === targetCashAmount ? (
-                                                                                <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><Check size={14} /> Monto exacto. No requiere vuelto.</p>
-                                                                            ) : changeError ? (
-                                                                                <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> {changeError}</p>
-                                                                            ) : null}
-                                                                        </div>
-
-                                                                        <AnimatePresence>
-                                                                            {expectedChange > 0 && !changeError && (
-                                                                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                                                                                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
-                                                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vuelto a tu favor</span>
-                                                                                        <span className="font-black text-2xl text-black tracking-tight">${expectedChange.toFixed(2)}</span>
-                                                                                    </div>
-
-                                                                                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed mb-5">
-                                                                                        * El saldo a favor es un crédito de consumo exclusivo para esta tienda, sin fecha de caducidad. No equivale a dinero electrónico ni es canjeable por divisas físicas.
-                                                                                    </p>
-
-                                                                                    <label className="flex items-start gap-4 cursor-pointer group bg-gray-50 p-4 rounded-2xl border border-transparent hover:bg-gray-100 transition-colors">
-                                                                                        <input
-                                                                                            type="checkbox"
-                                                                                            checked={isVirtualChangeAccepted}
-                                                                                            onChange={(e) => setIsVirtualChangeAccepted(e.target.checked)}
-                                                                                            className="mt-0.5 w-5 h-5 accent-black rounded-md border-gray-300 cursor-pointer"
-                                                                                        />
-                                                                                        <span className={`text-xs font-bold leading-snug transition-colors ${errors.virtualChange && !isVirtualChangeAccepted ? 'text-red-600' : 'text-gray-900 group-hover:text-black'}`}>
-                                                                                            Acepto recibir mi vuelto de ${expectedChange.toFixed(2)} como Crédito de Tienda.
-                                                                                        </span>
-                                                                                    </label>
-
-                                                                                    <AnimatePresence>
-                                                                                        {isVirtualChangeAccepted && !currentUser && (
-                                                                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-5 pt-5 border-t border-gray-100 overflow-hidden">
-                                                                                                <span className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${errors.otp && !otpVerified ? 'text-red-500' : 'text-gray-400'}`}>Protege tu saldo (Autenticación)</span>
-
-                                                                                                {!otpSent ? (
-                                                                                                    <div className="flex flex-col sm:flex-row gap-3">
-                                                                                                        <input
-                                                                                                            type="email"
-                                                                                                            placeholder="Tu correo electrónico"
-                                                                                                            value={changeEmail}
-                                                                                                            onChange={(e) => setChangeEmail(e.target.value.toLowerCase().trim())}
-                                                                                                            // w-full para móvil, flex-1 para desktop
-                                                                                                            className={`w-full sm:flex-1 bg-white border rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none focus:border-black transition-colors ${errors.otp ? 'border-red-500' : 'border-gray-200'}`}
-                                                                                                        />
-                                                                                                        <button
-                                                                                                            type="button"
-                                                                                                            onClick={handleSendOtp}
-                                                                                                            disabled={isOtpProcessing || !changeEmail}
-                                                                                                            // w-full en móvil, w-auto en desktop, shrink-0 para evitar compresión, py-3.5 para igualar altura del input
-                                                                                                            className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center"
-                                                                                                        >
-                                                                                                            {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Verificar'}
-                                                                                                        </button>
-                                                                                                    </div>
-                                                                                                ) : (
-                                                                                                    <div className="flex flex-col gap-3">
-                                                                                                        <p className="text-[11px] text-gray-500 font-medium">Ingresa el código de 6 dígitos enviado a <strong className="text-black">{changeEmail}</strong></p>
-                                                                                                        <div className="flex flex-col sm:flex-row gap-3">
-                                                                                                            <input
-                                                                                                                type="text"
-                                                                                                                maxLength={6}
-                                                                                                                placeholder="000000"
-                                                                                                                value={otpCode}
-                                                                                                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                                                                                // w-full para móvil, flex-1 para desktop
-                                                                                                                className="w-full sm:flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-center tracking-[0.7em] font-black text-xl text-gray-900 outline-none focus:border-black transition-colors"
-                                                                                                            />
-                                                                                                            <button
-                                                                                                                type="button"
-                                                                                                                onClick={handleVerifyOtp}
-                                                                                                                disabled={isOtpProcessing || otpCode.length < 6}
-                                                                                                                // w-full en móvil, w-auto en desktop, min-w-[120px] y shrink-0 para proteger el layout
-                                                                                                                className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center sm:min-w-[120px]"
-                                                                                                            >
-                                                                                                                {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
-                                                                                                            </button>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </motion.div>
-                                                                                        )}
-                                                                                    </AnimatePresence>
-                                                                                </motion.div>
-                                                                            )}
-                                                                        </AnimatePresence>
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        );
-                                                    })()
-                                                )}
-
-                                           {/* 🚀 PANEL COMPACTO DE TRANSFERENCIA / CON COPIADO DE MONTO Y COPIAR TODO (TIPADO ESTRICTO) */}
-                                                {payments[paymentKeysMap[activePaymentInput]]?.details && (
-                                                    <div className="bg-[var(--store-surface)] border-2 border-[var(--store-text-main)]/20 rounded-2xl p-3 sm:p-3.5 shadow-none mt-3 animate-in fade-in space-y-2">
-                                                        {(() => {
-                                                            const isHardCurrency = hardCurrencyMethods.includes(activePaymentInput);
-                                                            const formattedTotal = isHardCurrency
-                                                                ? `$ ${targetCashAmount.toFixed(2)}`
-                                                                : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                            
-                                                            const rawNumericAmount = isHardCurrency
-                                                                ? targetCashAmount.toFixed(2)
-                                                                : (targetListAmount * activeRate).toFixed(2);
-
-                                                            const rawText: string = payments[paymentKeysMap[activePaymentInput]]?.details || '';
-                                                            const rawChunks: string[] = rawText.includes('\n')
-                                                                ? rawText.split('\n')
-                                                                : rawText.split(/[,;|]/);
-
-                                                            interface ParsedPaymentItem {
-                                                                label: string | null;
-                                                                value: string;
-                                                                textToCopy: string;
-                                                            }
-
-                                                            const parsedItems: ParsedPaymentItem[] = rawChunks
-                                                                .map((c: string) => c.trim())
-                                                                .filter(Boolean)
-                                                                .map((item: string): ParsedPaymentItem => {
-                                                                    const hasColon = item.includes(':');
-                                                                    let label = hasColon ? item.split(':')[0].trim() : null;
-                                                                    let value = hasColon ? item.split(':').slice(1).join(':').trim() : item;
-
-                                                                    if (!label) {
-                                                                        const clean = value.replace(/[\s-]/g, '');
-
-                                                                        // 🚀 1. DETECCIÓN EXCLUSIVA PARA BINANCE
-                                                                        if (activePaymentInput === 'Binance') {
-                                                                            if (/^\d{6,12}$/.test(clean)) {
-                                                                                label = 'Binance Pay ID (UID)';
-                                                                            } else if (/@/.test(value)) {
-                                                                                label = 'Correo Binance Pay';
-                                                                            } else {
-                                                                                label = 'ID / Correo Binance';
-                                                                            }
-                                                                        }
-                                                                        // 🚀 2. DETECCIÓN EXCLUSIVA PARA ZELLE
-                                                                        else if (activePaymentInput === 'Zelle') {
-                                                                            if (/@/.test(value)) {
-                                                                                label = 'Correo Zelle';
-                                                                            } else if (/^\+?\d{10,15}$/.test(clean)) {
-                                                                                label = 'Teléfono Zelle';
-                                                                            } else {
-                                                                                label = 'Titular Zelle';
-                                                                            }
-                                                                        }
-                                                                        // 🚀 3. DETECCIÓN PARA PAGO MÓVIL Y TRANSFERENCIAS
-                                                                        else {
-                                                                            if (/^(0412|0414|0424|0416|0426|\+58)\d+/.test(clean)) {
-                                                                                label = 'Teléfono / Pago Móvil';
-                                                                            } else if (/^(V|E|J|G|P)?-?\d{6,9}$/i.test(clean) && !clean.startsWith('04')) {
-                                                                                label = 'Documento / RIF';
-                                                                            } else if (/^\d{20}$/.test(clean)) {
-                                                                                label = 'Número de Cuenta';
-                                                                            } else if (/banco|venezuela|banesco|mercantil|provincial|bnc|bancaribe|banplus|plaza|100%|tesoro|exterior|bancamiga|0102|0134|0105|0108/i.test(value)) {
-                                                                                label = 'Banco Destino';
-                                                                            } else if (/@/.test(value)) {
-                                                                                label = 'Correo Electrónico';
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    return { label, value: value || item, textToCopy: value || item };
-                                                                });
-
-                                                            const copyAllText = [
-                                                                `Monto: ${formattedTotal}`,
-                                                                ...parsedItems.map((i: ParsedPaymentItem) => i.label ? `${i.label}: ${i.value}` : i.value)
-                                                            ].join('\n');
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={confirmPaymentBlock}
+                                                                    className="px-6 py-4 rounded-md font-black text-xs uppercase tracking-widest transition-all bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 flex items-center justify-center shrink-0"
+                                                                >
+                                                                    Añadir
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        (() => {
+                                                            const canUploadReceipt = activePaymentInput !== "Efectivo" && activePaymentInput !== "Pago Flash";
+                                                            const isMandatory =
+                                                                receiptConfig.strict_mode && canUploadReceipt;
 
                                                             return (
                                                                 <>
-                                                                    {/* CABECERA CON BOTÓN "COPIAR TODO" */}
-                                                                    <div className="flex justify-between items-center px-1 pb-1">
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-surface-text)]">
-                                                                            {activePaymentInput === 'Efectivo' ? 'Instrucciones' : 'Datos para Transferir'}
-                                                                        </span>
-
-                                                                        {activePaymentInput !== 'Efectivo' && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleCopy(copyAllText, 'all')}
-                                                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
-                                                                                    copiedKey === 'all'
-                                                                                        ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                        : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
-                                                                                }`}
-                                                                            >
-                                                                                {copiedKey === 'all' ? <Check size={11} strokeWidth={3} /> : <Copy size={11} strokeWidth={2} />}
-                                                                                <span>{copiedKey === 'all' ? 'Todo Copiado' : 'Copiar Todo'}</span>
-                                                                            </button>
-                                                                        )}
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">
+                                                                                Total a cancelar
+                                                                            </p>
+                                                                            <p className="font-black text-3xl md:text-4xl text-[var(--store-text-main)] leading-none tracking-tighter">
+                                                                                {hardCurrencyMethods.includes(activePaymentInput)
+                                                                                    ? `$${targetCashAmount.toFixed(2)}`
+                                                                                    : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { maximumFractionDigits: 2 })}`}
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
 
-                                                                    <div className="flex flex-col gap-1.5">
-                                                                        {/* 💰 FILA 1: MONTO EXACTO */}
-                                                                        {activePaymentInput !== 'Efectivo' && (
-                                                                            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-text-main)]/[0.04] border border-[var(--store-text-main)]/15 gap-2">
-                                                                                <div className="flex flex-col min-w-0">
-                                                                                    <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-text-main)] truncate leading-none mb-0.5">
-                                                                                        Monto a Transferir
-                                                                                    </span>
-                                                                                    <span className="text-xs sm:text-sm font-black text-[var(--store-text-main)] font-mono tabular-nums select-all">
-                                                                                        {formattedTotal}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleCopy(rawNumericAmount, 'amount')}
-                                                                                    className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${
-                                                                                        copiedKey === 'amount'
-                                                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                            : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
-                                                                                    }`}
-                                                                                    title="Copiar monto exacto"
-                                                                                >
-                                                                                    {copiedKey === 'amount' ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* 📋 FILAS DINÁMICAS DE CADA DATO */}
-                                                                        {parsedItems.map((item: ParsedPaymentItem, idx: number) => {
-                                                                            const isItemCopied = copiedKey === `item-${idx}`;
-
-                                                                            return (
-                                                                                <div
-                                                                                    key={idx}
-                                                                                    className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]/30 transition-all gap-2"
-                                                                                >
-                                                                                    <div className="flex flex-col min-w-0 pr-1">
-                                                                                        {item.label && (
-                                                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] truncate leading-none mb-0.5">
-                                                                                                {item.label}
+                                                                    {canUploadReceipt && singlePaymentBlock && (
+                                                                        <div className="pt-2">
+                                                                            {!singlePaymentBlock.receiptFile ? (
+                                                                                <div className="relative">
+                                                                                    <input
+                                                                                        type="file"
+                                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                                                        accept="image/*"
+                                                                                        onChange={(e) =>
+                                                                                            e.target.files &&
+                                                                                            handleAttachReceipt(
+                                                                                                singlePaymentBlock.id,
+                                                                                                e.target.files[0],
+                                                                                            )
+                                                                                        }
+                                                                                    />
+                                                                                    <div className="w-full py-4 border-b border-dashed border-[var(--store-text-main)]/60 flex items-center gap-3 font-bold text-xs text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:border-[var(--store-text-main)] transition-colors cursor-pointer">
+                                                                                        <Upload size={16} /> Subir Capture de{" "}
+                                                                                        {activePaymentInput}{" "}
+                                                                                        {isMandatory ? (
+                                                                                            "*"
+                                                                                        ) : (
+                                                                                            <span className="font-medium text-[var(--store-surface-text)]">
+                                                                                                (Opcional)
                                                                                             </span>
                                                                                         )}
-                                                                                        <span className="text-xs sm:text-sm font-bold text-[var(--store-text-main)] font-mono truncate select-all leading-tight">
-                                                                                            {item.value}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex justify-between items-center bg-[var(--store-bg)] px-4 py-3 rounded-md border border-[var(--store-border)]">
+                                                                                    <div className="flex items-center gap-3 min-w-0 text-[var(--store-text-main)]">
+                                                                                        <Check
+                                                                                            size={16}
+                                                                                            className="shrink-0 text-[var(--store-incentive)]"
+                                                                                        />
+                                                                                        <span className="text-xs font-bold truncate">
+                                                                                            {singlePaymentBlock.receiptFile.name}
                                                                                         </span>
                                                                                     </div>
-
-                                                                                    {activePaymentInput !== 'Efectivo' && (
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => handleCopy(item.textToCopy, `item-${idx}`)}
-                                                                                            className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${
-                                                                                                isItemCopied
-                                                                                                    ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
-                                                                                            }`}
-                                                                                            title={`Copiar ${item.label || 'dato'}`}
-                                                                                        >
-                                                                                            {isItemCopied ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
-                                                                                        </button>
-                                                                                    )}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleAttachReceipt(
+                                                                                                singlePaymentBlock.id,
+                                                                                                null,
+                                                                                            )
+                                                                                        }
+                                                                                        className="p-1 text-[var(--store-surface-text)] hover:text-red-500 hover:bg-[var(--store-surface)] transition-colors shrink-0"
+                                                                                    >
+                                                                                        <X size={16} />
+                                                                                    </button>
                                                                                 </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* 🚀 FORMULARIO LEGAL DE VUELTO VIRTUAL (EFECTIVO SMART TENDER) */}
+                                                                    {isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && (
+                                                                        <div className="mt-8 pt-6 border-t border-[var(--store-border)] animate-in fade-in slide-in-from-top-2">
+                                                                            <label className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block mb-3">
+                                                                                ¿Con cuánto vas a pagar? (Monto en Billetes)
+                                                                            </label>
+
+                                                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                                                {smartTenderOptions.map((amount, idx) => {
+                                                                                    const isExact = amount === targetCashAmount;
+                                                                                    return (
+                                                                                        <button
+                                                                                            key={idx}
+                                                                                            type="button"
+                                                                                            onClick={() => setTenderedAmountStr(amount.toString())}
+                                                                                            className={`px-4 py-2.5 rounded-md text-xs font-bold transition-all border ${tenderedAmountStr === amount.toString() ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[0_8px_30px_rgb(0,0,0,0.04)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:bg-[var(--store-primary)/10] hover:text-[var(--store-primary)]'}`}
+                                                                                        >
+                                                                                            ${amount.toFixed(2)} {isExact && '(Exacto)'}
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+
+                                                                            <div className="relative flex items-center">
+                                                                                <span className="absolute left-5 text-[var(--store-text-main)] font-black text-lg">$</span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    inputMode="decimal"
+                                                                                    value={tenderedAmountStr}
+                                                                                    onChange={(e) => {
+                                                                                        const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                                                                        setTenderedAmountStr(val);
+                                                                                    }}
+                                                                                    placeholder={targetCashAmount.toFixed(2)}
+                                                                                    className={`w-full bg-white border focus:border-black rounded-2xl py-4 pl-12 pr-4 text-xl font-black text-[var(--store-text-main)] outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.02)] ${tenderedAmount < targetCashAmount && tenderedAmountStr !== '' ? 'border-red-500 text-red-600' : 'border-gray-200'}`}
+                                                                                />
+                                                                            </div>
+
+                                                                            <div className="mt-3 px-1">
+                                                                                {tenderedAmountStr === '' ? null : tenderedAmount < targetCashAmount ? (
+                                                                                    <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> Faltan ${(targetCashAmount - tenderedAmount).toFixed(2)}</p>
+                                                                                ) : tenderedAmount === targetCashAmount ? (
+                                                                                    <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><Check size={14} /> Monto exacto. No requiere vuelto.</p>
+                                                                                ) : changeError ? (
+                                                                                    <p className="text-xs font-bold text-red-500 flex items-center gap-1.5"><AlertCircle size={14} /> {changeError}</p>
+                                                                                ) : null}
+                                                                            </div>
+
+                                                                            <AnimatePresence>
+                                                                                {expectedChange > 0 && !changeError && (
+                                                                                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                                                                                        <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
+                                                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vuelto a tu favor</span>
+                                                                                            <span className="font-black text-2xl text-black tracking-tight">${expectedChange.toFixed(2)}</span>
+                                                                                        </div>
+
+                                                                                        <p className="text-[10px] text-gray-500 font-medium leading-relaxed mb-5">
+                                                                                            * El saldo a favor es un crédito de consumo exclusivo para esta tienda, sin fecha de caducidad. No equivale a dinero electrónico ni es canjeable por divisas físicas.
+                                                                                        </p>
+
+                                                                                        <label className="flex items-start gap-4 cursor-pointer group bg-gray-50 p-4 rounded-2xl border border-transparent hover:bg-gray-100 transition-colors">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={isVirtualChangeAccepted}
+                                                                                                onChange={(e) => setIsVirtualChangeAccepted(e.target.checked)}
+                                                                                                className="mt-0.5 w-5 h-5 accent-black rounded-md border-gray-300 cursor-pointer"
+                                                                                            />
+                                                                                            <span className={`text-xs font-bold leading-snug transition-colors ${errors.virtualChange && !isVirtualChangeAccepted ? 'text-red-600' : 'text-gray-900 group-hover:text-black'}`}>
+                                                                                                Acepto recibir mi vuelto de ${expectedChange.toFixed(2)} como Crédito de Tienda.
+                                                                                            </span>
+                                                                                        </label>
+
+                                                                                        <AnimatePresence>
+                                                                                            {isVirtualChangeAccepted && !currentUser && (
+                                                                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-5 pt-5 border-t border-gray-100 overflow-hidden">
+                                                                                                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-3 ${errors.otp && !otpVerified ? 'text-red-500' : 'text-gray-400'}`}>Protege tu saldo (Autenticación)</span>
+
+                                                                                                    {!otpSent ? (
+                                                                                                        <div className="flex flex-col sm:flex-row gap-3">
+                                                                                                            <input
+                                                                                                                type="email"
+                                                                                                                placeholder="Tu correo electrónico"
+                                                                                                                value={changeEmail}
+                                                                                                                onChange={(e) => setChangeEmail(e.target.value.toLowerCase().trim())}
+                                                                                                                // w-full para móvil, flex-1 para desktop
+                                                                                                                className={`w-full sm:flex-1 bg-white border rounded-xl px-4 py-3.5 text-sm font-bold text-gray-900 outline-none focus:border-black transition-colors ${errors.otp ? 'border-red-500' : 'border-gray-200'}`}
+                                                                                                            />
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                onClick={handleSendOtp}
+                                                                                                                disabled={isOtpProcessing || !changeEmail}
+                                                                                                                // w-full en móvil, w-auto en desktop, shrink-0 para evitar compresión, py-3.5 para igualar altura del input
+                                                                                                                className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center"
+                                                                                                            >
+                                                                                                                {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Verificar'}
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <div className="flex flex-col gap-3">
+                                                                                                            <p className="text-[11px] text-gray-500 font-medium">Ingresa el código de 6 dígitos enviado a <strong className="text-black">{changeEmail}</strong></p>
+                                                                                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                                                                                <input
+                                                                                                                    type="text"
+                                                                                                                    maxLength={6}
+                                                                                                                    placeholder="000000"
+                                                                                                                    value={otpCode}
+                                                                                                                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                                                                                                    // w-full para móvil, flex-1 para desktop
+                                                                                                                    className="w-full sm:flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-center tracking-[0.7em] font-black text-xl text-gray-900 outline-none focus:border-black transition-colors"
+                                                                                                                />
+                                                                                                                <button
+                                                                                                                    type="button"
+                                                                                                                    onClick={handleVerifyOtp}
+                                                                                                                    disabled={isOtpProcessing || otpCode.length < 6}
+                                                                                                                    // w-full en móvil, w-auto en desktop, min-w-[120px] y shrink-0 para proteger el layout
+                                                                                                                    className="w-full sm:w-auto shrink-0 bg-black text-white px-6 py-3.5 rounded-xl font-bold text-xs hover:bg-gray-800 disabled:opacity-50 transition-colors active:scale-95 flex items-center justify-center sm:min-w-[120px]"
+                                                                                                                >
+                                                                                                                    {isOtpProcessing ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
+                                                                                                                </button>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </motion.div>
+                                                                                            )}
+                                                                                        </AnimatePresence>
+                                                                                    </motion.div>
+                                                                                )}
+                                                                            </AnimatePresence>
+                                                                        </div>
+                                                                    )}
                                                                 </>
                                                             );
-                                                        })()}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                                                        })()
+                                                    )}
+
+                                                    {/* 🚀 PANEL COMPACTO DE TRANSFERENCIA / CON COPIADO DE MONTO Y COPIAR TODO (TIPADO ESTRICTO) */}
+                                                    {payments[paymentKeysMap[activePaymentInput]]?.details && (
+                                                        <div className="bg-[var(--store-surface)] border-2 border-[var(--store-text-main)]/20 rounded-2xl p-3 sm:p-3.5 shadow-none mt-3 animate-in fade-in space-y-2">
+                                                            {(() => {
+                                                                const isHardCurrency = hardCurrencyMethods.includes(activePaymentInput);
+                                                                const formattedTotal = isHardCurrency
+                                                                    ? `$ ${targetCashAmount.toFixed(2)}`
+                                                                    : `Bs ${(targetListAmount * activeRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                                                                const rawNumericAmount = isHardCurrency
+                                                                    ? targetCashAmount.toFixed(2)
+                                                                    : (targetListAmount * activeRate).toFixed(2);
+
+                                                                const rawText: string = payments[paymentKeysMap[activePaymentInput]]?.details || '';
+                                                                const rawChunks: string[] = rawText.includes('\n')
+                                                                    ? rawText.split('\n')
+                                                                    : rawText.split(/[,;|]/);
+
+                                                                interface ParsedPaymentItem {
+                                                                    label: string | null;
+                                                                    value: string;
+                                                                    textToCopy: string;
+                                                                }
+
+                                                                const parsedItems: ParsedPaymentItem[] = rawChunks
+                                                                    .map((c: string) => c.trim())
+                                                                    .filter(Boolean)
+                                                                    .map((item: string): ParsedPaymentItem => {
+                                                                        const hasColon = item.includes(':');
+                                                                        let label = hasColon ? item.split(':')[0].trim() : null;
+                                                                        let value = hasColon ? item.split(':').slice(1).join(':').trim() : item;
+
+                                                                        if (!label) {
+                                                                            const clean = value.replace(/[\s-]/g, '');
+
+                                                                            // 🚀 1. DETECCIÓN EXCLUSIVA PARA BINANCE
+                                                                            if (activePaymentInput === 'Binance') {
+                                                                                if (/^\d{6,12}$/.test(clean)) {
+                                                                                    label = 'Binance Pay ID (UID)';
+                                                                                } else if (/@/.test(value)) {
+                                                                                    label = 'Correo Binance Pay';
+                                                                                } else {
+                                                                                    label = 'ID / Correo Binance';
+                                                                                }
+                                                                            }
+                                                                            // 🚀 2. DETECCIÓN EXCLUSIVA PARA ZELLE
+                                                                            else if (activePaymentInput === 'Zelle') {
+                                                                                if (/@/.test(value)) {
+                                                                                    label = 'Correo Zelle';
+                                                                                } else if (/^\+?\d{10,15}$/.test(clean)) {
+                                                                                    label = 'Teléfono Zelle';
+                                                                                } else {
+                                                                                    label = 'Titular Zelle';
+                                                                                }
+                                                                            }
+                                                                            // 🚀 3. DETECCIÓN PARA PAGO MÓVIL Y TRANSFERENCIAS
+                                                                            else {
+                                                                                if (/^(0412|0414|0424|0416|0426|\+58)\d+/.test(clean)) {
+                                                                                    label = 'Teléfono / Pago Móvil';
+                                                                                } else if (/^(V|E|J|G|P)?-?\d{6,9}$/i.test(clean) && !clean.startsWith('04')) {
+                                                                                    label = 'Documento / RIF';
+                                                                                } else if (/^\d{20}$/.test(clean)) {
+                                                                                    label = 'Número de Cuenta';
+                                                                                } else if (/banco|venezuela|banesco|mercantil|provincial|bnc|bancaribe|banplus|plaza|100%|tesoro|exterior|bancamiga|0102|0134|0105|0108/i.test(value)) {
+                                                                                    label = 'Banco Destino';
+                                                                                } else if (/@/.test(value)) {
+                                                                                    label = 'Correo Electrónico';
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        return { label, value: value || item, textToCopy: value || item };
+                                                                    });
+
+                                                                const copyAllText = [
+                                                                    `Monto: ${formattedTotal}`,
+                                                                    ...parsedItems.map((i: ParsedPaymentItem) => i.label ? `${i.label}: ${i.value}` : i.value)
+                                                                ].join('\n');
+
+                                                                return (
+                                                                    <>
+                                                                        {/* CABECERA CON BOTÓN "COPIAR TODO" */}
+                                                                        <div className="flex justify-between items-center px-1 pb-1">
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-surface-text)]">
+                                                                                {activePaymentInput === 'Efectivo' ? 'Instrucciones' : 'Datos para Transferir'}
+                                                                            </span>
+
+                                                                            {activePaymentInput !== 'Efectivo' && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleCopy(copyAllText, 'all')}
+                                                                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${copiedKey === 'all'
+                                                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                            : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                        }`}
+                                                                                >
+                                                                                    {copiedKey === 'all' ? <Check size={11} strokeWidth={3} /> : <Copy size={11} strokeWidth={2} />}
+                                                                                    <span>{copiedKey === 'all' ? 'Todo Copiado' : 'Copiar Todo'}</span>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="flex flex-col gap-1.5">
+                                                                            {/* 💰 FILA 1: MONTO EXACTO */}
+                                                                            {activePaymentInput !== 'Efectivo' && (
+                                                                                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-text-main)]/[0.04] border border-[var(--store-text-main)]/15 gap-2">
+                                                                                    <div className="flex flex-col min-w-0">
+                                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-[var(--store-text-main)] truncate leading-none mb-0.5">
+                                                                                            Monto a Transferir
+                                                                                        </span>
+                                                                                        <span className="text-xs sm:text-sm font-black text-[var(--store-text-main)] font-mono tabular-nums select-all">
+                                                                                            {formattedTotal}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleCopy(rawNumericAmount, 'amount')}
+                                                                                        className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${copiedKey === 'amount'
+                                                                                                ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                            }`}
+                                                                                        title="Copiar monto exacto"
+                                                                                    >
+                                                                                        {copiedKey === 'amount' ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* 📋 FILAS DINÁMICAS DE CADA DATO */}
+                                                                            {parsedItems.map((item: ParsedPaymentItem, idx: number) => {
+                                                                                const isItemCopied = copiedKey === `item-${idx}`;
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={idx}
+                                                                                        className="flex items-center justify-between p-2.5 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]/30 transition-all gap-2"
+                                                                                    >
+                                                                                        <div className="flex flex-col min-w-0 pr-1">
+                                                                                            {item.label && (
+                                                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] truncate leading-none mb-0.5">
+                                                                                                    {item.label}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            <span className="text-xs sm:text-sm font-bold text-[var(--store-text-main)] font-mono truncate select-all leading-tight">
+                                                                                                {item.value}
+                                                                                            </span>
+                                                                                        </div>
+
+                                                                                        {activePaymentInput !== 'Efectivo' && (
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleCopy(item.textToCopy, `item-${idx}`)}
+                                                                                                className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${isItemCopied
+                                                                                                        ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                                        : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                                    }`}
+                                                                                                title={`Copiar ${item.label || 'dato'}`}
+                                                                                            >
+                                                                                                {isItemCopied ? <Check size={13} strokeWidth={3} /> : <Copy size={13} strokeWidth={2} />}
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* El fragmento se cierra correctamente aquí para balancear el bloque normal */}
+                        </>
+                    )}
+                </div>
+
+                {/* RESUMEN DE LA ORDEN CON JERARQUÍA CONTABLE EXACTA */}
+                <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">
+                        Resumen de la Orden
+                    </h2>
+
+                    <div className="flex flex-col gap-3">
+                        {/* 1. Subtotal Base (Precio de Lista Nominal) */}
+                        <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
+                            <span>Subtotal (Precio de Lista)</span>
+                            <span className={cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0 ? "line-through decoration-[var(--store-border)]" : ""}>
+                                {currencySymbol}{cartEngine.totalListNominal.toFixed(2)}
+                            </span>
+                        </div>
+
+                        {/* 2. Descuentos Promocionales de Campaña */}
+                        {cartEngine.listPromoDiscounts > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
+                                <span>Descuento de Campaña</span>
+                                <span>-{currencySymbol}{cartEngine.listPromoDiscounts.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 3. Descuento Mayorista */}
+                        {wholesaleDiscountList > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)] animate-in fade-in">
+                                <span>Descuento Mayorista</span>
+                                <span>-{currencySymbol}{wholesaleDiscountList.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 4. Subtotal Neto Real (Base después de descuentos comerciales) */}
+                        {(cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0) && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/60">
+                                <span>Subtotal Neto</span>
+                                <span>{currencySymbol}{trueSubtotalNeto.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 5. Impuestos de Ley (I.V.A.) */}
+                        {applyTax && taxAmountListUSD > 0 && (
+                            <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-1">
+                                <span>I.V.A ({taxPercentage}%)</span>
+                                <span>+{currencySymbol}{taxAmountListUSD.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 6. Beneficio en Divisa (Efectivo / Zelle) */}
+                        <AnimatePresence>
+                            {isHardCurrencyPayment && actualFxSavings > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]"
+                                >
+                                    <span>Beneficio Pago en Divisa</span>
+                                    <span>-{currencySymbol}{actualFxSavings.toFixed(2)}</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        {/* El fragmento se cierra correctamente aquí para balancear el bloque normal */}
-                    </>
-                )}
-            </div>
-
-            {/* 🚀 NUEVO: EL RESUMEN FINANCIERO SE MUEVE AL SCROLL */}
-            {/* Ahora hace scroll natural con el contenido, liberando el 40% de la pantalla */}
-            <div className="space-y-4 pt-8 border-t border-[var(--store-border)] mt-4 pb-8">
-                <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest pb-2">
-                    Resumen de la Orden
-                </h2>
-
-                <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
-                        <span>Subtotal (Precio de Lista)</span>
-                        <span
-                            className={
-                                cartEngine.listPromoDiscounts > 0
-                                    ? "line-through decoration-[var(--store-border)]"
-                                    : ""
-                            }
-                        >
-                            {currencySymbol}
-                            {cartEngine.totalListNominal.toFixed(2)}
-                        </span>
-                    </div>
-
-                    {cartEngine.listPromoDiscounts > 0 && (
-                        <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
-                            <span>Descuento de Campaña</span>
-                            <span>
-                                -{currencySymbol}
-                                {cartEngine.listPromoDiscounts.toFixed(2)}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* 🚀 INYECCIÓN DEL RENGLÓN DE IMPUESTO (SOLO SI APLICA) */}
-                    {applyTax && taxAmountListUSD > 0 && (
-                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2">
-                            <span>I.V.A ({taxPercentage}%)</span>
-                            <span>
-                                +{currencySymbol}
-                                {taxAmountListUSD.toFixed(2)}
-                            </span>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]">
-                        <span>Subtotal Neto</span>
-                        <span>
-                            {currencySymbol}
-                            {cartEngine.finalBsModeUSD.toFixed(2)}
-                        </span>
-                    </div>
-
-                    {wholesaleDiscountList > 0 && (
-                        <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]">
-                            <span>Descuento Mayorista</span>
-                            <span>
-                                -{currencySymbol}
-                                {wholesaleDiscountList.toFixed(2)}
-                            </span>
-                        </div>
-                    )}
-
-                    <AnimatePresence>
-                        {isHardCurrencyPayment && actualFxSavings > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]"
-                            >
-                                <span>Beneficio Pago en Divisa</span>
-                                <span>
-                                    -{currencySymbol}
-                                    {actualFxSavings.toFixed(2)}
-                                </span>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {deliveryCost > 0 && (
-                        <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
-                            <span>Delivery / Envío</span>
-                            <span>
-                                +{currencySymbol}
-                                {deliveryCost.toFixed(2)}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* LINEA DE PROPINA EN PANTALLA */}
-                    {isFoodTech && tipAmountUSD > 0 && (
-                        <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
-                            <span>Propina ({tipPercentage}%)</span>
-                            <span className="font-mono">
-                                +{currencySymbol}{tipAmountUSD.toFixed(2)}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* 🚀 TARJETA DE CRÉDITO APLICADO (Dentro de la lista de subtotales) */}
-                    <AnimatePresence>
-                        {appliedCreditUSD > 0 && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/50 overflow-hidden">
-                                <span>Crédito de Tienda Aplicado</span>
-                                <span>-{currencySymbol}{appliedCreditUSD.toFixed(2)}</span>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
-                {availableCredit > 0 && (
-                    <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60'}`}>
-                                <Wallet size={18} strokeWidth={2.5} />
+                        {/* 7. Cargo por Envío / Delivery */}
+                        {deliveryCost > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                                <span>Delivery / Envío</span>
+                                <span>+{currencySymbol}{deliveryCost.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-sm font-black text-[var(--store-text-main)]">Usar Saldo a Favor</span>
-                                <span className="text-[11px] font-bold text-[var(--store-surface-text)]">Disponible: ${availableCredit.toFixed(2)}</span>
+                        )}
+
+                        {/* 8. Propina Gastronómica */}
+                        {isFoodTech && tipAmountUSD > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
+                                <span>Propina ({tipPercentage}%)</span>
+                                <span className="font-mono">+{currencySymbol}{tipAmountUSD.toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {/* 9. Crédito de Tienda Aplicado */}
+                        <AnimatePresence>
+                            {appliedCreditUSD > 0 && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/50 overflow-hidden">
+                                    <span>Crédito de Tienda Aplicado</span>
+                                    <span>-{currencySymbol}{appliedCreditUSD.toFixed(2)}</span>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* 🚀 TOGGLE DE SALDO A FAVOR (Fuera de los subtotales, justo debajo) */}
+                    {availableCredit > 0 && (
+                        <div className="flex items-center justify-between p-4 bg-[var(--store-bg)] border border-[var(--store-border)]/60 rounded-xl mt-4 cursor-pointer group hover:border-[var(--store-primary)]/50 transition-colors shadow-none" onClick={() => setApplyCredit(!applyCredit)}>
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2.5 rounded-full transition-colors ${applyCredit ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60'}`}>
+                                    <Wallet size={18} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-black text-[var(--store-text-main)]">Usar Saldo a Favor</span>
+                                    <span className="text-[11px] font-bold text-[var(--store-surface-text)]">Disponible: ${availableCredit.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-[var(--store-border)]'}`}>
+                                <div className={`w-4 h-4 bg-[var(--store-surface)] rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
                             </div>
                         </div>
-                        <div className={`w-12 h-6 rounded-full transition-colors flex items-center p-1 ${applyCredit ? 'bg-[var(--store-primary)]' : 'bg-[var(--store-border)]'}`}>
-                            <div className={`w-4 h-4 bg-[var(--store-surface)] rounded-full shadow-sm transition-transform ${applyCredit ? 'translate-x-6' : 'translate-x-0'}`} />
-                        </div>
-                    </div>
-                )}
+                    )}
 
-            </div>
-        </div>{ " " }
-    {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */ }
-    {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */ }
-    {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */ }
-    <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <div className="flex items-center gap-5">
-            {/* Total a la izquierda (Alineado estrictamente a var(--font-inter)) */}
-            <div
-                className="flex flex-col shrink-0"
-                style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
-            >
-                <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
-                    Total Final
-                </span>
-                <div className="flex items-end gap-2">
-                    <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
-                        {currencySymbol}{grandTotalUSD.toFixed(2)}
-                    </span>
                 </div>
-                <span
-                    style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
-                    className="text-[11px] font-bold text-[var(--store-surface-text)] mt-1.5 leading-none tabular-nums !normal-case"
-                >
-                    Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-            </div>
-
-            {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
-            <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
-                <div className="w-full h-[52px] relative flex justify-end md:justify-center">
-                    <motion.button
-                        layout
-                        onClick={handleCheckout}
-                        disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
-                        className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-primary)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
-                            ? "w-full bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] !border-transparent cursor-not-allowed opacity-80"
-                            : checkoutState !== 'idle'
-                                ? "w-[52px] bg-[var(--store-primary)] text-[var(--store-primary-text)] mx-auto shrink-0"
-                                : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90"
-                            }`}
+            </div>{" "}
+            {/* CIERRE DEL CONTENEDOR FLEX-1 (Área de scroll) */}
+            {/* 🚀 NUEVO: ACTION BAR ULTRA-COMPACTA (Footer Fijo) */}
+            {/* Solo una línea de alto. Usa pb-[env(safe-area-inset-bottom)] para adaptarse al notch de los iPhone */}
+            <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <div className="flex items-center gap-5">
+                    {/* Total a la izquierda con jerarquía de moneda adaptativa */}
+                    <div
+                        className="flex flex-col shrink-0"
+                        style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                     >
-                        {!storeHoursStatus.isOpen ? (
-                            <span>Cerrado • {storeHoursStatus.detailLabel}</span>
-                        ) : (
-                            <AnimatePresence mode="wait">
-                                {checkoutState === 'validating' ? (
-                                    <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
-                                        <Loader2 className="animate-spin" size={20} />
-                                    </motion.div>
-                                ) : checkoutState === 'processing' ? (
-                                    <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                        <Loader2 className="animate-spin text-white/50" size={20} />
-                                    </motion.div>
-                                ) : checkoutState === 'success' ? (
-                                    <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
-                                        <Check className="text-white" size={20} strokeWidth={3} />
-                                    </motion.div>
-                                ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
-                                    // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
-                                    <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
-                                        <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
-                                    </motion.div>
-                                ) : missingReceipts && isPaidInFull ? (
-                                    <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                        <Upload size={16} className="mb-0.5" /> Adjunta Recibos
-                                    </motion.div>
-                                ) : activePaymentInput === "Pago Flash" ? (
-                                    <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                        <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
-                                    </motion.div>
+                        <span className="text-[9px] font-black text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-1.5">
+                            Total Final
+                        </span>
+                        <div className="flex items-end gap-2">
+                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                                {currencySymbol}{grandTotalUSD.toFixed(2)}
+                            </span>
+                        </div>
+                        {/* Si paga en divisa física, atenuamos el renglón de bolívares para no confundir al pagador */}
+                        <span
+                            style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
+                            className={`text-[11px] font-bold mt-1.5 leading-none tabular-nums !normal-case transition-opacity ${isHardCurrencyPayment ? 'text-[var(--store-surface-text)]/50 text-[10px]' : 'text-[var(--store-surface-text)]'
+                                }`}
+                        >
+                            Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+
+                    {/* 🚀 EL BOTÓN DE ACCIÓN: Líneas definidas, contraste de alta visibilidad y geometría dinámica */}
+                    <div className="flex-1 flex flex-col justify-end items-end md:items-center relative min-h-[52px]">
+                        <div className="w-full h-[52px] relative flex justify-end md:justify-center">
+                            <motion.button
+                                layout
+                                onClick={handleCheckout}
+                                disabled={checkoutState !== 'idle' || !storeHoursStatus.isOpen || (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount)}
+                                className={`h-full uppercase transition-all duration-200 flex items-center justify-center gap-2 overflow-hidden relative z-10 font-bold text-xs md:text-sm tracking-widest rounded-[var(--radius-btn)] border-2 border-[var(--store-primary)] shadow-sm active:scale-[0.98] ${!storeHoursStatus.isOpen
+                                    ? "w-full bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] !border-transparent cursor-not-allowed opacity-80"
+                                    : checkoutState !== 'idle'
+                                        ? "w-[52px] bg-[var(--store-primary)] text-[var(--store-primary-text)] mx-auto shrink-0"
+                                        : "w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90"
+                                    }`}
+                            >
+                                {!storeHoursStatus.isOpen ? (
+                                    <span>Cerrado • {storeHoursStatus.detailLabel}</span>
                                 ) : (
-                                    <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                        <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                    <AnimatePresence mode="wait">
+                                        {checkoutState === 'validating' ? (
+                                            <motion.div key="v" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0 }}>
+                                                <Loader2 className="animate-spin" size={20} />
+                                            </motion.div>
+                                        ) : checkoutState === 'processing' ? (
+                                            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                                <Loader2 className="animate-spin text-white/50" size={20} />
+                                            </motion.div>
+                                        ) : checkoutState === 'success' ? (
+                                            <motion.div key="s" initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-green-500 rounded-full p-1">
+                                                <Check className="text-white" size={20} strokeWidth={3} />
+                                            </motion.div>
+                                        ) : (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single' && tenderedAmount < targetCashAmount) ? (
+                                            // 🚀 CORREGIDO: Solo muestra el aviso si el sistema de vueltos está activo en el comercio
+                                            <motion.div key="inc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap text-gray-400">
+                                                <AlertCircle size={16} className="mb-0.5" /> Monto Incompleto
+                                            </motion.div>
+                                        ) : missingReceipts && isPaidInFull ? (
+                                            <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <Upload size={16} className="mb-0.5" /> Adjunta Recibos
+                                            </motion.div>
+                                        ) : activePaymentInput === "Pago Flash" ? (
+                                            <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                )}
+                            </motion.button>
+                            {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
+                            <AnimatePresence>
+                                {checkoutState === 'validating' && (
+                                    <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-surface-text)] whitespace-nowrap">
+                                        Validando seguridad...
+                                    </motion.span>
+                                )}
+                                {checkoutState === 'processing' && (
+                                    <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-text-main)] whitespace-nowrap">
+                                        Generando orden cifrada...
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* 🚀 MICRO-NUDGE DE ERROR VIVO (Aparece si falta algún dato) */}
+                        <AnimatePresence>
+                            {/* 🚀 ARQUITECTURA: filter(Boolean) destruye strings vacíos y undefineds fantasma */}
+                            {Object.values(errors).filter(Boolean).length > 0 && (
+                                <motion.span
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase"
+                                >
+                                    falta rellenar datos
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            </div>
+            {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */}
+            {/* 🚀 MODAL P2P PAGO FLASH (UX MINIMALISTA & FLUIDO) */}
+            <AnimatePresence mode="wait">
+                {p2pStep !== 'idle' && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 bg-black/30 backdrop-blur-md" onClick={() => p2pStep === 'step1' && setP2pStep('idle')} />
+
+                        <motion.div
+                            initial={{ scale: 0.96, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.96, opacity: 0, y: 10 }}
+                            transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
+                            className="relative bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col border border-gray-100/50"
+                        >
+                            <AnimatePresence mode="wait">
+                                {/* PASO 1: INSTRUCCIONES */}
+                                {p2pStep === 'step1' && (
+                                    <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+                                        <div className="p-7 text-center">
+                                            <h3 className="font-black text-xl text-gray-900 tracking-tight mb-1.5">Transfiere el total</h3>
+                                            <p className="text-xs text-gray-500 font-medium mb-6">Realiza el pago móvil exacto a estos datos.</p>
+                                            <p className="text-[40px] font-black text-gray-900 tracking-tighter mb-8 leading-none">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+
+                                            <div className="space-y-4 text-left">
+                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                                    <span className="text-xs text-gray-500 font-medium">Banco Destino</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.bank || '0102'}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                                                    <span className="text-xs text-gray-500 font-medium">Cédula / RIF</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.dni}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs text-gray-500 font-medium">Teléfono</span>
+                                                    <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.phone}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
+                                            <button onClick={() => setP2pStep('idle')} className="px-5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancelar</button>
+                                            <button onClick={() => setP2pStep('step2')} className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-sm">Ya transferí</button>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* PASO 2: VERIFICACIÓN */}
+                                {p2pStep === 'step2' && (
+                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                                        <div className="p-7">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <button onClick={() => setP2pStep('step1')} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"><ArrowLeft size={16} /></button>
+                                                <div>
+                                                    <h3 className="font-black text-lg text-gray-900 tracking-tight leading-none">Verifica tu pago</h3>
+                                                    <p className="text-[10px] text-gray-500 font-medium mt-1">Ingresa los datos desde donde enviaste el dinero.</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <select value={p2pForm.bankCode} onChange={e => setP2pForm({ ...p2pForm, bankCode: e.target.value })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                                    <option value="" disabled>¿Desde qué banco pagaste?</option>
+                                                    <option value="0102">Banco de Venezuela (0102)</option>
+                                                    <option value="0134">Banesco (0134)</option>
+                                                    <option value="0105">Mercantil (0105)</option>
+                                                    <option value="0108">Provincial (0108)</option>
+                                                </select>
+
+                                                <div className="flex gap-2">
+                                                    <select value={p2pForm.phoneCode} onChange={e => setP2pForm({ ...p2pForm, phoneCode: e.target.value })} className="w-24 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
+                                                        <option value="0414">0414</option><option value="0424">0424</option><option value="0412">0412</option><option value="0416">0416</option><option value="0426">0426</option>
+                                                    </select>
+                                                    <input placeholder="Teléfono" value={p2pForm.phone} onChange={e => setP2pForm({ ...p2pForm, phone: e.target.value.replace(/\D/g, '') })} maxLength={7} className="flex-1 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+                                                </div>
+
+                                                <input placeholder="Cédula del titular de la cuenta" value={p2pForm.document} onChange={e => setP2pForm({ ...p2pForm, document: e.target.value.replace(/\D/g, '') })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
+
+                                                <input placeholder="Últimos 6 dígitos de Referencia" value={p2pForm.reference} onChange={e => setP2pForm({ ...p2pForm, reference: e.target.value.replace(/\D/g, '') })} maxLength={8} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-black text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm tracking-widest text-center" />
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 border-t border-gray-100">
+                                            <button onClick={handleVerifyP2P} disabled={isVerifying} className="w-full bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
+                                                {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
+                                            </button>
+                                        </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        )}
-                    </motion.button>
-                    {/* 🚀 LABELS FLOTANTES (Labor Illusion Texts) */}
-                    <AnimatePresence>
-                        {checkoutState === 'validating' && (
-                            <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-surface-text)] whitespace-nowrap">
-                                Validando seguridad...
-                            </motion.span>
-                        )}
-                        {checkoutState === 'processing' && (
-                            <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute -top-6 right-0 md:left-1/2 md:-translate-x-1/2 text-[10px] font-bold text-[var(--store-text-main)] whitespace-nowrap">
-                                Generando orden cifrada...
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                {/* 🚀 MICRO-NUDGE DE ERROR VIVO (Aparece si falta algún dato) */}
-                <AnimatePresence>
-                    {/* 🚀 ARQUITECTURA: filter(Boolean) destruye strings vacíos y undefineds fantasma */}
-                    {Object.values(errors).filter(Boolean).length > 0 && (
-                        <motion.span
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase"
-                        >
-                            falta rellenar datos
-                        </motion.span>
-                    )}
-                </AnimatePresence>
-            </div>
-        </div>
-    </div>
-    {/* 🚀 MODAL P2P PAGO FLASH (UX MARCA BLANCA) */ }
-    {/* 🚀 MODAL P2P PAGO FLASH (UX MINIMALISTA & FLUIDO) */ }
-    <AnimatePresence mode="wait">
-        {p2pStep !== 'idle' && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 bg-black/30 backdrop-blur-md" onClick={() => p2pStep === 'step1' && setP2pStep('idle')} />
-
-                <motion.div
-                    initial={{ scale: 0.96, opacity: 0, y: 10 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.96, opacity: 0, y: 10 }}
-                    transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.3 }}
-                    className="relative bg-white w-full max-w-sm rounded-[28px] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col border border-gray-100/50"
-                >
-                    <AnimatePresence mode="wait">
-                        {/* PASO 1: INSTRUCCIONES */}
-                        {p2pStep === 'step1' && (
-                            <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
-                                <div className="p-7 text-center">
-                                    <h3 className="font-black text-xl text-gray-900 tracking-tight mb-1.5">Transfiere el total</h3>
-                                    <p className="text-xs text-gray-500 font-medium mb-6">Realiza el pago móvil exacto a estos datos.</p>
-                                    <p className="text-[40px] font-black text-gray-900 tracking-tighter mb-8 leading-none">Bs {grandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-
-                                    <div className="space-y-4 text-left">
-                                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                            <span className="text-xs text-gray-500 font-medium">Banco Destino</span>
-                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.bank || '0102'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                                            <span className="text-xs text-gray-500 font-medium">Cédula / RIF</span>
-                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.dni}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs text-gray-500 font-medium">Teléfono</span>
-                                            <span className="text-sm font-bold text-gray-900">{payments.pago_flash?.phone}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
-                                    <button onClick={() => setP2pStep('idle')} className="px-5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancelar</button>
-                                    <button onClick={() => setP2pStep('step2')} className="flex-1 bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-sm">Ya transferí</button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* PASO 2: VERIFICACIÓN */}
-                        {p2pStep === 'step2' && (
-                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                                <div className="p-7">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <button onClick={() => setP2pStep('step1')} className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"><ArrowLeft size={16} /></button>
-                                        <div>
-                                            <h3 className="font-black text-lg text-gray-900 tracking-tight leading-none">Verifica tu pago</h3>
-                                            <p className="text-[10px] text-gray-500 font-medium mt-1">Ingresa los datos desde donde enviaste el dinero.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <select value={p2pForm.bankCode} onChange={e => setP2pForm({ ...p2pForm, bankCode: e.target.value })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
-                                            <option value="" disabled>¿Desde qué banco pagaste?</option>
-                                            <option value="0102">Banco de Venezuela (0102)</option>
-                                            <option value="0134">Banesco (0134)</option>
-                                            <option value="0105">Mercantil (0105)</option>
-                                            <option value="0108">Provincial (0108)</option>
-                                        </select>
-
-                                        <div className="flex gap-2">
-                                            <select value={p2pForm.phoneCode} onChange={e => setP2pForm({ ...p2pForm, phoneCode: e.target.value })} className="w-24 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm">
-                                                <option value="0414">0414</option><option value="0424">0424</option><option value="0412">0412</option><option value="0416">0416</option><option value="0426">0426</option>
-                                            </select>
-                                            <input placeholder="Teléfono" value={p2pForm.phone} onChange={e => setP2pForm({ ...p2pForm, phone: e.target.value.replace(/\D/g, '') })} maxLength={7} className="flex-1 bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
-                                        </div>
-
-                                        <input placeholder="Cédula del titular de la cuenta" value={p2pForm.document} onChange={e => setP2pForm({ ...p2pForm, document: e.target.value.replace(/\D/g, '') })} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm" />
-
-                                        <input placeholder="Últimos 6 dígitos de Referencia" value={p2pForm.reference} onChange={e => setP2pForm({ ...p2pForm, reference: e.target.value.replace(/\D/g, '') })} maxLength={8} className="w-full bg-gray-50 border border-transparent focus:bg-white p-3.5 rounded-xl text-sm font-black text-gray-900 outline-none focus:border-gray-200 transition-colors focus:shadow-sm tracking-widest text-center" />
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-gray-50 border-t border-gray-100">
-                                    <button onClick={handleVerifyP2P} disabled={isVerifying} className="w-full bg-black text-white py-4 rounded-xl font-bold text-xs transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
-                                        {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
-            </div>
-        )}
-    </AnimatePresence>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </motion.div >
     );
 }

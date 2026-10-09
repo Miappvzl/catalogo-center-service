@@ -1,17 +1,19 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Menu, Zap, LogOut, ArrowUpRight } from 'lucide-react'
+import { Menu, Zap, LogOut, ArrowUpRight, Plus } from 'lucide-react'
 import SubscriptionBanner from './SubscriptionBanner'
 import { getSupabase } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import NotificationBell from '@/components/admin/NotificationBell'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useQuickCheckout } from '@/app/store/useQuickCheckout'
 
 export default function AdminHeader({ store, title }: { store: any, title?: string }) {
   const router = useRouter()
   const supabase = getSupabase()
 
+   const { openQuickCheckout } = useQuickCheckout()
 // Estados del Smart Header
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const [isModalActive, setIsModalActive] = useState(false)
@@ -120,6 +122,16 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
         {/* ACCIONES DERECHA */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+
+           <button
+            type="button"
+            onClick={() => openQuickCheckout()}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-neutral-950 hover:bg-neutral-850 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-xs shrink-0"
+            title="Generar cobro rápido"
+          >
+            <Plus size={14} strokeWidth={2} />
+            <span className="hidden sm:inline">Cobro Rápido</span>
+          </button>
           {store?.id && <NotificationBell storeId={store.id} />}
 
           <div className="relative">
