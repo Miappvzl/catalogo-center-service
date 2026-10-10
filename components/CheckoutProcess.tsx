@@ -1225,8 +1225,9 @@ export default function CheckoutProcess({
                         total_bs: Number(grandTotalBs.toFixed(2)),
                         exchange_rate: activeRate,
                         currency_type: currency,
-                        status: "pending",
-                        payment_method: finalPaymentMethod,
+                       status: "pending",
+                        source: isQuickLinkMode ? 'quick_link' : 'web', // 🚀 Trazabilidad del canal de origen
+                         payment_method: finalPaymentMethod,
                         split_payments: uploadedPayments,
                         shipping_method: rawFulfillment,
                         fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada

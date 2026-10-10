@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck, Store } from 'lucide-react'
+import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck, Store, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
@@ -452,33 +452,41 @@ export default function OrdersPage() {
                                                 <p className="text-[10px] text-neutral-400 font-mono truncate mb-2">{new Date(order.created_at).toLocaleDateString()}</p>
 
                                                 <div className="flex gap-1.5 flex-wrap">
-                                                    {/* Etiquetas de Origen */}
-                                                    {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span> :
-                                                        order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span> :
-                                                            <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>}
+                                                   {/* Etiquetas de Origen */}
+                                                    {order.is_quote ? (
+                                                        <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span>
+                                                    ) : order.source === 'quick_link' ? (
+                                                        <span className="px-1.5 py-0.5 bg-neutral-950 text-white border border-neutral-800 text-[8px] font-semibold uppercase tracking-wider rounded font-mono inline-flex items-center gap-1 shadow-2xs">
+                                                            <Zap size={8} className="fill-current text-emerald-400" /> Cobro Rápido
+                                                        </span>
+                                                    ) : order.source === 'pos' ? (
+                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span>
+                                                    ) : (
+                                                        <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>
+                                                    )}
 
 
                                                     {/* LÓGICA LOGÍSTICA OMNICANAL */}
                                                     {order.fulfillment_type === 'dine_in' ? (
-                                                        <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                        <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200/20 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
                                                             Mesa {order.table_number || 'N/A'}
                                                         </span>
                                                     ) : order.fulfillment_type === 'pickup' ? (
-                                                        <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                        <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/20 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
                                                             {storeType === 'restaurant' ? 'Para Llevar' : 'Retiro Local'}
                                                         </span>
                                                     ) : order.fulfillment_type === 'shipping' ? (
-                                                        <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                        <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/20 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
                                                             Envío Nacional
                                                         </span>
                                                     ) : order.fulfillment_type === 'local_delivery' || order.fulfillment_type === 'delivery' ? (
-                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/60 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
+                                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200/20 text-[8px] font-bold uppercase tracking-wider rounded font-mono">
                                                             Delivery
                                                         </span>
                                                     ) : null}
 
                                                     {order.payment_method && (
-                                                        <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/50 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
+                                                        <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                             {order.payment_method}
                                                         </span>
                                                     )}
@@ -543,12 +551,19 @@ export default function OrdersPage() {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="font-bold text-xs font-mono text-neutral-900 group-hover:text-black transition-colors block mb-2">#{order.order_number}</span>
                                                         <div className="flex gap-1.5 flex-wrap max-w-40">
-                                                            {order.is_quote ? <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span> :
-                                                                order.source === 'pos' ? <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span> :
-                                                                    <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>}
-
+                                                               {order.is_quote ? (
+                                                                <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Cotización</span>
+                                                            ) : order.source === 'quick_link' ? (
+                                                                <span className="px-1.5 py-0.5 bg-neutral-950 text-white border border-neutral-800 text-[8px] font-semibold uppercase tracking-wider rounded font-mono inline-flex items-center gap-1 shadow-2xs">
+                                                                    <Zap size={8} className="fill-current text-emerald-400" /> Cobro Rápido
+                                                                </span>
+                                                            ) : order.source === 'pos' ? (
+                                                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">POS</span>
+                                                            ) : (
+                                                                <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-600 border border-neutral-200/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">Web</span>
+                                                            )}
                                                             {order.payment_method && (
-                                                                <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/50 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
+                                                                <span className="px-1.5 py-0.5 bg-neutral-50 text-neutral-500 border border-neutral-200/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                                     {order.payment_method}
                                                                 </span>
                                                             )}
@@ -556,11 +571,11 @@ export default function OrdersPage() {
                                                             {/* Etiqueta Contable de Vuelto Virtual */}
                                                             {order.delivery_info?.includes('⚠️ VUELTO VIRTUAL') && (
                                                                 order.vuelto_processed ? (
-                                                                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
+                                                                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                                         Vuelto Otorgado
                                                                     </span>
                                                                 ) : (
-                                                                    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100/40 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
+                                                                    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100/20 text-[8px] font-semibold uppercase tracking-wider rounded font-mono">
                                                                         Vuelto Pendiente
                                                                     </span>
                                                                 )
@@ -661,14 +676,16 @@ export default function OrdersPage() {
                                         <div className="w-10 h-10 bg-neutral-50 border border-neutral-100 rounded-lg flex items-center justify-center shrink-0">
                                             {selectedOrder.status === 'pending' ? <Clock size={18} className="text-amber-500" /> : <FileText size={18} className="text-neutral-700" />}
                                         </div>
-                                        <div className="space-y-0.5">
+                                            <div className="space-y-0.5">
                                             <p className="text-[10px] font-bold text-neutral-900 uppercase tracking-wider leading-none">
                                                 {selectedOrder.status === 'quote' ? 'Presupuesto Activo' :
+                                                    selectedOrder.source === 'quick_link' ? 'Cobro Rápido (Enlace Directo)' :
                                                     selectedOrder.status === 'pending' ? 'Doc. en Verificación' :
                                                         ((selectedOrder as any).document_type === 'invoice' ? 'Factura Comercial' : 'Nota de Entrega')}
                                             </p>
                                             <p className="text-[11px] text-neutral-500 font-medium leading-tight">
                                                 {selectedOrder.status === 'quote' ? 'Comparta el enlace para concretar la venta.' :
+                                                    selectedOrder.source === 'quick_link' ? 'Venta generada mediante enlace de WhatsApp o terminal POS rápido.' :
                                                     selectedOrder.status === 'pending' ? 'Concilie el pago para liberar la orden.' :
                                                         'Documento definitivo emitido y procesado.'}
                                             </p>
