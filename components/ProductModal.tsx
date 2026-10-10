@@ -415,26 +415,32 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [isShippingOpen, setIsShippingOpen] = useState(false)
 
-    // 🚀 INTERCEPTOR NATIVO: Controla el botón "Atrás" del teléfono (Ghost State)
+    // 🚀 ESTABILIZADOR DE REFERENCIA: Previene que re-renders del padre destruyan el efecto
+    const onCloseRef = useRef(onClose);
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
+    // 🚀 INTERCEPTOR NATIVO BLINDADO: Controla el botón "Atrás" sin bucles de expulsión
     useEffect(() => {
         if (!isOpen) return;
         const modalId = `product-modal-${Date.now()}`;
         window.history.pushState({ modalId }, '');
 
         const handlePopState = () => {
-            onClose(); // Cierra el modal en lugar de salir de la tienda
+            onCloseRef.current(); // Cierra el modal de forma limpia
         };
 
         window.addEventListener('popstate', handlePopState);
 
         return () => {
             window.removeEventListener('popstate', handlePopState);
-            // Si se cerró en la 'X' en vez de usar el botón atrás, limpiamos el historial
+            // Solo retrocede el historial si el modal se cerró legítimamente
             if (window.history.state?.modalId === modalId) {
                 window.history.go(-1);
             }
         };
-    }, [isOpen, onClose]);
+    }, [isOpen]); // 🚀 Blindado: Ya no se destruye con re-renders de búsqueda
 
     // 🚀 MOTOR DE ANALÍTICAS: Captura de vistas y tiempo de permanencia en Modal
     useEffect(() => {
@@ -1949,7 +1955,7 @@ Mi duda es la siguiente: `;
     }
 
 
-    // =========================================================================
+     // =========================================================================
     // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO MODAL)
     // =========================================================================
     return (
@@ -1957,11 +1963,13 @@ Mi duda es la siguiente: `;
             <AnimatePresence>
                 {isOpen && (
                     <div key="modal-universal-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
+                        {/* 🚀 Fondo con cierre habilitado al hacer clic afuera */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
                             exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
-                            className={`absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity] transition-opacity duration-200 ${isHiding ? 'opacity-0' : 'opacity-100'}`}
+                            onClick={onClose}
+                            className={`absolute inset-0 bg-black/60 backdrop-blur-sm will-change-[opacity] transition-opacity duration-200 cursor-pointer ${isHiding ? 'opacity-0' : 'opacity-100'}`}
                         />
 
                         <motion.div
