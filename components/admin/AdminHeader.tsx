@@ -216,7 +216,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('toggleMobileAdminSidebar'))}
-            className="lg:hidden w-8 h-8 rounded-lg bg-[#f6f6f6] flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all  shrink-0"
+            className="lg:hidden w-8 h-8 rounded-lg bg-[#f6f6f6] flex items-center justify-center text-neutral-800 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all  shrink-0"
             aria-label="Abrir menú de navegación"
           >
             <Menu size={22} strokeWidth={1.5} />

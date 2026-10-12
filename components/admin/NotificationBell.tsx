@@ -105,7 +105,7 @@ export default function NotificationBell({ storeId }: { storeId: string }) {
             {/* Gatillo de la Campana (Calibrado a w-9 h-9) */}
             <button 
                 onClick={toggleOpen}
-                className="relative w-8 h-8 sm:w-9 sm:h-9  bg-[#f6f6f6] flex items-center justify-center text-neutral-600 hover:text-neutral-900 active:scale-95 transition-all "
+                className="relative w-8 h-8 sm:w-9 sm:h-9  bg-[#f6f6f6] flex items-center justify-center text-neutral-800 hover:text-neutral-900 active:scale-95 transition-all "
                 aria-label="Abrir notificaciones"
             >
                 <Bell size={22} strokeWidth={1.5} />
