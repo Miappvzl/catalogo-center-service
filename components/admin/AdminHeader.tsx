@@ -92,8 +92,8 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
       {/* HEADER STICKY CON ANIMACIÓN Y CONTENCIÓN (Oculto cuando hay modal activo) */}
       <header 
-        className={`bg-white sticky top-0 z-40 w-full px-3 sm:px-4 md:px-8 py-3 md:py-3.5 flex justify-between items-center transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border-b border-neutral-200/50 ${
-          isHeaderVisible && !isModalActive ? 'translate-y-0 shadow-xs' : '-translate-y-full'
+        className={`bg-[#f6f6f6] sticky top-0 z-40 w-full px-3 sm:px-4 md:px-8 py-3 md:py-3.5 flex justify-between items-center transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border-b border-neutral-200/50 ${
+          isHeaderVisible && !isModalActive ? 'translate-y-0 ' : '-translate-y-full'
         }`}
       >
         
@@ -127,10 +127,10 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
           <button
             type="button"
             onClick={() => openQuickCheckout()}
-            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-50 active:scale-95 border border-neutral-200 text-neutral-800 hover:text-neutral-950 rounded-xl text-xs font-medium transition-all shadow-2xs shrink-0"
+            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-none hover:bg-neutral-50 active:scale-95 border border-neutral-800 text-neutral-800 hover:text-neutral-950 rounded-full text-xs font-medium transition-all shrink-0"
             title="Generar cobro rápido"
           >
-            <Zap size={13} strokeWidth={2} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+            <Zap size={13} strokeWidth={2} className=" group-hover:text-neutral-950 transition-colors fill-neutral-800" />
             <span className="tracking-tight">Cobrar</span>
           </button>
           {store?.id && <NotificationBell storeId={store.id} />}
@@ -143,8 +143,9 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
             >
               <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all duration-200 ${
                 isTrial 
-                  ? 'bg-amber-50 border-amber-200/60 text-amber-700 shadow-xs' 
-                  : 'bg-neutral-50 border-neutral-200/60 text-neutral-700 group-hover:border-neutral-300 group-hover:bg-white shadow-xs'
+                  ? 'bg-amber-50 border-amber-200/60 text-amber-700' 
+
+                  : 'bg-[#fafafa] border-[#cdcdcd]  text-neutral-700 group-hover:border-neutral-300 group-hover:bg-white'
               }`}>
                 <span className="text-[11px] sm:text-xs font-bold font-mono tracking-tight uppercase">{initials}</span>
               </div>
@@ -215,10 +216,10 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
           <button
             onClick={() => document.dispatchEvent(new CustomEvent('toggleMobileAdminSidebar'))}
-            className="lg:hidden w-8 h-8 rounded-lg bg-white border border-neutral-200/50 flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all shadow-xs shrink-0"
+            className="lg:hidden w-8 h-8 rounded-lg bg-[#f6f6f6] flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all  shrink-0"
             aria-label="Abrir menú de navegación"
           >
-            <Menu size={16} strokeWidth={2} />
+            <Menu size={22} strokeWidth={1.5} />
           </button>
         </div>
       </header>
