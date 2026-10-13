@@ -93,7 +93,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
       {/* HEADER STICKY CON ANIMACIÓN Y CONTENCIÓN (Oculto cuando hay modal activo) */}
       <header 
         className={`bg-white sticky top-0 z-40 w-full px-3 sm:px-4 md:px-8 py-3 md:py-3.5 flex justify-between items-center transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border-b border-neutral-200/50 ${
-          isHeaderVisible && !isModalActive ? 'translate-y-0 shadow-xs' : '-translate-y-full'
+          isHeaderVisible && !isModalActive ? 'translate-y-0 ' : '-translate-y-full'
         }`}
       >
         
@@ -127,7 +127,7 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
           <button
             type="button"
             onClick={() => openQuickCheckout()}
-            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-50 active:scale-95 border border-neutral-200 text-neutral-800 hover:text-neutral-950 rounded-xl text-xs font-medium transition-all shadow-2xs shrink-0"
+            className="group inline-flex items-center gap-1.5 px-3 py-[.45rem] md:py-[.58rem] bg-white hover:bg-neutral-50 active:scale-95 border border-neutral-200 text-neutral-800 hover:text-neutral-950 rounded-full text-xs font-medium transition-all  shrink-0"
             title="Generar cobro rápido"
           >
             <Zap size={13} strokeWidth={2} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />

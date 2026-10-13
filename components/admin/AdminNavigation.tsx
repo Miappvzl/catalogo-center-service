@@ -29,7 +29,8 @@ import {
   GraduationCap,
   Barcode,
   Layers,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Download
 } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase-client'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
@@ -38,6 +39,8 @@ import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import VueltoPromoModal from '@/components/admin/VueltoPromoModal';
+import { usePwaInstall } from '@/hooks/usePwaInstall';
+import { PwaInstallGuideModal } from '@/components/pwa/PwaInstallGuideModal';
 
 
 // Definimos los tipos de planes
@@ -148,7 +151,25 @@ const GuardedLink = ({ href, children, className }: any) => {
 
 
 
-const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo, seenPulses }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void, seenPulses: Record<string, boolean> }) => {
+const DesktopSidebar = ({ 
+  pathname, 
+  store, 
+  onLogout, 
+  isVueltoActive, 
+  onOpenPromo, 
+  seenPulses,
+  canInstall,
+  triggerInstall
+}: { 
+  pathname: string, 
+  store: any, 
+  onLogout: () => void, 
+  isVueltoActive: boolean, 
+  onOpenPromo: () => void, 
+  seenPulses: Record<string, boolean>,
+  canInstall?: boolean,
+  triggerInstall?: () => void
+}) => {
   const [copied, setCopied] = useState(false)
 
   const copyLink = () => {
@@ -315,6 +336,22 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
           </button>
         )}
 
+        {/* --- INSERCIÓN EN DesktopSidebar: BOTÓN INSTALAR APP --- */}
+        {canInstall && (
+          <button
+            onClick={triggerInstall}
+            className="w-full flex items-center p-1.5 rounded-lg hover:bg-neutral-100/70 transition-colors text-neutral-600 hover:text-neutral-950 text-left border border-transparent"
+            title="Instalar Preziso como aplicación"
+          >
+            <div className="flex items-center justify-center w-9 h-7 flex-shrink-0 text-neutral-500">
+              <Download size={15} strokeWidth={2} />
+            </div>
+            <span className="ml-2.5 text-[11px] font-bold whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
+              Instalar App
+            </span>
+          </button>
+        )}
+
         {/* Ver Tienda */}
         {store && (
           <div className="flex items-center rounded-lg bg-white border border-neutral-200/50 group-hover/sidebar:bg-neutral-50 transition-colors overflow-hidden">
@@ -374,7 +411,25 @@ const DesktopSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo
     </aside>
   );
 }
-const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo, seenPulses }: { pathname: string, store: any, onLogout: () => void, isVueltoActive: boolean, onOpenPromo: () => void, seenPulses: Record<string, boolean> }) => {
+const MobileSidebar = ({ 
+  pathname, 
+  store, 
+  onLogout, 
+  isVueltoActive, 
+  onOpenPromo, 
+  seenPulses,
+  canInstall,
+  triggerInstall
+}: { 
+  pathname: string, 
+  store: any, 
+  onLogout: () => void, 
+  isVueltoActive: boolean, 
+  onOpenPromo: () => void, 
+  seenPulses: Record<string, boolean>,
+  canInstall?: boolean,
+  triggerInstall?: () => void
+}) => {
   const [isOpen, setIsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -463,9 +518,33 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo,
                   />
                 </Link>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-1.5 bg-neutral-150 hover:bg-neutral-200 rounded-full text-neutral-500 active:scale-95 transition-all">
-                <X size={16} />
-              </button>
+
+              {/* Acciones Derecha: Botón Instalar App + Cerrar X */}
+              <div className="flex items-center gap-2 shrink-0">
+                {canInstall && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      triggerInstall?.();
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-neutral-200/90 text-neutral-800 hover:text-neutral-950 hover:bg-neutral-50 shadow-2xs active:scale-95 transition-all"
+                    title="Instalar aplicación"
+                    aria-label="Instalar aplicación"
+                  >
+                    <Download size={14} strokeWidth={2.2} />
+                  </button>
+                )}
+
+                <button 
+                  type="button"
+                  onClick={() => setIsOpen(false)} 
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-neutral-100 hover:bg-neutral-200 text-neutral-500 hover:text-neutral-800 active:scale-95 transition-all"
+                  aria-label="Cerrar menú"
+                >
+                  <X size={16} strokeWidth={2} />
+                </button>
+              </div>
             </div>
 
             {/* 🚀 NAVEGACIÓN AGRUPADA (Adiós a la sobrecarga cognitiva) */}
@@ -567,6 +646,7 @@ const MobileSidebar = ({ pathname, store, onLogout, isVueltoActive, onOpenPromo,
               </div>
             </nav>
 
+          
             {/* SECCIÓN INFERIOR FIJA (Footer del Menú) */}
             <div className="p-4 border-t border-neutral-200/50 space-y-2.5 bg-white shrink-0">
               {store && (
@@ -801,6 +881,9 @@ export default function AdminNavigation({ store }: NavProps) {
   const router = useRouter()
   const supabase = getSupabase()
 
+  // 🚀 MOTOR POLIMÓRFICO DE INSTALACIÓN PWA
+  const { canInstall, environment, isGuideOpen, setIsGuideOpen, triggerInstall } = usePwaInstall();
+
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [storeConfigLocal, setStoreConfigLocal] = useState(store?.payment_config || {});
 
@@ -846,6 +929,8 @@ export default function AdminNavigation({ store }: NavProps) {
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
         seenPulses={seenPulses}
+        canInstall={canInstall}
+        triggerInstall={triggerInstall}
       />
       <MobileSidebar
         pathname={pathname}
@@ -854,11 +939,20 @@ export default function AdminNavigation({ store }: NavProps) {
         isVueltoActive={isVueltoActive}
         onOpenPromo={() => setPromoModalOpen(true)}
         seenPulses={seenPulses}
+        canInstall={canInstall}
+        triggerInstall={triggerInstall}
       />
       <MobileBottomBar 
         pathname={pathname} 
         store={store} 
         seenPulses={seenPulses} 
+      />
+
+      {/* 🚀 MODAL POLIMÓRFICO DE INSTALACIÓN PWA */}
+      <PwaInstallGuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        environment={environment}
       />
 
       {store && (

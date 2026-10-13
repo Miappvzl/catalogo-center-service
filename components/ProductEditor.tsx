@@ -36,6 +36,7 @@ import ProductWholesaleConfig from '@/components/admin/ProductWholesaleConfig';
 import FoodModifierManager from './admin/FoodModifierManager';
 import { generateSmartSKU } from '@/utils/skuGenerator';
 import EliteVariantColorPicker from './admin/EliteVariantColorPicker'
+import { revalidateAdminDashboard } from '@/app/admin/orders/action';
 
 
 
@@ -895,7 +896,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         const group = foodModifiers[i];
                         let finalGroupId = group.id;
 
-                       if (group.id.startsWith('temp-group-')) {
+                        if (group.id.startsWith('temp-group-')) {
                             const { data: newGroup, error: groupErr } = await supabase
                                 .from('modifier_groups')
                                 .insert({
@@ -925,7 +926,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 const { error: optErr } = await supabase.from('modifier_options').insert(optionsPayload);
                                 if (optErr) throw optErr;
                             }
-                       } else {
+                        } else {
                             const { error: updateErr } = await supabase
                                 .from('modifier_groups')
                                 .update({
@@ -997,28 +998,43 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     }
                 }
             }
-            if (isMission1 || isMission2 || isMission3 || isMission4) {
-                const { data: st } = await supabase.from('stores').select('onboarding_missions').eq('id', storeSettings!.id).single()
-                const currentMissions = st?.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false }
+           if (isMission1 || isMission2 || isMission3 || isMission4) {
+                const { data: st } = await supabase.from('stores').select('onboarding_missions').eq('id', storeSettings!.id).single();
+                const currentMissions = st?.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false };
 
-                const missionPayload = isMission1 ? { ...currentMissions, mission_1: true }
-                    : isMission2 ? { ...currentMissions, mission_2: true }
-                        : isMission3 ? { ...currentMissions, mission_3: true }
-                            : { ...currentMissions, mission_4: true }
+                const missionKey = isMission1 ? 'mission_1' : isMission2 ? 'mission_2' : isMission3 ? 'mission_3' : 'mission_4';
+                
+                // 🚀 Trazabilidad: Guardamos el ID del producto demo en la tienda para borrado seguro futuro
+                const prevDemoIds = Array.isArray(currentMissions.demo_product_ids) ? currentMissions.demo_product_ids : [];
+                const updatedDemoIds = Array.from(new Set([...prevDemoIds, String(currentId)]));
 
-                await supabase.from('stores').update({ onboarding_missions: missionPayload }).eq('id', storeSettings!.id)
+                const missionPayload = {
+                    ...currentMissions,
+                    [missionKey]: true,
+                    demo_product_ids: updatedDemoIds,
+                };
 
-                Swal.fire({
-                    title: '¡Academia Preziso Completada!',
-                    text: 'Felicidades. Ya dominas la catalogación avanzada de productos.',
+                await supabase.from('stores').update({ onboarding_missions: missionPayload }).eq('id', storeSettings!.id);
+
+                // 🚀 Purgar caché de servidor
+                await revalidateAdminDashboard();
+                await revalidateStoreCache();
+
+                setIsDirty(false);
+
+                await Swal.fire({
+                    title: '¡Misión Completada!',
+                    text: 'Felicidades. Tu avance ha quedado registrado en tu panel.',
                     icon: 'success',
                     confirmButtonColor: '#171717',
                     customClass: { popup: 'rounded-xl font-sans text-xs' }
-                })
-                router.push('/admin')
-                return
-            }
+                });
 
+                // 🚀 Purgar caché del cliente y navegar (Se actualiza inmediatamente sin presionar F5)
+                router.refresh();
+                router.push('/admin');
+                return;
+            }
             await revalidateStoreCache()
 
             setIsDirty(false)
@@ -1883,8 +1899,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                 </div>
 
                                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors shrink-0 ${showVariantPricing
-                                                        ? 'bg-neutral-900 text-white'
-                                                        : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
+                                                    ? 'bg-neutral-900 text-white'
+                                                    : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
                                                     }`}>
                                                     {showVariantPricing ? 'Cerrar' : 'Personalizar'}
                                                 </span>

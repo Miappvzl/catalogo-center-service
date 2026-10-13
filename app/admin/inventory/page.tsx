@@ -12,6 +12,8 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import { Zain } from 'next/font/google'
 import TaxCatalogToggle from '@/components/admin/TaxCatalogToggle'
 import { getVariantSwatchStyle } from '@/utils/ColorUtils'
+import { deleteStoreDemoProducts } from '@/app/admin/orders/action';
+import { Trash2 } from 'lucide-react'; // (Verifica que Trash2 esté importado de 'lucide-react')
 
 interface InventoryItem {
     rowId: string;
@@ -25,10 +27,10 @@ interface InventoryItem {
     size: string;
     sku: string | null;
     stock: number;
-    isTaxExempt: boolean; 
-    isFeatured: boolean; 
-    displayOrder: number; 
-      requiresShipping: boolean;
+    isTaxExempt: boolean;
+    isFeatured: boolean;
+    displayOrder: number;
+    requiresShipping: boolean;
     hasModifiers?: boolean; // 🚀 NUEVO: Detector gastronómico
 }
 
@@ -37,11 +39,94 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
-    
+
     const [storeId, setStoreId] = useState<string | null>(null)
     const [isReordering, setIsReordering] = useState(false)
     const [reorderList, setReorderList] = useState<any[]>([])
     const [isSavingOrder, setIsSavingOrder] = useState(false)
+
+    const [demoProductIds, setDemoProductIds] = useState<string[]>([]);
+    const [isCleaningDemos, setIsCleaningDemos] = useState(false);
+
+    // Nombres oficiales de los productos pre-cargados en la academia
+    const DEMO_TITLES = useMemo(() => [
+        'Hamburguesa Doble Smash Clásica',
+        'Pizza Especial de Champiñones',
+        'Hamburguesa Especial Bacon BBQ',
+        'Pizza Familiar Cuatro Quesos',
+        'Parrilla Mixta Mar y Tierra',
+        'Franela Oversize Streetwear',
+        'Zapatos Nike Air Max (Prueba)',
+        'Reloj Inteligente Pro',
+        'Perfume Importado Premium',
+    ], []);
+
+    // Detectar si existen productos de prueba en el inventario actual
+    const detectedDemoIds = useMemo(() => {
+        const ids = new Set<string>(demoProductIds);
+        items.forEach((item) => {
+            if (
+                DEMO_TITLES.includes(item.name) ||
+                (item.sku && item.sku.startsWith('DEMO-'))
+            ) {
+                ids.add(String(item.productId));
+            }
+        });
+        return Array.from(ids);
+    }, [items, demoProductIds, DEMO_TITLES]);
+
+    const hasDemoProducts = detectedDemoIds.length > 0;
+
+    const handleCleanDemoProducts = async () => {
+        if (!storeId || detectedDemoIds.length === 0) return;
+
+        const result = await Swal.fire({
+            title: '¿Limpiar productos de prueba?',
+            text: `Se eliminarán permanentemente los ${detectedDemoIds.length} artículos creados durante tus misiones de la Academia para dejar tu catálogo limpio.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#171717',
+            confirmButtonText: 'Sí, limpiar catálogo',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                popup: 'rounded-xl font-sans text-xs p-6 border border-neutral-200/60 shadow-xl',
+                confirmButton: 'rounded-xl text-xs font-semibold px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white',
+                cancelButton: 'rounded-xl text-xs font-semibold px-4 py-2.5 bg-neutral-100 text-neutral-700 border border-neutral-200',
+            },
+        });
+
+        if (!result.isConfirmed) return;
+
+        setIsCleaningDemos(true);
+        try {
+            const res = await deleteStoreDemoProducts(storeId, detectedDemoIds);
+            if (!res.success) throw new Error(res.error || 'Error al eliminar');
+
+            // Actualización atómica en memoria (La tabla se vacía de inmediato sin recargar)
+            const demoIdSet = new Set(detectedDemoIds);
+            setItems((prev) => prev.filter((item) => !demoIdSet.has(String(item.productId))));
+            setDemoProductIds([]);
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' },
+            });
+            Toast.fire({ icon: 'success', title: 'Catálogo de prueba limpiado con éxito' });
+        } catch (err: any) {
+            Swal.fire({
+                title: 'Error',
+                text: err.message || 'No se pudieron eliminar los artículos.',
+                icon: 'error',
+                confirmButtonColor: '#171717',
+            });
+        } finally {
+            setIsCleaningDemos(false);
+        }
+    };
     const [editingIndex, setEditingIndex] = useState<string | null>(null)
 
     const [storeType, setStoreType] = useState<'retail' | 'restaurant'>('retail')
@@ -54,7 +139,7 @@ export default function InventoryPage() {
                 name: i.name,
                 image: i.image,
                 displayOrder: i.displayOrder,
-                isFeatured: i.isFeatured 
+                isFeatured: i.isFeatured
             }])
         ).values()).sort((a, b) => a.displayOrder - b.displayOrder)
 
@@ -74,7 +159,7 @@ export default function InventoryPage() {
 
         const newList = [...reorderList]
         const [movedItem] = newList.splice(currentIndex, 1)
-        newList.splice(targetIndex, 0, movedItem) 
+        newList.splice(targetIndex, 0, movedItem)
 
         setReorderList(newList)
     }
@@ -84,7 +169,7 @@ export default function InventoryPage() {
         try {
             const updates = reorderList.map((item, index) => ({
                 id: item.id,
-                display_order: index + 1 
+                display_order: index + 1
             }))
 
             await Promise.all(updates.map(u =>
@@ -96,12 +181,12 @@ export default function InventoryPage() {
                 return match ? { ...item, displayOrder: match.display_order } : item
             }))
 
-            await revalidateStoreCache() 
+            await revalidateStoreCache()
 
             setIsReordering(false)
-            const Toast = Swal.mixin({ 
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
-                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
             })
             Toast.fire({ icon: 'success', title: 'Escaparate Reorganizado' })
         } catch (e) {
@@ -114,8 +199,8 @@ export default function InventoryPage() {
     const [filterStatus, setFilterStatus] = useState('all')
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
-    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null) 
-    const [showTaxInCatalog, setShowTaxInCatalog] = useState(false) 
+    const [fiscalProfile, setFiscalProfile] = useState<string | null>(null)
+    const [showTaxInCatalog, setShowTaxInCatalog] = useState(false)
 
     useEffect(() => {
         const fetchInventory = async () => {
@@ -123,15 +208,23 @@ export default function InventoryPage() {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
 
-                const { data: store } = await supabase.from('stores').select('id, fiscal_profile, show_tax_in_catalog, store_type').eq('user_id', user.id).single()
+                const { data: store } = await supabase
+                    .from('stores')
+                    .select('id, fiscal_profile, show_tax_in_catalog, store_type, onboarding_missions')
+                    .eq('user_id', user.id)
+                    .single();
                 if (!store) return
 
-                setStoreId(store.id) 
-                setFiscalProfile(store.fiscal_profile) 
-                setShowTaxInCatalog(store.show_tax_in_catalog || false) 
+                setStoreId(store.id)
+                setFiscalProfile(store.fiscal_profile)
+                setShowTaxInCatalog(store.show_tax_in_catalog || false)
                 setStoreType(store.store_type || 'retail')
-                
-             const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)').eq('store_id', store.id).order('created_at', { ascending: false })
+
+                if (store.onboarding_missions?.demo_product_ids) {
+                    setDemoProductIds(store.onboarding_missions.demo_product_ids.map(String));
+                }
+
+                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)').eq('store_id', store.id).order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
 
@@ -209,10 +302,10 @@ export default function InventoryPage() {
                 const { error } = await supabase.from('products').update({ stock: newStock }).eq('id', row.productId)
                 if (error) throw error
             }
-            
+
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
             await revalidateStoreCache()
-            
+
             if (newStock <= 3 && storeId) {
                 checkAndTriggerStockAlert({
                     storeId,
@@ -226,16 +319,16 @@ export default function InventoryPage() {
             const remaining = { ...pendingChanges }
             delete remaining[row.rowId]
             setPendingChanges(remaining)
-            
-            const Toast = Swal.mixin({ 
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, 
-                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
             })
             Toast.fire({ icon: 'success', title: 'Stock Sincronizado' })
-        } catch (error) { 
+        } catch (error) {
             Swal.fire({ title: 'Error', text: 'No se pudo actualizar el inventario.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
-        } finally { 
-            setSavingButtons(prev => ({ ...prev, [row.rowId]: false })) 
+        } finally {
+            setSavingButtons(prev => ({ ...prev, [row.rowId]: false }))
         }
     }
 
@@ -247,9 +340,9 @@ export default function InventoryPage() {
             const { error } = await supabase.from('products').update({ is_tax_exempt: newStatus }).eq('id', productId)
             if (error) throw error
 
-            const Toast = Swal.mixin({ 
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
-                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
             })
             Toast.fire({ icon: 'success', title: newStatus ? 'Producto Exento de IVA' : 'IVA Activado' })
         } catch (error) {
@@ -265,9 +358,9 @@ export default function InventoryPage() {
         try {
             const { error } = await supabase.from('products').update({ is_featured: newStatus }).eq('id', productId)
             if (error) throw error
-            const Toast = Swal.mixin({ 
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
-                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
             })
             Toast.fire({ icon: 'success', title: newStatus ? 'Fijado en Lo Más Vendido' : 'Removido de Lo Más Vendido' })
         } catch (error) {
@@ -285,9 +378,9 @@ export default function InventoryPage() {
             if (error) throw error;
 
             await revalidateStoreCache();
-            const Toast = Swal.mixin({ 
-                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, 
-                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' } 
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
             });
             Toast.fire({ icon: 'success', title: newStatus ? 'Logística: Producto Físico' : 'Logística: Servicio/Digital' });
         } catch (error) {
@@ -323,7 +416,7 @@ export default function InventoryPage() {
 
     const scrollRight = (e: React.MouseEvent) => {
         e.preventDefault()
-        e.stopPropagation() 
+        e.stopPropagation()
         if (tableScrollRef.current) {
             tableScrollRef.current.scrollBy({ left: 180, behavior: 'smooth' })
         }
@@ -334,10 +427,10 @@ export default function InventoryPage() {
         window.addEventListener('resize', checkScroll)
         return () => window.removeEventListener('resize', checkScroll)
     }, [filteredItems])
-    
+
     return (
         <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
-            
+
             {/* HEADER STICKY (Cleanlook) */}
             <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
                 <div className="flex items-center gap-3.5">
@@ -349,7 +442,7 @@ export default function InventoryPage() {
                         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">Stock, Impuestos y Logística</p>
                     </div>
                 </div>
-                
+
                 {/* KPI CHIPS (Muted & Borderless style) */}
                 <div className="hidden md:flex gap-2.5">
                     <div className="px-3.5 py-1.5 bg-white/80  rounded-lg flex items-center gap-2.5">
@@ -371,19 +464,19 @@ export default function InventoryPage() {
 
             <div className="w-full max-w-[100vw] flex-1 relative">
                 <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
-                    
+
                     {/* INYECCIÓN: TOGGLE GLOBAL DE IVA */}
                     {storeId && fiscalProfile && fiscalProfile !== 'informal' && !loading && (
-                        <TaxCatalogToggle 
-                            storeId={storeId} 
-                            initialState={showTaxInCatalog} 
-                            fiscalProfile={fiscalProfile} 
+                        <TaxCatalogToggle
+                            storeId={storeId}
+                            initialState={showTaxInCatalog}
+                            fiscalProfile={fiscalProfile}
                         />
                     )}
 
                     {/* BARRA DE CONTROLES */}
                     <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
-                        
+
                         {/* Filtros Estilo "Pill" (Clean Look) */}
                         <div className="flex bg-neutral-100/50 p-1 rounded-lg border border-neutral-200/50 overflow-x-auto no-scrollbar w-full md:w-auto max-w-full shrink-0">
                             {[
@@ -403,7 +496,7 @@ export default function InventoryPage() {
                                 </button>
                             ))}
                         </div>
-                        
+
                         {/* Buscador Integrado */}
                         <div className="relative group w-full md:flex-1 shrink-0">
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors" size={15} />
@@ -414,11 +507,11 @@ export default function InventoryPage() {
                                 className="w-full bg-white border-b-2 border-neutral-100  shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-300 transition-all"
                             />
                         </div>
-                        
-                       {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
+
+                        {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
                         <div className="flex items-center gap-2 shrink-0">
                             {/* BOTÓN MATRIZ DE SKUs */}
-                             {!isRestaurant && (
+                            {!isRestaurant && (
                                 <Link
                                     href="/admin/inventory/skus"
                                     className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
@@ -431,6 +524,7 @@ export default function InventoryPage() {
                                 </Link>
                             )}
 
+
                             {/* BOTÓN ORGANIZAR ESCAPARATE */}
                             {items.length > 1 && (
                                 <button
@@ -441,7 +535,7 @@ export default function InventoryPage() {
                                 </button>
                             )}
                         </div>
-                    </div>  
+                    </div>
                     {/* TABLA ELITE (Executive Cleanlook) */}
                     <div className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] w-full max-w-full relative overflow-hidden">
                         {loading ? (
@@ -456,18 +550,18 @@ export default function InventoryPage() {
                         ) : (
                             <div className="relative w-full max-w-full">
                                 {/* INDICADOR DE PROFUNDIDAD Y PÍLDORA MAGNÉTICA (Mobile Scroll Hint) */}
-                                <div 
+                                <div
                                     className={`absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-neutral-900/5 via-neutral-900/[0.02] to-transparent pointer-events-none z-10 md:hidden transition-opacity duration-500 ${isScrollable && !isScrolledToEnd ? 'opacity-100' : 'opacity-0'}`}
                                 >
-                                    <div 
+                                    <div
                                         onClick={scrollRight}
                                         className="sticky top-[50vh] ml-auto mr-1.5 w-7 h-7 flex items-center justify-center bg-white/90 backdrop-blur-md border border-neutral-200/50 rounded-full shadow-sm pointer-events-auto cursor-pointer active:scale-95 transition-transform"
                                     >
                                         <ChevronRight size={14} className="text-neutral-600 animate-pulse" />
                                     </div>
                                 </div>
-                                
-                                <div 
+
+                                <div
                                     ref={tableScrollRef}
                                     onScroll={checkScroll}
                                     className="overflow-x-auto w-full max-w-full no-scrollbar relative z-0"
@@ -476,7 +570,7 @@ export default function InventoryPage() {
                                         <thead className="bg-neutral-50/50 border-b border-neutral-200/50 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
                                             <tr>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5">{isRestaurant ? 'Plato / Menú' : 'Producto'}</th>
-<th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">{isRestaurant ? 'Personalización' : 'Variante'}</th>
+                                                <th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">{isRestaurant ? 'Personalización' : 'Variante'}</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Gestión Rápida</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Exhibición</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-right">Estado</th>
@@ -506,7 +600,7 @@ export default function InventoryPage() {
                                                     <tr key={item.rowId} className="group hover:bg-neutral-50/40 transition-colors">
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             {/* PORTAL FRONTAL: Enlace directo al editor */}
-                                                            
+
                                                             <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
                                                                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 relative transition-colors group-hover/portal:border-neutral-300">
                                                                     {item.image ? (
@@ -521,7 +615,7 @@ export default function InventoryPage() {
                                                                         <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package size={14} /></div>
                                                                     )}
                                                                 </div>
-                                                               <div className="min-w-0 flex-1 space-y-0.5">
+                                                                <div className="min-w-0 flex-1 space-y-0.5">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
@@ -539,19 +633,19 @@ export default function InventoryPage() {
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    
-                                                                   
+
+
                                                                     {/* Variantes & SKU en Móvil */}
                                                                     {!isRestaurant ? (
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
-                                                                           <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-            {/* 🚀 FIX: Soporte Bicolor y Sólido con validación CSS */}
-            <span 
-                className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50" 
-                style={getVariantSwatchStyle(item.hex)}
-            />
-            <span className="truncate max-w-[80px]">{item.color}</span>
-        </div>
+                                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                                {/* 🚀 FIX: Soporte Bicolor y Sólido con validación CSS */}
+                                                                                <span
+                                                                                    className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50"
+                                                                                    style={getVariantSwatchStyle(item.hex)}
+                                                                                />
+                                                                                <span className="truncate max-w-[80px]">{item.color}</span>
+                                                                            </div>
                                                                             <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
                                                                                 <span>{item.size}</span>
                                                                             </div>
@@ -581,23 +675,23 @@ export default function InventoryPage() {
                                                                 </div>
                                                             </Link>
                                                         </td>
-                                                        
-                                                     <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
-    <div className="flex items-center gap-1.5">
-        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
-            {/* 🚀 FIX: Renderizado de gradiente a 135deg para bicolores */}
-            <span 
-                className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0" 
-                style={getVariantSwatchStyle(item.hex)}
-            />
-            <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
-        </div>
+
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
+                                                                    {/* 🚀 FIX: Renderizado de gradiente a 135deg para bicolores */}
+                                                                    <span
+                                                                        className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0"
+                                                                        style={getVariantSwatchStyle(item.hex)}
+                                                                    />
+                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+                                                                </div>
                                                                 <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
                                                                     <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">Talla: {item.size}</span>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        
+
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             <div className="flex flex-col items-center justify-center gap-1.5">
                                                                 {/* STOCK INPUT (Telemetría) */}
@@ -636,8 +730,8 @@ export default function InventoryPage() {
                                                                         {item.isTaxExempt ? 'Exento' : 'IVA 16%'}
                                                                     </button>
                                                                 )}
-                                                                
-                                                            
+
+
                                                                 {/* BOTÓN LOGÍSTICO (SOLO RETAIL) */}
                                                                 {!isRestaurant && (
                                                                     <button
@@ -654,7 +748,7 @@ export default function InventoryPage() {
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        
+
                                                         {/* CELDA: EXHIBICIÓN */}
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle text-center">
                                                             <button
@@ -665,7 +759,7 @@ export default function InventoryPage() {
                                                                 <Star size={16} fill={item.isFeatured ? "currentColor" : "none"} strokeWidth={2} />
                                                             </button>
                                                         </td>
-                                                        
+
                                                         {/* CELDA: ESTADO */}
                                                         <td className="px-4 py-3 md:px-6 md:py-4 text-right align-middle">
                                                             <div className="flex justify-end items-center gap-3">
@@ -686,6 +780,20 @@ export default function InventoryPage() {
                             </div>
                         )}
                     </div>
+                       {/* 🚀 ENLACE EDITORIAL: LIMPIEZA DE PRODUCTOS DEL TUTORIAL AL PIE DE LA TABLA */}
+                                {hasDemoProducts && !loading && (
+                                    <div className="px-4 md:px-6 py-3.5 border-t border-t-[#d3cdcdfc]  flex items-center justify-center sm:justify-end bg-neutral-50/40">
+                                        <button
+                                            type="button"
+                                            onClick={handleCleanDemoProducts}
+                                            disabled={isCleaningDemos}
+                                            className="text-[11px] font-normal text-neutral-400 hover:text-rose-600 underline underline-offset-4 decoration-neutral-300 hover:decoration-rose-400 transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                        >
+                                            {isCleaningDemos && <Loader2 size={12} className="animate-spin text-rose-500" />}
+                                            <span>Limpiar productos de prueba del tutorial ({detectedDemoIds.length})</span>
+                                        </button>
+                                    </div>
+                                )}
                 </div>
             </div>
 
@@ -694,19 +802,19 @@ export default function InventoryPage() {
                 {isReordering && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
                         {/* Backdrop Cleanlook */}
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }} 
-                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs" 
-                            onClick={() => setIsReordering(false)} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-neutral-900/30 backdrop-blur-xs"
+                            onClick={() => setIsReordering(false)}
                         />
-                        
+
                         {/* Tarjeta del Modal */}
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.98, y: 10 }} 
-                            animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } }} 
-                            exit={{ opacity: 0, scale: 0.98, y: 10, transition: { duration: 0.2 } }} 
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } }}
+                            exit={{ opacity: 0, scale: 0.98, y: 10, transition: { duration: 0.2 } }}
                             className="relative bg-[#FAFAFC] w-full max-w-lg rounded-2xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] flex flex-col max-h-[85vh] border border-neutral-200/50 z-10"
                         >
 
@@ -719,8 +827,8 @@ export default function InventoryPage() {
                                     </div>
                                     <p className="text-[10px] font-semibold text-neutral-400 mt-1 uppercase tracking-wider font-mono">Arrastre las filas o toque el # para fijar posición</p>
                                 </div>
-                                <button 
-                                    onClick={() => setIsReordering(false)} 
+                                <button
+                                    onClick={() => setIsReordering(false)}
                                     className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors border border-neutral-200/50 active:scale-95 shadow-xs"
                                 >
                                     <X size={15} strokeWidth={2.5} />
@@ -731,9 +839,9 @@ export default function InventoryPage() {
                             <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar space-y-2.5">
                                 <Reorder.Group axis="y" values={reorderList} onReorder={setReorderList} className="space-y-2.5">
                                     {reorderList.map((item, index) => (
-                                        <Reorder.Item 
-                                            key={item.id} 
-                                            value={item} 
+                                        <Reorder.Item
+                                            key={item.id}
+                                            value={item}
                                             className="bg-white p-2.5 rounded-xl border border-neutral-200/50 flex items-center gap-3 cursor-grab active:cursor-grabbing relative group hover:border-neutral-300 transition-colors shadow-xs"
                                         >
 

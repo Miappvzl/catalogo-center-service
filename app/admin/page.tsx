@@ -5,10 +5,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import Link from "next/link";
+import Image from "next/image";
 
 
 import {
-   Package, ArrowRight, ArrowUpRight,
+    Package, ArrowRight, ArrowUpRight,
     Clock, DollarSign, Truck, XCircle, CheckCircle2, Circle, Play, Trophy, // Nuevos iconos
     MapPin, Users as UsersIcon,
     Lock, // 👈 AÑADE ESTOS ICONOS
@@ -31,6 +32,9 @@ import FeatureCollectionModal from "@/components/admin/FeatureCollectionModal";
 import { BentoGridWrapper, FadeInBlock } from "@/components/admin/DashboardAnimations";
 import { DeliveryRadarFeatureModal } from "@/components/admin/DeliveryRadarFeatureModal";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AdminDashboard() {
     const cookieStore = await cookies();
 
@@ -47,7 +51,7 @@ export default async function AdminDashboard() {
             },
         },
     );
-const getStatusTheme = (status: string) => {
+    const getStatusTheme = (status: string) => {
         switch (status) {
             case "pending":
                 return {
@@ -97,7 +101,7 @@ const getStatusTheme = (status: string) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const fallbackDateString = thirtyDaysAgo.toISOString();
 
-  const [
+    const [
         productsRes,
         variantsRes,
         pendingRes,
@@ -120,13 +124,13 @@ const getStatusTheme = (status: string) => {
     const pendingOrdersCount = pendingRes.count || 0;
     const todayOrders = todayOrdersRes.data || [];
 
-const usdRate = Number(configRes.data?.usd_rate ?? 0);
+    const usdRate = Number(configRes.data?.usd_rate ?? 0);
     const eurRate = Number(configRes.data?.eur_rate ?? 0);
 
     // 🚀 ASIGNACIÓN DIRECTA E INFALIBLE (0ms de latencia, 0 consumo de CPU)
     const prevUsdRate = Number(configRes.data?.previous_usd_rate ?? usdRate);
     const prevEurRate = Number(configRes.data?.previous_eur_rate ?? eurRate);
- // 🚀 MOTOR MATEMÁTICO DE LIQUIDEZ Y VENTAS HOY (100% Sincronizado)
+    // 🚀 MOTOR MATEMÁTICO DE LIQUIDEZ Y VENTAS HOY (100% Sincronizado)
     let salesTodayUSD = 0;
     let cashTotalUSD = 0;
     const digitalMethodsMap: Record<string, number> = {};
@@ -274,7 +278,7 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
     ];
     const topBlock = [...blockStats].sort((a, b) => b.pct - a.pct)[0];
 
-     // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
+    // --- LÓGICA DE MISIONES (REGLA DE 7 DÍAS) ---
     const storeCreatedAt = new Date(store.created_at).getTime();
     const now = new Date().getTime();
     const daysSinceCreation = (now - storeCreatedAt) / (1000 * 60 * 60 * 24);
@@ -288,9 +292,9 @@ const usdRate = Number(configRes.data?.usd_rate ?? 0);
     const showMissionControl = isEligibleForMissions && !allMissionsCompleted;
     const storeUrl = `${store.slug}.preziso.shop`;
     const isRestaurant = store.store_type === 'restaurant';
-return (
-     // 🚀 FIX: overflow-x-clip corta el desbordamiento fantasma SIN crear contexto de scroll y SIN romper position: sticky
-<div className="min-h-screen w-full bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative overflow-x-clip">
+    return (
+        // 🚀 FIX: overflow-x-clip corta el desbordamiento fantasma SIN crear contexto de scroll y SIN romper position: sticky
+        <div className="min-h-screen w-full bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative overflow-x-clip">
             <AdminHeader store={store} />
 
             <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 relative z-10">
@@ -301,7 +305,7 @@ return (
                 ======================================================= */}
                 {showMissionControl ? (
                     <div className="w-full max-w-5xl mx-auto space-y-4 pt-2 md:pt-4 pb-16 animate-in fade-in duration-300">
-                        
+
                         {/* Cabecera Técnica */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 px-1">
                             <div className="min-w-0 flex-1">
@@ -326,18 +330,30 @@ return (
                             </div>
                         </div>
 
-                        {/* BENTO GRID SIMÉTRICO DE 3 COLUMNAS */}
+                        {/* BENTO GRID SIMÉTRICO DE 3 COLUMNAS CON ESCULTURAS 3D EN GRAN ESCALA */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 w-full">
                             
-                            {/* 1. MISIÓN OBSIDIANA CON GLOW INTERNO */}
+                            {/* 1. MISIÓN 01: TU PRIMER PRODUCTO (PEDESTAL OBSIDIANA) */}
                             <Link 
                                 href={missions.mission_1 ? "#" : "/admin/product/new?mission=1"} 
-                                className={`group md:col-span-2 bg-[#0C0D0E] text-white p-4 sm:p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between relative overflow-hidden transition-all duration-200 border border-neutral-800 w-full ${missions.mission_1 ? 'opacity-70 cursor-default' : 'hover:border-neutral-700 active:scale-[0.995]'}`}
+                                className={`group md:col-span-2 bg-[#0C0D0E] text-white p-4 sm:p-5 md:p-6 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between relative overflow-hidden transition-all duration-200 border border-neutral-800 w-full min-h-[190px] ${missions.mission_1 ? 'opacity-70 cursor-default' : 'hover:border-neutral-700 active:scale-[0.995]'}`}
                             >
                                 <div className="absolute inset-0 shadow-[inset_0_0_24px_rgba(255,255,255,0.06)] pointer-events-none rounded-xl" />
-                                <div className="absolute -top-12 -right-12 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none transform-gpu" />
+                                <div className="absolute -top-12 -right-12 w-56 h-56 bg-white/10 rounded-full blur-3xl pointer-events-none transform-gpu" />
 
-                                <div className="flex justify-between items-start gap-2 relative z-10 w-full">
+                                {/* 🚀 Escultura 3D Flotante Misión 01 - Tamaño Ampliado */}
+                                <div className={`absolute -right-3 sm:right-2 md:right-4 top-1/2 -translate-y-1/2 w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 lg:w-56 lg:h-56 pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-[52%] ${missions.mission_1 ? 'grayscale opacity-30' : ''}`}>
+                                    <Image
+                                        src="/Cápsula-futurista-sobre-pedestal-flotante.webp"
+                                        alt="Génesis de Producto"
+                                        width={240}
+                                        height={240}
+                                        className="w-full h-full object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)]"
+                                        priority
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-start gap-2 relative z-10 w-full pr-36 sm:pr-44 md:pr-52 lg:pr-56">
                                     <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                                         <div className="w-8 h-8 rounded-lg bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/5">
                                             {missions.mission_1 ? <CheckCircle2 size={15} className="text-emerald-400" /> : <span className="font-mono text-xs font-bold text-neutral-200">01</span>}
@@ -346,7 +362,7 @@ return (
                                             <span className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider block">
                                                 Fase Inicial
                                             </span>
-                                            <h3 className={`text-xs font-bold uppercase tracking-wider truncate ${missions.mission_1 ? 'text-neutral-500 line-through' : 'text-white'}`}>
+                                            <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider truncate ${missions.mission_1 ? 'text-neutral-500 line-through' : 'text-white'}`}>
                                                 {isRestaurant ? "Tu Primer Plato" : "Tu Primer Producto"}
                                             </h3>
                                         </div>
@@ -360,7 +376,7 @@ return (
                                     )}
                                 </div>
 
-                                <div className="relative z-10 mt-5 pt-3.5 border-t border-white/5 flex items-center justify-between gap-3 w-full">
+                                <div className="relative z-10 mt-5 pt-3.5 border-t border-white/5 flex items-center justify-between gap-3 w-full pr-36 sm:pr-44 md:pr-52 lg:pr-56">
                                     <p className="text-xs text-neutral-400 font-normal leading-relaxed min-w-0 flex-1">
                                         {isRestaurant ? "Registra un plato insignia y observa el cálculo a tasa BCV." : "Sube un producto básico para verificar el motor cambiario en vivo."}
                                     </p>
@@ -382,12 +398,23 @@ return (
                                 />
                             </div>
 
-                            {/* 2. CARTA WHITE CLEAN (Misión 2) */}
+                            {/* 2. MISIÓN 02: TALLAS Y COLORES (DISCOS Y CAPAS 3D) */}
                             <Link 
                                 href={missions.mission_2 ? "#" : "/admin/product/new?mission=2"} 
-                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full ${missions.mission_2 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
+                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full relative overflow-hidden min-h-[185px] ${missions.mission_2 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
                             >
-                                <div className="flex justify-between items-start mb-4">
+                                {/* 🚀 Escultura 3D Flotante Misión 02 - Gran Escala con Bleed */}
+                                <div className={`absolute -right-3 -bottom-3 sm:-right-2 sm:-bottom-2 lg:-right-3 lg:-bottom-3 w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-110 group-hover:-translate-y-1.5 ${missions.mission_2 ? 'grayscale opacity-25' : ''}`}>
+                                    <Image
+                                        src="/Trío-discos-flotantes-sofisticados.webp"
+                                        alt="Variantes y Capas"
+                                        width={150}
+                                        height={150}
+                                        className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.1)]"
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-start mb-4 relative z-10">
                                     <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0 border border-neutral-100 font-mono text-xs font-bold">
                                         {missions.mission_2 ? <CheckCircle2 size={15} className="text-emerald-500" /> : "02"}
                                     </div>
@@ -395,7 +422,7 @@ return (
                                         <ArrowUpRight size={13} strokeWidth={2.2} className="text-neutral-400 group-hover:text-neutral-900 transition-colors" />
                                     )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 pr-24 sm:pr-28 relative z-10">
                                     <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider mb-1">
                                         Estructura
                                     </p>
@@ -408,12 +435,23 @@ return (
                                 </div>
                             </Link>
 
-                            {/* 3. CARTA WHITE CLEAN (Misión 3) */}
+                            {/* 3. MISIÓN 03: ESTRATEGIA DE VENTAS (ESCALONES Y BADGE) */}
                             <Link 
                                 href={missions.mission_3 ? "#" : "/admin/product/new?mission=3"} 
-                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full ${missions.mission_3 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
+                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full relative overflow-hidden min-h-[185px] ${missions.mission_3 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
                             >
-                                <div className="flex justify-between items-start mb-4">
+                                {/* 🚀 Escultura 3D Flotante Misión 03 - Gran Escala con Bleed */}
+                                <div className={`absolute -right-3 -bottom-3 sm:-right-2 sm:-bottom-2 lg:-right-3 lg:-bottom-3 w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-110 group-hover:-translate-y-1.5 ${missions.mission_3 ? 'grayscale opacity-25' : ''}`}>
+                                    <Image
+                                        src="/Escalera-metálica-con-insignia-de-verificación.webp"
+                                        alt="Estrategia y Escala"
+                                        width={150}
+                                        height={150}
+                                        className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.1)]"
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-start mb-4 relative z-10">
                                     <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0 border border-neutral-100 font-mono text-xs font-bold">
                                         {missions.mission_3 ? <CheckCircle2 size={15} className="text-emerald-500" /> : "03"}
                                     </div>
@@ -421,7 +459,7 @@ return (
                                         <ArrowUpRight size={13} strokeWidth={2.2} className="text-neutral-400 group-hover:text-neutral-900 transition-colors" />
                                     )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 pr-24 sm:pr-28 relative z-10">
                                     <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider mb-1">
                                         Estrategia
                                     </p>
@@ -434,12 +472,23 @@ return (
                                 </div>
                             </Link>
 
-                            {/* 4. CARTA WHITE CLEAN (Misión 4) */}
+                            {/* 4. MISIÓN 04: INCENTIVO DIVISAS (MONEDA TITANIO) */}
                             <Link 
                                 href={missions.mission_4 ? "#" : "/admin/product/new?mission=4"} 
-                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full ${missions.mission_4 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
+                                className={`bg-white p-4 sm:p-5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-neutral-200/60 flex flex-col justify-between group transition-all duration-200 w-full relative overflow-hidden min-h-[185px] ${missions.mission_4 ? 'bg-neutral-50/50 opacity-60 cursor-default' : 'hover:border-neutral-300 hover:shadow-xs active:scale-[0.99]'}`}
                             >
-                                <div className="flex justify-between items-start mb-4">
+                                {/* 🚀 Escultura 3D Flotante Misión 04 - Gran Escala con Bleed */}
+                                <div className={`absolute -right-3 -bottom-3 sm:-right-2 sm:-bottom-2 lg:-right-3 lg:-bottom-3 w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-110 group-hover:-translate-y-1.5 ${missions.mission_4 ? 'grayscale opacity-25' : ''}`}>
+                                    <Image
+                                        src="/Moneda-futurista-de-dólar-en-plata-vidrio.webp"
+                                        alt="Moneda de Rentabilidad"
+                                        width={150}
+                                        height={150}
+                                        className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.1)]"
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-start mb-4 relative z-10">
                                     <div className="w-8 h-8 rounded-lg bg-[#F6F6F6] text-neutral-900 flex items-center justify-center shrink-0 border border-neutral-100 font-mono text-xs font-bold">
                                         {missions.mission_4 ? <CheckCircle2 size={15} className="text-emerald-500" /> : "04"}
                                     </div>
@@ -447,7 +496,7 @@ return (
                                         <ArrowUpRight size={13} strokeWidth={2.2} className="text-neutral-400 group-hover:text-neutral-900 transition-colors" />
                                     )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 pr-24 sm:pr-28 relative z-10">
                                     <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider mb-1">
                                         Rentabilidad
                                     </p>
@@ -460,7 +509,6 @@ return (
                                 </div>
                             </Link>
                         </div>
-
                         {/* INCENTIVO DISCRETO */}
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 pt-3 text-center px-2">
                             <div className="flex items-center gap-1.5 text-neutral-400 shrink-0">
@@ -476,34 +524,34 @@ return (
                         </div>
                     </div>
                 ) : (
-                  /* =======================================================
-                        MODO COMPLETO: DASHBOARD DESBLOQUEADO (MOMENTO WOW)
-                    ======================================================= */
+                    /* =======================================================
+                          MODO COMPLETO: DASHBOARD DESBLOQUEADO (MOMENTO WOW)
+                      ======================================================= */
                     <BentoGridWrapper>
                         {/* FILA 1: RATE WIDGET */}
                         <FadeInBlock className="col-span-1 min-h-[160px] w-full">
                             <RateWidget storeCurrency={storeCurrency} usdRate={usdRate} eurRate={eurRate} prevUsdRate={prevUsdRate} prevEurRate={prevEurRate} lastUpdated={formattedLastUpdated} />
                         </FadeInBlock>
 
-                       {/* FILA 1: VENTAS HOY (Estiramiento vertical forzado al 100% de la fila) */}
-<FadeInBlock className="col-span-1 w-full h-full flex flex-col [&>*]:h-full [&>*]:flex-1 [&>*]:flex [&>*]:flex-col [&>*]:justify-between">
-    <TodaySalesWidget
-        currencySymbol={currencySymbol}
-        salesTodayUSD={salesTodayUSD}
-        salesTodayBs={salesTodayBs}
-        cashPct={cashPct}
-        digitalPct={digitalPct}
-        cashTotalUSD={cashTotalUSD}
-        digitalTotalUSD={digitalTotalUSD}
-        sortedDigitalMethods={sortedDigitalMethods}
-    />
-</FadeInBlock>
+                        {/* FILA 1: VENTAS HOY (Estiramiento vertical forzado al 100% de la fila) */}
+                        <FadeInBlock className="col-span-1 w-full h-full flex flex-col [&>*]:h-full [&>*]:flex-1 [&>*]:flex [&>*]:flex-col [&>*]:justify-between">
+                            <TodaySalesWidget
+                                currencySymbol={currencySymbol}
+                                salesTodayUSD={salesTodayUSD}
+                                salesTodayBs={salesTodayBs}
+                                cashPct={cashPct}
+                                digitalPct={digitalPct}
+                                cashTotalUSD={cashTotalUSD}
+                                digitalTotalUSD={digitalTotalUSD}
+                                sortedDigitalMethods={sortedDigitalMethods}
+                            />
+                        </FadeInBlock>
 
                         {/* FILA 1: POR DESPACHAR */}
                         <FadeInBlock className="col-span-1 min-h-[140px] w-full">
                             <Link href="/admin/orders" className="bg-[#0a0a0a] text-white p-5 md:p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col justify-between h-full group relative overflow-hidden transition-transform hover:-translate-y-1 active:scale-[0.99]">
-                               <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/15 rounded-full blur-2xl pointer-events-none transform-gpu" />
-<div className="absolute -bottom-10 -left-10 w-24 h-24 bg-amber-600/10 rounded-full blur-xl pointer-events-none transform-gpu" />
+                                <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/15 rounded-full blur-2xl pointer-events-none transform-gpu" />
+                                <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-amber-600/10 rounded-full blur-xl pointer-events-none transform-gpu" />
                                 <div className="flex justify-between items-start relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
                                         <Clock size={18} strokeWidth={2.2} />
@@ -729,14 +777,14 @@ return (
                                     })
                                 )}
                             </div>
-                            <DeliveryRadarFeatureModal/>
+                            <DeliveryRadarFeatureModal />
                         </FadeInBlock>
                     </BentoGridWrapper>
                 )}
             </main>
 
             <WelcomeModal storeName={store.name} />
-           
+
         </div>
     );
 }

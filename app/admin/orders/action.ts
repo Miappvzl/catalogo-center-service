@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@supabase/supabase-js'
-
+import { revalidatePath } from 'next/cache';
 
 // Inicializamos cliente con Service Role para saltar RLS y manejar Auth Admin de forma segura en servidor
 const supabaseAdmin = createClient(
@@ -119,6 +119,68 @@ export async function toggleStoreCreditStatus(storeId: string, active: boolean) 
       .eq('id', storeId);
 
     if (updateErr) throw updateErr;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// 🚀 Revalida la caché del panel de administración al completar misiones
+export async function revalidateAdminDashboard() {
+  revalidatePath('/admin');
+  revalidatePath('/admin', 'page');
+}
+
+// 🚀 Elimina estrictamente los productos creados durante el tutorial de misiones
+export async function deleteStoreDemoProducts(storeId: string, demoProductIds: string[]) {
+  try {
+    if (!storeId || !demoProductIds || demoProductIds.length === 0) {
+      return { success: false, error: 'No se suministraron productos para eliminar.' };
+    }
+
+    // 1. Eliminar modificadores de comida vinculados (si es restaurante)
+    await supabaseAdmin
+      .from('product_modifier_groups')
+      .delete()
+      .in('product_id', demoProductIds);
+
+    // 2. Eliminar variantes vinculadas
+    await supabaseAdmin
+      .from('product_variants')
+      .delete()
+      .in('product_id', demoProductIds);
+
+    // 3. Eliminar los productos asegurando aislamiento multi-tenant por store_id
+    const { error: prodError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('store_id', storeId)
+      .in('id', demoProductIds);
+
+    if (prodError) throw prodError;
+
+    // 4. Limpiar el array de demo_product_ids en la configuración de la tienda
+    const { data: store } = await supabaseAdmin
+      .from('stores')
+      .select('onboarding_missions')
+      .eq('id', storeId)
+      .single();
+
+    if (store?.onboarding_missions) {
+      const updatedMissions = {
+        ...store.onboarding_missions,
+        demo_product_ids: [],
+      };
+      await supabaseAdmin
+        .from('stores')
+        .update({ onboarding_missions: updatedMissions })
+        .eq('id', storeId);
+    }
+
+    // 5. Purgar caché de inventario y tienda pública
+    revalidatePath('/admin/inventory');
+    revalidatePath('/admin');
 
     return { success: true };
   } catch (error: any) {
