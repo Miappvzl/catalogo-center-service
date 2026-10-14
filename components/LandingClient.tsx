@@ -43,6 +43,8 @@ import { twMerge } from 'tailwind-merge'
 import Link from 'next/link'
 import HeroAnimatedLogo from './HeroAnimatedLogo'
 import ConciergeWhatsAppModal from './ConciergeWhatsAppModal'
+import StructuredData from './StructuredData'
+import FaqSection from './FacSection'
 
 /**
  * UTILIDADES DE ESTILO ATÓMICO
@@ -143,10 +145,10 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
             </span>
           </div>
 
-          <Link
-            href="/admin"
-            className="hidden md:flex items-center gap-2 bg-neutral-950 hover:bg-black text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"
-          >
+         <Link
+  href="/login"
+  className="hidden md:flex items-center gap-2 bg-neutral-950 hover:bg-black text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"
+>
             <span>Crear Tienda</span>
             <ArrowUpRight size={16} strokeWidth={2.5} />
           </Link>
@@ -215,10 +217,11 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
                 </span>
               </div>
 
-              <Link
-                href="/admin"
-                className="w-full bg-neutral-950 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-[0.98] transition-transform flex justify-center items-center gap-2 shadow-lg"
-              >
+           <Link 
+  href="/login"
+  className="w-full bg-neutral-950 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-[0.98] transition-transform flex justify-center items-center gap-2 shadow-lg"
+>
+
                 Crear Tienda ahora <ArrowUpRight size={16} strokeWidth={2.5} />
               </Link>
             </motion.div>
@@ -259,10 +262,10 @@ const NodeZeroHero = () => {
 
           {/* Botones de Acción (Primary + Founder Manifesto) */}
           <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 w-full sm:w-auto">
-            <Link
-              href="/admin"
-              className="group flex items-center justify-center gap-3 bg-neutral-950 border border-neutral-700 px-8 py-4 rounded-xl text-white font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-[0_10px_20px_rgba(0,0,0,0.1)] w-full sm:w-auto shrink-0"
-            >
+           <Link
+  href="/login"
+  className="group flex items-center justify-center gap-3 bg-neutral-950 border border-neutral-700 px-8 py-4 rounded-xl text-white font-bold uppercase tracking-widest text-xs transition-all duration-300 hover:bg-black active:scale-[0.98] shadow-[0_10px_20px_rgba(0,0,0,0.1)] w-full sm:w-auto shrink-0"
+>
               <span>Crear tienda gratis</span>
               <ArrowUpRight
                 size={18}
@@ -556,9 +559,9 @@ const NodeTrustEcosystem = () => {
             Punto de Venta (POS) y tienda online (E-commerce) para Venezuela. Facturación en divisas y bolívares sincronizada al instante.
           </p>
 
-          <Link href="/admin" className="mt-4 flex items-center gap-3 bg-zinc-900 text-white px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest hover:scale-95 transition-all shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_25px_rgba(0,0,0,0.15)] group">
-            Iniciar Despliegue <ArrowUpRight size={16} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </Link>
+         <Link href="/login" className="mt-4 flex items-center gap-3 bg-zinc-900 text-white px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest hover:scale-95 transition-all shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_25px_rgba(0,0,0,0.15)] group">
+  Iniciar Despliegue <ArrowUpRight size={16} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+</Link>
         </motion.div>
 
         {/* CENTRO: Composición Dual (Laptop + iPhone) */}
@@ -696,10 +699,10 @@ const NodeOneReconciliation = () => {
           </div>
 
           <div className="pt-2">
-            <Link href="/admin" className="inline-flex items-center gap-1.5 bg-neutral-950 hover:bg-black text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] shadow-xs">
-              <span>Probar demo de caja</span>
-              <ArrowUpRight size={13} />
-            </Link>
+          <Link href="/login" className="inline-flex items-center gap-1.5 bg-neutral-950 hover:bg-black text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] shadow-xs">
+  <span>Probar demo de caja</span>
+  <ArrowUpRight size={13} />
+</Link>
           </div>
         </div>
 
@@ -1072,7 +1075,7 @@ const NodeThreeCommandCenter = () => {
                   {card.title}
                 </h3>
                 
-                <p className="text-xs md:text-sm text-neutral-400 font-medium leading-relaxed line-clamp-2">
+                <p className="text-xs md:text-sm text-neutral-400 font-medium leading-relaxed ">
                   {card.desc}
                 </p>
               </div>
@@ -1968,6 +1971,9 @@ interface LandingProps {
 export default function DeepCaptureLanding({ liveRate }: LandingProps) {
   return (
     <div className="bg-white selection:bg-slate-200 selection:text-black">
+      {/* 🚀 INYECCIÓN ESTRUCTURADA DE ENTIDAD & SEO SEMÁNTICO */}
+      <StructuredData />
+
       <style jsx global>{`
         .text-outline-black {
          -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
@@ -1997,6 +2003,9 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
       <NodeSevenSwarm />
 
       <NodeEightExtraction />
+        {/* 🚀 INYECCIÓN SEO Y VALIDACIÓN 1:1 DE DATOS ESTRUCTURADOS */}
+      <FaqSection />
+
       <KineticFooter />
         {/* 🚀 EL CONCIERGE DE CONVERSIÓN (Reemplaza con tu WhatsApp real) */}
       <ConciergeWhatsAppModal whatsappNumber="584248157859" />
