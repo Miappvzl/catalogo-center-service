@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // En tu next.config.ts añade estas direcciones explícitas:
+  allowedDevOrigins: [
+    '192.168.1.8.sslip.io', 
+    '*.192.168.1.8.sslip.io', 
+    'sslip.io', 
+    '*.sslip.io'
+  ],
   images: {
     unoptimized: true, // Lo mantenemos así para ahorrar en Vercel
     remotePatterns: [
@@ -29,6 +36,32 @@ const nextConfig: NextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+  },
+
+  // 🛡️ CABECERAS HTTP DE SEGURIDAD Y DESINDEXACIÓN (SEO QUIRÚRGICO)
+  async headers() {
+    return [
+      {
+        // Aplica a /admin y a todas sus subrutas (/admin/pos, /admin/inventory, etc.)
+        source: "/admin/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive",
+          },
+        ],
+      },
+      {
+        // Blindamos preventivamente el panel de super-administrador (/boss)
+        source: "/boss/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive",
+          },
+        ],
+      },
+    ];
   },
 };
 
