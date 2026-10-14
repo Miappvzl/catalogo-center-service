@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionValueEvent } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import {
@@ -34,12 +34,15 @@ import {
   User,
   Gift,
   Users,
-  Sparkles
+  Sparkles,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import Link from 'next/link'
 import HeroAnimatedLogo from './HeroAnimatedLogo'
+import ConciergeWhatsAppModal from './ConciergeWhatsAppModal'
 
 /**
  * UTILIDADES DE ESTILO ATÓMICO
@@ -93,10 +96,9 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
       {/* 🚀 EFECTO CENITAL DISCRETO (Atmospheric Scrim)
           No tiene contenedor, no tiene bordes y no intercepta clics.
           Oscurece ligeramente el borde superior y se desvanece a transparente. */}
-      <div 
-        className={`fixed top-0 left-0 right-0 h-28 md:h-36 pointer-events-none z-[95] transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isScrolled ? 'opacity-100' : 'opacity-0'
-        }`}
+      <div
+        className={`fixed top-0 left-0 right-0 h-28 md:h-36 pointer-events-none z-[95] transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isScrolled ? 'opacity-100' : 'opacity-0'
+          }`}
         style={{
           background: 'linear-gradient(to bottom, rgba(10, 10, 10, 0.08) 0%, rgba(10, 10, 10, 0.06) 35%, rgba(10, 10, 10, 0.035) 45%, rgba(10, 10, 10, 0.015) 75%, rgba(10, 10, 10, 0) 100%)'
         }}
@@ -212,8 +214,8 @@ const FloatingNavbar = ({ bcvRate }: { bcvRate: number }) => {
                   Tasa BCV Sincronizada: {bcvRate} Bs
                 </span>
               </div>
-              
-              <Link 
+
+              <Link
                 href="/admin"
                 className="w-full bg-neutral-950 text-white py-4 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-[0.98] transition-transform flex justify-center items-center gap-2 shadow-lg"
               >
@@ -235,13 +237,13 @@ const NodeZeroHero = () => {
 
   return (
     <section className="relative min-h-[90vh] md:min-h-screen w-full bg-white flex flex-col items-center justify-center overflow-hidden border-b border-neutral-200/50 pt-32 lg:pt-28 pb-12">
-   
+
       <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center relative z-10">
-        
+
         {/* ========================================= */}
         {/* COLUMNA IZQUIERDA: COPY EDITORIAL & CTAs */}
         {/* ========================================= */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -250,12 +252,12 @@ const NodeZeroHero = () => {
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
             Crea tu tienda online en Venezuela y vende por WhatsApp.
           </h1>
-          
+
           <p className="text-sm md:text-base text-neutral-500 font-medium leading-relaxed max-w-lg mb-10">
             El único catálogo virtual con Punto de Venta (POS) multimoneda que sincroniza la tasa BCV en tiempo real. Cobra en dólares, Zelle y Pago Móvil sin descuadres de caja.
           </p>
 
-         {/* Botones de Acción (Primary + Founder Manifesto) */}
+          {/* Botones de Acción (Primary + Founder Manifesto) */}
           <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 w-full sm:w-auto">
             <Link
               href="/admin"
@@ -268,7 +270,7 @@ const NodeZeroHero = () => {
                 className="text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300"
               />
             </Link>
-            
+
             {/* 🚀 BOTÓN SECUNDARIO (Premium Brutalism: Borde grueso y contraste extremo) */}
             <button
               onClick={() => setIsFounderModalOpen(true)}
@@ -278,7 +280,7 @@ const NodeZeroHero = () => {
               <span>Por qué creamos Preziso</span>
             </button>
           </div>
-          
+
           <div className="mt-5 flex items-center gap-1.5 opacity-70">
             <CheckCircle2 size={12} className="text-emerald-600" />
             <span className="text-[10px] font-mono font-semibold text-neutral-500 uppercase tracking-wider">
@@ -290,24 +292,24 @@ const NodeZeroHero = () => {
         {/* ========================================= */}
         {/* COLUMNA DERECHA: MOCKUP CON FADE-OUT INFERIOR */}
         {/* ========================================= */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="relative w-full flex justify-center lg:justify-end items-center h-[350px] md:h-[500px] lg:h-[550px]"
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-neutral-100/80 rounded-full blur-[80px] -z-10" />
-          
-          <img 
-            src="/hero-hand-mockup.webp" 
+
+          <img
+            src="/hero-hand-mockup.webp"
             alt="Cliente usando tienda online Preziso en smartphone"
             className="w-full h-full object-contain object-center lg:object-right drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
             loading="eager"
             decoding="async"
             // 🚀 MÁSCARA CSS: Difumina la imagen y su sombra hacia transparente en el 30% inferior
-            style={{ 
-              WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', 
-              maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' 
+            style={{
+              WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)'
             }}
           />
         </motion.div>
@@ -325,24 +327,24 @@ const NodeZeroHero = () => {
         {isFounderModalOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
             {/* Backdrop más claro y elegante */}
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setIsFounderModalOpen(false)}
               className="absolute inset-0 bg-neutral-900/20 backdrop-blur-md"
             />
-            
+
             {/* Contenedor Editorial */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               className="relative w-full max-w-3xl bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-neutral-200/50 flex flex-col z-10 max-h-[90dvh]"
             >
               {/* Botón de cierre invisible (Cero ruido) */}
-              <button 
+              <button
                 onClick={() => setIsFounderModalOpen(false)}
                 className="absolute top-6 right-6 md:top-8 md:right-8 p-2 text-neutral-400 hover:text-neutral-900 transition-colors z-20"
               >
@@ -351,7 +353,7 @@ const NodeZeroHero = () => {
 
               {/* Cuerpo del Manifiesto */}
               <div className="p-8 pt-12 md:p-14 lg:p-16 overflow-y-auto no-scrollbar relative">
-                
+
                 <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.2em] mb-8 block">
                   Carta Abierta
                 </span>
@@ -359,7 +361,7 @@ const NodeZeroHero = () => {
                 <h3 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-neutral-900 leading-[1.1] mb-10">
                   "La tecnología debe adaptarse a nuestra cultura, no al revés."
                 </h3>
-                
+
                 {/* Columna de lectura estrecha para no cansar el ojo */}
                 <div className="space-y-6 text-sm md:text-base text-neutral-500 leading-relaxed font-medium max-w-2xl">
                   <p>
@@ -901,290 +903,232 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
 // NODO 3: EL CENTRO DE COMANDO (GPU-ACCELERATED KINETIC STACK)
 // =========================================
 
-const NodeThreeCommandCenter = ({ bcvRate }: { bcvRate: number }) => {
+// =========================================
+// NODO 3: EL CENTRO DE COMANDO (APPLE / SHOPIFY BENTO GRID)
+// Optimizacion: Flat Design, Cero Sombras, Parallax GPU-Lite, SEO Semántico
+// =========================================
+
+// =========================================
+// NODO 3: THE AWWWARDS BENTO GRID (APPLE AESTHETIC)
+// =========================================
+
+// =========================================
+// NODO 3: KINETIC EDITORIAL CAROUSEL (DARK AESTHETIC)
+// Reemplazo Quirúrgico del Command Center
+// =========================================
+
+
+// =========================================
+// NODO 3: KINETIC EDITORIAL CAROUSEL (NAVEGACIÓN INTUITIVA & PROPORCIONES PRECISAS)
+// 60FPS Hardware-Accelerated | Carta 2 Expandida | Controles Apple
+// =========================================
+
+
+// =========================================
+// NODO 3: KINETIC EDITORIAL CAROUSEL (CONTROLES INFERIORES & SOMBRA FLUIDA)
+// Controles Bottom-Right | Sombra sin cortes | 60FPS
+// =========================================
+
+
+
+const NodeThreeCommandCenter = () => {
   const containerRef = useRef<HTMLElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
-  const features = useMemo(() => [
+  // Estados reactivos de los botones
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  // Sensor de posición de scroll
+  const checkScrollLimits = useCallback(() => {
+    if (!carouselRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+    setCanScrollLeft(scrollLeft > 20);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 20);
+  }, []);
+
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    checkScrollLimits();
+    el.addEventListener('scroll', checkScrollLimits, { passive: true });
+    window.addEventListener('resize', checkScrollLimits);
+    return () => {
+      el.removeEventListener('scroll', checkScrollLimits);
+      window.removeEventListener('resize', checkScrollLimits);
+    };
+  }, [checkScrollLimits]);
+
+  // Manejador del desplazamiento suave
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const scrollAmount = Math.min(carouselRef.current.clientWidth * 0.5, 480);
+    carouselRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  const cards = [
     {
-      id: 'control',
-      title: "Control Financiero Absoluto",
-      desc: "Conoce tu ingreso neto, el dinero en tránsito y el stock crítico en un solo vistazo. Cero fugas de capital.",
-      icon: LayoutDashboard,
-      image: "/ingresoneto.webp",
-      widget: {
-        icon: DollarSign,
-        label: "NETO",
-        value: "$3,644.89",
-        dotColor: "bg-emerald-400 text-emerald-400",
-        position: "bottom-4 left-4 md:-bottom-5 md:-left-8"
-      }
+      id: 'pos-multimoneda',
+      badge: 'Punto de Venta POS',
+      title: 'POS Multimoneda con\nTasa BCV en Tiempo Real',
+      desc: 'Monitorea ingreso neto, órdenes por despachar y stock crítico. Sincronización oficial con el BCV para blindar márgenes.',
+      img: '/Panel-Supleshop-en-Laptop-Premium.webp',
+      alt: 'Punto de Venta POS Multimoneda con Tasa BCV Venezuela',
+      widthClass: 'md:w-[37vw] lg:w-[36vw] xl:w-[490px]',
+      imgScale: 'scale-[1.25] md:scale-[1.3] translate-y-6 group-hover:translate-y-4'
     },
     {
-      id: 'bcv',
-      title: "Motor BCV Automatizado",
-      desc: "Fija tu precio en dólares una vez. Preziso actualiza toda tu tienda en Bolívares al instante según la tasa oficial. Adiós a remarcar precios.",
-      icon: Zap,
-      image: "/motorbcvautomatizado.webp",
-      widget: {
-        icon: ArrowRightLeft,
-        label: "TASA BCV",
-        value: `${bcvRate.toFixed(2)} Bs`,
-        dotColor: "bg-blue-400 text-blue-400",
-        position: "top-4 right-4 md:-top-5 md:-right-8"
-      }
+      id: 'catalogo-virtual',
+      badge: 'Tienda en Línea',
+      title: 'Catálogo Virtual &\nPlantillas Antierrores',
+      desc: 'Tienda optimizada para convertir desde el móvil sin saber programar. Carrito sincronizado al stock de tu tienda física.',
+      img: '/arquetipos-desktop.webp',
+      alt: 'Catálogo virtual y tienda online personalizable',
+      widthClass: 'md:w-[38vw] lg:w-[37vw] xl:w-[510px]',
+      imgScale: 'scale-[1.2] md:scale-[1.28] translate-y-5 group-hover:translate-y-3'
     },
     {
-      id: 'omni',
-      title: "Inventario Omnicanal",
-      desc: "Vende en tu local físico y en Instagram al mismo tiempo. Si se acaba en el mostrador, se agota en la web en milisegundos.",
-      icon: PackageSearch,
-      image: "/inventarioomnicanal.webp",
-      widget: {
-        icon: AlertTriangle,
-        label: "CRÍTICO",
-        value: "02 Unds",
-        dotColor: "bg-rose-400 text-rose-400",
-        position: "bottom-4 right-4 md:-bottom-5 md:-right-8"
-      }
+      id: 'checkout-vueltos',
+      badge: 'Motor de Pagos',
+      title: 'Checkout Inteligente con\nGestión de Vueltos y Crédito',
+      desc: 'Cero problemas por falta de cambio. Pagos divididos (Zelle, Pago Móvil, Efectivo) y saldo a favor del cliente.',
+      img: '/Checkout-móvil-con-compra-cubierta.webp',
+      alt: 'Checkout con pagos mixtos y billetera digital',
+      widthClass: 'md:w-[38vw] lg:w-[37vw] xl:w-[500px]',
+      imgScale: 'scale-[1.15] md:scale-[1.2] translate-y-4 group-hover:translate-y-2'
     },
     {
-      id: 'b2b',
-      title: "Red de Promotores",
-      desc: "Convierte a tus mejores clientes en vendedores. Asígnales un código, dales comisión y haz que tu marca se viralice sola.",
-      icon: Users,
-      image: "/reddepromotores.webp",
-      widget: {
-        icon: Gift,
-        label: "COMISIÓN",
-        value: "+$5.00",
-        dotColor: "bg-purple-400 text-purple-400",
-        position: "top-4 left-4 md:-top-5 md:-left-8"
-      }
+      id: 'cobro-whatsapp',
+      badge: 'Cierre de Ventas',
+      title: 'Cobrador Rápido &\nEnlace por WhatsApp',
+      desc: 'Crea un pedido desde el panel en 3 segundos y envía un link de cobro seguro con desglose exacto a WhatsApp.',
+      img: '/whatsapp-mobile.webp',
+      alt: 'Generador de link de cobro y enrutamiento a WhatsApp',
+      widthClass: 'md:w-[28vw] lg:w-[27vw] xl:w-[370px]',
+      imgScale: 'scale-[1.2] md:scale-[1.25] translate-y-6 group-hover:translate-y-4'
+    },
+    {
+      id: 'software-inventario',
+      badge: 'Control Omnicanal',
+      title: 'Control de Inventario &\nMatriz Global de SKUs',
+      desc: 'Si vendes un producto en tu mostrador físico, se descuenta de tu página web en milisegundos. Cero duplicados.',
+      img: '/inventario-desktop.webp',
+      alt: 'Software de inventario omnicanal y variantes',
+      widthClass: 'md:w-[36vw] lg:w-[35vw] xl:w-[480px]',
+      imgScale: 'scale-[1.25] md:scale-[1.3] translate-y-6 group-hover:translate-y-4'
     }
-  ], [bcvRate]);
-// 🚀 LÓGICA DE SCROLL NATIVA ACELERADA POR GPU
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
-
-  // 🚀 SISTEMA DE MESETAS (PLATEAUS) PARA CONTROL ABSOLUTO DE SENSIBILIDAD
-  // Mapeamos el scroll para crear "zonas de descanso" largas. 
-  // El usuario debe scrollear obligatoriamente a través del porcentaje estático antes de que la tarjeta se mueva.
-  const rawIndex = useTransform(
-    scrollYProgress, 
-    [
-      0, 0.15,   // De 0% a 15%: Tarjeta 1 totalmente quieta (Requiere varios scrolls)
-      0.25,      // De 15% a 25%: Transición a Tarjeta 2
-      0.40,      // De 25% a 40%: Tarjeta 2 totalmente quieta
-      0.50,      // De 40% a 50%: Transición a Tarjeta 3
-      0.65,      // De 50% a 65%: Tarjeta 3 totalmente quieta
-      0.75,      // De 65% a 75%: Transición a Tarjeta 4
-      1          // De 75% a 100%: Tarjeta 4 totalmente quieta hasta salir de la sección
-    ], 
-    [
-      0, 0,      // Mantiene índice 0
-      1,         // Sube a índice 1
-      1,         // Mantiene índice 1
-      2,         // Sube a índice 2
-      2,         // Mantiene índice 2
-      3,         // Sube a índice 3
-      3          // Mantiene índice 3
-    ]
-  );
-  
-  // Físicas de resorte ajustadas para suavizar los "saltos" entre las mesetas
-  const smoothIndex = useSpring(rawIndex, { stiffness: 200, damping: 40, mass: 1 });
-
-  useMotionValueEvent(rawIndex, "change", (latest) => {
-    const index = Math.round(latest);
-    if (index !== activeIndex) setActiveIndex(index);
-  });
-
-  const currentFeature = features[activeIndex] || features[0];
+  ];
 
   return (
-    // 🚀 Aumentamos a h-[600vh]. Al dividir 600vh entre 4 tarjetas, cada una tiene 150vh de espacio físico.
-    // 150vh garantiza matemáticamente que el usuario deba hacer al menos 2 swipes largos en móvil para avanzar.
-    <section ref={containerRef} id="adn" className="relative h-[600vh] bg-white border-t border-neutral-200/50">
-      <div className="sticky top-0 h-[100dvh] w-full flex flex-col justify-center overflow-hidden">
-        {/* Barra de Progreso Superior */}
-        <motion.div 
-          className="absolute top-0 left-0 h-1 bg-neutral-900 z-50 origin-left"
-          style={{ scaleX: scrollYProgress }}
-        />
-
-        <div className="max-w-7xl mx-auto px-6 w-full">
-          
-          {/* Encabezado */}
-          <div className="text-center md:text-left mb-6 md:mb-2">
-            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-[0.5em] mb-4 block">Centro de Comando</span>
-            <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1] mb-6 md:text-5xl">
-              El cerebro detrás <br className="hidden md:block" />
-              <span className="text-neutral-500 font-medium">de tu operación.</span>
+    <section
+      ref={containerRef}
+      id="funciones"
+      className="relative w-full bg-white py-16 md:py-24 border-t border-neutral-200 overflow-hidden"
+    >
+      <div className="max-w-7xl mx-auto px-6 w-full mb-8 md:mb-10">
+        {/* ================= ENCABEZADO SEO ================= */}
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-neutral-100 pb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-800 text-[10px] font-mono font-bold uppercase tracking-widest mb-4">
+              <LayoutDashboard size={12} className="text-neutral-900" />
+              Ecosistema Operativo Omnicanal
+            </div>
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-light tracking-tighter text-neutral-900 leading-[1.05]">
+              El centro de mando <br />
+              <span className="text-neutral-400 font-normal">de tu negocio.</span>
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-20 items-center">
-            
-            {/* COLUMNA IZQUIERDA: COPY DINÁMICO */}
-            <div className="lg:col-span-5 flex flex-col justify-center h-[180px] md:h-[300px] relative">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentFeature.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute inset-0 flex flex-col justify-center"
-                >
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-neutral-900 text-white flex items-center justify-center shadow-md mb-4 md:mb-6">
-                    <currentFeature.icon size={20} strokeWidth={2} />
-                  </div>
-                  <h3 className="text-xl md:text-4xl font-bold tracking-tight text-neutral-900 mb-3 md:mb-4 leading-tight">
-                    {currentFeature.title}
-                  </h3>
-                  <p className="text-xs md:text-base text-neutral-500 leading-relaxed font-medium max-w-md">
-                    {currentFeature.desc}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
+          <p className="text-xs sm:text-sm text-neutral-500 font-medium max-w-sm leading-relaxed sm:text-right">
+            Punto de venta físico, catálogo web y control de inventario unificados en una sola base de datos sin fricción contable.
+          </p>
+        </header>
+      </div>
 
-            {/* COLUMNA DERECHA: KINETIC STACK (GPU DRIVEN) */}
-            <div className="lg:col-span-7 relative h-[350px] md:h-[550px] w-full flex items-center justify-center perspective-[1200px]">
-              <div className="relative w-full max-w-[280px] md:max-w-[450px] aspect-[4/3] flex items-center justify-center">
+      {/* ================= CARRUSEL CON PADDING PARA SOMBRAS ================= */}
+      <div className="w-full px-4 sm:px-6">
+        <div 
+          ref={carouselRef}
+          /* pb-12 y pt-4 garantizan que la sombra ambiental tenga aire y no se corte */
+          className="flex flex-col md:flex-row gap-5 md:overflow-x-auto no-scrollbar md:snap-x md:snap-mandatory pt-4 pb-12 overscroll-x-contain px-2"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {cards.map((card) => (
+            <article
+              key={card.id}
+              style={{ backgroundColor: '#090a0f' }}
+              className={`relative shrink-0 w-full ${card.widthClass} h-[470px] md:h-[500px] md:snap-start rounded-[2rem] border border-white/10 overflow-hidden flex flex-col justify-between group transition-all duration-500 ease-out hover:border-white/25 will-change-transform transform-gpu shadow-[0_16px_36px_-8px_rgba(0,0,0,0.35)]`}
+            >
+              {/* 1. TEXTO SUPERIOR */}
+              <div className="p-7 md:p-8 pb-0 z-20 relative shrink-0">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-2 block">
+                  {card.badge}
+                </span>
                 
-                {features.map((item, i) => {
-                  const y = useTransform(smoothIndex, (v) => {
-                    const offset = i - v;
-                    if (offset < 0) return Math.abs(offset) * 600; 
-                    return -offset * 25; 
-                  });
-
-                  const scale = useTransform(smoothIndex, (v) => {
-                    const offset = i - v;
-                    if (offset < 0) return 1 + Math.abs(offset) * 0.1; 
-                    return 1 - offset * 0.05;
-                  });
-
-                  const shadowOpacity = useTransform(smoothIndex, (v) => {
-                    const offset = i - v;
-                    if (offset < 0) return 0;
-                    return offset * 0.12;
-                  });
-
-                  const widgetOpacity = useTransform(smoothIndex, (v) => {
-                    const offset = Math.abs(i - v);
-                    return offset < 0.4 ? 1 : 0; 
-                  });
-
-                  const widgetScale = useTransform(smoothIndex, (v) => {
-                    const offset = Math.abs(i - v);
-                    return offset < 0.4 ? 1 : 0.9;
-                  });
-
-                  const zIndex = features.length - i;
-                  const WidgetIcon = item.widget.icon;
-
-                  return (
-                    <motion.div
-                      key={item.id}
-                      // 🚀 DESACOPLAMIENTO: Quitamos el overflow-hidden de aquí para liberar al widget
-                      className="absolute flex w-full h-full origin-bottom flex-col cursor-zoom-in will-change-transform"
-                      style={{ 
-                        y, 
-                        scale, 
-                        zIndex,
-                        filter: 'blur(0px)' 
-                      }}
-                    >
-                      {/* 🚀 CONTENEDOR VISUAL DE LA CARTA (Aquí sí recortamos la imagen) */}
-                      <div 
-                        className="absolute inset-0 rounded-2xl md:rounded-[2rem] overflow-hidden border border-neutral-200/80 bg-white shadow-[0_15px_40px_rgba(0,0,0,0.1)]"
-                        onClick={() => setZoomedImage(item.image)}
-                      >
-                        {/* Barra macOS */}
-                        <div className="absolute top-0 left-0 right-0 h-8 md:h-10 bg-white border-b border-neutral-200/80 z-20 flex items-center px-4 gap-2">
-                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
-                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
-                          <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-neutral-300" />
-                        </div>
-                        
-                        <img src={item.image} alt={item.title} className="absolute top-8 md:top-10 left-0 w-full h-[calc(100%-32px)] md:h-[calc(100%-40px)] object-cover object-left-top" />
-                        
-                        {/* Capa de sombra dinámica */}
-                        <motion.div 
-                          className="absolute inset-0 bg-black pointer-events-none z-30 will-change-opacity"
-                          style={{ opacity: shadowOpacity }}
-                        />
-                      </div>
-
-                      {/* 🚀 MICRO-WIDGET FLOTANTE (Ahora es libre de salir de los bordes) */}
-                      <motion.div
-                        style={{ opacity: widgetOpacity, scale: widgetScale }}
-                        className={`absolute z-50 ${item.widget.position} pointer-events-none`}
-                      >
-                        <div className="flex items-center gap-2.5 md:gap-3 p-1.5 pr-4 md:pr-5 bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.25)] rounded-full">
-                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
-                            <WidgetIcon size={14} className="text-white" strokeWidth={2.5} />
-                          </div>
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${item.widget.dotColor} shadow-[0_0_8px_currentColor]`} />
-                              <span className="text-[8px] md:text-[9px] font-bold text-neutral-400 uppercase tracking-widest leading-none mt-px">
-                                {item.widget.label}
-                              </span>
-                            </div>
-                            <div className="w-px h-2.5 md:h-3 bg-neutral-700" />
-                            <span className="text-[10px] md:text-xs font-bold tracking-tight font-mono text-white leading-none mt-px">
-                              {item.widget.value}
-                            </span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  );
-                })}
+                <h3 className="text-xl md:text-2xl font-light tracking-tight text-white mb-2 whitespace-pre-line leading-tight">
+                  {card.title}
+                </h3>
+                
+                <p className="text-xs md:text-sm text-neutral-400 font-medium leading-relaxed line-clamp-2">
+                  {card.desc}
+                </p>
               </div>
-            </div>
-          </div>
+
+              {/* 2. CONTENEDOR DE IMAGEN */}
+              <figure className="relative w-full h-[260px] md:h-[280px] flex items-end justify-center overflow-hidden z-10 p-0 m-0">
+                <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#090a0f] via-[#090a0f]/60 to-transparent z-10 pointer-events-none" />
+
+                <img
+                  src={card.img}
+                  alt={card.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className={`w-full h-full object-contain object-bottom origin-bottom transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ${card.imgScale}`}
+                />
+              </figure>
+            </article>
+          ))}
+
+          <div className="hidden md:block shrink-0 w-8" />
         </div>
       </div>
 
-      {/* LIGHTBOX DE ZOOM */}
-      <AnimatePresence>
-        {zoomedImage && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              onClick={() => setZoomedImage(null)}
-              className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm cursor-zoom-out"
-            />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative w-full max-w-5xl bg-white rounded-2xl border border-neutral-200/50 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
-            >
-              <div className="p-4 flex justify-between items-center border-b border-neutral-200/50 bg-neutral-50/50 shrink-0">
-                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Inspección de Interfaz</span>
-                <button onClick={() => setZoomedImage(null)} className="p-1.5 text-neutral-400 hover:text-neutral-900 bg-white border border-neutral-200/50 hover:bg-neutral-50 rounded-full transition-colors shadow-xs">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto bg-neutral-100/50 p-0 md:p-8 flex items-start justify-center">
-                <img src={zoomedImage} alt="Zoomed Interface" className="w-full h-auto object-contain rounded-none md:rounded-xl shadow-none md:shadow-lg border-0 md:border border-neutral-200/50" />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ================= CONTROLES DE NAVEGACIÓN INFERIORES (DERECHA) ================= */}
+      <div className="max-w-7xl mx-auto px-6 w-full hidden md:flex items-center justify-end pt-2">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => handleScroll('left')}
+            disabled={!canScrollLeft}
+            aria-label="Desplazar a la izquierda"
+            className="w-10 h-10 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed text-neutral-900 flex items-center justify-center transition-all duration-200 active:scale-95 shadow-2xs cursor-pointer"
+          >
+            <ArrowLeft size={16} strokeWidth={2.2} />
+          </button>
+
+          <button
+            onClick={() => handleScroll('right')}
+            disabled={!canScrollRight}
+            aria-label="Desplazar a la derecha"
+            className="w-10 h-10 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed text-neutral-900 flex items-center justify-center transition-all duration-200 active:scale-95 shadow-2xs cursor-pointer"
+          >
+            <ArrowRight size={16} strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}} />
     </section>
   );
-}
+};
 
+
+ 
 // IMPORTACIONES ADICIONALES NECESARIAS (Asegúrate de tenerlas arriba)
 // import { useMotionValue, useSpring } from 'framer-motion'
 // import { ShoppingBag, ArrowRight, Wallet, MessageCircle, CheckCircle2 } from 'lucide-react'
@@ -2044,7 +1988,7 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
       <NodeOneReconciliation /> {/* 🚀 REEMPLAZO: Cambiamos "Friction" por la solución real */}
 
       <NodeTwoSingularity bcvRate={liveRate} />
-      <NodeThreeCommandCenter bcvRate={liveRate} />
+      <NodeThreeCommandCenter />
 
       <NodeFourNeural bcvRate={liveRate} />
       <NodeFiveExtraction bcvRate={liveRate} />
@@ -2054,6 +1998,8 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
 
       <NodeEightExtraction />
       <KineticFooter />
+        {/* 🚀 EL CONCIERGE DE CONVERSIÓN (Reemplaza con tu WhatsApp real) */}
+      <ConciergeWhatsAppModal whatsappNumber="584248157859" />
 
     </div>
   )
