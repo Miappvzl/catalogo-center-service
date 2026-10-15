@@ -92,18 +92,21 @@ export async function POST(req: Request) {
       sessionId,
     };
 
-    // 5. Firma Criptográfica HMAC-SHA256 (Llaves A-Z, salto \n)
-    const path = '/api/v1/merchant/transactions';
-    const { timestamp, signature, bodyString } = generateSkylinkSignature('POST', path, skylinkPayload, apiKey);
+   // 5. Sanitización estricta de credenciales
+    const cleanCommerce = commerceCode.replace(/[\s'"\`]/g, '');
+    const cleanApiKey = apiKey.replace(/[\s'"\`]/g, '');
 
-    // 6. Ejecutar petición al API de Skylink
+    const path = '/api/v1/merchant/transactions';
+    const { timestamp, signature, bodyString } = generateSkylinkSignature('POST', path, skylinkPayload, cleanApiKey);
+
+    // 6. Ejecutar petición al API de Skylink con cabeceras limpias
     const skylinkResponse = await fetch(`${SKYLINK_BASE_URL}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-        'X-Commerce-Code': commerceCode,
-        'X-Commerce-Id': commerceCode,
+        'X-Api-Key': cleanApiKey,
+        'X-Commerce-Code': cleanCommerce,
+        'X-Commerce-Id': cleanCommerce,
         'X-Timestamp': timestamp,
         'X-Signature': signature,
       },
