@@ -247,11 +247,10 @@ export default function CheckoutProcess({
 
     // 🚀 LECTOR DE POLÍTICA DE ENVÍO
     const nationalShippingLabel = shipping.national_shipping_is_free ? "(Envío Gratis)" : "(Cobro en Destino)";
-
-    // 🚀 LÓGICA DE MÉTODOS Y DIVISAS
-    const paymentKeysMap: { [key: string]: string } = {
+const paymentKeysMap: { [key: string]: string } = {
         Transferencia: "transferencia",
         "Pago Móvil": "pago_movil",
+        "Pago Móvil Automatizado": "skylink", // 🚀 Mapeo a Skylink
         Zelle: "zelle",
         Binance: "binance",
         Zinli: "zinli",
@@ -272,6 +271,9 @@ export default function CheckoutProcess({
 
     const activePaymentMethods = useMemo(() => {
         const active = [];
+       if (payments.skylink?.active && storeConfig?.slug === 'theo') {
+    active.push("Pago Móvil Automatizado");
+}
         if (payments.transferencia?.active) active.push("Transferencia");
         if (payments.pago_movil?.active) active.push("Pago Móvil");
         if (payments.zelle?.active) active.push("Zelle");
@@ -713,12 +715,13 @@ export default function CheckoutProcess({
         }, [splitPayments, fxMultiplier, activeRate]);
 
 
-    const missingReceipts = splitPayments.some(
+  const missingReceipts = splitPayments.some(
         (p) =>
             receiptConfig.strict_mode &&
             p.method !== "Efectivo" &&
-            p.method !== "Pago Flash" && // 🚀 EXCLUIMOS PAGO FLASH AQUÍ
-            p.method !== "PayPal" && // 🚀 EXCLUIMOS PAYPAL AQUÍ
+            p.method !== "Pago Flash" &&
+            p.method !== "PayPal" &&
+            p.method !== "Pago Móvil Automatizado" && // 🚀 Excluimos Skylink de pedir comprobante
             !p.receiptFile,
     );
 
@@ -859,7 +862,13 @@ export default function CheckoutProcess({
             "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl  scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
         const baseIdle =
             "bg-[var(--store-surface)] text-[var(--store-text-main)] border-2 border-[var(--store-text-main)]/30 hover:border-[var(--store-text-main)]/60 hover:bg-[var(--store-text-main)]/[0.02] rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]";
-        switch (pm) {
+switch (pm) {
+            case "Pago Móvil Automatizado":
+                return {
+                    icon: Zap,
+                    btnSelected: "bg-neutral-950 text-white border-2 border-neutral-950 rounded-xl scale-[1.02] transition-all duration-150 font-black shadow-sm active:scale-[0.98]",
+                    btnIdle: "bg-white text-neutral-900 border-2 border-neutral-900/40 hover:border-neutral-950 hover:bg-neutral-50 rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]",
+                };
             case "Transferencia":
                 return {
                     icon: BrandLogos.Transferencia,
@@ -1176,6 +1185,64 @@ export default function CheckoutProcess({
             else if (rawFulfillment === 'dine_in') strictFulfillmentType = 'dine_in';
             else if (rawFulfillment === 'pickup') strictFulfillmentType = 'pickup';
 
+      // 🚀 DISPARADOR SKYLINK PAY (AUTOMATIZADO)
+            if (finalPaymentMethod === "Pago Móvil Automatizado") {
+                const initRes = await fetch('/api/checkout/skylink/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        storeId,
+                        clientData,
+                        orderData: {
+                            total_usd: Number(grandTotalUSD.toFixed(2)),
+                            total_bs: Number(grandTotalBs.toFixed(2)),
+                            exchange_rate: activeRate,
+                            currency_type: currency,
+                            shipping_method: rawFulfillment,
+                            delivery_info: deliveryInfoFull,
+                            fulfillment_type: strictFulfillmentType,
+                            table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
+                            shipping_cost: Number(deliveryCost.toFixed(2)),
+                            subtotal_usd: Number(totalListUSD_base.toFixed(2)),
+                            discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                        },
+                        items: items.map(item => ({
+                            productId: item.productId,
+                            name: item.name,
+                            quantity: item.quantity,
+                            basePrice: item.basePrice,
+                            variantInfo: item.variantInfo,
+                            variantId: item.variantId,
+                            sku: item.sku,
+                            foodModifiers: item.foodModifiers,
+                            foodNotes: item.foodNotes
+                        }))
+                    })
+                });
+
+                const initData = await initRes.json();
+                if (!initRes.ok || !initData.success) {
+                    throw new Error(initData.error || 'No se pudo iniciar el proceso con SkylinkPay.');
+                }
+
+                // Guardado de respaldo local para asegurar la llegada a /pago-exitoso
+                try {
+                    localStorage.setItem('pz_last_skylink_order', JSON.stringify({
+                        orderId: initData.orderId,
+                        orderNumber: initData.orderNumber,
+                        customerName: clientData.name,
+                        totalUsd: Number(grandTotalUSD.toFixed(2)),
+                        totalBs: Number(grandTotalBs.toFixed(2)),
+                        token: initData.token,
+                        slug: storeConfig?.slug
+                    }));
+                } catch {}
+
+                // Redirección oficial a la pasarela segura de Skylink
+                window.location.href = initData.url;
+                return;
+            }
+
             if (isAutomatedGateway) {
                 const initRes = await fetch('/api/checkout/pago-flash/init', {
                     method: 'POST',
@@ -1189,7 +1256,7 @@ export default function CheckoutProcess({
                             currency_type: currency,
                             shipping_method: rawFulfillment,
                             delivery_info: deliveryInfoFull,
-                            fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
+                            fulfillment_type: strictFulfillmentType,
                             table_number: isFoodTech && clientData.deliveryType === "dine_in" ? clientData.tableNumber : null,
                         },
                         items: items.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, basePrice: item.basePrice }))
@@ -1200,9 +1267,8 @@ export default function CheckoutProcess({
 
                 setPfTransaction({ pfId: initData.pf_transaction_id, orderId: initData.order_id, orderNumber: initData.order_number || 0 });
                 setP2pStep('step1');
-                setCheckoutState('idle'); // Revertimos porque abre un modal
+                setCheckoutState('idle');
                 return;
-
             }
 
 
@@ -2377,7 +2443,19 @@ export default function CheckoutProcess({
 
                                             return (
                                                 <div className="mt-6 pt-6 border-t border-[var(--store-border)] flex flex-col gap-6">
-                                                    {activePaymentInput === "Pago Flash" ? (
+                                                    {activePaymentInput === "Pago Móvil Automatizado" ? (
+                                                        <div className="mt-4 p-5 bg-neutral-900 text-white rounded-2xl border border-neutral-800 flex items-center gap-4 shadow-sm animate-in fade-in">
+                                                            <div className="bg-neutral-800 p-2.5 rounded-xl border border-neutral-700 shrink-0 text-amber-400">
+                                                                <Zap size={20} strokeWidth={1.5} />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <strong className="text-xs font-bold block text-white tracking-tight">Pago Móvil Automatizado</strong>
+                                                                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                                                                    Al presionar Continuar serás transferido a la pasarela segura para debitar directamente desde tu cuenta sin necesidad de enviar captures.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ) : activePaymentInput === "Pago Flash" ? (
                                                         <div className="mt-4 p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex items-center gap-4">
                                                             <div className="bg-white p-2.5 rounded-xl border border-gray-100 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                                                                 <Zap size={20} className="text-gray-900" strokeWidth={1.5} />
@@ -3064,6 +3142,10 @@ export default function CheckoutProcess({
                                         ) : missingReceipts && isPaidInFull ? (
                                             <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Upload size={16} className="mb-0.5" /> Adjunta Recibos
+                                            </motion.div>
+                                      ) : activePaymentInput === "Pago Móvil Automatizado" ? (
+                                            <motion.div key="skylink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
+                                                <Zap size={16} className="mb-0.5" /> Continuar a Pago Móvil
                                             </motion.div>
                                         ) : activePaymentInput === "Pago Flash" ? (
                                             <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">

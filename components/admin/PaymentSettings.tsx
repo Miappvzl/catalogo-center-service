@@ -37,12 +37,14 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   
-  // Estado aislado para credenciales cifradas
+// Estado aislado para credenciales cifradas
   const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
+  const [skylinkKeys, setSkylinkKeys] = useState({ commerceCode: '', apiKey: '' }) // 🚀 NUEVO: Estado Skylink
 
   const [methods, setMethods] = useState({
     allow_split_payments: initialData?.allow_split_payments || false,
     pago_flash: { active: false, ...initialData?.pago_flash }, 
+    skylink: { active: false, ...initialData?.skylink }, // 🚀 NUEVO: Configuración Skylink
     transferencia: { active: false, details: '', ...initialData?.transferencia }, 
     pago_movil: { active: false, details: '', ...initialData?.pago_movil },
     zelle: { active: false, details: '', ...initialData?.zelle },
@@ -83,13 +85,35 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
         })
       });
 
-      if (!credRes.ok) {
+     if (!credRes.ok) {
         const errData = await credRes.json();
         Swal.fire('Fallo de Criptografía', errData.error || 'Tus llaves bancarias NO se guardaron.', 'error');
         setSaving(false);
         return;
       }
       setPfKeys({ publicKey: '', secretKey: '' });
+    }
+
+    // 🚀 NUEVO: Guardado seguro de credenciales Skylink en la bóveda
+    if (methods.skylink.active && skylinkKeys.commerceCode && skylinkKeys.apiKey) {
+      const credRes = await fetch('/api/admin/payment-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId,
+          provider: 'skylink',
+          publicKey: skylinkKeys.commerceCode,
+          secretKey: skylinkKeys.apiKey
+        })
+      });
+
+      if (!credRes.ok) {
+        const errData = await credRes.json();
+        Swal.fire('Fallo de Seguridad', errData.error || 'Las credenciales de Skylink NO se guardaron.', 'error');
+        setSaving(false);
+        return;
+      }
+      setSkylinkKeys({ commerceCode: '', apiKey: '' });
     }
 
     setSaving(false)
@@ -139,27 +163,62 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
       {/* GRID DE MÉTODOS DE PAGO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
         
-        {/* PAGO FLASH AUTOMÁTICO (AUTOMATIZADO - FEATURE TEASER PREMIUM) */}
-        <div className="p-5 rounded-xl border border-neutral-200/50 bg-neutral-50/40 md:col-span-2 relative overflow-hidden group select-none">
-          <div className="flex justify-between items-start gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-neutral-400">
-                <Zap size={14} className="text-neutral-300" /> 
+     {/* SKYLINK PAY (AUTOMATIZADO) */}
+      {storeId === 'be6326b1-f712-4f40-8e29-00149164a319' && (
+        <div className={`p-5 rounded-xl border transition-all duration-300 md:col-span-2 ${methods.skylink.active ? 'border-neutral-900 bg-neutral-900 shadow-lg' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
+          <div
+            className="flex justify-between items-start md:items-center mb-2 cursor-pointer gap-4"
+            onClick={() => handleChange('skylink', 'active', !methods.skylink.active)}
+          >
+            <div className="space-y-1">
+              <div className={`flex items-center gap-2 text-sm font-bold transition-colors ${methods.skylink.active ? 'text-white' : 'text-neutral-900'}`}>
+                <Zap size={16} className={methods.skylink.active ? 'text-amber-400' : 'text-neutral-500'} /> 
                 <span>Pago Móvil Automatizado</span>
-                <span className="bg-amber-50 text-amber-700 border border-amber-200/40 text-[9px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider font-mono">
-                  Próximamente
-                </span>
               </div>
-              <p className="text-xs leading-relaxed text-neutral-400 max-w-xl">
-                Pasarela integrada nativa. El sistema validará automáticamente las referencias bancarias del BCV en tiempo real, confirmando las órdenes de forma inmediata sin revisión manual de capturas.
+              <p className={`text-xs ${methods.skylink.active ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                Validación automática y liquidación directa a tu banco vía Skylink. Tarifa: 2.9% por transacción.
               </p>
             </div>
-            
-            <div className="w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 bg-neutral-100 border-neutral-200 justify-start cursor-not-allowed">
-              <div className="w-4.5 h-4.5 rounded-full bg-neutral-300 shadow-xs" />
-            </div>
+            <AnimatedSwitch active={methods.skylink.active} activeColor="bg-amber-500" />
           </div>
+          
+          {methods.skylink.active && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="pt-4 mt-2 border-t border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Código de Comercio</label>
+                  <input
+                    placeholder="Ej: 657137066270"
+                    value={skylinkKeys.commerceCode}
+                    onChange={e => {
+                      setIsDirty(true);
+                      setSkylinkKeys(prev => ({ ...prev, commerceCode: e.target.value.replace(/\D/g, '') }));
+                    }}
+                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-neutral-800 text-white font-mono placeholder:text-neutral-500 border border-neutral-700 focus:border-amber-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">API Key HMAC</label>
+                  <input
+                    type="password"
+                    placeholder="Pega aquí tu API Key secreta"
+                    value={skylinkKeys.apiKey}
+                    onChange={e => {
+                      setIsDirty(true);
+                      setSkylinkKeys(prev => ({ ...prev, apiKey: e.target.value.trim() }));
+                    }}
+                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-neutral-800 text-white font-mono placeholder:text-neutral-500 border border-neutral-700 focus:border-amber-500 outline-none transition-all"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-500/80 md:col-span-2 flex items-center gap-1.5 font-medium mt-1">
+                  <AlertCircle size={12} />
+                  Tus credenciales se encriptarán a nivel bancario en nuestra bóveda (AES-256). Solo debes ingresarlas una vez.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
+               )}
 
         {/* PAGO MÓVIL (AZUL SALVIA MUTED) */}
         <div className={`p-4 rounded-xl border transition-all duration-300 ${methods.pago_movil.active ? 'border-neutral-200 bg-white shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
@@ -184,6 +243,7 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
             </div>
           )}
         </div>
+
 
         {/* ZELLE (LAVANDA MUTED) */}
         <div className={`p-4 rounded-xl border transition-all duration-300 ${methods.zelle.active ? 'border-neutral-200 bg-white shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
