@@ -174,7 +174,7 @@ function ProductCardComponent({
                     </span>
                   )}
                 </div>
-                <span className="text-sm md:text-base font-black text-[var(--store-text-main)] leading-none tracking-tight font-mono">
+                <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                   ${listPrice.toFixed(2)}
                 </span>
                 <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
@@ -397,7 +397,7 @@ function ProductCardComponent({
                   ${activeCompareAt.toFixed(2)}
                 </span>
               )}
-              <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-red-500' : 'text-[var(--store-text-main)]'}`}>
+              <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                 ${listPrice.toFixed(2)}
               </span>
             </div>
@@ -429,101 +429,111 @@ function ProductCardComponent({
 
   // =========================================================================
   // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP CARD)
-  if (cardStyle === 'food_menu') {
-    return (
-      <div
-        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-colors duration-150 relative overflow-hidden shadow-xs hover:shadow-md ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
-        onClick={handleOpenCard}
-      >
-        {/* Proporción 1:1 Cuadrada: +33% de altura para evitar cortes en platos y bebidas */}
-        <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
-          {product.image_url ? (
-            <Image
-              src={getOptimizedUrl(product.image_url)}
-              alt={product.name}
-              fill
-              priority={isPriorityImage}
-              loading={isPriorityImage ? undefined : 'lazy'}
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={28} strokeWidth={1.5} />
-            </div>
-          )}
-
-          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
-            {isOutOfStock ? (
-              <span className="bg-neutral-900/90 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-                Agotado
-              </span>
-            ) : isPromo ? (
-              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
-                -{promoPercent}%
-              </span>
-            ) : null}
+ if (cardStyle === 'food_menu') {
+  return (
+    <div 
+      className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-200 relative overflow-hidden shadow-xs hover:shadow-lg ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`} 
+      onClick={handleOpenCard}
+    >
+      {/* Contenedor de Imagen (Proporción 1:1 Cuadrada) */}
+      <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
+        {product.image_url ? (
+          <Image 
+            src={getOptimizedUrl(product.image_url)} 
+            alt={product.name} 
+            fill 
+            priority={isPriorityImage} 
+            loading={isPriorityImage ? undefined : 'lazy'} 
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw" 
+            onLoad={() => setIsImageLoaded(true)} 
+            className={`object-cover transition-transform duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
+            <ImageIcon size={28} strokeWidth={1.5} />
           </div>
+        )}
 
-          <button
-            onClick={handleToggleFav}
-            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-transform shadow-xs active:scale-90 ${isFavorite
-                ? 'text-[var(--store-action-favorite)] bg-white shadow-sm'
-                : 'bg-white/80 text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'
-              }`}
-            aria-label="Favorito"
-          >
-            <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
-          </button>
-
-          {!isOutOfStock && (
-            <div className="absolute bottom-2.5 right-2.5 z-20">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-transform duration-150">
-                <Plus size={18} strokeWidth={3} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-3.5 flex flex-col flex-1 justify-between gap-1.5">
-          <div>
-            <span className="text-[9px] font-medium uppercase tracking-wider text-[var(--store-primary)] block mb-0.5">
-              {product.category || 'Especialidad'}
+        {/* Badges Superiores (Agotado / Descuento) */}
+        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
+          {isOutOfStock ? (
+            <span className="bg-neutral-900/90 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
+              Agotado
             </span>
-            <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] font-heading line-clamp-2 leading-snug">
-              {product.name}
-            </h3>
-          </div>
+          ) : isPromo ? (
+            <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
+              -{promoPercent}%
+            </span>
+          ) : null}
+        </div>
 
-          <div className="pt-2 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-1">
-            <div className="flex items-baseline justify-between">
-              <div className="flex items-baseline gap-1.5">
-                {isPromo && (
-                  <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through">
-                    ${activeCompareAt.toFixed(2)}
-                  </span>
-                )}
-                <span className="text-sm md:text-base font-black font-price text-[var(--store-text-main)] leading-none">
-                  ${listPrice.toFixed(2)}
+        {/* Botón de Favorito */}
+        <button 
+          onClick={handleToggleFav} 
+          className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-all shadow-xs active:scale-90 ${isFavorite ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' : 'bg-white/80 backdrop-blur-xs text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`} 
+          aria-label="Favorito"
+        >
+          <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
+        </button>
+
+        {/* Botón de Acción Rápida (Añadir) */}
+        {!isOutOfStock && (
+          <div className="absolute bottom-2.5 right-2.5 z-20">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-transform duration-150">
+              <Plus size={18} strokeWidth={3} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Cuerpo de Contenido */}
+      <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
+        
+        {/* Bloque Superior: Categoría y Título */}
+        <div className="space-y-0.5">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--store-primary)] block">
+            {product.category || 'Especialidad'}
+          </span>
+          <h3 className="text-xs md:text-sm font-semibold text-[var(--store-text-main)] font-heading line-clamp-2 leading-snug">
+            {product.name}
+          </h3>
+        </div>
+
+        {/* Bloque Inferior: Precios e Incentivos */}
+        <div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-1.5">
+          
+          {/* Fila Principal de Precios (Protegida contra desbordamientos) */}
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              {isPromo && (
+                <span className="text-[10px] font-medium text-[var(--store-surface-text)] line-through">
+                  ${activeCompareAt.toFixed(2)}
                 </span>
-              </div>
-              <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] tabular-nums">
-                Bs {formattedBs}
+              )}
+              <span className={`text-sm md:text-base font-black font-price leading-none ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+                ${listPrice.toFixed(2)}
               </span>
             </div>
 
-            {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo App) */}
-            {penalty > 0 && !isOutOfStock && (
-              <div className="flex items-center gap-1 text-[9px] font-medium text-[var(--store-incentive)]">
-                <Flame size={10} className="fill-current shrink-0" /> Paga ${cashPrice.toFixed(2)} USD
-              </div>
-            )}
+            {/* Monto Local blindado contra quiebres de línea */}
+            <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tabular-nums whitespace-nowrap">
+              Bs. {formattedBs}
+            </span>
           </div>
+
+          {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo Píldora UI Moderna) */}
+          {penalty > 0 && !isOutOfStock && (
+            <div className="inline-flex items-center gap-1.5 bg-[var(--store-primary)]/8 text-[var(--store-incentive)] px-2 py-1 rounded-[var(--radius-btn)] text-[9px] font-medium w-fit">
+              <Flame size={10} className="fill-current shrink-0 text-[var(--store-incentive)]" />
+              <span>Ahorra pagando en Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
+            </div>
+          )}
         </div>
+
       </div>
-    );
-  }
+    </div>
+  );
+}
   // =========================================================================
   // 💻 VARIANTE: TEMA 6 (MODULAR TECH / APP STYLE CARD)
   // =========================================================================
@@ -592,7 +602,7 @@ function ProductCardComponent({
           <div className="mt-auto pt-3 flex flex-col min-w-0 pr-12 relative z-10">
             {isPromo && <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through mb-0.5">${activeCompareAt.toFixed(2)}</span>}
             <div className="flex items-baseline gap-1">
-              <span className="text-xl md:text-2xl font-black text-[var(--store-text-main)] leading-none tracking-tight">${listPrice.toFixed(2)}</span>
+              <span className={`text-xl md:text-2xl font-black leading-none tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}> ${listPrice.toFixed(2)}</span>
             </div>
             <span className="text-[11px] font-medium text-[var(--store-surface-text)] mt-1 tabular-nums">Bs {formattedBs}</span>
 
@@ -727,7 +737,7 @@ function ProductCardComponent({
                 )}
               </div>
 
-              <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
+              <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                 ${listPrice.toFixed(2)}
               </span>
 

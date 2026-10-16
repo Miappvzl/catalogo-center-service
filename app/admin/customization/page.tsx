@@ -19,17 +19,17 @@ import EliteColorPicker from '@/components/admin/EliteColorPicker'
 // 🚀 AÑADIR ESTE COMPONENTE (Solución al error TS2304)
 const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
     <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 cursor-pointer ${active ? `${activeColor} border-transparent justify-end` : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
-        <motion.div 
-            layout 
-            transition={{ type: "spring", stiffness: 600, damping: 30 }} 
-            className="w-4.5 h-4.5 rounded-full bg-white shadow-xs" 
+        <motion.div
+            layout
+            transition={{ type: "spring", stiffness: 600, damping: 30 }}
+            className="w-4.5 h-4.5 rounded-full bg-white shadow-xs"
         />
     </div>
 )
 
 
 
-  
+
 
 // 🚀 CATÁLOGO DE ICONOS VECTORIALES PROFESIONALES (A nivel de módulo)
 const TRUST_BADGE_ICONS = [
@@ -66,7 +66,7 @@ export default function CustomizationPage() {
     const [storeData, setStoreData] = useState<any>(null)
 
     const [config, setConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
-     const [originalConfig, setOriginalConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
+    const [originalConfig, setOriginalConfig] = useState<ThemeConfig>(DEFAULT_THEME_CONFIG)
     const [activeTab, setActiveTab] = useState<'marketplace' | 'colors' | 'shapes' | 'search' | 'typography' | 'multimedia' | 'badges'>('marketplace')
     const [viewport, setViewport] = useState<'mobile' | 'desktop'>('mobile')
     const [selectedNicheFilter, setSelectedNicheFilter] = useState<string>('all')
@@ -93,7 +93,7 @@ export default function CustomizationPage() {
         }
     }, [config.template_id, activeTab]);
 
- // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
+    // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
     const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast', 'modular_tech']
 
     // Estados para subidas del Studio
@@ -109,7 +109,7 @@ export default function CustomizationPage() {
         const initData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-              const { data: store } = await supabase.from('stores').select('id, name, slug, theme_config, logo_url, hero_url, store_type').eq('user_id', user.id).single()
+                const { data: store } = await supabase.from('stores').select('id, name, slug, theme_config, logo_url, hero_url, store_type').eq('user_id', user.id).single()
                 if (store) {
                     setStoreData(store)
                     const loadedConfig = normalizeThemeConfig(store.theme_config)
@@ -360,7 +360,7 @@ export default function CustomizationPage() {
         if (!e.target.files || e.target.files.length === 0) return
         const file = e.target.files[0]
 
-          const isRestaurantStore = currentStoreType === 'restaurant';
+        const isRestaurantStore = currentStoreType === 'restaurant';
         const expectedW = 1080;
         const expectedH = isRestaurantStore ? 720 : 1350;
 
@@ -396,7 +396,7 @@ export default function CustomizationPage() {
             setUploadingHeroMobile(false)
         }
     }
-  const handleApplyTemplate = (template: TemplateDefinition) => {
+    const handleApplyTemplate = (template: TemplateDefinition) => {
         // 🚀 HERENCIA INTELIGENTE: Si el usuario desea preservar su marca, clonamos colores y tipografías.
         const newConfig = normalizeThemeConfig({
             ...template.default_config,
@@ -417,9 +417,9 @@ export default function CustomizationPage() {
         });
         setConfig(newConfig);
 
-        toast.success(`Arquetipo estructural ${template.name} aplicado`, { 
+        toast.success(`Arquetipo estructural ${template.name} aplicado`, {
             position: 'top-center',
-            duration: 1500 
+            duration: 1500
         });
     }
     const handleColorChange = (key: string, value: string) => {
@@ -453,7 +453,7 @@ export default function CustomizationPage() {
     const hasChanges = JSON.stringify(config) !== JSON.stringify(originalConfig)
     const handleDiscard = () => setConfig(originalConfig)
 
-     const handleResetToDefault = () => {
+    const handleResetToDefault = () => {
         Swal.fire({
             title: '¿Restablecer diseño?',
             text: 'Esto devolverá todas las opciones de estilo a los valores de fábrica de su plantilla.',
@@ -512,15 +512,15 @@ export default function CustomizationPage() {
         });
 
         if (!result.isConfirmed) return;
- setSaving(true)
+        setSaving(true)
         try {
             const { error } = await supabase.from('stores').update({ theme_config: config }).eq('id', storeData.id)
             if (error) throw error
             setOriginalConfig(config)
-            
+
             // 🚀 PURGAMOS LA RUTA REAL DEL TENANT
             await revalidateStoreCache(storeData.slug)
-            
+
             toast.success('Diseño publicado con éxito en la tienda en vivo');
         } catch (error) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar el diseño.', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
@@ -528,7 +528,7 @@ export default function CustomizationPage() {
             setSaving(false)
         }
     }
-   // SEGREGACION ESTRICTA POR TIPO DE TIENDA
+    // SEGREGACION ESTRICTA POR TIPO DE TIENDA
     const currentStoreType = storeData?.store_type || 'retail';
 
     // 1. Filtrar plantillas según el dominio del comercio
@@ -547,7 +547,7 @@ export default function CustomizationPage() {
         });
     }, [availableTemplates, selectedNicheFilter]);
 
-   // 3. Pastillas de filtro contextuales
+    // 3. Pastillas de filtro contextuales
     const nicheFilterChips = useMemo(() => {
         if (currentStoreType === 'restaurant') {
             return [
@@ -566,8 +566,8 @@ export default function CustomizationPage() {
 
     if (loading) return <div className="min-h-screen bg-[#FAFAFC] flex items-center justify-center"><Loader2 className="animate-spin text-neutral-300" size={24} /></div>
 
-  
-      const getBaseDomain = () => {
+
+    const getBaseDomain = () => {
         if (typeof window === 'undefined') return 'preziso.shop';
         if (window.location.hostname.includes('localhost')) return window.location.host;
         return 'preziso.shop';
@@ -575,8 +575,8 @@ export default function CustomizationPage() {
 
     // 🚀 CACHE BUSTER SIMPLIFICADO: Cero Hooks, cero errores de React. 
     // Solo recargará el teléfono cuando cambie la variable 'currentStoreType'.
-    const previewUrl = storeData 
-        ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview&t=${currentStoreType}` 
+    const previewUrl = storeData
+        ? `${window.location.protocol}//${storeData.slug}.${getBaseDomain()}?mode=preview&t=${currentStoreType}`
         : '';
 
     // 🛑 EARLY RETURN: Siempre abajo, sin afectar a nadie
@@ -591,7 +591,7 @@ export default function CustomizationPage() {
                         <ArrowLeft size={18} className="text-neutral-600 group-hover:text-neutral-900" />
                     </Link>
                     <div className="w-8 h-px bg-neutral-200/60" />
-<div className="flex flex-col items-center gap-3 w-full px-2">
+                    <div className="flex flex-col items-center gap-3 w-full px-2">
                         {activeTabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -626,7 +626,7 @@ export default function CustomizationPage() {
                 </div>
             </nav>
 
-           {/* 📱 FLOATING BOTTOM BAR (Dynamic Island - Mobile Only) */}
+            {/* 📱 FLOATING BOTTOM BAR (Dynamic Island - Mobile Only) */}
             <div className="lg:hidden fixed bottom-6 left-4 right-4 z-50 flex items-center justify-between bg-white/90 backdrop-blur-xl border border-neutral-200/60 p-2 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
                 <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 px-1">
                     {activeTabs.map(tab => (
@@ -680,33 +680,56 @@ export default function CustomizationPage() {
 
                     {/* Contenido scrolleable */}
                     <div className="flex-1 overflow-y-auto px-5 py-6 pb-32 lg:pb-6 no-scrollbar">
-{activeTab === 'marketplace' && (
+                        {activeTab === 'marketplace' && (
                             <div className="space-y-5 animate-in fade-in pb-10">
                                 <div>
                                     <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Arquetipos Comerciales</h3>
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
 
-                                {/* 🚀 UI INTUITIVA: CANDADO DE IDENTIDAD DE MARCA */}
-                                <div 
-                                    onClick={() => setPreserveBrand(!preserveBrand)}
-                                    className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${
-                                        preserveBrand 
-                                            ? 'bg-neutral-900 border-neutral-900 shadow-md' 
-                                            : 'bg-white border-neutral-200 hover:border-neutral-300 shadow-sm'
-                                    }`}
-                                >
-                                    <div className="flex flex-col pr-3">
-                                        <p className={`text-xs font-bold flex items-center gap-1.5 ${preserveBrand ? 'text-white' : 'text-neutral-900'}`}>
-                                            <ShieldCheck size={14} className={preserveBrand ? 'text-emerald-400' : 'text-neutral-400'} />
-                                            Preservar mis colores y fuentes
-                                        </p>
-                                        <p className={`text-[10px] font-medium leading-snug mt-1 ${preserveBrand ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                                            Al cambiar de arquetipo, adoptaremos su estructura (tarjetas, buscador), pero <b>protegeremos tu paleta de colores actual</b>.
-                                        </p>
-                                    </div>
-                                    <AnimatedSwitch active={preserveBrand} activeColor="bg-emerald-500" />
-                                </div>
+                              {/* 🚀 UI ULTRA-LEGBILE: CANDADO DE IDENTIDAD (Pura jerarquía Stripe/Linear) */}
+<div
+  onClick={() => setPreserveBrand(!preserveBrand)}
+  className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between select-none ${
+    preserveBrand
+      ? 'bg-zinc-50/80 border-zinc-900/80 shadow-2xs'
+      : 'bg-white border-zinc-200/80 hover:border-zinc-300 shadow-2xs'
+  }`}
+>
+  <div className="flex items-start gap-3.5 pr-4">
+    {/* Icono con badge dinámico integrado */}
+    <div
+      className={`p-2.5 rounded-xl shrink-0 transition-colors mt-0.5 ${
+        preserveBrand
+          ? 'bg-zinc-900 text-white'
+          : 'bg-zinc-100 text-zinc-400'
+      }`}
+    >
+      <ShieldCheck size={18} strokeWidth={2} />
+    </div>
+
+    {/* Textos ordenados con lectura fluida */}
+    <div className="flex flex-col gap-0.5">
+      <h4 className="text-xs font-bold text-zinc-900 tracking-tight leading-snug">
+        Preservar mis colores y fuentes
+      </h4>
+      <p className="text-[11px] font-normal leading-normal text-zinc-500 max-w-[340px]">
+        Al cambiar de arquetipo, adoptaremos su estructura pero{' '}
+        <strong className="font-semibold text-zinc-800">
+          mantendremos tu paleta de colores intacta
+        </strong>.
+      </p>
+    </div>
+  </div>
+
+  {/* Control de cambio (Único punto focal de acción a la derecha) */}
+  <div className="shrink-0 pl-2">
+    <AnimatedSwitch 
+      active={preserveBrand} 
+      activeColor="bg-zinc-900" 
+    />
+  </div>
+</div>
 
                                 {/* Filtros por Nicho Contextuales */}
                                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0 pt-2">
@@ -715,11 +738,10 @@ export default function CustomizationPage() {
                                             key={chip.id}
                                             type="button"
                                             onClick={() => setSelectedNicheFilter(chip.id)}
-                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border active:scale-95 ${
-                                                selectedNicheFilter === chip.id 
-                                                    ? 'bg-neutral-950 border-neutral-950 text-white shadow-xs' 
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border active:scale-95 ${selectedNicheFilter === chip.id
+                                                    ? 'bg-neutral-950 border-neutral-950 text-white shadow-xs'
                                                     : 'bg-white border-neutral-200/60 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
-                                            }`}
+                                                }`}
                                         >
                                             {chip.label}
                                         </button>
@@ -734,13 +756,12 @@ export default function CustomizationPage() {
                                         return (
                                             <div
                                                 key={template.id}
-                                                className={`relative p-4.5 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${
-                                                    isCurrent
+                                                className={`relative p-4.5 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${isCurrent
                                                         ? 'bg-white border-neutral-950 ring-1 ring-neutral-950/10 shadow-xs'
                                                         : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
-                                                }`}
+                                                    }`}
                                             >
-                                           {/* FILA PRINCIPAL: BADGE ARRIBA EN MÓVIL / AL LADO EN DESKTOP */}
+                                                {/* FILA PRINCIPAL: BADGE ARRIBA EN MÓVIL / AL LADO EN DESKTOP */}
                                                 <div className="flex items-center justify-between gap-3">
                                                     <div className="flex flex-col lg:flex-row lg:items-center items-start gap-1 lg:gap-2 min-w-0">
                                                         {/* Badge: Primero arriba en móvil (order-1), a la derecha en desktop (lg:order-2) */}
@@ -756,7 +777,7 @@ export default function CustomizationPage() {
                                                         </h4>
                                                     </div>
 
-                                                   <div className="flex items-center gap-1.5 shrink-0">
+                                                    <div className="flex items-center gap-1.5 shrink-0">
                                                         {/* BOTÓN OJITO (PREVIEW TÁCTIL) */}
                                                         <button
                                                             type="button"
@@ -776,11 +797,10 @@ export default function CustomizationPage() {
                                                             type="button"
                                                             onClick={() => handleApplyTemplate(template)}
                                                             disabled={isCurrent}
-                                                            className={`px-3.5 py-1.5 rounded-[4.3px] text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
-                                                                isCurrent
+                                                            className={`px-3.5 py-1.5 rounded-[4.3px] text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5 ${isCurrent
                                                                     ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-default'
                                                                     : 'bg-white hover:bg-neutral-100/80 text-neutral-700 hover:text-neutral-950 border-neutral-200/80 active:scale-95 shadow-2xs'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {isCurrent ? (
                                                                 <>
@@ -928,8 +948,8 @@ export default function CustomizationPage() {
                                             <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between">
                                                 <span>2. Portada Móvil</span>
                                                 <span className="font-mono text-neutral-400">
-    {currentStoreType === 'restaurant' ? '1080x720 px (3:2)' : '1080x1350 px (4:5)'}
-</span>
+                                                    {currentStoreType === 'restaurant' ? '1080x720 px (3:2)' : '1080x1350 px (4:5)'}
+                                                </span>
                                             </label>
                                             <input type="file" ref={heroMInputRef} className="hidden" accept="image/*" onChange={handleHeroMobileUpload} />
 
@@ -971,61 +991,61 @@ export default function CustomizationPage() {
                                 </div>
 
                                 {/* EDITOR DE TEXTOS GASTRONÓMICOS */}
-                                    {currentStoreType === 'restaurant' && (
-                                        <div className="space-y-4 pt-4 border-t border-neutral-200/60 animate-in fade-in duration-200">
+                                {currentStoreType === 'restaurant' && (
+                                    <div className="space-y-4 pt-4 border-t border-neutral-200/60 animate-in fade-in duration-200">
+                                        <div>
+                                            <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Textos de la Interfaz</h3>
+                                            <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Personaliza los mensajes de la cabecera y el botón del hero.</p>
+                                        </div>
+
+                                        <div className="space-y-3">
                                             <div>
-                                                <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Textos de la Interfaz</h3>
-                                                <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Personaliza los mensajes de la cabecera y el botón del hero.</p>
+                                                <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                    <span>Saludo Superior (Sobre el logo)</span>
+                                                    <span className="font-mono">{config.layout.greeting_text?.length || 0}/30</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    maxLength={30}
+                                                    value={config.layout.greeting_text || ''}
+                                                    onChange={(e) => handleLayoutChange('greeting_text', e.target.value)}
+                                                    placeholder="Ej: Bienvenido a, Hola Foodie"
+                                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                />
                                             </div>
 
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
-                                                        <span>Saludo Superior (Sobre el logo)</span>
-                                                        <span className="font-mono">{config.layout.greeting_text?.length || 0}/30</span>
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        maxLength={30}
-                                                        value={config.layout.greeting_text || ''}
-                                                        onChange={(e) => handleLayoutChange('greeting_text', e.target.value)}
-                                                        placeholder="Ej: Bienvenido a, Hola Foodie"
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
-                                                    />
-                                                </div>
+                                            <div>
+                                                <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                    <span>Eslogan / Subtítulo Institucional</span>
+                                                    <span className="font-mono">{config.layout.slogan_text?.length || 0}/60</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    maxLength={60}
+                                                    value={config.layout.slogan_text || ''}
+                                                    onChange={(e) => handleLayoutChange('slogan_text', e.target.value)}
+                                                    placeholder="Ej: Delicioso. Todos los días."
+                                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                />
+                                            </div>
 
-                                                <div>
-                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
-                                                        <span>Eslogan / Subtítulo Institucional</span>
-                                                        <span className="font-mono">{config.layout.slogan_text?.length || 0}/60</span>
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        maxLength={60}
-                                                        value={config.layout.slogan_text || ''}
-                                                        onChange={(e) => handleLayoutChange('slogan_text', e.target.value)}
-                                                        placeholder="Ej: Delicioso. Todos los días."
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
-                                                        <span>Texto del Botón en Hero</span>
-                                                        <span className="font-mono">{config.layout.hero_button_text?.length || 0}/25</span>
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        maxLength={25}
-                                                        value={config.layout.hero_button_text || ''}
-                                                        onChange={(e) => handleLayoutChange('hero_button_text', e.target.value)}
-                                                        placeholder="Ej: Ordenar Ahora, Ver Menú"
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
-                                                    />
-                                                </div>
+                                            <div>
+                                                <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 flex justify-between mb-1">
+                                                    <span>Texto del Botón en Hero</span>
+                                                    <span className="font-mono">{config.layout.hero_button_text?.length || 0}/25</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    maxLength={25}
+                                                    value={config.layout.hero_button_text || ''}
+                                                    onChange={(e) => handleLayoutChange('hero_button_text', e.target.value)}
+                                                    placeholder="Ej: Ordenar Ahora, Ver Menú"
+                                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2 text-xs font-medium text-neutral-900 focus:bg-white focus:border-neutral-400 outline-none transition-all"
+                                                />
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
+                                )}
                                 {/* 🚀 EL BOTÓN DE GUARDADO DE SEGURIDAD & RECARGA DE PREVIEW */}
                                 <div className="pt-6 border-t border-neutral-200/50 flex flex-col gap-3">
                                     <button
@@ -1065,119 +1085,119 @@ export default function CustomizationPage() {
 
 
                         {/* TAB 3: COLORES */}
-{activeTab === 'colors' && (
-    <div className="space-y-5 animate-in fade-in pb-10">
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2.5">Marca & Botones</span>
-            <div className="space-y-2">
-                <EliteColorPicker 
-                    label="Color Principal" 
-                    value={config.colors.primary} 
-                    description="Botones de compra y elementos destacados." 
-                    onChange={(val) => handleColorChange('primary', val)} 
-                />
-                <EliteColorPicker 
-                    label="Texto en Botones" 
-                    value={config.colors.primary_text} 
-                    description="Texto sobre el botón de acción." 
-                    onChange={(val) => handleColorChange('primary_text', val)} 
-                />
-            </div>
-        </div>
+                        {activeTab === 'colors' && (
+                            <div className="space-y-5 animate-in fade-in pb-10">
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2.5">Marca & Botones</span>
+                                    <div className="space-y-2">
+                                        <EliteColorPicker
+                                            label="Color Principal"
+                                            value={config.colors.primary}
+                                            description="Botones de compra y elementos destacados."
+                                            onChange={(val) => handleColorChange('primary', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Texto en Botones"
+                                            value={config.colors.primary_text}
+                                            description="Texto sobre el botón de acción."
+                                            onChange={(val) => handleColorChange('primary_text', val)}
+                                        />
+                                    </div>
+                                </div>
 
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Lienzo & Superficies</span>
-            <div className="space-y-2">
-                <EliteColorPicker 
-                    label="Fondo General" 
-                    value={config.colors.background} 
-                    description="Color de fondo de toda la tienda." 
-                    onChange={(val) => handleColorChange('background', val)} 
-                />
-                <EliteColorPicker 
-                    label="Fondo de Tarjetas" 
-                    value={config.colors.surface} 
-                    description="Superficie de productos y menús." 
-                    onChange={(val) => handleColorChange('surface', val)} 
-                />
-            </div>
-        </div>
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Lienzo & Superficies</span>
+                                    <div className="space-y-2">
+                                        <EliteColorPicker
+                                            label="Fondo General"
+                                            value={config.colors.background}
+                                            description="Color de fondo de toda la tienda."
+                                            onChange={(val) => handleColorChange('background', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Fondo de Tarjetas"
+                                            value={config.colors.surface}
+                                            description="Superficie de productos y menús."
+                                            onChange={(val) => handleColorChange('surface', val)}
+                                        />
+                                    </div>
+                                </div>
 
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Textos & Bordes</span>
-            <div className="space-y-2">
-                <EliteColorPicker 
-                    label="Texto Principal" 
-                    value={config.colors.text_main} 
-                    description="Títulos y precios." 
-                    onChange={(val) => handleColorChange('text_main', val)} 
-                />
-                <EliteColorPicker 
-                    label="Texto Secundario" 
-                    value={config.colors.surface_text} 
-                    description="Descripciones y categorías." 
-                    onChange={(val) => handleColorChange('surface_text', val)} 
-                />
-                {/* 🚀 BORDES CON TRANSPARENCIA INTEGRADA (enableAlpha={true}) */}
-                <EliteColorPicker 
-                    label="Líneas y Bordes" 
-                    value={config.colors.border} 
-                    description="Color y nivel de transparencia de las líneas divisorias y contornos." 
-                    enableAlpha={true}
-                    onChange={(val) => handleColorChange('border', val)} 
-                />
-            </div>
-        </div>
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">Textos & Bordes</span>
+                                    <div className="space-y-2">
+                                        <EliteColorPicker
+                                            label="Texto Principal"
+                                            value={config.colors.text_main}
+                                            description="Títulos y precios."
+                                            onChange={(val) => handleColorChange('text_main', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Texto Secundario"
+                                            value={config.colors.surface_text}
+                                            description="Descripciones y categorías."
+                                            onChange={(val) => handleColorChange('surface_text', val)}
+                                        />
+                                        {/* 🚀 BORDES CON TRANSPARENCIA INTEGRADA (enableAlpha={true}) */}
+                                        <EliteColorPicker
+                                            label="Líneas y Bordes"
+                                            value={config.colors.border}
+                                            description="Color y nivel de transparencia de las líneas divisorias y contornos."
+                                            enableAlpha={true}
+                                            onChange={(val) => handleColorChange('border', val)}
+                                        />
+                                    </div>
+                                </div>
 
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 block mb-2">Conversión</span>
-            <div className="space-y-2">
-                <EliteColorPicker 
-                    label="Ahorro en Divisas" 
-                    value={config.colors.incentive} 
-                    description="Badges de ahorro en divisas y checkmarks." 
-                    onChange={(val) => handleColorChange('incentive', val)} 
-                />
-            </div>
-        </div>
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 block mb-2">Conversión</span>
+                                    <div className="space-y-2">
+                                        <EliteColorPicker
+                                            label="Ahorro en Divisas"
+                                            value={config.colors.incentive}
+                                            description="Badges de ahorro en divisas y checkmarks."
+                                            onChange={(val) => handleColorChange('incentive', val)}
+                                        />
+                                    </div>
+                                </div>
 
-        <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 block mb-2">Etiquetas & Interacciones</span>
-            <div className="space-y-2">
-                <EliteColorPicker 
-                    label="Fondo de Descuento" 
-                    value={config.colors.badge_discount_bg} 
-                    description="Fondo de la etiqueta de % de rebaja." 
-                    onChange={(val) => handleColorChange('badge_discount_bg', val)} 
-                />
-                <EliteColorPicker 
-                    label="Texto de Descuento" 
-                    value={config.colors.badge_discount_text} 
-                    description="Color del número de descuento." 
-                    onChange={(val) => handleColorChange('badge_discount_text', val)} 
-                />
-                <EliteColorPicker 
-                    label="Fondo de Agotado" 
-                    value={config.colors.badge_soldout_bg} 
-                    description="Fondo de la etiqueta sin stock." 
-                    onChange={(val) => handleColorChange('badge_soldout_bg', val)} 
-                />
-                <EliteColorPicker 
-                    label="Texto de Agotado" 
-                    value={config.colors.badge_soldout_text} 
-                    description="Color del texto sin stock." 
-                    onChange={(val) => handleColorChange('badge_soldout_text', val)} 
-                />
-                <EliteColorPicker 
-                    label="Icono Favorito" 
-                    value={config.colors.action_favorite} 
-                    description="Color del corazón al ser activado." 
-                    onChange={(val) => handleColorChange('action_favorite', val)} 
-                />
-            </div>
-        </div>
-    </div>
-)}
+                                <div>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-500 block mb-2">Etiquetas & Interacciones</span>
+                                    <div className="space-y-2">
+                                        <EliteColorPicker
+                                            label="Fondo de Descuento"
+                                            value={config.colors.badge_discount_bg}
+                                            description="Fondo de la etiqueta de % de rebaja."
+                                            onChange={(val) => handleColorChange('badge_discount_bg', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Texto de Descuento"
+                                            value={config.colors.badge_discount_text}
+                                            description="Color del número de descuento."
+                                            onChange={(val) => handleColorChange('badge_discount_text', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Fondo de Agotado"
+                                            value={config.colors.badge_soldout_bg}
+                                            description="Fondo de la etiqueta sin stock."
+                                            onChange={(val) => handleColorChange('badge_soldout_bg', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Texto de Agotado"
+                                            value={config.colors.badge_soldout_text}
+                                            description="Color del texto sin stock."
+                                            onChange={(val) => handleColorChange('badge_soldout_text', val)}
+                                        />
+                                        <EliteColorPicker
+                                            label="Icono Favorito"
+                                            value={config.colors.action_favorite}
+                                            description="Color del corazón al ser activado."
+                                            onChange={(val) => handleColorChange('action_favorite', val)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {/* TAB 4: PASO 1 & 2 (LÍNEAS, BOTONES Y SOMBRAS CON GUARDRAILS) */}
                         {activeTab === 'shapes' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
@@ -1195,7 +1215,7 @@ export default function CustomizationPage() {
                                         )}
                                     </div>
 
-                                   <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-3">
                                         {[
                                             ...(!['bistro_fast', 'classic', 'modular_tech'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrado (0px)', radius: '0px' }] : []),
                                             { id: 'rounded', label: 'Suave (10px)', radius: '10px' },
@@ -1217,7 +1237,7 @@ export default function CustomizationPage() {
                                         })}
                                     </div>
                                 </div>
-{/* 2. GROSOR DE LÍNEAS */}
+                                {/* 2. GROSOR DE LÍNEAS */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         2. Grosor de Líneas y Bordes
@@ -1238,7 +1258,7 @@ export default function CustomizationPage() {
                                         ))}
                                     </div>
                                 </div>
-{/* 3. SOMBRAS CON GUARDRAIL */}
+                                {/* 3. SOMBRAS CON GUARDRAIL */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         3. Sombras de Cajas e Inputs
@@ -1266,9 +1286,9 @@ export default function CustomizationPage() {
                                                 { id: 'none', label: 'Plano', shadow: 'none' },
                                                 ...(config.template_id === 'hardware_dense' || config.template_id === 'streetwear_bold'
                                                     ? [{ id: 'hard_brutalist', label: 'Sólida (Brutal)', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
-                                                    : config.template_id === 'gourmet_flow' 
-                                                    ? [{ id: 'crisp_app', label: 'App Nativa (Crisp)', shadow: '0px 6px 10px -2px rgba(0,0,0,0.08)' }]
-                                                    : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
+                                                    : config.template_id === 'gourmet_flow'
+                                                        ? [{ id: 'crisp_app', label: 'App Nativa (Crisp)', shadow: '0px 6px 10px -2px rgba(0,0,0,0.08)' }]
+                                                        : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
                                                 )
                                             ].map(item => {
                                                 const isActive = config.shapes.ui_shadows === item.id;
@@ -1318,17 +1338,17 @@ export default function CustomizationPage() {
                             </div>
                         )}
 
-                       {/* TAB 5: BUSCADOR Y NAVEGACIÓN */}
+                        {/* TAB 5: BUSCADOR Y NAVEGACIÓN */}
                         {activeTab === 'search' && (
                             <div className="space-y-8 animate-in fade-in pb-10">
-                                
+
                                 {/* Estilo de Directorio de Categorías */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
                                         Directorio de Categorías
                                     </label>
                                     <p className="text-[11px] text-neutral-500 font-medium mb-3">Presentación de las familias de productos en la tienda.</p>
-                                    
+
                                     {config.template_id === 'modular_tech' ? (
                                         <div className="grid grid-cols-2 gap-3">
                                             {[
@@ -1461,7 +1481,7 @@ export default function CustomizationPage() {
                             </div>
                         )}
 
-                     {/* TAB 6: INSIGNIAS (TRUST BADGES CON ICON PICKER VECTORIAL) */}
+                        {/* TAB 6: INSIGNIAS (TRUST BADGES CON ICON PICKER VECTORIAL) */}
                         {activeTab === 'badges' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
                                 <div>
@@ -1471,27 +1491,26 @@ export default function CustomizationPage() {
 
                                 {/* Backdrop para cerrar el popover al hacer clic afuera */}
                                 {openIconPickerIdx !== null && (
-                                    <div 
-                                        className="fixed inset-0 z-40" 
-                                        onClick={() => setOpenIconPickerIdx(null)} 
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setOpenIconPickerIdx(null)}
                                     />
                                 )}
 
                                 <div className="space-y-4">
-                                  {(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || []).map((badge, idx) => {
+                                    {(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || []).map((badge, idx) => {
                                         const ActiveIconObj = TRUST_BADGE_ICONS.find(item => item.id === badge.icon) || TRUST_BADGE_ICONS[0];
                                         const ActiveIconComponent = ActiveIconObj.icon;
                                         const isOpen = openIconPickerIdx === idx;
 
                                         return (
-                                            <div 
-                                                key={badge.id} 
-                                                className={`p-4 bg-white border border-neutral-200/60 rounded-2xl shadow-sm flex flex-col gap-3 relative transition-all ${
-                                                    isOpen ? 'z-50 ring-2 ring-neutral-900/10' : 'z-0'
-                                                }`}
+                                            <div
+                                                key={badge.id}
+                                                className={`p-4 bg-white border border-neutral-200/60 rounded-2xl shadow-sm flex flex-col gap-3 relative transition-all ${isOpen ? 'z-50 ring-2 ring-neutral-900/10' : 'z-0'
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    
+
                                                     {/* Gatillo del Selector de Iconos */}
                                                     <div className="relative">
                                                         <button
@@ -1506,7 +1525,7 @@ export default function CustomizationPage() {
                                                             </span>
                                                         </button>
 
-                                                     {/* Cuadrícula Popover Flotante de Iconos React (Lucide) */}
+                                                        {/* Cuadrícula Popover Flotante de Iconos React (Lucide) */}
                                                         <AnimatePresence>
                                                             {openIconPickerIdx === idx && (
                                                                 <motion.div
@@ -1529,11 +1548,10 @@ export default function CustomizationPage() {
                                                                                     handleLayoutChange('trust_badges', newBadges);
                                                                                     setOpenIconPickerIdx(null);
                                                                                 }}
-                                                                                className={`p-2.5 rounded-xl flex flex-col items-center justify-center transition-all ${
-                                                                                    isSelected 
-                                                                                        ? 'bg-neutral-900 text-white shadow-xs scale-95' 
+                                                                                className={`p-2.5 rounded-xl flex flex-col items-center justify-center transition-all ${isSelected
+                                                                                        ? 'bg-neutral-900 text-white shadow-xs scale-95'
                                                                                         : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 active:scale-90'
-                                                                                }`}
+                                                                                    }`}
                                                                                 title={item.label}
                                                                             >
                                                                                 <IconCmp size={18} strokeWidth={2} />
@@ -1546,8 +1564,8 @@ export default function CustomizationPage() {
                                                     </div>
 
                                                     <div className="flex-1 flex flex-col gap-2">
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             value={badge.title}
                                                             onChange={(e) => {
                                                                 const newBadges = [...(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || [])];
@@ -1557,8 +1575,8 @@ export default function CustomizationPage() {
                                                             placeholder="Título (Ej: Envío Gratis)"
                                                             className="w-full bg-transparent border-b border-neutral-200 py-1 text-xs font-bold text-neutral-900 focus:border-neutral-900 outline-none transition-colors"
                                                         />
-                                                        <input 
-                                                            type="text" 
+                                                        <input
+                                                            type="text"
                                                             value={badge.description}
                                                             onChange={(e) => {
                                                                 const newBadges = [...(config.layout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges || [])];
@@ -1589,7 +1607,7 @@ export default function CustomizationPage() {
                     </div>
                 </motion.div>
 
-         {/* 📱 EL ESCENARIO (PREVIEW AREA CON DEVICE MOCKUPS) */}
+                {/* 📱 EL ESCENARIO (PREVIEW AREA CON DEVICE MOCKUPS) */}
                 {/* 🚀 AISLAMIENTO MÓVIL: Contenedor con altura fija para evitar scroll doble */}
                 <div className={`flex-1 relative flex-col items-center justify-center overflow-hidden p-0 lg:p-12 w-full h-[calc(100dvh-70px)] lg:h-full ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
 
