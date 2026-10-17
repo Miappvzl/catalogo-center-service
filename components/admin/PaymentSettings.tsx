@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getSupabase } from '@/lib/supabase-client'
 import { 
   Save, 
@@ -36,10 +36,12 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   const supabase = getSupabase()
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
-  
-// Estado aislado para credenciales cifradas
-  const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
+   // Estado aislado para credenciales cifradas
+
+   const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
   const [skylinkKeys, setSkylinkKeys] = useState({ commerceCode: '', apiKey: '' }) // 🚀 NUEVO: Estado Skylink
+ 
+ 
 
   const [methods, setMethods] = useState({
     allow_split_payments: initialData?.allow_split_payments || false,
@@ -53,6 +55,24 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
     wally: { active: false, details: '', ...initialData?.wally }, 
     cash: { active: false, details: '', ...initialData?.cash }
   })
+
+  // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'payments', isDirty } }))
+  }, [isDirty])
+
+  useEffect(() => {
+    const handleTriggerSave = () => { if (isDirty) handleSave() }
+    const handleDiscard = () => setIsDirty(false)
+    window.addEventListener('preziso:trigger-save', handleTriggerSave)
+    window.addEventListener('preziso:discard-changes', handleDiscard)
+    return () => {
+      window.removeEventListener('preziso:trigger-save', handleTriggerSave)
+      window.removeEventListener('preziso:discard-changes', handleDiscard)
+    }
+  }, [isDirty, methods, pfKeys, skylinkKeys])
+  
+
 
   const handleChange = (method: string, field: string, value: any) => {
     setIsDirty(true)

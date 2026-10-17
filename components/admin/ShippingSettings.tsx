@@ -38,9 +38,7 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
     const [loading, setLoading] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
 
-    const [showRadarModal, setShowRadarModal] = useState(false);
-
-    const [config, setConfig] = useState({
+     const [config, setConfig] = useState({
         methods: { mrw: false, zoom: false, tealca: false, delivery: false, pickup: true, dine_in: true },
         main_address: '',
         pickup_locations: [] as string[],
@@ -64,6 +62,25 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
         global_badge_desc: '',
         national_shipping_is_free: false
     })
+
+    // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'shipping', isDirty } }))
+    }, [isDirty])
+
+    useEffect(() => {
+        const handleTriggerSave = () => { if (isDirty) handleSave() }
+        const handleDiscard = () => setIsDirty(false)
+        window.addEventListener('preziso:trigger-save', handleTriggerSave)
+        window.addEventListener('preziso:discard-changes', handleDiscard)
+        return () => {
+            window.removeEventListener('preziso:trigger-save', handleTriggerSave)
+            window.removeEventListener('preziso:discard-changes', handleDiscard)
+        }
+    }, [isDirty, config])
+    const [showRadarModal, setShowRadarModal] = useState(false);
+
+   
 
     const [newLocation, setNewLocation] = useState('')
     const supabase = getSupabase()

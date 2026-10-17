@@ -109,6 +109,22 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
     const scrollSpeed = useRef<number>(0)
     const maxScrollLimit = useRef<number>(0)
 
+    // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'categories', isDirty } }))
+    }, [isDirty])
+
+    useEffect(() => {
+        const handleTriggerSave = () => { if (isDirty) handleSave() }
+        const handleDiscard = () => setIsDirty(false)
+        window.addEventListener('preziso:trigger-save', handleTriggerSave)
+        window.addEventListener('preziso:discard-changes', handleDiscard)
+        return () => {
+            window.removeEventListener('preziso:trigger-save', handleTriggerSave)
+            window.removeEventListener('preziso:discard-changes', handleDiscard)
+        }
+    }, [isDirty, categories])
+
     // Sincronizamos la detección de móvil en el cliente de forma segura contra hidratación
     useEffect(() => {
         if (typeof window !== 'undefined') {

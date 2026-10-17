@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getSupabase } from '@/lib/supabase-client'
 import { Clock, AlertTriangle, Save, Loader2, AlertCircle, Globe, Plus, Trash2, Moon, ChevronDown } from 'lucide-react'
 import Swal from 'sweetalert2'
@@ -109,7 +109,12 @@ export default function StoreHoursSettings({ storeId, initialData }: { storeId: 
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
 
-  const defaultSchedule = {
+  // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'hours', isDirty } }))
+  }, [isDirty])
+
+   const defaultSchedule = {
     monday: { isOpen: true, open: '00:00', close: '23:59', hasSecondShift: false },
     tuesday: { isOpen: true, open: '00:00', close: '23:59', hasSecondShift: false },
     wednesday: { isOpen: true, open: '00:00', close: '23:59', hasSecondShift: false },
@@ -124,6 +129,19 @@ export default function StoreHoursSettings({ storeId, initialData }: { storeId: 
     is_temporarily_closed: initialData?.is_temporarily_closed || false,
     schedule: initialData?.schedule || defaultSchedule
   })
+
+  useEffect(() => {
+    const handleTriggerSave = () => { if (isDirty) handleSave() }
+    const handleDiscard = () => setIsDirty(false)
+    window.addEventListener('preziso:trigger-save', handleTriggerSave)
+    window.addEventListener('preziso:discard-changes', handleDiscard)
+    return () => {
+      window.removeEventListener('preziso:trigger-save', handleTriggerSave)
+      window.removeEventListener('preziso:discard-changes', handleDiscard)
+    }
+  }, [isDirty, hoursConfig])
+
+ 
 
   const handlePauseToggle = (value: boolean) => {
     setIsDirty(true)
