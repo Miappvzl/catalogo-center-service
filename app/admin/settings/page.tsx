@@ -447,20 +447,53 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
             return true
         }
     }
+  // Función que recolecta y espera las promesas de guardado de los hijos
+    const triggerChildSaves = async () => {
+        const promises: Promise<any>[] = []
+        window.dispatchEvent(new CustomEvent('preziso:trigger-save', {
+            detail: {
+                registerPromise: (p: Promise<any>) => promises.push(p)
+            }
+        }))
+        if (promises.length > 0) {
+            await Promise.all(promises)
+        }
+    }
 
     const handleSaveAndProceed = async () => {
-        const success = await saveSettings()
-        if (success) {
+        setSaving(true)
+        try {
+            // 1. Guardar datos de page.tsx si están sucios
+            if (isDirty) {
+                const success = await saveSettings()
+                if (!success) {
+                    setSaving(false)
+                    return
+                }
+            }
+
+            // 2. Esperar formalmente a que todos los componentes hijos completen su escritura en Supabase
+            await triggerChildSaves()
+
+            // 3. Limpiar banderas una vez confirmada la persistencia en base de datos
+            setIsDirty(false)
+            setChildDirtySources({})
             setShowUnsavedModal(false)
+
+            // 4. Navegar de inmediato sin timeouts arbitrarios que destruyan el guardado
             if (pendingAction) {
                 pendingAction()
                 setPendingAction(null)
             }
+        } finally {
+            setSaving(false)
         }
     }
 
     const handleDiscardAndProceed = () => {
         setIsDirty(false)
+        setChildDirtySources({})
+        window.dispatchEvent(new CustomEvent('preziso:discard-changes'))
         setShowUnsavedModal(false)
         if (pendingAction) {
             pendingAction()
@@ -524,11 +557,16 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                             {/* Guardar Cambios Contextual (Desktop) */}
                             {hasUnsavedChanges && (
                                 <button
-                                    onClick={async () => {
+                                        onClick={async () => {
+                                    setSaving(true)
+                                    try {
                                         if (isDirty) await saveSettings()
-                                        window.dispatchEvent(new CustomEvent('preziso:trigger-save'))
+                                        await triggerChildSaves()
                                         setChildDirtySources({})
-                                    }}
+                                    } finally {
+                                        setSaving(false)
+                                    }
+                                }}
                                     disabled={saving}
                                     className="bg-neutral-950 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50 shrink-0"
                                 >
@@ -565,10 +603,15 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
 
                         {hasUnsavedChanges && (
                             <button
-                                onClick={async () => {
-                                    if (isDirty) await saveSettings()
-                                    window.dispatchEvent(new CustomEvent('preziso:trigger-save'))
-                                    setChildDirtySources({})
+                                  onClick={async () => {
+                                    setSaving(true)
+                                    try {
+                                        if (isDirty) await saveSettings()
+                                        await triggerChildSaves()
+                                        setChildDirtySources({})
+                                    } finally {
+                                        setSaving(false)
+                                    }
                                 }}
                                 disabled={saving}
                                 className="bg-neutral-950 hover:bg-black text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all active:scale-[0.98] disabled:opacity-50 shrink-0"
@@ -688,515 +731,485 @@ const [shippingRaw, setShippingRaw] = useState<any>({})
                         </div>
                     </aside>
 
-                    {/* COLUMNA DETALLE: CONTENIDO DINÁMICO */}
+                    {/* COLUMNA DETALLE: CONTENIDO PERSISTENTE (CERO DESTRUCCIÓN DE ESTADO AL CAMBIAR DE PESTAÑA) */}
                     <div className="lg:col-span-8 xl:col-span-9 min-w-0">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTab}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.16, ease: "easeOut" }}
-                                className="space-y-6"
-                            >
-                                {/* ========================================== */}
-                                {/* PESTAÑA 1: TIENDA Y PERFIL                 */}
-                                {/* ========================================== */}
-                                {activeTab === 'store' && (
-                                    <>
-                                        {/* IDENTIDAD DE MARCA */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
-                                            <div>
-                                                <div className="flex items-center gap-2 text-neutral-950">
-                                                    <Globe size={18} strokeWidth={1.5} className="text-neutral-500" />
-                                                    <h2 className="text-base font-semibold tracking-tight">Identidad de Marca</h2>
-                                                </div>
-                                                <p className="text-xs text-neutral-500 mt-1 font-normal">Defina el nombre oficial y canal de contacto de su comercio.</p>
-                                            </div>
+                        
+                        {/* PESTAÑA 1: TIENDA Y PERFIL */}
+                        <div className={activeTab === 'store' ? 'space-y-6 block animate-in fade-in duration-150' : 'hidden'}>
+                            {/* IDENTIDAD DE MARCA */}
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
+                                <div>
+                                    <div className="flex items-center gap-2 text-neutral-950">
+                                        <Globe size={18} strokeWidth={1.5} className="text-neutral-500" />
+                                        <h2 className="text-base font-semibold tracking-tight">Identidad de Marca</h2>
+                                    </div>
+                                    <p className="text-xs text-neutral-500 mt-1 font-normal">Defina el nombre oficial y canal de contacto de su comercio.</p>
+                                </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                <div>
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
-                                                        <Store size={12} strokeWidth={1.5} className="text-neutral-400" /> Nombre Comercial
-                                                    </label>
-                                                    <input
-                                                        value={identity.name}
-                                                        onChange={e => handleIdentityChange('name', e.target.value)}
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
-                                                        <Phone size={12} strokeWidth={1.5} className="text-neutral-400" /> WhatsApp de Atención
-                                                    </label>
-                                                    <input
-                                                        type="tel"
-                                                        inputMode="numeric"
-                                                        value={identity.phone}
-                                                        onChange={e => handleIdentityChange('phone', e.target.value.replace(/[^0-9]/g, ''))}
-                                                        placeholder="Ej: 584120000000"
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-medium text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </section>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <Store size={12} strokeWidth={1.5} className="text-neutral-400" /> Nombre Comercial
+                                        </label>
+                                        <input
+                                            value={identity.name}
+                                            onChange={e => handleIdentityChange('name', e.target.value)}
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <Phone size={12} strokeWidth={1.5} className="text-neutral-400" /> WhatsApp de Atención
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            value={identity.phone}
+                                            onChange={e => handleIdentityChange('phone', e.target.value.replace(/[^0-9]/g, ''))}
+                                            placeholder="Ej: 584120000000"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-medium text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </section>
 
-                                        {/* MODELO DE OPERACIÓN */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-5">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
-                                                <div>
-                                                    <div className="flex items-center gap-2 text-neutral-950">
-                                                        <Store size={18} strokeWidth={1.5} className="text-neutral-500" />
-                                                        <h2 className="text-base font-semibold tracking-tight">Modelo de Operación</h2>
-                                                    </div>
-                                                    <p className="text-xs text-neutral-500 mt-1 font-normal">
-                                                        Define la arquitectura de catálogo, editor de productos y logística de compra.
-                                                    </p>
-                                                </div>
+                            {/* MODELO DE OPERACIÓN */}
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
+                                    <div>
+                                        <div className="flex items-center gap-2 text-neutral-950">
+                                            <Store size={18} strokeWidth={1.5} className="text-neutral-500" />
+                                            <h2 className="text-base font-semibold tracking-tight">Modelo de Operación</h2>
+                                        </div>
+                                        <p className="text-xs text-neutral-500 mt-1 font-normal">
+                                            Define la arquitectura de catálogo, editor de productos y logística de compra.
+                                        </p>
+                                    </div>
 
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsSwitchModalOpen(true)}
+                                        disabled={saving || switchingType}
+                                        className="px-4 py-2 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-950 rounded-lg text-xs font-semibold tracking-wide transition-all self-start sm:self-auto shrink-0 active:scale-95"
+                                    >
+                                        {store?.store_type === 'restaurant' 
+                                            ? 'Cambiar a Comercio General' 
+                                            : 'Cambiar a Modo Restaurante'}
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                        store?.store_type !== 'restaurant' 
+                                            ? 'bg-neutral-950 text-white border-neutral-950' 
+                                            : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
+                                    }`}>
+                                        <div>
+                                            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider block mb-1 opacity-70">
+                                                Modo Actual
+                                            </span>
+                                            <h3 className="text-sm font-semibold tracking-tight">Comercio General (Retail)</h3>
+                                            <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
+                                                Optimizado para ropa, calzado, tecnología y artículos con gestión de stock unitario, tallas y envíos por agencias nacionales.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                        store?.store_type === 'restaurant' 
+                                            ? 'bg-neutral-950 text-white border-neutral-950' 
+                                            : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
+                                    }`}>
+                                        <div>
+                                            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider block mb-1 opacity-70">
+                                                Modo Especializado
+                                            </span>
+                                            <h3 className="text-sm font-semibold tracking-tight">Gastronomía & Restaurantes</h3>
+                                            <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
+                                                Menú líquido vertical continuo, modificadores de platos (términos, extras), control de horarios en vivo, pedidos en mesa y propinas.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* SEGURIDAD DE LA CUENTA */}
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
+                                <div>
+                                    <div className="flex items-center gap-2 text-neutral-950">
+                                        <Lock size={18} strokeWidth={1.5} className="text-neutral-500" />
+                                        <h2 className="text-base font-semibold tracking-tight">Seguridad de la Cuenta</h2>
+                                    </div>
+                                    <p className="text-xs text-neutral-500 mt-1 font-normal">Actualice la contraseña de acceso a su panel administrativo de manera segura.</p>
+                                </div>
+
+                                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-2xl">
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <KeyRound size={12} strokeWidth={1.5} className="text-neutral-400" /> Contraseña Actual
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPasswords.current ? "text" : "password"}
+                                                value={passwords.current}
+                                                onChange={e => setPasswords({ ...passwords, current: e.target.value })}
+                                                placeholder="Ingrese su clave actual para verificar identidad"
+                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg pl-3.5 pr-10 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                            >
+                                                {showPasswords.current ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">
+                                                Nueva Contraseña
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showPasswords.new ? "text" : "password"}
+                                                    value={passwords.new}
+                                                    onChange={e => setPasswords({ ...passwords, new: e.target.value })}
+                                                    placeholder="Mínimo 8 caracteres"
+                                                    className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg pl-3.5 pr-10 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                                />
                                                 <button
                                                     type="button"
-                                                    onClick={() => setIsSwitchModalOpen(true)}
-                                                    disabled={saving || switchingType}
-                                                    className="px-4 py-2 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 text-neutral-950 rounded-lg text-xs font-semibold tracking-wide transition-all self-start sm:self-auto shrink-0 active:scale-95"
+                                                    onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
                                                 >
-                                                    {store?.store_type === 'restaurant' 
-                                                        ? 'Cambiar a Comercio General' 
-                                                        : 'Cambiar a Modo Restaurante'}
+                                                    {showPasswords.new ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
                                                 </button>
                                             </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">
+                                                Confirmar Nueva Contraseña
+                                            </label>
+                                            <input
+                                                type="password"
+                                                value={passwords.confirm}
+                                                onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
+                                                placeholder="Repita su nueva contraseña"
+                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
-                                                    store?.store_type !== 'restaurant' 
-                                                        ? 'bg-neutral-950 text-white border-neutral-950' 
-                                                        : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
-                                                }`}>
-                                                    <div>
-                                                        <span className="text-[10px] font-mono font-semibold uppercase tracking-wider block mb-1 opacity-70">
-                                                            Modo Actual
-                                                        </span>
-                                                        <h3 className="text-sm font-semibold tracking-tight">Comercio General (Retail)</h3>
-                                                        <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
-                                                            Optimizado para ropa, calzado, tecnología y artículos con gestión de stock unitario, tallas y envíos por agencias nacionales.
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className={`p-4.5 rounded-xl border flex flex-col justify-between transition-all ${
-                                                    store?.store_type === 'restaurant' 
-                                                        ? 'bg-neutral-950 text-white border-neutral-950' 
-                                                        : 'bg-neutral-50/50 border-neutral-200/60 text-neutral-600'
-                                                }`}>
-                                                    <div>
-                                                        <span className="text-[10px] font-mono font-semibold uppercase tracking-wider block mb-1 opacity-70">
-                                                            Modo Especializado
-                                                        </span>
-                                                        <h3 className="text-sm font-semibold tracking-tight">Gastronomía & Restaurantes</h3>
-                                                        <p className="text-xs mt-1.5 opacity-80 leading-relaxed font-normal">
-                                                            Menú líquido vertical continuo, modificadores de platos (términos, extras), control de horarios en vivo, pedidos en mesa y propinas.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        {/* SEGURIDAD DE LA CUENTA */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
-                                            <div>
-                                                <div className="flex items-center gap-2 text-neutral-950">
-                                                    <Lock size={18} strokeWidth={1.5} className="text-neutral-500" />
-                                                    <h2 className="text-base font-semibold tracking-tight">Seguridad de la Cuenta</h2>
-                                                </div>
-                                                <p className="text-xs text-neutral-500 mt-1 font-normal">Actualice la contraseña de acceso a su panel administrativo de manera segura.</p>
-                                            </div>
-
-                                            <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-2xl">
-                                                <div>
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
-                                                        <KeyRound size={12} strokeWidth={1.5} className="text-neutral-400" /> Contraseña Actual
-                                                    </label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type={showPasswords.current ? "text" : "password"}
-                                                            value={passwords.current}
-                                                            onChange={e => setPasswords({ ...passwords, current: e.target.value })}
-                                                            placeholder="Ingrese su clave actual para verificar identidad"
-                                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg pl-3.5 pr-10 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                                                        >
-                                                            {showPasswords.current ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">
-                                                            Nueva Contraseña
-                                                        </label>
-                                                        <div className="relative">
-                                                            <input
-                                                                type={showPasswords.new ? "text" : "password"}
-                                                                value={passwords.new}
-                                                                onChange={e => setPasswords({ ...passwords, new: e.target.value })}
-                                                                placeholder="Mínimo 8 caracteres"
-                                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg pl-3.5 pr-10 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                                                            >
-                                                                {showPasswords.new ? <EyeOff size={14} strokeWidth={1.5} /> : <Eye size={14} strokeWidth={1.5} />}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">
-                                                            Confirmar Nueva Contraseña
-                                                        </label>
-                                                        <input
-                                                            type="password"
-                                                            value={passwords.confirm}
-                                                            onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
-                                                            placeholder="Repita su nueva contraseña"
-                                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="pt-2 flex justify-end">
-                                                    <button 
-                                                        type="submit" 
-                                                        disabled={updatingPassword || !passwords.current || !passwords.new || !passwords.confirm} 
-                                                        className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                                                            passwords.current && passwords.new && passwords.confirm
-                                                                ? 'bg-neutral-950 text-white hover:bg-black active:scale-[0.98]' 
-                                                                : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                                                        }`}
-                                                    >
-                                                        {updatingPassword ? <Loader2 className="animate-spin" size={13} strokeWidth={1.5} /> : <ShieldCheck size={13} strokeWidth={1.5} />} 
-                                                        <span>Actualizar Contraseña</span>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </section>
-
-                                        {/* CIERRE DE SESIÓN */}
+                                    <div className="pt-2 flex justify-end">
                                         <button 
-                                            onClick={handleLogout} 
-                                            className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-semibold bg-white border border-neutral-200/60 text-rose-600 hover:bg-rose-50/50 hover:border-rose-200 transition-colors w-full text-center"
+                                            type="submit" 
+                                            disabled={updatingPassword || !passwords.current || !passwords.new || !passwords.confirm} 
+                                            className={`w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                passwords.current && passwords.new && passwords.confirm
+                                                    ? 'bg-neutral-950 text-white hover:bg-black active:scale-[0.98]' 
+                                                    : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                            }`}
                                         >
-                                            <LogOut size={13} strokeWidth={1.5} /> 
-                                            <span>Finalizar sesión actual</span>
+                                            {updatingPassword ? <Loader2 className="animate-spin" size={13} strokeWidth={1.5} /> : <ShieldCheck size={13} strokeWidth={1.5} />} 
+                                            <span>Actualizar Contraseña</span>
                                         </button>
-                                    </>
-                                )}
+                                    </div>
+                                </form>
+                            </section>
 
-                                {/* ========================================== */}
-                                {/* PESTAÑA 2: FINANZAS Y PAGOS                */}
-                                {/* ========================================== */}
-                                {activeTab === 'finance' && (
-                                    <>
-                                        <PayPalSetupCard storeId={store.id} />
-                                        <PaymentSettings storeId={store.id} initialData={store.payment_config} />
+                            {/* CIERRE DE SESIÓN */}
+                            <button 
+                                onClick={handleLogout} 
+                                className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-semibold bg-white border border-neutral-200/60 text-rose-600 hover:bg-rose-50/50 hover:border-rose-200 transition-colors w-full text-center"
+                            >
+                                <LogOut size={13} strokeWidth={1.5} /> 
+                                <span>Finalizar sesión actual</span>
+                            </button>
+                        </div>
 
-                                        {/* COMPROBANTES DE PAGO */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
-                                            <div 
-                                                className="flex items-center justify-between cursor-pointer" 
-                                                onClick={() => { setReceipt({ strict_mode: !receipt.strict_mode }); setIsDirty(true) }}
-                                            >
-                                                <div className="space-y-0.5 pr-4">
-                                                    <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
-                                                        <Receipt size={14} strokeWidth={1.5} className="text-neutral-500" /> Comprobante de Pago Obligatorio
-                                                    </p>
-                                                    <p className="text-xs text-neutral-500 font-normal">Restringe el envío de solicitudes de orden si no se adjunta el comprobante bancario correspondiente.</p>
-                                                </div>
-                                                <AnimatedSwitch active={receipt.strict_mode} />
-                                            </div>
-                                        </section>
+                        {/* PESTAÑA 2: FINANZAS Y PAGOS */}
+                        <div className={activeTab === 'finance' ? 'space-y-6 block animate-in fade-in duration-150' : 'hidden'}>
+                            <PayPalSetupCard storeId={store?.id} />
+                            <PaymentSettings storeId={store?.id} initialData={store?.payment_config} />
 
-                                        {/* DATOS FISCALES */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
-                                            <div>
-                                                <div className="flex items-center gap-2 text-neutral-950">
-                                                    <Building2 size={18} strokeWidth={1.5} className="text-neutral-500" />
-                                                    <h2 className="text-base font-semibold tracking-tight">Datos Fiscales y Facturación</h2>
-                                                </div>
-                                                <p className="text-xs text-neutral-500 mt-1 font-normal">Información jurídica para facturas electrónicas y órdenes de compra.</p>
-                                            </div>
+                            {/* COMPROBANTES DE PAGO */}
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
+                                <div 
+                                    className="flex items-center justify-between cursor-pointer" 
+                                    onClick={() => { setReceipt({ strict_mode: !receipt.strict_mode }); setIsDirty(true) }}
+                                >
+                                    <div className="space-y-0.5 pr-4">
+                                        <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
+                                            <Receipt size={14} strokeWidth={1.5} className="text-neutral-500" /> Comprobante de Pago Obligatorio
+                                        </p>
+                                        <p className="text-xs text-neutral-500 font-normal">Restringe el envío de solicitudes de orden si no se adjunta el comprobante bancario correspondiente.</p>
+                                    </div>
+                                    <AnimatedSwitch active={receipt.strict_mode} />
+                                </div>
+                            </section>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                <div>
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">Razón Social Jurídica</label>
-                                                    <input
-                                                        value={fiscal.legal_name}
-                                                        onChange={e => { setFiscal({ ...fiscal, legal_name: e.target.value }); setIsDirty(true) }}
-                                                        placeholder="Ej: Inversiones Preziso C.A."
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">Identificación Fiscal (RIF)</label>
-                                                    <input
-                                                        value={fiscal.legal_id}
-                                                        onChange={e => { setFiscal({ ...fiscal, legal_id: e.target.value.toUpperCase() }); setIsDirty(true) }}
-                                                        placeholder="Ej: J-123456789"
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
-                                                        <MapPin size={12} strokeWidth={1.5} className="text-neutral-400" /> Dirección de Domicilio Fiscal
-                                                    </label>
-                                                    <input
-                                                        value={fiscal.fiscal_address}
-                                                        onChange={e => { setFiscal({ ...fiscal, fiscal_address: e.target.value }); setIsDirty(true) }}
-                                                        placeholder="Ej: Av. Francisco de Miranda, Torre Este, Local 2, Caracas"
-                                                        className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                    />
-                                                </div>
-                                            </div>
+                            {/* DATOS FISCALES */}
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
+                                <div>
+                                    <div className="flex items-center gap-2 text-neutral-950">
+                                        <Building2 size={18} strokeWidth={1.5} className="text-neutral-500" />
+                                        <h2 className="text-base font-semibold tracking-tight">Datos Fiscales y Facturación</h2>
+                                    </div>
+                                    <p className="text-xs text-neutral-500 mt-1 font-normal">Información jurídica para facturas electrónicas y órdenes de compra.</p>
+                                </div>
 
-                                            {/* CLASIFICACIÓN CONTRIBUTIVA */}
-                                            <div className="pt-4 border-t border-neutral-100">
-                                                <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-3.5 block">Clasificación Contributiva</label>
-                                                
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    {[
-                                                        { id: 'informal', title: 'Persona Natural / Informal', desc: 'Sujeto exento de IVA. Transacciones directas sin retenciones.' },
-                                                        { id: 'ordinary', title: 'Contribuyente Ordinario', desc: 'Aplica alícuota fiscal obligatoria en todas sus transacciones.' },
-                                                        { id: 'special', title: 'Contribuyente Especial', desc: 'Sujeto a alícuota base con módulo avanzado de retenciones.' }
-                                                    ].map(p => {
-                                                        const isSelected = fiscal.fiscal_profile === p.id;
-                                                        return (
-                                                            <div
-                                                                key={p.id}
-                                                                onClick={() => { setFiscal({ ...fiscal, fiscal_profile: p.id }); setIsDirty(true) }}
-                                                                className={`cursor-pointer p-4 rounded-lg border transition-all flex flex-col justify-between min-h-[90px] ${
-                                                                    isSelected 
-                                                                        ? 'bg-neutral-950 border-neutral-950 text-white' 
-                                                                        : 'bg-neutral-50/50 border-neutral-200/80 hover:bg-neutral-50 text-neutral-900'
-                                                                }`}
-                                                            >
-                                                                <div className="flex justify-between items-start w-full gap-2 mb-2">
-                                                                    <h3 className="font-semibold text-[11px] uppercase tracking-wider leading-tight">{p.title}</h3>
-                                                                    {isSelected && <CheckCircle2 size={13} strokeWidth={1.5} className="text-white shrink-0" />}
-                                                                </div>
-                                                                <p className={`text-[10px] leading-relaxed ${isSelected ? 'text-neutral-400' : 'text-neutral-500'}`}>{p.desc}</p>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">Razón Social Jurídica</label>
+                                        <input
+                                            value={fiscal.legal_name}
+                                            onChange={e => { setFiscal({ ...fiscal, legal_name: e.target.value }); setIsDirty(true) }}
+                                            placeholder="Ej: Inversiones Preziso C.A."
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block">Identificación Fiscal (RIF)</label>
+                                        <input
+                                            value={fiscal.legal_id}
+                                            onChange={e => { setFiscal({ ...fiscal, legal_id: e.target.value.toUpperCase() }); setIsDirty(true) }}
+                                            placeholder="Ej: J-123456789"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-mono font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <MapPin size={12} strokeWidth={1.5} className="text-neutral-400" /> Dirección de Domicilio Fiscal
+                                        </label>
+                                        <input
+                                            value={fiscal.fiscal_address}
+                                            onChange={e => { setFiscal({ ...fiscal, fiscal_address: e.target.value }); setIsDirty(true) }}
+                                            placeholder="Ej: Av. Francisco de Miranda, Torre Este, Local 2, Caracas"
+                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
 
-                                                {/* IVA */}
-                                                {fiscal.fiscal_profile !== 'informal' && (
-                                                    <div className="mt-4 p-4 bg-neutral-50/60 border border-neutral-200/80 rounded-lg flex items-center justify-between">
-                                                        <div className="space-y-0.5">
-                                                            <p className="text-xs font-semibold text-neutral-950">Impuesto al Valor Agregado (IVA)</p>
-                                                            <p className="text-[10px] text-neutral-500">Rango legal general aplicable.</p>
-                                                        </div>
-                                                        <div className="relative w-24">
-                                                            <NumberInput
-                                                                value={fiscal.default_tax_percentage}
-                                                                onChangeValue={val => {
-                                                                    let num = Number(val);
-                                                                    if (num < 16) num = 16;
-                                                                    if (num > 16.5) num = 16.5;
-
-                                                                    setFiscal({ ...fiscal, default_tax_percentage: num });
-                                                                    setIsDirty(true);
-                                                                }}
-                                                                className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2 pr-7 text-xs font-semibold text-neutral-950 text-center focus:border-neutral-950 outline-none transition-colors"
-                                                            />
-                                                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-semibold pointer-events-none">%</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </section>
-                                    </>
-                                )}
-
-                                {/* ========================================== */}
-                                {/* PESTAÑA 3: LOGÍSTICA Y OPERACIONES         */}
-                                {/* ========================================== */}
-                                {activeTab === 'logistics' && (
-                                    <>
-                                        {store?.store_type === 'restaurant' && (
-                                            <StoreHoursSettings storeId={store.id} initialData={store.store_hours} />
-                                        )}
-
-                                        <ShippingSettings storeId={store.id} initialData={store.shipping_config} storeType={store.store_type} />
-
-                                        {store?.store_type !== 'restaurant' && (
-                                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
-                                                <div>
-                                                    <div className="flex items-center gap-2 text-neutral-950">
-                                                        <Zap size={18} strokeWidth={1.5} className="text-neutral-500" />
-                                                        <h2 className="text-base font-semibold tracking-tight">Servicios e Intangibles</h2>
-                                                    </div>
-                                                    <p className="text-xs text-neutral-500 mt-1 font-normal">Ajuste indicaciones para ítems que no requieren despacho físico.</p>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                    <div>
-                                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
-                                                            <span>Etiqueta del carrito</span>
-                                                            <span className="text-[10px] font-mono text-neutral-400">
-                                                                {serviceConfig.service_badge.length}/20
-                                                            </span>
-                                                        </label>
-                                                        <input
-                                                            maxLength={20}
-                                                            value={serviceConfig.service_badge}
-                                                            onChange={e => { setServiceConfig({ ...serviceConfig, service_badge: e.target.value }); setIsDirty(true) }}
-                                                            placeholder="Ej: Se consume en tienda"
-                                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
-                                                            <span>Título de aviso en checkout</span>
-                                                            <span className="text-[10px] font-mono text-neutral-400">
-                                                                {serviceConfig.service_title.length}/30
-                                                            </span>
-                                                        </label>
-                                                        <input
-                                                            maxLength={30}
-                                                            value={serviceConfig.service_title}
-                                                            onChange={e => { setServiceConfig({ ...serviceConfig, service_title: e.target.value }); setIsDirty(true) }}
-                                                            placeholder="Ej: Taller en Vivo"
-                                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="md:col-span-2">
-                                                        <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
-                                                            <span>Indicaciones del Servicio</span>
-                                                            <span className="text-[10px] font-mono text-neutral-400">
-                                                                {serviceConfig.service_desc.length}/120
-                                                            </span>
-                                                        </label>
-                                                        <textarea
-                                                            maxLength={120}
-                                                            rows={2}
-                                                            value={serviceConfig.service_desc}
-                                                            onChange={e => { setServiceConfig({ ...serviceConfig, service_desc: e.target.value }); setIsDirty(true) }}
-                                                            placeholder="Ej: Los artículos de su carrito corresponden a servicios. Nos comunicaremos al procesar la orden."
-                                                            className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-normal text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all resize-none"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </section>
-                                        )}
-                                    </>
-                                )}
-
-                                {/* ========================================== */}
-                                {/* PESTAÑA 4: REGLAS DE NEGOCIO Y CATÁLOGO    */}
-                                {/* ========================================== */}
-                                {activeTab === 'rules' && (
-                                    <>
-                                        <CategorySorter storeId={store.id} initialOrder={store.categories_order} />
-
-                                        {/* DESCUENTO MAYORISTA */}
-                                        {store?.store_type !== 'restaurant' && (
-                                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
+                                <div className="pt-4 border-t border-neutral-100">
+                                    <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-3.5 block">Clasificación Contributiva</label>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        {[
+                                            { id: 'informal', title: 'Persona Natural / Informal', desc: 'Sujeto exento de IVA. Transacciones directas sin retenciones.' },
+                                            { id: 'ordinary', title: 'Contribuyente Ordinario', desc: 'Aplica alícuota fiscal obligatoria en todas sus transacciones.' },
+                                            { id: 'special', title: 'Contribuyente Especial', desc: 'Sujeto a alícuota base con módulo avanzado de retenciones.' }
+                                        ].map(p => {
+                                            const isSelected = fiscal.fiscal_profile === p.id;
+                                            return (
                                                 <div
-                                                    className="flex items-center justify-between cursor-pointer"
-                                                    onClick={() => handleWholesaleChange('active', !wholesale.active)}
+                                                    key={p.id}
+                                                    onClick={() => { setFiscal({ ...fiscal, fiscal_profile: p.id }); setIsDirty(true) }}
+                                                    className={`cursor-pointer p-4 rounded-lg border transition-all flex flex-col justify-between min-h-[90px] ${
+                                                        isSelected 
+                                                            ? 'bg-neutral-950 border-neutral-950 text-white' 
+                                                            : 'bg-neutral-50/50 border-neutral-200/80 hover:bg-neutral-50 text-neutral-900'
+                                                    }`}
                                                 >
-                                                    <div className="space-y-0.5">
-                                                        <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
-                                                            <ShoppingBag size={14} strokeWidth={1.5} className="text-neutral-500" /> Descuento Mayorista Automático
-                                                        </p>
-                                                        <p className="text-xs text-neutral-500 font-normal pr-4">Aplica reducciones globales inmediatas en el checkout según el volumen de compra.</p>
+                                                    <div className="flex justify-between items-start w-full gap-2 mb-2">
+                                                        <h3 className="font-semibold text-[11px] uppercase tracking-wider leading-tight">{p.title}</h3>
+                                                        {isSelected && <CheckCircle2 size={13} strokeWidth={1.5} className="text-white shrink-0" />}
                                                     </div>
-                                                    <AnimatedSwitch active={wholesale.active} />
+                                                    <p className={`text-[10px] leading-relaxed ${isSelected ? 'text-neutral-400' : 'text-neutral-500'}`}>{p.desc}</p>
                                                 </div>
+                                            )
+                                        })}
+                                    </div>
 
-                                                {wholesale.active && (
-                                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-neutral-100">
-                                                        <div>
-                                                            <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Cantidad Mínima</label>
-                                                            <div className="max-w-[150px]">
-                                                                <NumberInput
-                                                                    value={wholesale.min_items}
-                                                                    onChangeValue={(val) => handleWholesaleChange('min_items', val)}
-                                                                    className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 px-2.5 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Tasa de Descuento</label>
-                                                            <div className="relative max-w-[150px]">
-                                                                <NumberInput
-                                                                    value={wholesale.discount_percentage}
-                                                                    onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
-                                                                    className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
-                                                                />
-                                                                <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </section>
-                                        )}
-
-                                        {/* RED DE PROMOTORES */}
-                                        <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
-                                            <div
-                                                className="flex items-center justify-between cursor-pointer"
-                                                onClick={() => handleAffiliateChange('active', !affiliate.active)}
-                                            >
-                                                <div className="space-y-0.5">
-                                                    <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
-                                                        <Users size={14} strokeWidth={1.5} className="text-neutral-500" /> Red de Promotores (Afiliación)
-                                                    </p>
-                                                    <p className="text-xs text-neutral-500 font-normal pr-4">Habilite comisiones para colaboradores que recomienden formalmente su negocio.</p>
-                                                </div>
-                                                <AnimatedSwitch active={affiliate.active} />
+                                    {fiscal.fiscal_profile !== 'informal' && (
+                                        <div className="mt-4 p-4 bg-neutral-50/60 border border-neutral-200/80 rounded-lg flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <p className="text-xs font-semibold text-neutral-950">Impuesto al Valor Agregado (IVA)</p>
+                                                <p className="text-[10px] text-neutral-500">Rango legal general aplicable.</p>
                                             </div>
+                                            <div className="relative w-24">
+                                                <NumberInput
+                                                    value={fiscal.default_tax_percentage}
+                                                    onChangeValue={val => {
+                                                        let num = Number(val);
+                                                        if (num < 16) num = 16;
+                                                        if (num > 16.5) num = 16.5;
 
-                                            {affiliate.active && (
-                                                <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-neutral-100">
-                                                    <div>
-                                                        <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Comisión del Promotor</label>
-                                                        <div className="relative max-w-[150px]">
-                                                            <NumberInput
-                                                                value={affiliate.global_commission_pct}
-                                                                onChangeValue={(val) => handleAffiliateChange('global_commission_pct', val)}
-                                                                className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
-                                                            />
-                                                            <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Descuento al Comprador</label>
-                                                        <div className="relative max-w-[150px]">
-                                                            <NumberInput
-                                                                value={affiliate.buyer_discount_pct}
-                                                                onChangeValue={(val) => handleAffiliateChange('buyer_discount_pct', val)}
-                                                                className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
-                                                            />
-                                                            <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                                        </div>
-                                                    </div>
+                                                        setFiscal({ ...fiscal, default_tax_percentage: num });
+                                                        setIsDirty(true);
+                                                    }}
+                                                    className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2 pr-7 text-xs font-semibold text-neutral-950 text-center focus:border-neutral-950 outline-none transition-colors"
+                                                />
+                                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-semibold pointer-events-none">%</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* PESTAÑA 3: LOGÍSTICA Y OPERACIONES */}
+                        <div className={activeTab === 'logistics' ? 'space-y-6 block animate-in fade-in duration-150' : 'hidden'}>
+                            {store?.store_type === 'restaurant' && (
+                                <StoreHoursSettings storeId={store?.id} initialData={store?.store_hours} />
+                            )}
+
+                            <ShippingSettings storeId={store?.id} initialData={store?.shipping_config} storeType={store?.store_type} />
+
+                            {store?.store_type !== 'restaurant' && (
+                                <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-6">
+                                    <div>
+                                        <div className="flex items-center gap-2 text-neutral-950">
+                                            <Zap size={18} strokeWidth={1.5} className="text-neutral-500" />
+                                            <h2 className="text-base font-semibold tracking-tight">Servicios e Intangibles</h2>
+                                        </div>
+                                        <p className="text-xs text-neutral-500 mt-1 font-normal">Ajuste indicaciones para ítems que no requieren despacho físico.</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
+                                                <span>Etiqueta del carrito</span>
+                                                <span className="text-[10px] font-mono text-neutral-400">
+                                                    {serviceConfig.service_badge.length}/20
+                                                </span>
+                                            </label>
+                                            <input
+                                                maxLength={20}
+                                                value={serviceConfig.service_badge}
+                                                onChange={e => { setServiceConfig({ ...serviceConfig, service_badge: e.target.value }); setIsDirty(true) }}
+                                                placeholder="Ej: Se consume en tienda"
+                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
+                                                <span>Título de aviso en checkout</span>
+                                                <span className="text-[10px] font-mono text-neutral-400">
+                                                    {serviceConfig.service_title.length}/30
+                                                </span>
+                                            </label>
+                                            <input
+                                                maxLength={30}
+                                                value={serviceConfig.service_title}
+                                                onChange={e => { setServiceConfig({ ...serviceConfig, service_title: e.target.value }); setIsDirty(true) }}
+                                                placeholder="Ej: Taller en Vivo"
+                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-semibold text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-2 flex justify-between">
+                                                <span>Indicaciones del Servicio</span>
+                                                <span className="text-[10px] font-mono text-neutral-400">
+                                                    {serviceConfig.service_desc.length}/120
+                                                </span>
+                                            </label>
+                                            <textarea
+                                                maxLength={120}
+                                                rows={2}
+                                                value={serviceConfig.service_desc}
+                                                onChange={e => { setServiceConfig({ ...serviceConfig, service_desc: e.target.value }); setIsDirty(true) }}
+                                                placeholder="Ej: Los artículos de su carrito corresponden a servicios. Nos comunicaremos al procesar la orden."
+                                                className="w-full bg-neutral-50/50 border border-neutral-200/75 rounded-lg px-3.5 py-2.5 text-xs font-normal text-neutral-950 focus:bg-white focus:border-neutral-950 outline-none transition-all resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+
+                        {/* PESTAÑA 4: REGLAS DE NEGOCIO Y CATÁLOGO */}
+                        <div className={activeTab === 'rules' ? 'space-y-6 block animate-in fade-in duration-150' : 'hidden'}>
+                            <CategorySorter storeId={store?.id} initialOrder={store?.categories_order} />
+
+                            {store?.store_type !== 'restaurant' && (
+                                <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
+                                    <div
+                                        className="flex items-center justify-between cursor-pointer"
+                                        onClick={() => handleWholesaleChange('active', !wholesale.active)}
+                                    >
+                                        <div className="space-y-0.5">
+                                            <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
+                                                <ShoppingBag size={14} strokeWidth={1.5} className="text-neutral-500" /> Descuento Mayorista Automático
+                                            </p>
+                                            <p className="text-xs text-neutral-500 font-normal pr-4">Aplica reducciones globales inmediatas en el checkout según el volumen de compra.</p>
+                                        </div>
+                                        <AnimatedSwitch active={wholesale.active} />
+                                    </div>
+
+                                    {wholesale.active && (
+                                        <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-neutral-100">
+                                            <div>
+                                                <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Cantidad Mínima</label>
+                                                <div className="max-w-[150px]">
+                                                    <NumberInput
+                                                        value={wholesale.min_items}
+                                                        onChangeValue={(val) => handleWholesaleChange('min_items', val)}
+                                                        className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 px-2.5 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
+                                                    />
                                                 </div>
-                                            )}
-                                        </section>
-                                    </>
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Tasa de Descuento</label>
+                                                <div className="relative max-w-[150px]">
+                                                    <NumberInput
+                                                        value={wholesale.discount_percentage}
+                                                        onChangeValue={(val) => handleWholesaleChange('discount_percentage', val)}
+                                                        className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
+                                                    />
+                                                    <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+                            )}
 
+                            <section className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/60 space-y-4">
+                                <div
+                                    className="flex items-center justify-between cursor-pointer"
+                                    onClick={() => handleAffiliateChange('active', !affiliate.active)}
+                                >
+                                    <div className="space-y-0.5">
+                                        <p className="font-semibold text-xs text-neutral-950 flex items-center gap-1.5">
+                                            <Users size={14} strokeWidth={1.5} className="text-neutral-500" /> Red de Promotores (Afiliación)
+                                        </p>
+                                        <p className="text-xs text-neutral-500 font-normal pr-4">Habilite comisiones para colaboradores que recomienden formalmente su negocio.</p>
+                                    </div>
+                                    <AnimatedSwitch active={affiliate.active} />
+                                </div>
+
+                                {affiliate.active && (
+                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-neutral-100">
+                                        <div>
+                                            <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Comisión del Promotor</label>
+                                            <div className="relative max-w-[150px]">
+                                                <NumberInput
+                                                    value={affiliate.global_commission_pct}
+                                                    onChangeValue={(val) => handleAffiliateChange('global_commission_pct', val)}
+                                                    className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
+                                                />
+                                                <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 block">Descuento al Comprador</label>
+                                            <div className="relative max-w-[150px]">
+                                                <NumberInput
+                                                    value={affiliate.buyer_discount_pct}
+                                                    onChangeValue={(val) => handleAffiliateChange('buyer_discount_pct', val)}
+                                                    className="w-full bg-white border border-neutral-200/80 rounded-md py-1.5 pl-2.5 pr-7 text-xs font-semibold text-neutral-950 focus:border-neutral-950 outline-none"
+                                                />
+                                                <Percent size={11} strokeWidth={1.5} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+
+                    </div>
                 </div>
 
             </div>

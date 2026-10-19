@@ -78,13 +78,11 @@ const NAV_LINKS: NavItem[] = [
   { name: 'Nuevo Producto', href: '/admin/product/new', icon: Plus, isAction: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
   { name: 'Promociones', href: '/admin/promotions', icon: Tag, hideOnBottomBar: true, category: 'Catálogo', allowedPlans: ['retail', 'pro'] },
 
-  // 📌 Negocio
+    // 📌 Negocio
   { name: 'Diseño', href: '/admin/customization', icon: Palette, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
   { name: 'Comisiones', href: '/admin/commissions', icon: Users, hideOnBottomBar: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
   { name: 'Preziso Afiliados', href: '/admin/affiliates', icon: Gift, hideOnBottomBar: true, hasPulse: true, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
-  { name: 'Ajustes', href: '/admin/settings', icon: Settings, category: 'Negocio', allowedPlans: ['retail', 'digital', 'pro'] },
 ]
-
 // 🚀 MICRO-COMPONENTE: Avatar Consistente Monocromático (Cleanlook Standard)
 const NavAvatarIcon = ({ store }: { store: any }) => {
   const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR';
@@ -395,16 +393,20 @@ const DesktopSidebar = ({
           </span>
         </a>
 
-        {/* Perfil */}
+      {/* Ajustes */}
         <GuardedLink
-          href="/admin/profile"
-          className="flex items-center p-1.5 rounded-lg hover:bg-neutral-50 transition-colors text-neutral-500 hover:text-neutral-900 w-full text-left"
+          href="/admin/settings"
+          className={`flex items-center p-1.5 rounded-lg transition-colors w-full text-left ${
+            pathname === '/admin/settings'
+              ? 'bg-neutral-100/70 text-neutral-950 font-semibold'
+              : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
+          }`}
         >
           <div className="flex items-center justify-center w-9 h-7 flex-shrink-0">
-            <NavAvatarIcon store={store} />
+            <Settings size={16} strokeWidth={pathname === '/admin/settings' ? 2.5 : 2} className={pathname === '/admin/settings' ? 'text-neutral-950' : 'text-neutral-500'} />
           </div>
           <span className="ml-2.5 text-[11px] font-bold whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
-            Mi Perfil
+            Ajustes
           </span>
         </GuardedLink>
       </div>
@@ -685,12 +687,17 @@ const MobileSidebar = ({
                 <span>Hablar con Soporte</span>
               </a>
 
+      
               <GuardedLink
-                href="/admin/profile"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors w-full text-left"
+                href="/admin/settings"
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors w-full text-left ${
+                  pathname === '/admin/settings'
+                    ? 'bg-neutral-100 text-neutral-950 font-semibold'
+                    : 'text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50'
+                }`}
               >
-                <NavAvatarIcon store={store} />
-                <span>Mi Perfil</span>
+                <Settings size={16} strokeWidth={pathname === '/admin/settings' ? 2.5 : 2} className={pathname === '/admin/settings' ? 'text-neutral-950' : 'text-neutral-500'} />
+                <span>Ajustes</span>
               </GuardedLink>
             </div>
           </motion.div>

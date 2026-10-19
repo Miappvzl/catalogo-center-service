@@ -109,10 +109,14 @@ export default function StoreHoursSettings({ storeId, initialData }: { storeId: 
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
 
-  // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+   // SINCRONIZACIÓN ROBUSTA CON EL GUARDIÁN GLOBAL
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'hours', isDirty } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'hours', isDirty: false } }))
+    }
   }, [isDirty])
+
 
    const defaultSchedule = {
     monday: { isOpen: true, open: '00:00', close: '23:59', hasSecondShift: false },
@@ -131,7 +135,15 @@ export default function StoreHoursSettings({ storeId, initialData }: { storeId: 
   })
 
   useEffect(() => {
-    const handleTriggerSave = () => { if (isDirty) handleSave() }
+    const handleTriggerSave = (e: Event) => {
+      const customEvent = e as CustomEvent<{ registerPromise?: (p: Promise<any>) => void }>
+      if (isDirty) {
+        const savePromise = handleSave()
+        if (customEvent.detail?.registerPromise && savePromise) {
+          customEvent.detail.registerPromise(savePromise)
+        }
+      }
+    }
     const handleDiscard = () => setIsDirty(false)
     window.addEventListener('preziso:trigger-save', handleTriggerSave)
     window.addEventListener('preziso:discard-changes', handleDiscard)

@@ -56,13 +56,24 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
     cash: { active: false, details: '', ...initialData?.cash }
   })
 
-  // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+   // SINCRONIZACIÓN ROBUSTA CON EL GUARDIÁN GLOBAL
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'payments', isDirty } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'payments', isDirty: false } }))
+    }
   }, [isDirty])
 
   useEffect(() => {
-    const handleTriggerSave = () => { if (isDirty) handleSave() }
+    const handleTriggerSave = (e: Event) => {
+      const customEvent = e as CustomEvent<{ registerPromise?: (p: Promise<any>) => void }>
+      if (isDirty) {
+        const savePromise = handleSave()
+        if (customEvent.detail?.registerPromise && savePromise) {
+          customEvent.detail.registerPromise(savePromise)
+        }
+      }
+    }
     const handleDiscard = () => setIsDirty(false)
     window.addEventListener('preziso:trigger-save', handleTriggerSave)
     window.addEventListener('preziso:discard-changes', handleDiscard)
@@ -71,8 +82,6 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
       window.removeEventListener('preziso:discard-changes', handleDiscard)
     }
   }, [isDirty, methods, pfKeys, skylinkKeys])
-  
-
 
   const handleChange = (method: string, field: string, value: any) => {
     setIsDirty(true)
@@ -205,13 +214,14 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
           {methods.skylink.active && (
             <div className="animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="pt-4 mt-2 border-t border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                             <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Código de Comercio</label>
                   <input
                     placeholder="Ej: 657137066270"
+                    autoComplete="off"
                     value={skylinkKeys.commerceCode}
                     onChange={e => {
-                      setIsDirty(true);
+                      if (e.isTrusted) setIsDirty(true);
                       setSkylinkKeys(prev => ({ ...prev, commerceCode: e.target.value.replace(/\D/g, '') }));
                     }}
                     className="w-full text-xs px-3 py-2.5 rounded-lg bg-neutral-800 text-white font-mono placeholder:text-neutral-500 border border-neutral-700 focus:border-amber-500 outline-none transition-all"
@@ -222,14 +232,16 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
                   <input
                     type="password"
                     placeholder="Pega aquí tu API Key secreta"
+                    autoComplete="new-password"
                     value={skylinkKeys.apiKey}
                     onChange={e => {
-                      setIsDirty(true);
+                      if (e.isTrusted) setIsDirty(true);
                       setSkylinkKeys(prev => ({ ...prev, apiKey: e.target.value.trim() }));
                     }}
                     className="w-full text-xs px-3 py-2.5 rounded-lg bg-neutral-800 text-white font-mono placeholder:text-neutral-500 border border-neutral-700 focus:border-amber-500 outline-none transition-all"
                   />
                 </div>
+
                 <p className="text-[10px] text-amber-500/80 md:col-span-2 flex items-center gap-1.5 font-medium mt-1">
                   <AlertCircle size={12} />
                   Tus credenciales se encriptarán a nivel bancario en nuestra bóveda (AES-256). Solo debes ingresarlas una vez.

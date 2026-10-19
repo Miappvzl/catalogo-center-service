@@ -93,13 +93,14 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [isDirty, setIsDirty] = useState(false)
+    const isInitialLoad = useRef(true) // 🛡️ Bloquea el falso disparo de Framer Motion en el primer render
     const [searchQuery, setSearchQuery] = useState('')
     const [isInfoOpen, setIsInfoOpen] = useState(false)
 
-    // 🚀 NUEVO: Detector de Dispositivo
+    // 🚀 Detector de Dispositivo
     const [isMobile, setIsMobile] = useState(false)
 
-      // 🚀 NUEVO: Almacena la categoría que tiene el menú numérico abierto actualmente
+    // 🚀 Almacena la categoría que tiene el menú numérico abierto actualmente
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null) 
 
     const supabase = getSupabase()
@@ -108,22 +109,6 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
     const scrollInterval = useRef<NodeJS.Timeout | null>(null)
     const scrollSpeed = useRef<number>(0)
     const maxScrollLimit = useRef<number>(0)
-
-    // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
-    useEffect(() => {
-        window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'categories', isDirty } }))
-    }, [isDirty])
-
-    useEffect(() => {
-        const handleTriggerSave = () => { if (isDirty) handleSave() }
-        const handleDiscard = () => setIsDirty(false)
-        window.addEventListener('preziso:trigger-save', handleTriggerSave)
-        window.addEventListener('preziso:discard-changes', handleDiscard)
-        return () => {
-            window.removeEventListener('preziso:trigger-save', handleTriggerSave)
-            window.removeEventListener('preziso:discard-changes', handleDiscard)
-        }
-    }, [isDirty, categories])
 
     // Sincronizamos la detección de móvil en el cliente de forma segura contra hidratación
     useEffect(() => {
@@ -135,7 +120,7 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
         }
     }, []);
 
-    // 🚀 NUEVA FUNCIÓN: Reordenamiento Numérico de Posición para Móvil
+    // 🚀 Reordenamiento Numérico de Posición para Móvil
     const handleMobilePositionChange = (currentIndex: number, newPositionStr: string) => {
         const newPos = parseInt(newPositionStr, 10);
         if (isNaN(newPos) || newPos < 1 || newPos > categories.length) return;
@@ -151,8 +136,33 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
         setIsDirty(true);
     };
 
-    // ... (Conserva tu useEffect loadCategories y las demás funciones igual) ...
- // Modifica tu useEffect de carga inicial removiendo el localStorage de la fase anterior:
+    // SINCRONIZACIÓN ROBUSTA CON EL GUARDIÁN GLOBAL
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'categories', isDirty } }))
+        return () => {
+            window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'categories', isDirty: false } }))
+        }
+    }, [isDirty])
+
+    useEffect(() => {
+        const handleTriggerSave = (e: Event) => {
+            const customEvent = e as CustomEvent<{ registerPromise?: (p: Promise<any>) => void }>
+            if (isDirty) {
+                const savePromise = handleSave()
+                if (customEvent.detail?.registerPromise && savePromise) {
+                    customEvent.detail.registerPromise(savePromise)
+                }
+            }
+        }
+        const handleDiscard = () => setIsDirty(false)
+        window.addEventListener('preziso:trigger-save', handleTriggerSave)
+        window.addEventListener('preziso:discard-changes', handleDiscard)
+        return () => {
+            window.removeEventListener('preziso:trigger-save', handleTriggerSave)
+            window.removeEventListener('preziso:discard-changes', handleDiscard)
+        }
+    }, [isDirty, categories])
+
     useEffect(() => {
         const loadCategories = async () => {
             const { data: storeData } = await supabase.from('stores').select('slug').eq('id', storeId).single()
@@ -190,6 +200,11 @@ export default function CategorySorter({ storeId, initialOrder = [] }: { storeId
     }, [])
        
     const handleReorder = (newOrder: string[]) => {
+        if (isInitialLoad.current) {
+            isInitialLoad.current = false
+            setCategories(newOrder)
+            return
+        }
         setCategories(newOrder)
         setIsDirty(true)
     }

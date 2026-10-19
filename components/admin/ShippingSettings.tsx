@@ -63,13 +63,24 @@ export default function ShippingSettings({ storeId, initialData, storeType = 're
         national_shipping_is_free: false
     })
 
-    // SINCRONIZACIÓN CON EL GUARDIÁN GLOBAL DE CONFIGURACIÓN
+ // SINCRONIZACIÓN ROBUSTA CON EL GUARDIÁN GLOBAL
     useEffect(() => {
         window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'shipping', isDirty } }))
+        return () => {
+            window.dispatchEvent(new CustomEvent('preziso:dirty-state', { detail: { id: 'shipping', isDirty: false } }))
+        }
     }, [isDirty])
 
     useEffect(() => {
-        const handleTriggerSave = () => { if (isDirty) handleSave() }
+        const handleTriggerSave = (e: Event) => {
+            const customEvent = e as CustomEvent<{ registerPromise?: (p: Promise<any>) => void }>
+            if (isDirty) {
+                const savePromise = handleSave()
+                if (customEvent.detail?.registerPromise && savePromise) {
+                    customEvent.detail.registerPromise(savePromise)
+                }
+            }
+        }
         const handleDiscard = () => setIsDirty(false)
         window.addEventListener('preziso:trigger-save', handleTriggerSave)
         window.addEventListener('preziso:discard-changes', handleDiscard)
