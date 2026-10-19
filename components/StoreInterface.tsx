@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock } from 'lucide-react'
+import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock, Gift } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
@@ -365,6 +365,7 @@ if (isMockMode) {
     return () => clearInterval(interval);
   }, [expQuery]);
 
+  
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -420,8 +421,17 @@ const [isModalOpen, setIsModalOpen] = useState(false)
   // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
   // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
-  const items = useCart(state => state.items)
+const items = useCart(state => state.items)
   const orderHistory = useCart(state => state.orderHistory)
+  const addItem = useCart(state => state.addItem) // 🚀 Solución al error TS2304
+
+  // Estado del Toast Minimalista para Enlaces de Regalo (?add=ID)
+  const [giftNotification, setGiftNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'exhausted';
+    title: string;
+    description: string;
+  } | null>(null);
   const cartControls = useAnimation()
   const badgeControls = useAnimation()
 
@@ -536,6 +546,66 @@ const [isModalOpen, setIsModalOpen] = useState(false)
     return { featured, standard: baseFiltered };
   }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode, selectedCollectionData, displayPromotions]);
 
+
+
+  // 🚀 INTERCEPTOR NATIVO: ENLACE MÁGICO (?add=ID)
+  useEffect(() => {
+    const magicProductId = searchParams?.get('add');
+    if (magicProductId && products && products.length > 0 && isMounted) {
+      const giftProduct = products.find((p) => String(p.id) === String(magicProductId));
+
+      if (giftProduct) {
+        // 1. Verificación de existencias
+        const hasVariants = giftProduct.product_variants && giftProduct.product_variants.length > 0;
+        const totalStock = hasVariants
+          ? giftProduct.product_variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0)
+          : Number(giftProduct.stock || 0);
+
+        if (totalStock <= 0) {
+          setGiftNotification({
+            show: true,
+            type: 'exhausted',
+            title: 'Promoción Finalizada',
+            description: 'Las unidades de este regalo se han agotado.',
+          });
+        } else {
+          // 2. Prevenir duplicados si el usuario recarga
+          const alreadyInCart = items.some((i) => String(i.productId) === String(giftProduct.id));
+
+          if (!alreadyInCart) {
+            // Inyección limpia a Zustand
+            addItem(giftProduct, null, 1);
+
+            // Disparar la Notificación Minimalista
+            setGiftNotification({
+              show: true,
+              type: 'success',
+              title: 'Regalo Añadido a tu Bolsa',
+              description: giftProduct.name,
+            });
+
+            // Disparar HUD háptico
+            document.dispatchEvent(new CustomEvent('showCartHUD', { detail: { quantity: 1 } }));
+          }
+        }
+      }
+
+      // Limpieza silenciosa de URL: Retiramos el parámetro ?add sin recargar
+      const url = new URL(window.location.href);
+      url.searchParams.delete('add');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams, products, isMounted, items, addItem]);
+
+  // Auto-cierre de la notificación flotante tras 4.5 segundos
+  useEffect(() => {
+    if (giftNotification?.show) {
+      const timer = setTimeout(() => {
+        setGiftNotification(null);
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [giftNotification]);
 
   // 6. TODOS LOS EFECTOS DE CICLO DE VIDA (UNIFICADOS ABAJO)
   useEffect(() => {
@@ -1001,6 +1071,78 @@ useEffect(() => {
 
       {/* 1. NOTIFICACIÓN DE COTIZACIÓN PENDIENTE (Hasta arriba de todo) */}
       <QuoteRecoveryBanner currentSlug={store.slug} />
+
+       {/* 🚀 NOTIFICACIÓN FLOTANTE EDITORIAL: REGALO / GIVEAWAY (?add=ID) */}
+      <AnimatePresence>
+        {giftNotification?.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -25, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -25, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="fixed top-4 inset-x-0 mx-auto z-[999999] max-w-[92vw] sm:max-w-md w-full px-2 pointer-events-auto"
+          >
+            <div
+              className={`p-3 sm:p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 ${
+                giftNotification.type === 'success'
+                  ? 'bg-neutral-950/95 text-white border-neutral-800'
+                  : 'bg-white/95 text-neutral-950 border-neutral-200 shadow-lg'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                {/* Icono animado con micro-pulso elástico */}
+                <motion.div
+                  initial={{ rotate: -20, scale: 0.7 }}
+                  animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: 1 }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    giftNotification.type === 'success'
+                      ? 'bg-white/10 text-emerald-400 border border-white/10 shadow-2xs'
+                      : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
+                  }`}
+                >
+                  <Gift size={16} strokeWidth={2} />
+                </motion.div>
+
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="text-xs font-semibold tracking-tight truncate leading-tight">
+                    {giftNotification.title}
+                  </p>
+                  <p
+                    className={`text-[11px] truncate font-normal ${
+                      giftNotification.type === 'success' ? 'text-neutral-400' : 'text-neutral-500'
+                    }`}
+                  >
+                    {giftNotification.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {giftNotification.type === 'success' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGiftNotification(null);
+                      document.dispatchEvent(new CustomEvent('toggleCartDrawer'));
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-neutral-100 text-neutral-950 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors active:scale-95 shadow-xs"
+                  >
+                    Bolsa
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setGiftNotification(null)}
+                  className="p-1.5 text-neutral-400 hover:text-white rounded-lg transition-colors active:scale-90"
+                >
+                  <X size={13} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 2. BANNER DE CAMPAÑA FLASH */}
       <AnimatePresence>

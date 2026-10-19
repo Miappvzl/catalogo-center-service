@@ -20,7 +20,10 @@ import {
     Star,
     FileText,
     Percent,
-    Eye
+    Eye,
+    Copy,
+    Gift,
+    Check
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import MissionTour from '@/components/MissionTour'
@@ -294,6 +297,20 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [existingCategories, setExistingCategories] = useState<string[]>([])
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
     const categoryDropdownRef = useRef<HTMLDivElement>(null)
+        const [storeSlug, setStoreSlug] = useState<string>('');
+    const [copiedMagicLink, setCopiedMagicLink] = useState(false);
+
+    useEffect(() => {
+        if (!storeSettings?.id) return;
+        supabase
+            .from('stores')
+            .select('slug')
+            .eq('id', storeSettings.id)
+            .single()
+            .then(({ data }: { data: { slug: string } | null }) => {
+                if (data?.slug) setStoreSlug(data.slug);
+            });
+    }, [storeSettings?.id, supabase]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -843,8 +860,18 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
     const handleSave = async () => {
         if (hasVariants && sizeInputValue.trim() !== '') addSizeFromInput()
-        if (!formData.name) return Swal.fire({ title: 'Falta información', text: 'El producto debe tener un nombre descriptivo.', icon: 'warning', confirmButtonColor: '#171717' })
-        if (Number(formData.price) <= 0) return Swal.fire({ title: 'Precio Inválido', text: 'El valor monetario del producto debe ser mayor a 0.', icon: 'warning', confirmButtonColor: '#171717' })
+       if (!formData.name) return Swal.fire({ title: 'Falta información', text: 'El producto debe tener un nombre descriptivo.', icon: 'warning', confirmButtonColor: '#171717' });
+    
+        const priceNum = Number(formData.price);
+        if (String(formData.price).trim() === '' || isNaN(priceNum) || priceNum < 0) {
+            return Swal.fire({ 
+                title: 'Precio Inválido', 
+                text: 'El valor monetario del producto no puede ser negativo.', 
+                icon: 'warning', 
+                confirmButtonColor: '#171717',
+                customClass: { popup: 'rounded-xl font-sans text-xs' }
+            });
+        }
 
         setSaving(true)
         try {
@@ -998,12 +1025,12 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     }
                 }
             }
-           if (isMission1 || isMission2 || isMission3 || isMission4) {
+            if (isMission1 || isMission2 || isMission3 || isMission4) {
                 const { data: st } = await supabase.from('stores').select('onboarding_missions').eq('id', storeSettings!.id).single();
                 const currentMissions = st?.onboarding_missions || { mission_1: false, mission_2: false, mission_3: false, mission_4: false };
 
                 const missionKey = isMission1 ? 'mission_1' : isMission2 ? 'mission_2' : isMission3 ? 'mission_3' : 'mission_4';
-                
+
                 // 🚀 Trazabilidad: Guardamos el ID del producto demo en la tienda para borrado seguro futuro
                 const prevDemoIds = Array.isArray(currentMissions.demo_product_ids) ? currentMissions.demo_product_ids : [];
                 const updatedDemoIds = Array.from(new Set([...prevDemoIds, String(currentId)]));
@@ -2171,6 +2198,89 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                         </>
                     )}
                 </div>
+    {/* 🚀 ENLACE MÁGICO DE CAMPAÑA (DISEÑO TECH-EDITORIAL / PREZISO OBSIDIAN) */}
+                {productId && Number(formData.price) === 0 && (hasVariants ? variants.some(v => v.stock > 0) : Number(simpleStock) > 0) && (
+                    <div className="bg-white p-5 md:p-6 rounded-xl border border-neutral-200/70 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4 animate-in fade-in duration-300">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-neutral-100">
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900 border border-neutral-200/60">
+                                    <Gift size={14} strokeWidth={2} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-bold text-neutral-950 uppercase tracking-wider font-mono">
+                                        Enlace Mágico (Giveaway)
+                                    </h3>
+                                    <p className="text-[11px] text-neutral-400 font-normal">
+                                        Auto-agrega este artículo a la bolsa del cliente al hacer clic
+                                    </p>
+                                </div>
+                            </div>
+
+                            <span className="self-start sm:self-auto px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                                Promoción de $0.00 Activa
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            {/* Input de solo lectura con la URL exacta */}
+                            <div className="flex-1 bg-neutral-50/80 border border-neutral-200/80 rounded-lg px-3 py-2 text-xs font-mono text-neutral-600 truncate select-all">
+                                {(() => {
+                                    if (typeof window === 'undefined') return 'Cargando enlace...';
+                                    const host = window.location.host.replace('www.', '');
+                                    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+                                    return isLocal
+                                        ? `${window.location.protocol}//${host}/${storeSlug || 'tienda'}?add=${productId}`
+                                        : `https://${storeSlug || 'tienda'}.${host}/?add=${productId}`;
+                                })()}
+                            </div>
+
+                            {/* Botón de Copiado en Negro Obsidiana */}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const host = window.location.host.replace('www.', '');
+                                    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+                                    const magicUrl = isLocal
+                                        ? `${window.location.protocol}//${host}/${storeSlug || 'tienda'}?add=${productId}`
+                                        : `https://${storeSlug || 'tienda'}.${host}/?add=${productId}`;
+
+                                    navigator.clipboard.writeText(magicUrl);
+                                    setCopiedMagicLink(true);
+                                    setTimeout(() => setCopiedMagicLink(false), 2000);
+
+                                    const Toast = Swal.mixin({
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        timer: 1500,
+                                        customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
+                                    });
+                                    Toast.fire({ icon: 'success', title: 'Enlace Mágico Copiado' });
+                                }}
+                                className="px-4 py-2 bg-neutral-950 hover:bg-neutral-850 active:scale-95 text-white rounded-lg text-xs font-medium transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
+                            >
+                                {copiedMagicLink ? (
+                                    <>
+                                        <Check size={13} className="text-emerald-400" />
+                                        <span>Copiado</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy size={13} />
+                                        <span>Copiar Enlace</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        <p className="text-[11px] text-neutral-400 font-normal leading-relaxed">
+                            Comparte este enlace en historias de Instagram o WhatsApp. La campaña finalizará automáticamente cuando las existencias en inventario lleguen a 0.
+                        </p>
+                    </div>
+                )}
+
+
             </div>
 
 

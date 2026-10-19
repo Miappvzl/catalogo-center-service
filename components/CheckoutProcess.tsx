@@ -21,7 +21,9 @@ import {
     Zap,
     ArrowLeft,
     Wallet,
-    AlertCircle
+    AlertCircle,
+    Gift,
+    GiftIcon
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
@@ -994,6 +996,10 @@ switch (pm) {
         if (!clientData.name) newErrors.name = "El nombre es obligatorio";
         if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
+          // 🚀 NUEVO: Validación orgánica (Permite avanzar si es un regalo o el saldo cubre todo)
+        if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
+            newErrors.payment = "Selecciona un método de pago";
+        }
 
 
         if (isStrictTax && wantsFiscalData) {
@@ -1081,8 +1087,8 @@ switch (pm) {
         }
 
         setErrors({}); // Limpiamos errores
-        if (!isPaidInFull) return Swal.fire({ title: "Saldo Pendiente", text: "Debes completar el 100% del pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
-        if (missingReceipts) return Swal.fire({ title: "Comprobantes Faltantes", text: "Adjunta los captures de pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+        if (!isPaidInFull && grandTotalUSD > 0) return Swal.fire({ title: "Saldo Pendiente", text: "Debes completar el 100% del pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+        if (missingReceipts && grandTotalUSD > 0) return Swal.fire({ title: "Comprobantes Faltantes", text: "Adjunta los captures de pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
 
         // 🚀 2. LA ILUSIÓN DE BÓVEDA (LABOR ILLUSION)
         setCheckoutState('validating');
@@ -3147,13 +3153,14 @@ switch (pm) {
                                             <motion.div key="skylink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Zap size={16} className="mb-0.5" /> Continuar a Pago Móvil
                                             </motion.div>
-                                        ) : activePaymentInput === "Pago Flash" ? (
+                                   ) : activePaymentInput === "Pago Flash" ? (
                                             <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
                                             </motion.div>
                                         ) : (
                                             <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                                <MessageCircle size={16} className="mb-0.5" /> Enviar Pedido
+                                                {grandTotalUSD === 0 ? <GiftIcon size={16} className="mb-0.5" /> : <MessageCircle size={16} className="mb-0.5" />} 
+                                                {grandTotalUSD === 0 ? "Reclamar Regalo" : "Enviar Pedido"}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
