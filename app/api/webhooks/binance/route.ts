@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/utils/supabaseAdmin';
-import { decryptSecret } from '@/lib/encryption';
+import { decrypt } from '@/utils/crypto';
 import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // 1. Extraer Raw Body y Headers (Esenciales para Criptografía Zero-Trust)
     const rawBody = await req.text();
     const headersList = req.headers;
     
-    // Binance Pay puede enviar los headers con diferentes capitalizaciones
     const timestamp = headersList.get('binancepay-timestamp') || headersList.get('Binancepay-Timestamp');
     const nonce = headersList.get('binancepay-nonce') || headersList.get('Binancepay-Nonce');
     const signature = headersList.get('binancepay-signature') || headersList.get('Binancepay-Signature');
@@ -26,13 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // 2. Filtro de Eventos de Binance
     if (payloadObj.bizType === 'PAY_CLOSED') {
-       // Orden expiró o fue cancelada por el usuario en la app
-       return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
+      return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
     }
 
-    // Ignorar silenciosamente todo lo que no sea un pago exitoso
     if (payloadObj.bizStatus !== 'PAY_SUCCESS') {
       return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
     }
@@ -44,7 +41,6 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 3. Localizar la Orden en Preziso
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select('*')
@@ -53,16 +49,13 @@ export async function POST(req: Request) {
 
     if (orderError || !order) {
       console.warn('[BINANCE WEBHOOK] No se encontró orden asociada para el prepayId:', prepayId);
-      // Respondemos SUCCESS a Binance para que no siga intentando reenviar un evento huérfano
       return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
     }
 
-    // 4. Bloque de Idempotencia
     if (order.status === 'paid') {
       return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
     }
 
-    // 5. Criptografía Zero-Trust: Recuperar la Bóveda del Comercio
     const { data: credentials } = await supabaseAdmin
       .from('store_payment_credentials')
       .select('secret_key_encrypted')
@@ -75,10 +68,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Store credentials not configured' }, { status: 500 });
     }
 
-    const secretKey = decryptSecret(credentials.secret_key_encrypted);
+    const secretKey = decrypt(credentials.secret_key_encrypted);
 
-    // 6. Validación de Firma Criptográfica (Anti-Spoofing)
-    // El estándar de Binance exige el formato: timestamp + \n + nonce + \n + body_raw + \n
     const payloadToSign = `${timestamp}\n${nonce}\n${rawBody}\n`;
     const expectedSignature = crypto
       .createHmac('sha512', secretKey)
@@ -92,7 +83,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Signature mismatch' }, { status: 401 });
     }
 
-    // 7. Conciliación Atómica de la Venta
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
@@ -113,7 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
     }
 
-    // 8. Notificación Push Silente al Tablero del Vendedor
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://preziso.shop';
     fetch(`${appUrl}/api/web-push/notify`, {
       method: 'POST',
@@ -128,7 +117,6 @@ export async function POST(req: Request) {
 
     console.log(`✅ [BINANCE WEBHOOK] Orden #${order.order_number} conciliada con éxito.`);
 
-    // 9. Respuesta Estricta Mandataria por Binance API Docs
     return NextResponse.json({ returnCode: 'SUCCESS', returnMessage: null }, { status: 200 });
 
   } catch (error: any) {
