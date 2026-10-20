@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import PayPalGateway from "./checkout/PayPalGateway";
+import BinanceGateway from "./checkout/BinanceGateway";
 import {
     Store,
     Truck,
@@ -271,15 +272,21 @@ const paymentKeysMap: { [key: string]: string } = {
         "PayPal"
     ];
 
-    const activePaymentMethods = useMemo(() => {
+const activePaymentMethods = useMemo(() => {
         const active = [];
        if (payments.skylink?.active && storeConfig?.slug === 'theo') {
-    active.push("Pago Móvil Automatizado");
-}
+            active.push("Pago Móvil Automatizado");
+       }
         if (payments.transferencia?.active) active.push("Transferencia");
         if (payments.pago_movil?.active) active.push("Pago Móvil");
         if (payments.zelle?.active) active.push("Zelle");
-        if (payments.binance?.active) active.push("Binance");
+        
+        // 🚀 FEATURE FLAG (Dark Launch): Binance Pay solo visible para pruebas
+        // Cambia 'tu-tienda-demo' por el slug exacto de la tienda donde harás la prueba real
+        if (payments.binance?.active && storeConfig?.slug === 'theo') {
+            active.push("Binance");
+        }
+        
         if (payments.zinli?.active) active.push("Zinli");
         if (payments.wally?.active) active.push("WallyTech");
         if (payments.cash?.active) active.push("Efectivo");
@@ -2470,6 +2477,39 @@ switch (pm) {
                                                                 <strong className="text-gray-900 font-bold block mb-0.5">Confirmación Automática</strong>
                                                                 Transfiere desde tu banco y tu orden se aprobará en segundos.
                                                             </p>
+                                                        </div>
+                                                    ) : activePaymentInput === "Binance" ? (
+                                                        <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
+                                                            <BinanceGateway
+                                                                storeId={storeId}
+                                                                clientData={clientData}
+                                                                orderData={{
+                                                                    total_usd: Number(grandTotalUSD.toFixed(2)),
+                                                                    total_bs: Number(grandTotalBs.toFixed(2)),
+                                                                    exchange_rate: activeRate,
+                                                                    currency_type: currency,
+                                                                    shipping_method: isFoodTech ? clientData.deliveryType : (clientData.deliveryType || 'pickup'),
+                                                                    fulfillment_type: isFoodTech ? clientData.deliveryType : (clientData.deliveryType === 'courier' ? 'shipping' : clientData.deliveryType === 'local_delivery' ? 'delivery' : 'pickup'),
+                                                                    delivery_info: "Binance Pay Automatizado",
+                                                                    shipping_cost: Number(deliveryCost.toFixed(2)),
+                                                                    discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
+                                                                    subtotal_usd: Number(totalListUSD_base.toFixed(2))
+                                                                }}
+                                                                items={items.map(item => ({
+                                                                    productId: item.productId,
+                                                                    name: item.name,
+                                                                    quantity: item.quantity,
+                                                                    basePrice: item.basePrice,
+                                                                    sku: item.sku,
+                                                                    variantInfo: item.variantInfo
+                                                                }))}
+                                                                onSuccess={(orderNum, fallbackWaLink, orderId) => {
+                                                                    sessionStorage.removeItem(`pz_checkout_${storeId}`);
+                                                                    clearCart();
+                                                                    setCheckoutState('success');
+                                                                    onSuccess(orderNum, fallbackWaLink, orderId);
+                                                                }}
+                                                            />
                                                         </div>
                                                     ) : activePaymentInput === "PayPal" ? (
                                                         <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
