@@ -5,10 +5,8 @@ import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutG
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
-import ProductModal from './ProductModal'
-import FloatingCheckout from './FloatingCheckout'
+import dynamic from 'next/dynamic'
 import { isValidUUID } from '@/utils/validations'
-import ProductFoodModal from './ui/ProductFoodModal'
 import NumberTicker from './NumberTicker'
 import ProductCard from './ProductCard'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -17,7 +15,12 @@ import { TEMPLATES_REGISTRY } from '@/lib/templates-registry'
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
-import CustomerAuth from '@/components/passport/CustomerAuth'
+
+// 🚀 ELITE: Carga Diferida (Lazy Loading). Los modales pesados no consumen RAM hasta ser abiertos
+const ProductModal = dynamic(() => import('./ProductModal'), { ssr: false })
+const FloatingCheckout = dynamic(() => import('./FloatingCheckout'), { ssr: false })
+const ProductFoodModal = dynamic(() => import('./ui/ProductFoodModal'), { ssr: false })
+const CustomerAuth = dynamic(() => import('@/components/passport/CustomerAuth'), { ssr: false })
 import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRADA
 import BCVLogo from '@/components/icons/BCVLogo' // 🚀 Importación del logo modular
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
@@ -1680,43 +1683,49 @@ onClick={() => {
                       </div>
                   )}
               </div>
-          ) : (
-    <div className={`grid min-h-[40vh] ${
-                  activeTheme.layout?.card_style === 'dense_hardware'
-                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
-                    : activeTheme.layout?.card_style === 'modular_tech'
-                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
-                      : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
-                }`}>
-                {paginatedProducts.map((product: any, index: number) => {
-              const pricing = getProductPricing(product)
-              const isCompletelyOutOfStock = product.product_variants && product.product_variants.length > 0
-                ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0) <= 0
-                : (product.stock || 0) <= 0;
+       ) : (
+            <div className={`grid min-h-[40vh] ${
+                activeTheme.layout?.card_style === 'dense_hardware'
+                  ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+                  : activeTheme.layout?.card_style === 'modular_tech'
+                    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
+                    : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
+            }`}>
+              {/* 🚀 ELITE: Bóveda de Renderizado que protege las 24 tarjetas del scroll */}
+              {useMemo(() => {
+                return paginatedProducts.map((product: any, index: number) => {
+                  const pricing = getProductPricing(product)
 
-              // 🚀 SMART MERCHANDISING: Evaluamos si el stock es crítico (1 a 3 unidades)
-              const totalStock = product.product_variants && product.product_variants.length > 0
-                ? product.product_variants.reduce((acc: number, variant: any) => acc + (variant.stock || 0), 0)
-                : (product.stock || 0);
-              const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
+                  // 🚀 OPTIMIZACIÓN: 1 sola reducción en lugar de 2 por producto
+                  const variantStockSum = product.product_variants && product.product_variants.length > 0
+                    ? product.product_variants.reduce((acc: number, variant: any) => acc + (Number(variant.stock) || 0), 0)
+                    : null;
 
-              return (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  pricing={pricing}
-                  onOpen={handleOpenProduct}
-                  isOutOfStock={isCompletelyOutOfStock}
-                  index={index}
-                  isFavorite={favoriteIds.has(String(product.id))}
-                  isCriticalStock={isCritical}
-                  showTaxIndicator={showTaxInCatalog}
-                  taxPercentage={taxPercentage}
-                  cardStyle={activeTheme.layout?.card_style || 'standard'} // 🚀 AÑADIR ESTA LÍNEA
-        />
-              )
-            })}
-          </div>
+                  const isCompletelyOutOfStock = variantStockSum !== null
+                    ? variantStockSum <= 0
+                    : (product.stock || 0) <= 0;
+
+                  const totalStock = variantStockSum !== null ? variantStockSum : (product.stock || 0);
+                  const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
+
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      pricing={pricing}
+                      onOpen={handleOpenProduct}
+                      isOutOfStock={isCompletelyOutOfStock}
+                      index={index}
+                      isFavorite={favoriteIds.has(String(product.id))}
+                      isCriticalStock={isCritical}
+                      showTaxIndicator={showTaxInCatalog}
+                      taxPercentage={taxPercentage}
+                      cardStyle={activeTheme.layout?.card_style || 'standard'}
+                    />
+                  )
+                })
+              }, [paginatedProducts, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme.layout?.card_style, activeRate])}
+            </div>
           )}
 
           {/* 🚀 CONTROLES DE PAGINACIÓN PREMIUM (Estilo Clean UI Cero Sombras) */}
