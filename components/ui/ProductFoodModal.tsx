@@ -67,7 +67,7 @@ export default function ProductFoodModal({
     // 🚀 PERF FIX: Selector atómico estricto. Protege el árbol del Modal de re-renders no deseados.
     const addItem = useCart(state => state.addItem)
 
-const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOption[]>>({})
+    const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOption[]>>({})
     const [notes, setNotes] = useState('')
     const [quantity, setQuantity] = useState(1)
     const [shakeError, setShakeError] = useState(false)
@@ -128,7 +128,7 @@ const [selectedOptions, setSelectedOptions] = useState<Record<string, ModifierOp
         return () => window.removeEventListener('resize', handleResize)
     }, [])
 
-useEffect(() => {
+    useEffect(() => {
         if (isOpen) {
             setSelectedOptions({})
             setNotes('')
@@ -253,8 +253,11 @@ useEffect(() => {
     const unitPriceUSD = basePrice + totalExtraCost
     const totalPriceUSD = unitPriceUSD * quantity
     const totalPriceBs = activeRate > 0 ? totalPriceUSD * activeRate : 0
+    // 🚀 DETECTOR DE AGOTADO EN MODO RESTAURANTE
+    const isOutOfStock = Number(product?.stock ?? 0) <= 0;
 
     const handleAddToCart = () => {
+        if (isOutOfStock) return; // 👈 CANDADO: No permite despachar si no hay stock
         if (!isValid) {
             setShakeError(true)
             setTimeout(() => setShakeError(false), 500)
@@ -434,7 +437,7 @@ useEffect(() => {
                                     <h2 className="text-xl sm:text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-tight">
                                         {product.name}
                                     </h2>
-                                {product.description && (
+                                    {product.description && (
                                         <div className="pt-0.5">
                                             <p
                                                 ref={descRef}
@@ -591,10 +594,10 @@ useEffect(() => {
                                                             key={option.id}
                                                             onClick={handleClickRow}
                                                             className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl border transition-all select-none ${!option.is_available
-                                                                    ? 'opacity-40 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/40'
-                                                                    : isDisabled && !isSelected
-                                                                        ? 'opacity-60 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/20'
-                                                                        : 'cursor-pointer hover:border-[var(--store-primary)]/50 active:scale-[0.99]'
+                                                                ? 'opacity-40 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/40'
+                                                                : isDisabled && !isSelected
+                                                                    ? 'opacity-60 cursor-not-allowed border-[var(--store-border)]/30 bg-[var(--store-bg)]/20'
+                                                                    : 'cursor-pointer hover:border-[var(--store-primary)]/50 active:scale-[0.99]'
                                                                 }`}
                                                             style={{
                                                                 backgroundColor: isSelected ? 'color-mix(in srgb, var(--store-primary) 6%, var(--store-surface))' : 'var(--store-surface)',
@@ -759,25 +762,28 @@ useEffect(() => {
                                         </button>
                                     </div>
 
-                                    {/* 2. Botón de Compra */}
+                                  {/* 2. Botón de Compra con Soporte de Agotado */}
                                     <motion.button
                                         type="button"
                                         animate={shakeError ? { x: [-6, 6, -4, 4, 0] } : {}}
                                         transition={{ duration: 0.3 }}
                                         onClick={handleAddToCart}
+                                        disabled={isOutOfStock || !isValid}
                                         style={{ borderRadius: 'var(--radius-btn, 9999px)' }}
-                                        className={`flex-1 h-12 px-4 sm:px-6 transition-all flex items-center justify-between border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] select-none ${isValid
-                                            ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-95 active:scale-[0.98] cursor-pointer'
-                                            : 'bg-neutral-100 text-neutral-400 border-neutral-200/80 cursor-not-allowed'
-                                            }`}
+                                        className={`flex-1 h-12 px-4 sm:px-6 transition-all flex items-center justify-between border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] select-none ${
+                                            isOutOfStock
+                                                ? 'bg-neutral-800 text-neutral-400 border-neutral-800 cursor-not-allowed opacity-75'
+                                                : isValid
+                                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] hover:opacity-95 active:scale-[0.98] cursor-pointer'
+                                                    : 'bg-neutral-100 text-neutral-400 border-neutral-200/80 cursor-not-allowed'
+                                        }`}
                                     >
                                         <div className="flex items-center gap-2 min-w-0 pr-2">
                                             <ShoppingBag size={16} strokeWidth={2.5} className="shrink-0" />
                                             <span className="font-bold text-xs sm:text-sm tracking-tight truncate">
-                                                {isValid ? 'Agregar al Pedido' : 'Elige Opciones'}
+                                                {isOutOfStock ? 'Plato Agotado' : isValid ? 'Agregar al Pedido' : 'Elige Opciones'}
                                             </span>
                                         </div>
-
                                         <div className="flex flex-col items-end shrink-0 leading-tight">
                                             <span className="font-black text-xs sm:text-sm font-mono tracking-tight">
                                                 ${totalPriceUSD.toFixed(2)}

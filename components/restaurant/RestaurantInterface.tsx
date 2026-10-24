@@ -982,7 +982,7 @@ export default function RestaurantInterface({
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                 {favoriteProducts.map((dish, idx) => (
-                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={true} />
+                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={true}  isOutOfStock={Number(dish.stock ?? 0) <= 0}  />
                                 ))}
                             </div>
                         )}
@@ -1054,7 +1054,7 @@ export default function RestaurantInterface({
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                 {filteredProductsList.map((dish, idx) => (
-                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
+                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                 ))}
                             </div>
                         )}
@@ -1349,7 +1349,7 @@ export default function RestaurantInterface({
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                             {dishes.map((dish, idx) => (
-                                                <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
+                                                <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                             ))}
                                         </div>
                                     </section>
@@ -1878,7 +1878,7 @@ export default function RestaurantInterface({
                                     </div>
                                     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                         {filteredProductsList.map((dish: any, idx: number) => (
-                                            <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
+                                            <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                         ))}
                                     </div>
                                 </section>
@@ -1922,7 +1922,7 @@ export default function RestaurantInterface({
                                                 </div>
                                                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                                     {dishes.map((dish, idx) => (
-                                                        <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} />
+                                                        <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                                     ))}
                                                 </div>
                                             </section>
