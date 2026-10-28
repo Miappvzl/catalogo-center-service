@@ -1,7 +1,7 @@
 // components/StoreHeader.tsx
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils, LayoutGrid, ShieldCheck, Truck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Package, Star, Lock, SearchX } from 'lucide-react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -216,11 +216,27 @@ const LiveSearchPopover = ({ search, products, activeRate, isFocused, setIsFocus
     );
 };
 export default function StoreHeader(props: StoreHeaderProps) {
-    const [isSearchFocused, setIsSearchFocused] = useState(false); // 🚀 NUEVO ESTADO DE FOCO
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // 🚀 DEFINICIÓN GLOBAL: Resuelve el error de Scope TS2304 en cascada y normaliza los heros duales
+    // 🚀 CEREBRO DEL TICKER EDITORIAL (Desplazamiento Vertical)
+    const [tickerIndex, setTickerIndex] = useState(0);
+    const tickerItems = useMemo(() => [
+        { icon: ShieldCheck, text: "Pagos 100% Seguros" },
+        { icon: Truck, text: "Envíos a Nivel Nacional" },
+        { icon: Award, text: "Garantía de Calidad" }
+    ], []);
+
+    useEffect(() => {
+        if (props.layoutStyle !== 'classic') return;
+        const interval = setInterval(() => {
+            setTickerIndex((prev) => (prev + 1) % tickerItems.length);
+        }, 3500); // Cambia cada 3.5 segundos
+        return () => clearInterval(interval);
+    }, [props.layoutStyle, tickerItems.length]);
+
+    // 🚀 DEFINICIÓN GLOBAL
     const liveTheme = normalizeThemeConfig(props.store.theme_config);
 
     // 🚀 RESOLUCIÓN DETERMINISTA DE IMÁGENES DE CATEGORÍA (Admin custom > 1er Producto)
@@ -309,8 +325,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
             </button>
         </div>
     );
-  const renderSearchBlock = (isDense: boolean = false) => (
-        <div className={`relative flex-1 group min-w-0 ${isDense ? 'w-full' : 'w-full md:max-w-sm'}`}>
+ const renderSearchBlock = (isDense: boolean = false, customWidthClass?: string) => (
+        <div className={`relative flex-1 group min-w-0 ${customWidthClass ? customWidthClass : (isDense ? 'w-full' : 'w-full md:max-w-sm')}`}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
             <input
                 type="text"
@@ -1230,9 +1246,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
             </>
         );
     }
-
-    // ==========================================
-    // RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
+ // ==========================================
+    // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
     // ==========================================
     return (
         <>
@@ -1242,13 +1257,68 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 storeType={props.store.store_type}
             />
 
-            <div className="bg-[var(--store-bg)] px-4 md:px-8 py-3.5 flex items-center justify-between border-b border-[var(--store-border)]/30">
-                <LogoBlock />
-                <RateBlock />
+            {/* 1. TOP BAR PRIMARIA (Ticker Dinámico de Confianza) */}
+            <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 md:px-8 py-2 flex items-center justify-between text-[9px] md:text-[10px] font-bold uppercase tracking-widest z-50 relative">
+                <div className="hidden md:block flex-1"></div>
+
+                <div className="flex-1 flex justify-start md:justify-center items-center overflow-hidden h-[18px] relative">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={tickerIndex}
+                            initial={{ y: -15, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 15, opacity: 0 }}
+                            transition={{ duration: 0.4, ease: "easeInOut" }}
+                            className="flex items-center gap-1.5 whitespace-nowrap absolute"
+                        >
+                            {React.createElement(tickerItems[tickerIndex].icon, { size: 13, strokeWidth: 2.5 })}
+                            <span>{tickerItems[tickerIndex].text}</span>
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+
+                <div className="flex-1 flex justify-end shrink-0 pl-3">
+                    <button onClick={() => props.setIsRateModalOpen(true)} className="flex items-center gap-2 hover:opacity-70 transition-opacity active:scale-95 group">
+                        <span className="hidden sm:block opacity-80">{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}</span>
+                        <span className="sm:hidden opacity-80">{props.isEur ? 'EUR' : 'BCV'}</span>
+                        <div className="h-3 w-px bg-[var(--store-primary-text)]/40"></div>
+                        <div className="flex items-baseline pt-px border-b border-[var(--store-primary-text)]/30 group-hover:border-[var(--store-primary-text)]/70 transition-colors pb-px leading-none">
+                            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="mr-0.5 select-none font-sans text-[10px]">
+                                Bs.
+                            </motion.span>
+                            <span className="tabular-nums text-xs md:text-sm tracking-tight">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                        </div>
+                    </button>
+                </div>
             </div>
-            {/* 🚀 HERO BANNER DUAL PARA EL TEMA UNIVERSAL (Desvanecido Inferior Líquido) */}
+
+            {/* 2. DESKTOP: HEADER STICKY FLUIDO (Hijo directo del fragmento: flota en todo el catálogo) */}
+            <div className={`hidden md:block sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 md:py-4 flex items-center justify-between gap-8">
+                    <LogoBlock />
+                    <div className="flex-1 max-w-2xl xl:max-w-3xl justify-center flex">
+                        {renderSearchBlock(false, 'w-full')}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                        <IconsBlock />
+                    </div>
+                </div>
+                <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-2.5 pt-1 flex justify-center border-t border-[var(--store-border)]/20">
+                    <CategoriesBlock />
+                </div>
+            </div>
+
+            {/* 3. MÓVIL: FILA DE LOGO E ICONOS (Flujo natural: desaparece al hacer scroll) */}
+            <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[var(--store-bg)] relative z-30">
+                <LogoBlock />
+                <div className="flex items-center gap-1.5">
+                    <IconsBlock />
+                </div>
+            </div>
+
+            {/* 4. HERO BANNER (Ubicado debajo del Header en Desktop y en medio en Móvil) */}
             {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
+                <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden relative z-20">
                     <div
                         className="relative w-full"
                         style={{
@@ -1256,8 +1326,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)'
                         }}
                     >
-
-                        {/* Desktop (Ancho fluido, alto automático de 1920x600 px) */}
+                        {/* Versión Desktop */}
                         {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
                             <div className="hidden md:block w-full">
                                 <Image
@@ -1271,10 +1340,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             </div>
                         )}
 
-                        {/* Móvil (Lógica de Fallback Legacy) */}
+                        {/* Versión Móvil */}
                         <div className="block md:hidden w-full">
                             {liveTheme.layout?.hero_mobile_url ? (
-                                /* Si hay portada móvil nativa 4:5, usa el contenedor optimizado */
                                 <div className="relative w-full aspect-[4/5] max-h-[320px] overflow-hidden">
                                     <Image
                                         src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
@@ -1285,7 +1353,6 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                     />
                                 </div>
                             ) : (liveTheme.layout?.hero_desktop_url || props.store.hero_url) ? (
-                                /* Si NO hay portada móvil, renderiza el banner horizontal legacy sin forzar recortes */
                                 <Image
                                     src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
                                     alt="Banner móvil legacy"
@@ -1296,28 +1363,17 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                 />
                             ) : null}
                         </div>
-
                     </div>
                 </div>
             )}
 
-
-            <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl pt-4 md:pt-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-[2px]">
-                    <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center mb-3 md:mb-5">
-
-                        {/* 1. Buscador (Ancho rígido protegido en desktop) */}
-                        <div className="flex items-center w-full md:w-72 shrink-0 gap-1">
-                            {renderSearchBlock(false)}
-                            <div className="md:hidden flex items-center"><IconsBlock /></div>
-                        </div>
-
-                        {/* 2. Categorías (Elásticas y Auto-centradas) */}
-                        <CategoriesBlock />
-
-                        {/* 3. Iconos (Fijos en el extremo derecho de la grilla) */}
-                        <div className="hidden md:flex shrink-0"><IconsBlock /></div>
-                    </div>
+            {/* 5. MÓVIL: STICKY BUSCADOR Y CATEGORÍAS (Hijo directo del fragmento: flota en todo el catálogo) */}
+            <div className={`block md:hidden sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                <div className="flex w-full px-4 pt-3 pb-1">
+                    {renderSearchBlock(false, 'w-full')}
+                </div>
+                <div className="max-w-[1500px] mx-auto px-4 pb-2.5 pt-1 flex justify-center">
+                    <CategoriesBlock />
                 </div>
             </div>
         </>

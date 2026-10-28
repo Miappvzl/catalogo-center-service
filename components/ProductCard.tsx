@@ -499,36 +499,35 @@ function ProductCardComponent({
           </h3>
         </div>
 
-        {/* Bloque Inferior: Precios e Incentivos */}
-        <div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-1.5">
-          
-          {/* Fila Principal de Precios (Protegida contra desbordamientos) */}
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              {isPromo && (
-                <span className="text-[10px] font-medium text-[var(--store-surface-text)] line-through">
-                  ${activeCompareAt.toFixed(2)}
-                </span>
-              )}
-              <span className={`text-sm md:text-base font-black font-price leading-none ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
-                ${listPrice.toFixed(2)}
-              </span>
-            </div>
+      {/* Bloque Inferior: Precios e Incentivos */}
+<div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-2">
+  
+  {/* Línea 1: Precio anterior en $ y descuento (Limpio, sin Bs.) */}
+  {isPromo && (
+    <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--store-surface-text)]">
+      <span className="line-through">${activeCompareAt.toFixed(2)}</span>
+    </div>
+  )}
 
-            {/* Monto Local blindado contra quiebres de línea */}
-            <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tabular-nums whitespace-nowrap">
-              Bs. {formattedBs}
-            </span>
-          </div>
+  {/* Línea 2: El precio Web en grande y sus Bolívares abajo organizados */}
+  <div className="flex flex-col gap-0.5">
+    <span className="text-sm md:text-base font-black font-price text-[var(--store-badge-discount-bg)] leading-none">
+      ${listPrice.toFixed(2)} 
+    </span>
+    {/* El precio en Bs. ahora tiene su propio espacio exclusivo y no estorba */}
+    <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
+      Bs. {formattedBs}
+    </span>
+  </div>
 
-          {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo Píldora UI Moderna) */}
-          {penalty > 0 && !isOutOfStock && (
-            <div className="inline-flex items-center gap-1.5 bg-[var(--store-primary)]/8 text-[var(--store-incentive)] px-2 py-1 rounded-[var(--radius-btn)] text-[9px] font-medium w-fit">
-              <Flame size={10} className="fill-current shrink-0 text-[var(--store-incentive)]" />
-              <span>Ahorra pagando en Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
-            </div>
-          )}
-        </div>
+  {/* Línea 3: Tu pastilla corta de Divisas */}
+  {penalty > 0 && !isOutOfStock && (
+    <div className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full text-[9px] font-medium w-fit mt-1">
+      <Flame size={10} className="fill-current shrink-0" />
+      <span>Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
+    </div>
+  )}
+</div>
 
       </div>
     </div>
@@ -641,7 +640,7 @@ function ProductCardComponent({
       onClick={handleOpenCard}
     >
       {/* Proporción 4:5 de Alta Gama: +25% de presencia visual y cero recortes arriba/abajo */}
-      <div className="relative aspect-[4/5] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/50">
+      <div className="relative aspect-[4/5] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)]">
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}

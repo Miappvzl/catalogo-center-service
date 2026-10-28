@@ -38,7 +38,6 @@ export async function POST(req: Request) {
       referrer_source = 'whatsapp'
     }
 
-   // REEMPLÁZALO POR ESTO:
     // 🚀 Recibimos el session_id pre-computado del cliente (Cero uso de CPU en servidor)
     const { session_id } = body; 
 

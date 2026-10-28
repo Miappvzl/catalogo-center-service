@@ -127,7 +127,7 @@ export default function SettingsPage() {
         return () => window.removeEventListener('preziso:dirty-state', handleChildDirtyEvent)
     }, [])
 
-    // 🟢 REEMPLÁZALO POR ESTE:
+
     // Función que garantiza el cierre inmediato del menú móvil si está desplegado
     const closeMobileSidebar = () => {
         document.dispatchEvent(new CustomEvent('closeMobileAdminSidebar'))

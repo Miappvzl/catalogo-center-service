@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock, Gift } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
@@ -25,6 +25,8 @@ import { getTenantHref } from '@/utils/navigation' // 🚀 IMPORTACIÓN INTEGRAD
 import BCVLogo from '@/components/icons/BCVLogo' // 🚀 Importación del logo modular
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import StoreHeader from './StoreHeader'
+import PromotionBanner from './PromotionBanner'
+import CollectionCard from './CollectionCard'
 
 
 
@@ -1196,200 +1198,8 @@ useEffect(() => {
 
 
 
-     {/* 5. PROMOCIONES Y CONTENIDO PRINCIPAL */}
-      {displayPromotions && displayPromotions.length > 0 && (
-        <div className="w-full bg-[var(--store-bg)] border-b border-[var(--store-border)] overflow-hidden relative z-30">
-          <div ref={carouselRef} className="flex overflow-x-auto  rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] snap-x snap-mandatory no-scrollbar m-3 md:m-9" style={{ scrollBehavior: 'smooth' }}>
-            {displayPromotions.map((promo: any) => {
-              const isActive = activePromo?.id === promo.id;
-              const cardStyle = activeTheme.layout?.card_style || 'standard';
-
-              // ==========================================
-              // 🛠️ VARIANTE 1: INDUSTRIAL (El HUD Logístico)
-              // ==========================================
-              if (cardStyle === 'dense_hardware') {
-                  return (
-                      <div key={promo.id}
-                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
-                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-300 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
-                          style={{ backgroundColor: promo.bg_color || '#000' }}>
-                          
-                          {/* Patrón de Cinta de Precaución Industrial */}
-                          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0, currentColor 2px, transparent 2px, transparent 12px)', color: promo.text_color || '#fff' }}></div>
-                          
-                          <div className="max-w-[1500px] mx-auto flex flex-col md:flex-row relative z-10 h-full">
-                              {promo.image_url && (
-                                  <div className="p-4 md:p-6 flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r" style={{ borderColor: `${promo.text_color}30`, backgroundColor: `${promo.text_color}05` }}>
-                                      <div className="w-16 h-16 md:w-24 md:h-24 relative">
-                                          <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="100px" className="object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-500" />
-                                      </div>
-                                  </div>
-                              )}
-                              <div className="p-4 md:p-6 flex-1 flex flex-col justify-center border-b md:border-b-0 md:border-r" style={{ borderColor: `${promo.text_color}30` }}>
-                                  {promo.tagline && <span className="text-[10px] font-mono font-bold uppercase tracking-widest mb-1 opacity-80" style={{ color: promo.text_color || '#fff' }}>[ {promo.tagline} ]</span>}
-                                  <h4 className="font-sans font-black text-2xl md:text-3xl uppercase tracking-tighter leading-none line-clamp-2" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
-                              </div>
-                              <div className="p-4 md:p-6 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 shrink-0 min-w-[220px]" style={{ backgroundColor: `${promo.text_color}05` }}>
-                                 <div className={`px-4 py-2.5 font-mono font-black text-[10px] md:text-xs uppercase tracking-widest border-2 w-full flex items-center justify-center gap-1.5 transition-all ${isActive ? 'scale-95' : 'group-hover:scale-105'}`} style={{ backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'), color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'), borderColor: promo.text_color || '#fff' }}>
-                                      {isActive ? '✕ CANCELAR' : <><Zap size={14} className="fill-current" /> RECLAMAR</>}
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  );
-              }
-
-              // ==========================================
-              // 💎 VARIANTE 2: LUXURY (La Invitación VIP)
-              // ==========================================
-              if (cardStyle === 'editorial') {
-                  return (
-                      <div key={promo.id}
-                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
-                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-700 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
-                          style={{ backgroundColor: promo.bg_color || '#000' }}>
-                          
-                          {/* Gradiente sutil de iluminación */}
-                          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: `radial-gradient(circle at 80% 50%, ${promo.text_color} 0%, transparent 60%)` }}></div>
-
-                          <div className="max-w-[1500px] mx-auto px-6 md:px-16 py-8 md:py-12 flex flex-col-reverse md:flex-row items-center justify-between gap-8 md:gap-16 relative z-10">
-                              <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-                                  {promo.tagline && <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] mb-3" style={{ color: promo.text_color || '#fff', opacity: 0.7 }}>{promo.tagline}</span>}
-                                  <h4 className="font-heading text-3xl md:text-5xl tracking-wide leading-tight mb-4" style={{ color: promo.text_color || '#fff' }}>{promo.title}</h4>
-                                  
-                                  {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} variant="editorial" />}
-                                  
-                                  <div className="mt-6 flex items-center gap-3">
-                                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] border-b pb-1 transition-all" style={{ color: promo.text_color || '#fff', borderColor: isActive ? 'transparent' : `${promo.text_color}40` }}>
-                                          {isActive ? 'Cerrar Colección' : 'Descubrir Colección'}
-                                      </span>
-                                      <ArrowRight size={14} className={`transition-transform duration-500 ${isActive ? 'rotate-45' : 'group-hover:translate-x-2'}`} style={{ color: promo.text_color || '#fff' }} />
-                                  </div>
-                              </div>
-                              {promo.image_url && (
-                                  <div className="w-32 h-32 md:w-48 md:h-48 shrink-0 relative flex items-center justify-center">
-                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="200px" className="object-contain drop-shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105" />
-                                  </div>
-                              )}
-                          </div>
-                      </div>
-                  );
-              }
-
-       // ==========================================
-              // 🏴‍☠️ VARIANTE 3: STREETWEAR (High-Fashion Archive Banner)
-              // ==========================================
-              if (cardStyle === 'brutalist') {
-                  return (
-                      <div key={promo.id}
-                          onClick={() => { setActivePromo(isActive ? null : promo); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
-                          className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-300 relative group overflow-hidden border border-[var(--store-border)]/50  rounded-[var(--radius-card)] ${isActive ? 'opacity-100 border border-[var(--store-border)]/50 ' : 'opacity-95 hover:opacity-100'}`}
-                          style={{ backgroundColor: promo.bg_color || 'var(--store-surface)' }}>
-                          
-                          <div className="max-w-[1500px] mx-auto p-5 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-                              {promo.image_url && (
-                                  <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 relative flex items-center justify-center overflow-hidden">
-                                      <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500" />
-                                  </div>
-                              )}
-                              
-                              <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left w-full min-w-0">
-                                  {promo.tagline && (
-                                      <span className="text-[10px] md:text-xs font-mono font-bold uppercase tracking-wider mb-1.5 block opacity-85" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
-                                          // {promo.tagline}
-                                      </span>
-                                  )}
-                                  <h4 className="font-sans font-extrabold text-2xl md:text-4xl uppercase tracking-tight leading-tight mb-3 line-clamp-2" style={{ color: promo.text_color || 'var(--store-text-main)' }}>
-                                      {promo.title}
-                                  </h4>
-                                  
-                                  {promo.expires_at && (
-                                      <div className="mb-1">
-                                          <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || 'var(--store-text-main)'} variant="standard" />
-                                      </div>
-                                  )}
-                              </div>
-                              
-                              <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0 flex justify-center md:justify-end">
-                                  <span 
-                                      className="px-5 py-2.5 rounded-[var(--radius-btn)] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2  border  border-[var(--store-border)]/50 transition-all duration-200 group-hover:scale-105 shadow-sm"
-                                      style={{
-                                          backgroundColor: isActive ? (promo.text_color || '#fff') : 'transparent',
-                                          color: isActive ? (promo.bg_color || '#000') : (promo.text_color || '#fff'),
-                                          borderColor: promo.text_color || '#fff'
-                                      }}
-                                  >
-                                      {isActive ? 'Cerrar Filtro ✕' : 'Explorar Colección →'}
-                                  </span>
-                              </div>
-                          </div>
-                      </div>
-                  );
-              }
-
-              // ==========================================
-              // 🌟 VARIANTE 4: UNIVERSAL (El Bloque Comercial)
-              // ==========================================
-              return (
-                <div key={promo.id}
-                  onClick={() => {
-                    setActivePromo(isActive ? null : promo)
-                    window.scrollTo({ top: 400, behavior: 'smooth' })
-                  }}
-                  className={`w-full shrink-0 snap-center cursor-pointer transition-all duration-500 relative group overflow-hidden ${isActive ? 'opacity-100' : 'opacity-95 hover:opacity-100'}`}
-                  style={{ backgroundColor: promo.bg_color || '#000' }}>
-
-                  {/* Brillo interno (Glassmorphism / Hardware feel) */}
-                  <div className="absolute inset-0 border-[0.5px] pointer-events-none" style={{ borderColor: `${promo.text_color}15` }}></div>
-
-                  <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 flex flex-row items-center justify-between gap-4 relative z-10">
-                    <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
-                      {/* La imagen optimizada flotante */}
-                      {promo.image_url && (
-                        <div className="w-14 h-14 md:w-20 md:h-20 shrink-0 relative flex items-center justify-center">
-                          <Image src={getOptimizedUrl(promo.image_url)} alt={promo.title} fill sizes="80px" className="object-contain  drop-shadow-xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-0.5" />
-                        </div>
-                      )}
-
-                      {/* Jerarquía Tipográfica Estricta */}
-                      <div className="flex flex-col min-w-0 justify-center">
-                        {promo.tagline && (
-                          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-1 truncate" style={{ color: promo.text_color || '#fff', opacity: 0.8 }}>
-                            {promo.tagline}
-                          </span>
-                        )}
-                        <div className="flex items-center flex-wrap gap-1 md:gap-2">
-                          {/* 🚀 TÍTULO BLINDADO: line-clamp-2 para que envuelva elegante y pr-2 para evitar el corte de fuente */}
-                          <h4 className="font-black text-xl md:text-3xl tracking-tighter leading-none line-clamp-2 pr-2 pb-0.5" style={{ color: promo.text_color || '#fff' }}>
-                            {promo.title}
-                          </h4>
-
-                          {/* 🚀 RELOJ FOMO INTEGRADO */}
-                          {promo.expires_at && <PromoCountdown expiresAt={promo.expires_at} color={promo.text_color || '#fff'} variant="standard" />}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 🚀 CTA INEQUÍVOCO (Botón Real de Alto Contraste) */}
-                    <div className="shrink-0 pl-2">
-                      <div
-                        className={`flex items-center justify-center gap-1.5 px-4 py-2.5 md:px-6 md:py-3 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${isActive ? 'scale-95' : 'group-hover:scale-105'}`}
-                        style={{
-                          backgroundColor: isActive ? 'transparent' : (promo.text_color || '#fff'),
-                          color: isActive ? (promo.text_color || '#fff') : (promo.bg_color || '#000'),
-                          border: `1px solid ${isActive ? promo.text_color : 'transparent'}`
-                        }}
-                      >
-                        <span>{isActive ? 'Quitar Filtro ✕' : 'Ver Oferta'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+ 
+   
 
   <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${
         activeTheme.layout?.card_style === 'modular_tech' 
@@ -1455,120 +1265,51 @@ useEffect(() => {
             </div>
           )}
 
-      {/* 🚀 CÁPSULAS CINEMÁTICAS CON AVATAR STACKING (Awwwards Style) */}
-          {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
-            <section className="mb-14 animate-in fade-in">
-              <div className="flex items-end justify-between mb-5 px-1">
-                <div className="flex flex-col text-left">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-surface-text)] mb-1">
-  Agrupaciones & Promociones
-</span>
-<h2 className="text-xl md:text-2xl font-medium tracking-tight text-[var(--store-text-main)]">
-  Colecciones Destacadas
-</h2>
-                </div>
-              </div>
+      {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
+      {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
+        <section className="mb-14 animate-in fade-in">
+          {/* Encabezado Editorial Dinámico */}
+          <div className="flex items-end justify-between mb-5 px-1">
+            <div className="flex flex-col text-left">
+             
+              <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${
+                activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
+              }`}>
+                {activeTheme.template_id === 'hardware_dense' ? 'Kits Disponibles' : 'Colecciones Destacadas'}
+              </h2>
+            </div>
+          </div>
 
-              <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-3 snap-x snap-mandatory">
-                {collections.map((col: any) => {
-                  const itemCount = col.collection_items?.length || 0;
+         {/* Carrusel Editorial en Proporción Vertical 3:4 */}
+          <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
+            {collections.map((col: any, idx: number) => (
+              <CollectionCard
+                key={col.id}
+                index={idx}
+                collection={col}
+                products={products}
+                themeConfig={activeTheme}
+                onClick={() => {
+                  setActiveCollectionSlug(col.slug)
+                  setSelectedCategory('Todos')
+                  setCurrentPage(1)
+                  window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
 
-                  // 🚀 RESOLUCIÓN DINÁMICA DE LAS FOTOS DE LOS PRODUCTOS EN EL DROP
-                  const previewThumbs = (col.collection_items || [])
-                    .filter((it: any) => it.item_type === 'product' && it.product_id)
-                    .slice(0, 4)
-                    .map((it: any) => {
-                      const p = products.find((prod: any) => String(prod.id) === String(it.product_id));
-                      return p?.image_url || null;
-                    })
-                    .filter(Boolean) as string[];
-
-                  return (
-                    <div
-                      key={col.id}
-onClick={() => {
-                        setActiveCollectionSlug(col.slug);
-                        setSelectedCategory('Todos');
-                        setCurrentPage(1);
-                        window.history.replaceState(null, '', `${pathname}?c=${col.slug}`);
-
-                        // 🚀 Desplazamiento milimétrico considerando el Navbar Sticky
-                        setTimeout(() => {
-                          const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current;
-                          if (anchor) {
-                            const yOffset = -130; // Altura del header compensada
-                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
-                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                          }
-                        }, 60);
-                      }}
-                      className="group relative shrink-0 w-[270px] sm:w-[320px] h-[175px] sm:h-[190px] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)] bg-neutral-950 overflow-hidden cursor-pointer transition-all shadow-[var(--shadow-ui)] p-5 flex flex-col justify-between active:scale-[0.99] snap-start"
-                    >
-                      {/* Fondo Cinemático con Capas de Fusión */}
-                      {col.image_url ? (
-                        <div className="absolute inset-0 z-0">
-                          <Image 
-                            src={getOptimizedUrl(col.image_url)} 
-                            alt={col.name} 
-                            fill 
-                            sizes="340px" 
-                            className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out opacity-55" 
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-black opacity-95" />
-                      )}
-
-                      {/* Capa Superior: Badge y Conteo */}
-                      <div className="relative z-10 flex items-start justify-between gap-2">
-                        {col.settings?.badge_text ? (
-                          <span className="text-[8px] font-mono font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md text-white border border-white/30 px-2.5 py-0.5 rounded-full shadow-sm">
-                            {col.settings.badge_text}
-                          </span>
-                        ) : <div />}
-                        
-                        <span className="text-[9px] font-mono font-bold text-white/90 uppercase tracking-wider bg-black/40 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15">
-                          {itemCount} {itemCount === 1 ? 'artículo' : 'artículos'}
-                        </span>
-                      </div>
-
-                      {/* Capa Inferior: Avatar Stacking + Título + CTA */}
-                      <div className="relative z-10 space-y-2 text-left">
-                        {/* Micro-Collage de Productos Incluidos */}
-                        {previewThumbs.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2 overflow-hidden py-0.5">
-                              {previewThumbs.map((imgUrl, i) => (
-                                <div 
-                                  key={i}
-                                  className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-neutral-900 overflow-hidden relative bg-neutral-800 shrink-0 shadow-sm"
-                                >
-                                  <Image src={getOptimizedUrl(imgUrl)} alt="" fill className="object-cover" />
-                                </div>
-                              ))}
-                            </div>
-                           <span className="text-[10px] font-mono text-white/70">
-  Incluye
-</span>
-                          </div>
-                        )}
-
-                        <div>
-                          <h3 className="font-medium text-base sm:text-lg text-white tracking-tight leading-tight line-clamp-1 drop-shadow-sm">
-                            {col.name}
-                          </h3>
-                         <span className="text-[11px] font-bold text-white/90 flex items-center gap-1 transition-transform group-hover:translate-x-1 duration-200 mt-1">
-  Ver Colección &rarr;
-</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                  setTimeout(() => {
+                    const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
+                    if (anchor) {
+                      const yOffset = -130
+                      const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+                    }
+                  }, 60)
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+          
 
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
@@ -1599,10 +1340,10 @@ onClick={() => {
                   <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
                 </button>
 
-         <div
+          <div
                   ref={featuredCarouselRef} 
                   onScroll={checkFeaturedScrollStatus} 
-                  className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 -mx-4 ml-2 md:ml-0 px-4 snap-x snap-mandatory scroll-smooth items-stretch"
+                  className="flex gap-3.5 md:gap-5 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:-mx-8 md:px-8 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 scroll-smooth items-stretch"
                 >
                   {featuredProducts.map((product: any, idx: number) => {
                     const pricing = getProductPricing(product)
@@ -1611,7 +1352,7 @@ onClick={() => {
                       : (product.stock || 0) <= 0;
 
                     return (
-                      <div key={`feat-${product.id}`} className="w-[280px] md:w-[320px] shrink-0 snap-start flex flex-col h-auto">
+                      <div key={`feat-${product.id}`} className="w-[220px] sm:w-[240px] md:w-[260px] lg:w-[280px] shrink-0 snap-start flex flex-col h-auto">
                         <ProductCard
                           product={product}
                           pricing={pricing}
@@ -1691,24 +1432,21 @@ onClick={() => {
                     ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
                     : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
             }`}>
-              {/* 🚀 ELITE: Bóveda de Renderizado que protege las 24 tarjetas del scroll */}
+              {/* 🚀 ELITE: Bóveda de Renderizado (Con Inyección In-Feed de Promociones) */}
               {useMemo(() => {
                 return paginatedProducts.map((product: any, index: number) => {
                   const pricing = getProductPricing(product)
 
-                  // 🚀 OPTIMIZACIÓN: 1 sola reducción en lugar de 2 por producto
                   const variantStockSum = product.product_variants && product.product_variants.length > 0
                     ? product.product_variants.reduce((acc: number, variant: any) => acc + (Number(variant.stock) || 0), 0)
                     : null;
 
-                  const isCompletelyOutOfStock = variantStockSum !== null
-                    ? variantStockSum <= 0
-                    : (product.stock || 0) <= 0;
-
+                  const isCompletelyOutOfStock = variantStockSum !== null ? variantStockSum <= 0 : (product.stock || 0) <= 0;
                   const totalStock = variantStockSum !== null ? variantStockSum : (product.stock || 0);
                   const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
 
-                  return (
+                  // Guardamos la tarjeta del producto
+                  const productCard = (
                     <ProductCard
                       key={product.id}
                       product={product}
@@ -1722,9 +1460,59 @@ onClick={() => {
                       taxPercentage={taxPercentage}
                       cardStyle={activeTheme.layout?.card_style || 'standard'}
                     />
-                  )
+                  );
+
+                  // 🚀 IN-FEED PROMOTIONS: Se inyecta tras el 4to producto (index 3) o al final de la primera fila si hay pocos.
+                  const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3;
+
+                  if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
+                    return (
+                      <React.Fragment key={`promo-injection-${product.id}`}>
+                        {productCard}
+                        {/* 🚀 EL CARRUSEL PROMOCIONAL INYECTADO EN LA GRILLA (Camino C) */}
+                        <div className="col-span-full w-full py-3 md:py-6 overflow-hidden">
+                          <div 
+                            ref={carouselRef} 
+                            className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-2.5 sm:gap-4" 
+                            style={{ scrollBehavior: 'smooth' }}
+                          >
+                            {displayPromotions.map((promo: any) => {
+                              const isActive = activePromo?.id === promo.id;
+                              const hasMultiple = displayPromotions.length > 1;
+
+                              return (
+                                <div 
+                                  key={promo.id} 
+                                  className={`shrink-0 snap-start flex flex-col transition-all ${
+                                    hasMultiple 
+                                      ? 'w-[92%] sm:w-[95%] md:w-full' 
+                                      : 'w-full'
+                                  }`}
+                                >
+                                  <PromotionBanner
+                                    promo={promo}
+                                    themeConfig={activeTheme}
+                                    isActive={isActive}
+                                    onToggle={() => {
+                                      setActivePromo(isActive ? null : promo);
+                                      if (catalogTopRef.current) {
+                                        const y = catalogTopRef.current.getBoundingClientRect().top + window.scrollY - 130;
+                                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  }
+
+                  return productCard;
                 })
-              }, [paginatedProducts, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme.layout?.card_style, activeRate])}
+              }, [paginatedProducts, displayPromotions, activePromo, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme.layout?.card_style, activeRate])}
             </div>
           )}
 

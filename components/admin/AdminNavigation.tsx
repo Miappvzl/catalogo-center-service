@@ -435,7 +435,7 @@ const MobileSidebar = ({
   const [isOpen, setIsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
-// 🟢 REEMPLÁZALO POR ESTE:
+
   useEffect(() => {
     const handleOpen = () => setIsOpen(true)
     const handleClose = () => setIsOpen(false)
