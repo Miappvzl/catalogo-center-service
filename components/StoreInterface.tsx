@@ -27,6 +27,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import StoreHeader from './StoreHeader'
 import PromotionBanner from './PromotionBanner'
 import CollectionCard from './CollectionCard'
+import PromotionShowroom from './PromotionShowroom'
 
 
 
@@ -322,21 +323,67 @@ if (isMockMode) {
   const pasilloQuery = searchParams?.get('pasillo')
   const expQuery = searchParams?.get('exp')
   const collectionQuery = searchParams?.get('c')
+  const promoQuery = searchParams?.get('promo')
+  const catQuery = searchParams?.get('cat') // 🚀 Nuevo lector de navegación silenciosa
+  
   const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
   const [campaignContext, setCampaignContext] = useState<string | null>(pasilloQuery || null)
   
-   // 🚀 FUENTE DE LA VERDAD REACTIVA: Escucha activa de cambios en la URL sin desincronización
+  // FUENTE DE LA VERDAD REACTIVA
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(collectionQuery || null)
+  const [activePromoId, setActivePromoId] = useState<string | null>(promoQuery || null)
 
-  // Sincronización de seguridad para navegación atrás/adelante en el navegador
   useEffect(() => {
-    setActiveCollectionSlug(searchParams?.get('c') || null);
-  }, [searchParams]);
+    setActiveCollectionSlug(searchParams?.get('c') || null)
+  }, [searchParams, collectionQuery])
 
-    useEffect(() => {
-    setActiveCollectionSlug(collectionQuery || null)
-  }, [collectionQuery])
-  
+  useEffect(() => {
+    setActivePromoId(searchParams?.get('promo') || null)
+  }, [searchParams, promoQuery])
+
+
+
+  // 🚀 RESOLUCIÓN EXACTA DE LA CAMPAÑA ACTIVA
+  const selectedPromoData = useMemo(() => {
+    if (!activePromoId || !displayPromotions || displayPromotions.length === 0) return null
+    return displayPromotions.find((p: any) => String(p.id) === String(activePromoId)) || null
+  }, [activePromoId, displayPromotions])
+
+  // 🚀 PROMOCIONES RESTANTES (Excluye la que ya está abierta para cross-selling limpio)
+  const remainingPromotions = useMemo(() => {
+    if (!selectedPromoData) return displayPromotions
+    return displayPromotions.filter((p: any) => String(p.id) !== String(selectedPromoData.id))
+  }, [displayPromotions, selectedPromoData])
+
+  // Función de escape de la campaña hacia el catálogo general
+  const exitPromoMode = () => {
+    setActivePromoId(null)
+    setCurrentPage(1)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('promo')
+    window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''))
+    if (catalogTopRef.current) {
+      const y = catalogTopRef.current.getBoundingClientRect().top + window.scrollY - 130
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+    }
+  }
+
+  // Navegación hacia una campaña dedicada
+  const handleSelectPromo = (promoId: string) => {
+    setActivePromoId(promoId)
+    setCurrentPage(1)
+    const url = new URL(window.location.href)
+    url.searchParams.set('promo', promoId)
+    window.history.pushState(null, '', url.pathname + url.search)
+    setTimeout(() => {
+      const anchor = document.getElementById('promo-view-anchor') || catalogTopRef.current
+      if (anchor) {
+        const yOffset = -130
+        const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+      }
+    }, 60)
+  }
 
   // 🚀 ESTADOS DEL RELOJ FLASH
   const [isMounted, setIsMounted] = useState(false)
@@ -383,8 +430,10 @@ if (isMockMode) {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   // 🚀 El selectedCategory arranca en el pasillo (si existe) o en 'Todos'
+  // 🚀 Inicialización Inteligente: Prioriza Pasillo VIP, si no, usa el atajo silencioso 'cat'
   const [selectedCategory, setSelectedCategory] = useState(() => {
-    return pasilloQuery ? (pasilloQuery.charAt(0).toUpperCase() + pasilloQuery.slice(1).toLowerCase()) : 'Todos'
+    const initialCat = pasilloQuery || catQuery
+    return initialCat ? (initialCat.charAt(0).toUpperCase() + initialCat.slice(1).toLowerCase()) : 'Todos'
   })
 
 
@@ -503,10 +552,11 @@ const items = useCart(state => state.items)
     return collections.find((c: any) => String(c.slug).toLowerCase() === String(activeCollectionSlug).toLowerCase()) || null;
   }, [activeCollectionSlug, collections]);
 
-  // 🚀 FILTRADO REACTIVO EN VIVO (CON selectedCollectionData EN EL ARREGLO DE DEPENDENCIAS)
+  // 🚀 FILTRADO REACTIVO EN VIVO: COLECCIONES Y CAMPAÑAS DEDICADAS
   const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
     let sourcePool = products;
 
+    // A. Filtro si hay una colección activa
     if (selectedCollectionData && Array.isArray(selectedCollectionData.collection_items)) {
       const allowedProductIds = new Set<string>();
       const allowedCategories = new Set<string>();
@@ -524,7 +574,6 @@ const items = useCart(state => state.items)
         }
       });
 
-      // Resolver productos incluidos en promociones vinculadas a esta colección
       displayPromotions.forEach((pr: any) => {
         if (allowedPromoIds.has(String(pr.id))) {
           (pr.linked_products || []).forEach((pid: any) => allowedProductIds.add(String(pid)));
@@ -538,19 +587,23 @@ const items = useCart(state => state.items)
       });
     }
 
+    // B. Filtro si hay una campaña promocional activa (?promo=ID)
+    if (selectedPromoData) {
+      const linkedProductIds = new Set((selectedPromoData.linked_products || []).map((id: any) => String(id)));
+      sourcePool = products.filter((p: any) => linkedProductIds.has(String(p.id)));
+    }
+
     let baseFiltered = sourcePool.filter((p: any) => {
       const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
       const productCatClean = normalizeCategory(p.category);
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory;
-      const matchesPromo = activePromo ? (activePromo.linked_products || []).some((id: any) => String(id) === String(p.id)) : true;
-      return matchesSearch && matchesCategory && matchesPromo;
+      return matchesSearch && matchesCategory;
     });
 
-    // 🚀 Ocultamos "Lo más vendido" cuando el cliente está explorando una colección específica
-    const featured = selectedCollectionData ? [] : baseFiltered.filter(p => p.is_featured);
+    // Ocultamos "Lo más vendido" cuando el cliente está en una colección o campaña dedicada
+    const featured = (selectedCollectionData || selectedPromoData) ? [] : baseFiltered.filter(p => p.is_featured);
     return { featured, standard: baseFiltered };
-  }, [products, debouncedSearch, selectedCategory, activePromo, isBoutiqueMode, selectedCollectionData, displayPromotions]);
-
+  }, [products, debouncedSearch, selectedCategory, selectedCollectionData, selectedPromoData, displayPromotions]);
 
 
   // 🚀 INTERCEPTOR NATIVO: ENLACE MÁGICO (?add=ID)
@@ -1062,6 +1115,86 @@ useEffect(() => {
     }
   };
 
+  // 💎 BÓVEDA DE MEMOIZACIÓN DEL CATÁLOGO: Hook en nivel superior para blindar la lista enlazada de React (Zero Error #300)
+  const renderedProductGrid = useMemo(() => {
+    return paginatedProducts.map((product: any, index: number) => {
+      const pricing = getProductPricing(product)
+
+      const variantStockSum = product.product_variants && product.product_variants.length > 0
+        ? product.product_variants.reduce((acc: number, variant: any) => acc + (Number(variant.stock) || 0), 0)
+        : null
+
+      const isCompletelyOutOfStock = variantStockSum !== null ? variantStockSum <= 0 : (product.stock || 0) <= 0
+      const totalStock = variantStockSum !== null ? variantStockSum : (product.stock || 0)
+      const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3
+
+      const productCard = (
+        <ProductCard
+          key={product.id}
+          product={product}
+          pricing={pricing}
+          onOpen={handleOpenProduct}
+          isOutOfStock={isCompletelyOutOfStock}
+          index={index}
+          isFavorite={favoriteIds.has(String(product.id))}
+          isCriticalStock={isCritical}
+          showTaxIndicator={showTaxInCatalog}
+          taxPercentage={taxPercentage}
+          cardStyle={activeTheme.layout?.card_style || 'standard'}
+        />
+      )
+
+      // Inyección In-Feed de Banners de Campaña en el 4to producto
+      const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3
+
+      if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
+        return (
+          <React.Fragment key={`promo-injection-${product.id}`}>
+            {productCard}
+            <div className="col-span-full w-full py-4 md:py-6 overflow-hidden">
+              <div 
+                ref={carouselRef} 
+                className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-3 sm:gap-4" 
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                {displayPromotions.map((promo: any) => {
+                  const hasMultiple = displayPromotions.length > 1
+
+                  return (
+                    <div 
+                      key={promo.id} 
+                      className={`shrink-0 snap-start flex flex-col transition-all ${
+                        hasMultiple ? 'w-[88%] sm:w-[92%] md:w-full' : 'w-full'
+                      }`}
+                    >
+                      <PromotionBanner
+                        promo={promo}
+                        themeConfig={activeTheme}
+                        isActive={false}
+                        onToggle={() => {
+                          const isSubdomain = typeof window !== 'undefined' && 
+                            (window.location.host.startsWith(`${store.slug}.`) || 
+                            (window.location.host.includes('.') && !window.location.host.startsWith('www.')))
+                          
+                          const targetUrl = isSubdomain 
+                            ? `/promo/${promo.id}` 
+                            : `/${store.slug}/promo/${promo.id}`
+                          
+                          router.push(targetUrl)
+                        }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </React.Fragment>
+        )
+      }
+      return productCard
+    })
+  }, [paginatedProducts, displayPromotions, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme, activeRate, store?.slug, router])
+
   // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
@@ -1207,21 +1340,34 @@ useEffect(() => {
           : 'px-4 md:px-8'
       }`}>
         <>
+{/* 🚀 ESCAPARATE DEDICADO DE CAMPAÑA (AUTÓNOMO Y DESACOPLADO) */}
+      {selectedPromoData && (
+        <div id="promo-view-anchor" className="mb-10 animate-in fade-in duration-500">
+          <PromotionShowroom
+            promo={selectedPromoData}
+            themeConfig={activeTheme}
+            productCount={standardProducts.length}
+            onExit={exitPromoMode}
+          />
+        </div>
+      )}
+
       {/* 🚀 ESCAPARATE DE COLECCIÓN ACTIVA (SHOWROOM LOOKBOOK) */}
-{selectedCollectionData && (
-  <div id="collection-view-anchor" className="mb-10 relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] animate-in fade-in duration-500">
-              {/* Fondo sutil con imagen desenfocada si existe portada */}
-              {selectedCollectionData.image_url && (
-                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
-                  <Image 
-                    src={getOptimizedUrl(selectedCollectionData.image_url)} 
-                    alt="" 
-                    fill 
-                    className="object-cover blur-md" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--store-surface)] via-[var(--store-surface)]/90 to-transparent" />
-                </div>
-              )}
+      {selectedCollectionData && (
+        <div id="collection-view-anchor" className="mb-10 relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] animate-in fade-in duration-500">
+
+          {/* Fondo sutil con imagen desenfocada si existe portada */}
+          {selectedCollectionData.image_url && (
+            <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+              <Image 
+                src={getOptimizedUrl(selectedCollectionData.image_url)} 
+                alt="" 
+                fill 
+                className="object-cover blur-md" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--store-surface)] via-[var(--store-surface)]/90 to-transparent" />
+            </div>
+          )}
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="space-y-2 max-w-2xl text-left">
@@ -1424,7 +1570,7 @@ useEffect(() => {
                       </div>
                   )}
               </div>
-       ) : (
+    ) : (
             <div className={`grid min-h-[40vh] ${
                 activeTheme.layout?.card_style === 'dense_hardware'
                   ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
@@ -1432,87 +1578,7 @@ useEffect(() => {
                     ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
                     : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
             }`}>
-              {/* 🚀 ELITE: Bóveda de Renderizado (Con Inyección In-Feed de Promociones) */}
-              {useMemo(() => {
-                return paginatedProducts.map((product: any, index: number) => {
-                  const pricing = getProductPricing(product)
-
-                  const variantStockSum = product.product_variants && product.product_variants.length > 0
-                    ? product.product_variants.reduce((acc: number, variant: any) => acc + (Number(variant.stock) || 0), 0)
-                    : null;
-
-                  const isCompletelyOutOfStock = variantStockSum !== null ? variantStockSum <= 0 : (product.stock || 0) <= 0;
-                  const totalStock = variantStockSum !== null ? variantStockSum : (product.stock || 0);
-                  const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3;
-
-                  // Guardamos la tarjeta del producto
-                  const productCard = (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      pricing={pricing}
-                      onOpen={handleOpenProduct}
-                      isOutOfStock={isCompletelyOutOfStock}
-                      index={index}
-                      isFavorite={favoriteIds.has(String(product.id))}
-                      isCriticalStock={isCritical}
-                      showTaxIndicator={showTaxInCatalog}
-                      taxPercentage={taxPercentage}
-                      cardStyle={activeTheme.layout?.card_style || 'standard'}
-                    />
-                  );
-
-                  // 🚀 IN-FEED PROMOTIONS: Se inyecta tras el 4to producto (index 3) o al final de la primera fila si hay pocos.
-                  const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3;
-
-                  if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
-                    return (
-                      <React.Fragment key={`promo-injection-${product.id}`}>
-                        {productCard}
-                        {/* 🚀 EL CARRUSEL PROMOCIONAL INYECTADO EN LA GRILLA (Camino C) */}
-                        <div className="col-span-full w-full py-3 md:py-6 overflow-hidden">
-                          <div 
-                            ref={carouselRef} 
-                            className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-2.5 sm:gap-4" 
-                            style={{ scrollBehavior: 'smooth' }}
-                          >
-                            {displayPromotions.map((promo: any) => {
-                              const isActive = activePromo?.id === promo.id;
-                              const hasMultiple = displayPromotions.length > 1;
-
-                              return (
-                                <div 
-                                  key={promo.id} 
-                                  className={`shrink-0 snap-start flex flex-col transition-all ${
-                                    hasMultiple 
-                                      ? 'w-[92%] sm:w-[95%] md:w-full' 
-                                      : 'w-full'
-                                  }`}
-                                >
-                                  <PromotionBanner
-                                    promo={promo}
-                                    themeConfig={activeTheme}
-                                    isActive={isActive}
-                                    onToggle={() => {
-                                      setActivePromo(isActive ? null : promo);
-                                      if (catalogTopRef.current) {
-                                        const y = catalogTopRef.current.getBoundingClientRect().top + window.scrollY - 130;
-                                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                                      }
-                                    }}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </React.Fragment>
-                    );
-                  }
-
-                  return productCard;
-                })
-              }, [paginatedProducts, displayPromotions, activePromo, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme.layout?.card_style, activeRate])}
+              {renderedProductGrid}
             </div>
           )}
 

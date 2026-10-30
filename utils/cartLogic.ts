@@ -15,6 +15,9 @@ export function calculateCartEngine(
 
    // 1. TALLY PASS (O(N))
     items.forEach(item => {
+        // 🛡️ AISLAMIENTO DE COMBO: Los componentes de un combo no acumulan volumen para metas mayoristas ni BOGO
+        if (item.bundleInstanceId) return;
+
         // Sumatoria para la regla individual de este producto
         parentProductTally[item.productId] = (parentProductTally[item.productId] || 0) + item.quantity;
         
@@ -43,8 +46,33 @@ export function calculateCartEngine(
         totalListNominal += listPrice * item.quantity; 
         totalCashNominal += cashPrice * item.quantity;
         
-        let itemListDiscount = 0; let itemCashDiscount = 0;
+      let itemListDiscount = 0; let itemCashDiscount = 0;
         let badge = null; // 🚀 ÚNICA declaración de la etiqueta
+
+        // 🛡️ CORTOCIRCUITO INMUNITARIO PARA COMBOS:
+        // Si el ítem ya pertenece a un paquete con precio cerrado, congelamos su precio base 
+        // y omitimos cualquier evaluación adicional de promociones o venta al mayor.
+        if (item.bundleInstanceId) {
+            badge = { 
+                text: item.bundleName ? `Combo: ${item.bundleName}` : 'Combo Especial', 
+                type: 'applied' 
+            };
+
+            const effectiveIsExempt = applyTax ? item.isTaxExempt : false;
+            if (!effectiveIsExempt) {
+                taxableSubtotalList += (listPrice * item.quantity);
+                taxableSubtotalCash += (cashPrice * item.quantity);
+            }
+
+            return { 
+                ...item, 
+                listPrice, 
+                cashPrice, 
+                finalListPrice: listPrice, 
+                finalCashPrice: cashPrice, 
+                badge 
+            };
+        }
 
         // --- ⚔️ EVALUACIÓN A: PROMOCIONES ---
         const applicablePromos = promotions?.filter((p: any) => p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) || [];

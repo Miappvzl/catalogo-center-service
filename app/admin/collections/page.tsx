@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { 
-    ArrowLeft, Plus, Layers, Search, Trash2, Edit3, Check, X, 
-    Upload, Loader2, Sparkles, Tag, Package, UtensilsCrossed, 
+import {
+    ArrowLeft, Plus, Layers, Search, Trash2, Edit3, Check, X,
+    Upload, Loader2, Sparkles, Tag, Package, UtensilsCrossed,
     Clock, Eye, Percent, ArrowUpRight, FolderPlus, CheckCircle2,
     Calendar, AlertCircle,
     ChevronUp,
@@ -25,7 +25,10 @@ import Swal from 'sweetalert2'
 interface CollectionSettings {
     badge_text: string | null
     accent_color: string | null
+    combo_price_usd?: number | null
+    entity_type?: 'combo' | 'collection'
 }
+
 
 interface CollectionItemRecord {
     id?: string
@@ -76,7 +79,10 @@ export default function CollectionsPage() {
     const [uploadingImage, setUploadingImage] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Formulario de Colección Activa
+    // 💎 FILTRO DE BANDEJA PRINCIPAL (TABS)
+    const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'combos' | 'collections'>('all')
+
+    // Formulario de Entidad Activa (Combo vs Colección)
     const [formData, setFormData] = useState({
         id: '' as string | null,
         name: '',
@@ -86,30 +92,32 @@ export default function CollectionsPage() {
         is_active: true,
         badge_text: '',
         valid_until: '' as string,
+        combo_price_usd: '' as string | number,
+        entity_type: 'combo' as 'combo' | 'collection', // 🚀 TIPO DE ENTIDAD DETERMINISTA
         items: [] as CollectionItemRecord[]
     })
 
- // 🚀 SUB-BUSCADOR UNIFICADO: Cero confusión Detal vs Mayor
+    // Sub-buscador de catálogo
     const [pickerTab, setPickerTab] = useState<'products' | 'promotions' | 'categories'>('products')
     const [pickerSearch, setPickerSearch] = useState('')
 
-    // 🚀 PRESETS RÁPIDOS DE EXPIRACIÓN (Cero fricción de fechas)
+    // Presets rápidos de expiración
     const handleSetDatePreset = (hours: number | null) => {
         if (hours === null) {
             setFormData(prev => ({ ...prev, valid_until: '' }))
             return
         }
         const target = new Date(Date.now() + hours * 60 * 60 * 1000)
-        // Formato para input datetime-local: YYYY-MM-DDTHH:mm
         const tzOffset = target.getTimezoneOffset() * 60000
         const localISOTime = new Date(target.getTime() - tzOffset).toISOString().slice(0, 16)
         setFormData(prev => ({ ...prev, valid_until: localISOTime }))
     }
-   const isRestaurant = store?.store_type === 'restaurant'
-    const moduleTitle = isRestaurant ? 'Combos & Especiales' : 'Colecciones'
-    const moduleSubtitle = isRestaurant 
-        ? 'Curaduría de platos, combos por menú y sugerencias del chef' 
-        : 'Agrupaciones temáticas de productos, promociones y venta al mayor'
+
+    const isRestaurant = store?.store_type === 'restaurant'
+    const moduleTitle = isRestaurant ? 'Combos & Colecciones' : 'Colecciones'
+    const moduleSubtitle = isRestaurant
+        ? 'Gestiona combos transaccionales cerrados y curadurías temáticas del menú'
+        : 'Agrupaciones temáticas de productos, lookbooks y venta al mayor'
 
     // 🚀 PRESETS RÁPIDOS DE BADGES SEGÚN NICHO
     const BADGE_PRESETS = isRestaurant
@@ -196,7 +204,10 @@ export default function CollectionsPage() {
         fetchContextData()
     }, [fetchContextData])
 
-   const openCreateDrawer = () => {
+      const openCreateDrawer = (typeOrEvent?: 'combo' | 'collection' | React.MouseEvent) => {
+        const defaultType: 'combo' | 'collection' = 
+            typeof typeOrEvent === 'string' ? typeOrEvent : (isRestaurant ? 'combo' : 'collection')
+
         setFormData({
             id: null,
             name: '',
@@ -204,17 +215,18 @@ export default function CollectionsPage() {
             description: '',
             image_url: null,
             is_active: true,
-            badge_text: '',
+            badge_text: defaultType === 'combo' ? 'COMBO' : '',
             valid_until: '',
+            combo_price_usd: '',
+            entity_type: defaultType,
             items: []
         })
-        setPickerTab(isRestaurant ? 'promotions' : 'products') // 🚀 CORRECCIÓN: 'products'
+        setPickerTab('products')
         setPickerSearch('')
         setIsDrawerOpen(true)
     }
 
     const openEditDrawer = (collection: CollectionRecord) => {
-        // Enriquecemos los items existentes con datos visuales para el drawer
         const enrichedItems: CollectionItemRecord[] = (collection.collection_items || []).map(item => {
             if (item.item_type === 'product') {
                 const prod = storeProducts.find(p => p.id === item.product_id)
@@ -241,7 +253,12 @@ export default function CollectionsPage() {
                 }
             }
         })
-setFormData({
+
+        // 💎 INFERENCIA RETROCOMPATIBLE: Si tiene precio o badge de combo, es combo; si no, colección
+        const resolvedType: 'combo' | 'collection' = collection.settings?.entity_type
+            || (collection.settings?.combo_price_usd ? 'combo' : 'collection')
+
+        setFormData({
             id: collection.id,
             name: collection.name,
             slug: collection.slug,
@@ -250,9 +267,11 @@ setFormData({
             is_active: collection.is_active,
             badge_text: collection.settings?.badge_text || '',
             valid_until: collection.valid_until ? collection.valid_until.slice(0, 16) : '',
+            combo_price_usd: collection.settings?.combo_price_usd ?? '',
+            entity_type: resolvedType,
             items: enrichedItems
         })
-        setPickerTab('products') // 🚀 CORRECCIÓN: 'products'
+        setPickerTab('products')
         setPickerSearch('')
         setIsDrawerOpen(true)
     }
@@ -371,6 +390,24 @@ setFormData({
 
         setSaving(true)
         try {
+            // 🛡️ REGLA DEFENSIVA: Un combo solo puede contener productos (platos)
+            if (formData.entity_type === 'combo') {
+                const hasInvalidItems = formData.items.some(it => it.item_type !== 'product')
+                if (hasInvalidItems) {
+                    return Swal.fire({
+                        title: 'Composición inválida',
+                        text: 'Un Combo solo puede estar formado por platos o productos individuales. No puede incluir promociones ni categorías enteras.',
+                        icon: 'warning',
+                        confirmButtonColor: '#171717'
+                    })
+                }
+            }
+
+            const isCombo = formData.entity_type === 'combo'
+            const parsedComboPrice = isCombo && formData.combo_price_usd !== '' && !isNaN(Number(formData.combo_price_usd)) && Number(formData.combo_price_usd) > 0
+                ? Number(Number(formData.combo_price_usd).toFixed(2))
+                : null
+
             const collectionPayload = {
                 store_id: store.id,
                 name: formData.name.trim(),
@@ -380,9 +417,11 @@ setFormData({
                 is_active: formData.is_active,
                 valid_until: formData.valid_until ? new Date(formData.valid_until).toISOString() : null,
                 settings: {
-                    badge_text: formData.badge_text.trim() || null,
+                    badge_text: formData.badge_text.trim() || (isCombo ? 'COMBO' : null),
                     accent_color: null,
-                    layout_override: null
+                    layout_override: null,
+                    combo_price_usd: parsedComboPrice,
+                    entity_type: formData.entity_type
                 }
             }
 
@@ -429,7 +468,7 @@ setFormData({
                 .insert(itemsPayload)
             if (itemsError) throw itemsError
 
-           setIsDrawerOpen(false)
+            setIsDrawerOpen(false)
             await revalidateStoreCache() // 🚀 INVALIDACIÓN DE CACHÉ NEXT.JS AL GUARDAR
             Swal.fire({
                 toast: true,
@@ -440,15 +479,15 @@ setFormData({
                 timer: 1800,
                 customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold' }
             })
-            
+
             await fetchContextData()
 
         } catch (error: any) {
-            Swal.fire({ 
-                title: 'Error de Guardado', 
-                text: error.message.includes('unique') ? 'Ya existe una colección con ese slug de enlace.' : error.message, 
-                icon: 'error', 
-                confirmButtonColor: '#171717' 
+            Swal.fire({
+                title: 'Error de Guardado',
+                text: error.message.includes('unique') ? 'Ya existe una colección con ese slug de enlace.' : error.message,
+                icon: 'error',
+                confirmButtonColor: '#171717'
             })
         } finally {
             setSaving(false)
@@ -471,7 +510,7 @@ setFormData({
 
         if (!confirm.isConfirmed) return
 
-   try {
+        try {
             const { error } = await supabase.from('collections').delete().eq('id', collection.id)
             if (error) throw error
             await revalidateStoreCache() // 🚀 INVALIDACIÓN DE CACHÉ NEXT.JS AL ELIMINAR
@@ -482,13 +521,26 @@ setFormData({
         }
     }
 
-    // Filtro reactivo en el explorador de colecciones
+    // 💎 FILTRO REACTIVO O(N): Cruza texto de búsqueda y pestaña activa (Todos / Combos / Colecciones)
     const filteredCollections = useMemo(() => {
-        return collections.filter(c => 
-            c.name.toLowerCase().includes(search.toLowerCase()) || 
-            c.slug.toLowerCase().includes(search.toLowerCase())
-        )
-    }, [collections, search])
+        return collections.filter(c => {
+            const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+                c.slug.toLowerCase().includes(search.toLowerCase())
+            if (!matchesSearch) return false
+
+            const type = c.settings?.entity_type || (c.settings?.combo_price_usd ? 'combo' : 'collection')
+
+            if (activeFilterTab === 'combos') return type === 'combo'
+            if (activeFilterTab === 'collections') return type === 'collection'
+            return true
+        })
+    }, [collections, search, activeFilterTab])
+
+    const combosCount = useMemo(() => {
+        return collections.filter(c => (c.settings?.entity_type === 'combo' || Boolean(c.settings?.combo_price_usd))).length
+    }, [collections])
+
+    const collectionsCount = collections.length - combosCount
 
     if (loading) {
         return (
@@ -503,13 +555,13 @@ setFormData({
 
     return (
         <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 selection:bg-neutral-950 selection:text-white">
-            
-        {/* CABECERA ULTRA-COMPACTA MOBILE / EXPANDIDA DESKTOP */}
+
+            {/* CABECERA ULTRA-COMPACTA MOBILE / EXPANDIDA DESKTOP */}
             <div className="bg-[#fafafc] border-b border-neutral-200/60 sticky top-0 z-30 px-4 md:px-8 py-2.5 sm:py-4">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-                        <Link 
-                            href="/admin" 
+                        <Link
+                            href="/admin"
                             className="w-8 h-8 sm:w-9 sm:h-9 bg-neutral-50 sm:bg-white rounded-lg flex items-center justify-center border border-neutral-200/60 hover:border-neutral-400 transition-all shrink-0 active:scale-95"
                             title="Volver"
                         >
@@ -530,32 +582,99 @@ setFormData({
                         </div>
                     </div>
 
-                    <div className="flex items-center shrink-0">
-                        <button
-                            type="button"
-                            onClick={openCreateDrawer}
-                            className="bg-neutral-950 text-white hover:bg-black h-8 sm:h-9 px-3 sm:px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
-                        >
-                            <Plus size={14} strokeWidth={2.5} />
-                            <span className="hidden sm:inline">Crear {isRestaurant ? 'Especial' : 'Colección'}</span>
-                            <span className="sm:hidden font-mono text-[11px]">Nuevo</span>
-                        </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isRestaurant ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => openCreateDrawer('collection')}
+                                    className="bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-200/80 h-8 sm:h-9 px-3 sm:px-3.5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+                                >
+                                    <Layers size={13} strokeWidth={2.2} />
+                                    <span className="hidden sm:inline">+ Colección</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => openCreateDrawer('combo')}
+                                    className="bg-neutral-950 text-white hover:bg-black h-8 sm:h-9 px-3 sm:px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
+                                >
+                                    <Package size={13} strokeWidth={2.5} />
+                                    <span>+ Combo</span>
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => openCreateDrawer('collection')}
+                                className="bg-neutral-950 text-white hover:bg-black h-8 sm:h-9 px-3 sm:px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
+                            >
+                                <Plus size={14} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">Crear Colección</span>
+                                <span className="sm:hidden font-mono text-[11px]">Nuevo</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
+
             {/* CONTENEDOR CENTRAL */}
             <div className="max-w-6xl mx-auto px-4 md:px-8 pt-6 space-y-6">
-                
-                {/* BUSCADOR DE COLECCIONES */}
-                <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-neutral-200/60 shadow-xs">
-                    <Search size={16} className="text-neutral-400 ml-2 shrink-0" />
-                    <input 
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder={`Buscar ${isRestaurant ? 'combo o especial' : 'colección o drop'} por título o slug...`}
-                        className="w-full bg-transparent text-xs font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
-                    />
+
+                {/* 💎 BARRA DE CONTROL DUAL: BUSCADOR + SEGMENTED TABS TIPO LINEAR */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+
+                    {/* Tabs Segmentados (Solo visibles si es Restaurante) */}
+                    {isRestaurant && (
+                        <div className="flex items-center bg-neutral-200/50 p-1 rounded-xl border border-neutral-200/80 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setActiveFilterTab('all')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'all'
+                                        ? 'bg-white text-neutral-950 shadow-2xs'
+                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    }`}
+                            >
+                                <span>Todos</span>
+                                <span className="text-[10px] font-mono opacity-60">({collections.length})</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveFilterTab('combos')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'combos'
+                                        ? 'bg-white text-neutral-950 shadow-2xs'
+                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    }`}
+                            >
+                                <Package size={12} strokeWidth={2.2} />
+                                <span>Combos</span>
+                                <span className="text-[10px] font-mono opacity-60">({combosCount})</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveFilterTab('collections')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'collections'
+                                        ? 'bg-white text-neutral-950 shadow-2xs'
+                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    }`}
+                            >
+                                <Layers size={12} strokeWidth={2.2} />
+                                <span>Colecciones</span>
+                                <span className="text-[10px] font-mono opacity-60">({collectionsCount})</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Buscador de Entrada */}
+                    <div className="flex-1 flex items-center gap-3 bg-white p-2.5 rounded-xl border border-neutral-200/60 shadow-xs">
+                        <Search size={16} className="text-neutral-400 ml-2 shrink-0" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder={`Buscar por título o slug...`}
+                            className="w-full bg-transparent text-xs font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
+                        />
+                    </div>
                 </div>
 
                 {/* GRILLA DE COLECCIONES REGISTRADAS */}
@@ -572,14 +691,14 @@ setFormData({
                         </p>
                         <button
                             type="button"
-                            onClick={openCreateDrawer}
+                            onClick={() => openCreateDrawer()}
                             className="mt-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1.5"
                         >
                             <Plus size={14} /> Empezar Ahora
                         </button>
                     </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredCollections.map(col => {
                             const itemCount = col.collection_items?.length || 0
                             const isExpired = col.valid_until ? new Date(col.valid_until) < new Date() : false
@@ -603,19 +722,19 @@ setFormData({
                             }, 0)
 
                             return (
-                                <div 
-                                    key={col.id} 
+                                <div
+                                    key={col.id}
                                     className="bg-white border border-neutral-200/60 hover:border-neutral-400 transition-all rounded-2xl overflow-hidden shadow-xs flex flex-col justify-between group"
                                 >
                                     <div>
                                         {/* Portada / Banner */}
                                         <div className="h-32 w-full bg-neutral-100 relative overflow-hidden">
                                             {col.image_url ? (
-                                                <Image 
-                                                    src={getOptimizedUrl(col.image_url)} 
-                                                    alt={col.name} 
-                                                    fill 
-                                                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                                                <Image
+                                                    src={getOptimizedUrl(col.image_url)}
+                                                    alt={col.name}
+                                                    fill
+                                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-neutral-300 bg-neutral-50">
@@ -643,7 +762,7 @@ setFormData({
                                             </div>
                                         </div>
 
-                                      {/* Cuerpo Informativo con Avatar Stacking y Valor */}
+                                        {/* Cuerpo Informativo con Avatar Stacking y Valor */}
                                         <div className="p-4 space-y-2">
                                             <div className="flex items-center justify-between gap-2">
                                                 <h3 className="font-bold text-sm text-neutral-900 truncate">
@@ -656,11 +775,22 @@ setFormData({
 
                                             <div className="flex items-center justify-between text-[11px] font-mono">
                                                 <span className="text-neutral-400 truncate">/{col.slug}</span>
-                                                {comboTotalUSD > 0 && (
-                                                    <span className="font-bold text-neutral-900 font-mono">
-                                                        ${comboTotalUSD.toFixed(2)} USD
-                                                    </span>
-                                                )}
+                                                <div className="flex items-center gap-1.5 shrink-0 font-mono">
+                                                    {col.settings?.combo_price_usd ? (
+                                                        <>
+                                                            <span className="text-neutral-400 line-through text-[10px]">
+                                                                ${comboTotalUSD.toFixed(2)}
+                                                            </span>
+                                                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 text-[11px]">
+                                                                ${Number(col.settings.combo_price_usd).toFixed(2)} USD
+                                                            </span>
+                                                        </>
+                                                    ) : comboTotalUSD > 0 ? (
+                                                        <span className="font-bold text-neutral-900">
+                                                            ${comboTotalUSD.toFixed(2)} USD
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                             </div>
 
                                             {/* Avatar Stacking de Ítems incluidos */}
@@ -668,7 +798,7 @@ setFormData({
                                                 <div className="flex items-center gap-1.5 pt-1">
                                                     <div className="flex -space-x-2 overflow-hidden py-0.5">
                                                         {previewThumbs.map((imgUrl, i) => (
-                                                            <div 
+                                                            <div
                                                                 key={i}
                                                                 className="inline-block h-6 w-6 rounded-full ring-2 ring-white overflow-hidden relative bg-neutral-100 shrink-0"
                                                             >
@@ -692,9 +822,9 @@ setFormData({
 
                                     {/* Footer de Acciones */}
                                     <div className="p-3 bg-neutral-50/60 border-t border-neutral-100 flex items-center justify-between">
-                                        <Link 
-                                            href={`/${store?.slug}?c=${col.slug}`} 
-                                            target="_blank" 
+                                        <Link
+                                            href={`/${store?.slug}?c=${col.slug}`}
+                                            target="_blank"
                                             className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 hover:text-neutral-950 transition-colors flex items-center gap-1"
                                         >
                                             <span>Ver tienda</span>
@@ -702,14 +832,14 @@ setFormData({
                                         </Link>
 
                                         <div className="flex items-center gap-1">
-                                            <button 
+                                            <button
                                                 onClick={() => openEditDrawer(col)}
                                                 className="p-1.5 text-neutral-500 hover:text-neutral-950 hover:bg-neutral-200/60 rounded-md transition-colors"
                                                 title="Editar"
                                             >
                                                 <Edit3 size={14} />
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => handleDeleteCollection(col)}
                                                 className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
                                                 title="Eliminar"
@@ -732,7 +862,7 @@ setFormData({
                 {isDrawerOpen && (
                     <div className="fixed inset-0 z-50 flex justify-end">
                         {/* Backdrop */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -741,7 +871,7 @@ setFormData({
                         />
 
                         {/* Contenedor del Drawer */}
-                        <motion.div 
+                        <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
@@ -752,13 +882,18 @@ setFormData({
                             <div className="p-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
                                 <div>
                                     <h2 className="text-base font-bold text-neutral-900 tracking-tight leading-none">
-                                        {formData.id ? `Editar ${isRestaurant ? 'Especial' : 'Colección'}` : `Nueva ${isRestaurant ? 'Curaduría / Especial' : 'Colección'}`}
+                                        {formData.id
+                                            ? `Editar ${formData.entity_type === 'combo' ? 'Combo' : 'Colección'}`
+                                            : `Nuevo ${formData.entity_type === 'combo' ? 'Combo Gastronómico' : 'Agrupador / Colección'}`
+                                        }
                                     </h2>
                                     <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider mt-1">
-                                        Puebla y combina los elementos que conformarán este catálogo
+                                        {formData.entity_type === 'combo'
+                                            ? 'Configura un paquete de platos cerrado con precio especial'
+                                            : 'Organiza platos y promociones para curaduría visual en el menú'}
                                     </p>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => !saving && setIsDrawerOpen(false)}
                                     className="p-1.5 text-neutral-400 hover:text-neutral-900 rounded-full hover:bg-neutral-100 transition-colors"
                                 >
@@ -768,25 +903,69 @@ setFormData({
 
                             {/* Área de Formulario con Scroll Interno */}
                             <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 no-scrollbar">
-                                
-                              {/* 1. DATOS DE IDENTIDAD (CERO JERGA TÉCNICA) */}
+
+                                {/* 💎 SELECTOR DE INTENCIÓN (COMBO VS COLECCIÓN) - SOLO RESTAURANTES */}
+                                {isRestaurant && (
+                                    <div className="bg-neutral-100 p-1 rounded-xl border border-neutral-200/80 grid grid-cols-2 gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    entity_type: 'combo',
+                                                    badge_text: prev.badge_text || 'COMBO',
+                                                    // Limpiamos ítems no compatibles con combo
+                                                    items: prev.items.filter(it => it.item_type === 'product')
+                                                }))
+                                                setPickerTab('products')
+                                            }}
+                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${formData.entity_type === 'combo'
+                                                    ? 'bg-neutral-950 text-white shadow-xs'
+                                                    : 'text-neutral-600 hover:text-neutral-950'
+                                                }`}
+                                        >
+                                            <Package size={14} strokeWidth={2.2} />
+                                            <span>Combo (Precio Cerrado)</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    entity_type: 'collection',
+                                                    combo_price_usd: ''
+                                                }))
+                                            }}
+                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${formData.entity_type === 'collection'
+                                                    ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/60'
+                                                    : 'text-neutral-600 hover:text-neutral-950'
+                                                }`}
+                                        >
+                                            <Layers size={14} strokeWidth={2.2} />
+                                            <span>Colección (Organización)</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                              {/* 1. DATOS DE IDENTIDAD */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-                                            1. Información de la Colección
+                                            1. Información de {formData.entity_type === 'combo' ? 'este Combo' : 'la Colección'}
                                         </h4>
                                         {formData.slug && (
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    const link = `https://${store?.slug}.preziso.shop/?c=${formData.slug}`;
-                                                    navigator.clipboard.writeText(link);
-                                                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Enlace copiado para compartir', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold' } });
+                                                    const link = `https://${store?.slug}.preziso.shop/?c=${formData.slug}`
+                                                    navigator.clipboard.writeText(link)
+                                                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Enlace copiado para compartir', showConfirmButton: false, timer: 1500, customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold' } })
                                                 }}
                                                 className="text-[10px] font-mono font-bold text-neutral-600 hover:text-neutral-950 underline flex items-center gap-1"
-                                                title="Copiar enlace para Instagram o WhatsApp"
+                                                title="Copiar enlace directo"
                                             >
-                                                <span>Copiar Enlace Directo</span>
+                                                <span>Copiar Enlace</span>
                                                 <ArrowUpRight size={12} />
                                             </button>
                                         )}
@@ -795,18 +974,18 @@ setFormData({
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
-                                                Nombre de la Colección / Especial *
+                                                {formData.entity_type === 'combo' ? 'Nombre del Combo *' : 'Nombre de la Colección *'}
                                             </label>
                                             <input 
                                                 type="text"
                                                 value={formData.name}
                                                 onChange={(e) => handleNameChange(e.target.value)}
-                                                placeholder={isRestaurant ? "Ej: Combo Parejas Burger" : "Ej: Liquidación de Verano"}
+                                                placeholder={formData.entity_type === 'combo' ? "Ej: Combo Parejas Burger" : "Ej: Carta de Postres & Café"}
                                                 className="w-full bg-neutral-50 border border-neutral-200/80 rounded-xl px-3 py-2.5 text-xs font-semibold text-neutral-900 outline-none focus:border-neutral-950 transition-colors"
                                             />
                                         </div>
 
-                                       <div className="space-y-1.5">
+                                        <div className="space-y-1.5">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
                                                     Etiqueta Destacada (Badge)
@@ -827,7 +1006,7 @@ setFormData({
                                                 maxLength={20}
                                                 value={formData.badge_text}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, badge_text: e.target.value.toUpperCase() }))}
-                                                placeholder={isRestaurant ? "Ej: COMBO, 2X1, ALMUERZO" : "Ej: DROP, PACK, LOOK"}
+                                                placeholder={formData.entity_type === 'combo' ? "Ej: COMBO, 2X1, DUO" : "Ej: DROP, PACK, LOOK"}
                                                 className="w-full bg-neutral-50 border border-neutral-200/80 rounded-xl px-3 py-2 text-xs font-mono font-bold text-neutral-900 uppercase outline-none focus:border-neutral-950 transition-colors"
                                             />
 
@@ -851,7 +1030,7 @@ setFormData({
                                         </div>
                                     </div>
 
-                                    {/* 🚀 PRESETS RÁPIDOS DE FECHA DE EXPIRACIÓN */}
+                                    {/* Presets Rápidos de Expiración */}
                                     <div className="space-y-2 bg-neutral-50/60 p-3.5 rounded-xl border border-neutral-200/60">
                                         <div className="flex items-center justify-between">
                                             <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
@@ -868,7 +1047,6 @@ setFormData({
                                             )}
                                         </div>
 
-                                        {/* Botones Presets Rápidos */}
                                         <div className="flex flex-wrap gap-1.5">
                                             {[
                                                 { label: '24 Horas', hours: 24 },
@@ -894,6 +1072,7 @@ setFormData({
                                             className="w-full mt-1 bg-white border border-neutral-200/80 rounded-lg px-3 py-1.5 text-xs font-mono text-neutral-800 outline-none focus:border-neutral-950 transition-colors shadow-2xs"
                                         />
                                     </div>
+
                                     {/* Portada / Banner Uploader */}
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
@@ -945,12 +1124,12 @@ setFormData({
                                     </div>
                                 </div>
 
-                               {/* 2. BANDEJA ACTIVA DEL COMBO / COLECCIÓN */}
+                                {/* 2. BANDEJA ACTIVA DEL COMBO / COLECCIÓN */}
                                 <div className="space-y-3 pt-4 border-t border-neutral-100">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-900">
-                                                {isRestaurant ? 'Charola del Combo' : 'Bandeja de la Colección'}
+                                                {formData.entity_type === 'combo' ? 'Componentes del Combo' : 'Bandeja de la Colección'}
                                             </h4>
                                             <span className="bg-neutral-950 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full">
                                                 {formData.items.length}
@@ -964,13 +1143,13 @@ setFormData({
                                         )}
                                     </div>
 
-                                    {/* Lista de Ítems en Bandeja (Reordenables) */}
+                                    {/* Lista de Ítems en Bandeja */}
                                     {formData.items.length === 0 ? (
                                         <div className="p-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 text-center">
                                             <p className="text-xs text-neutral-400 font-medium">
-                                                {isRestaurant 
-                                                    ? 'La charola está vacía. Añade platos o bebidas desde el catálogo abajo.' 
-                                                    : 'La bandeja está vacía. Selecciona productos o promociones para exhibir.'}
+                                                {formData.entity_type === 'combo'
+                                                    ? 'La charola del combo está vacía. Añade platos desde el catálogo abajo.' 
+                                                    : 'La colección está vacía. Selecciona productos o promociones para exhibir.'}
                                             </p>
                                         </div>
                                     ) : (
@@ -1007,7 +1186,6 @@ setFormData({
                                                         </div>
                                                     </div>
 
-                                                    {/* Controles: Reordenar y Eliminar */}
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <button
                                                             type="button"
@@ -1045,181 +1223,239 @@ setFormData({
                                             ))}
                                         </div>
                                     )}
+
+                                    {/* 💎 CONTROL DE PRECIO CERRADO (EXCLUSIVO PARA COMBOS) */}
+                                    {formData.entity_type === 'combo' && formData.items.length > 0 && (
+                                        <div className="p-3.5 bg-neutral-50/80 border border-neutral-200/70 rounded-xl space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-800">
+                                                        Precio Cerrado del Combo *
+                                                    </span>
+                                                    <span className="text-[9px] font-mono text-neutral-400">
+                                                        (USD)
+                                                    </span>
+                                                </div>
+                                                {formData.combo_price_usd !== '' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({ ...prev, combo_price_usd: '' }))}
+                                                        className="text-[9px] font-mono text-neutral-400 hover:text-rose-600 transition-colors"
+                                                    >
+                                                        Usar suma regular
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-neutral-400">
+                                                    $
+                                                </span>
+                                                <input 
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={formData.combo_price_usd}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, combo_price_usd: e.target.value }))}
+                                                    placeholder={totalSelectedValueUSD > 0 ? `Precio especial (Valor base: $${totalSelectedValueUSD.toFixed(2)})` : "0.00"}
+                                                    className="w-full bg-white border border-neutral-200/80 rounded-lg pl-7 pr-12 py-2 text-xs font-mono font-bold text-neutral-900 outline-none focus:border-neutral-950 transition-colors shadow-2xs placeholder:font-sans placeholder:font-normal placeholder:text-neutral-400"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-neutral-400">
+                                                    USD
+                                                </span>
+                                            </div>
+
+                                            {formData.combo_price_usd !== '' && Number(formData.combo_price_usd) > 0 && totalSelectedValueUSD > 0 && (() => {
+                                                const comboPrice = Number(formData.combo_price_usd)
+                                                const diff = totalSelectedValueUSD - comboPrice
+                                                const discountPct = Math.round((diff / totalSelectedValueUSD) * 100)
+
+                                                if (diff > 0) {
+                                                    return (
+                                                        <div className="flex items-center justify-between text-[10px] font-mono bg-emerald-50 border border-emerald-200/60 text-emerald-800 px-2.5 py-1.5 rounded-md">
+                                                            <span>Ahorro del comensal:</span>
+                                                            <span className="font-bold">-${diff.toFixed(2)} USD (-{discountPct}%)</span>
+                                                        </div>
+                                                    )
+                                                } else if (diff < 0) {
+                                                    return (
+                                                        <div className="text-[10px] font-mono bg-amber-50 border border-amber-200/60 text-amber-800 px-2.5 py-1.5 rounded-md">
+                                                            El precio combo supera el valor individual (+${Math.abs(diff).toFixed(2)} USD).
+                                                        </div>
+                                                    )
+                                                }
+                                                return null
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* 3. SELECTOR MULTIENTIDAD (EL CATÁLOGO) */}
-                                <div className="space-y-3 pt-3">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-                                            3. Añadir más elementos al catálogo
-                                        </h4>
-                                    </div>
-{/* 🚀 PESTAÑAS SIMPLIFICADAS Y LIMPIAS (3 SECCIONES PURAS) */}
-                                    <div className="flex gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/60 overflow-x-auto no-scrollbar">
-                                        {[
-                                            { id: 'products', label: isRestaurant ? 'Platos del Menú' : 'Productos', icon: Package },
-                                            { id: 'promotions', label: 'Promociones Activas', icon: Tag },
-                                            { id: 'categories', label: 'Categorías Completas', icon: Layers },
-                                        ].map(tab => (
-                                            <button
-                                                key={tab.id}
-                                                type="button"
-                                                onClick={() => { setPickerTab(tab.id as any); setPickerSearch(''); }}
-                                                className={`flex-1 py-1.5 px-2.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
-                                                    pickerTab === tab.id 
-                                                        ? 'bg-white text-neutral-950 shadow-xs' 
-                                                        : 'text-neutral-500 hover:text-neutral-900'
-                                                }`}
-                                            >
-                                                <tab.icon size={11} />
-                                                <span>{tab.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {/* 3. SELECTOR MULTIENTIDAD (EL CATÁLOGO) */}
+                                    <div className="space-y-3 pt-3">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+                                                3. Añadir más elementos al catálogo
+                                            </h4>
+                                        </div>
+                                        {/* 🚀 PESTAÑAS SIMPLIFICADAS Y LIMPIAS (3 SECCIONES PURAS) */}
+                                        <div className="flex gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/60 overflow-x-auto no-scrollbar">
+                                            {[
+                                                { id: 'products', label: isRestaurant ? 'Platos del Menú' : 'Productos', icon: Package },
+                                                { id: 'promotions', label: 'Promociones Activas', icon: Tag },
+                                                { id: 'categories', label: 'Categorías Completas', icon: Layers },
+                                            ].map(tab => (
+                                                <button
+                                                    key={tab.id}
+                                                    type="button"
+                                                    onClick={() => { setPickerTab(tab.id as any); setPickerSearch(''); }}
+                                                    className={`flex-1 py-1.5 px-2.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${pickerTab === tab.id
+                                                            ? 'bg-white text-neutral-950 shadow-xs'
+                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                        }`}
+                                                >
+                                                    <tab.icon size={11} />
+                                                    <span>{tab.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
 
-                                    {/* Buscador de Catálogo */}
-                                    <div className="relative">
-                                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                        <input 
-                                            type="text"
-                                            value={pickerSearch}
-                                            onChange={(e) => setPickerSearch(e.target.value)}
-                                            placeholder="Buscar por nombre de producto o plato..."
-                                            className="w-full bg-neutral-50 border border-neutral-200/70 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold text-neutral-900 outline-none focus:border-neutral-950 transition-colors"
-                                        />
-                                    </div>
+                                        {/* Buscador de Catálogo */}
+                                        <div className="relative">
+                                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                value={pickerSearch}
+                                                onChange={(e) => setPickerSearch(e.target.value)}
+                                                placeholder="Buscar por nombre de producto o plato..."
+                                                className="w-full bg-neutral-50 border border-neutral-200/70 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold text-neutral-900 outline-none focus:border-neutral-950 transition-colors"
+                                            />
+                                        </div>
 
-                                    {/* Listado Unificado de Productos con Indicador de Venta al Mayor */}
-                                    <div className="border border-neutral-200/80 rounded-xl bg-white max-h-56 overflow-y-auto divide-y divide-neutral-100 no-scrollbar">
-                                        
-                                        {/* A) CATÁLOGO UNIFICADO */}
-                                        {pickerTab === 'products' && (
-                                            storeProducts
-                                                .filter(p => p.name.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                .map(prod => {
-                                                    const selected = isItemInCollection('product', prod.id)
-                                                    return (
-                                                        <div 
-                                                            key={prod.id} 
-                                                            onClick={() => toggleItem('product', prod)}
-                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                                                                selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                                <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
-                                                                    {prod.image_url ? (
-                                                                        <Image src={getOptimizedUrl(prod.image_url)} alt="" fill className="object-cover" />
-                                                                    ) : null}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <p className="font-bold text-xs text-neutral-900 truncate">{prod.name}</p>
-                                                                        {prod.wholesale_active && (
-                                                                            <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold uppercase px-1 rounded border border-emerald-200/60">
-                                                                                Mayorista (-{prod.wholesale_discount_pct}%)
-                                                                            </span>
-                                                                        )}
+                                        {/* Listado Unificado de Productos con Indicador de Venta al Mayor */}
+                                        <div className="border border-neutral-200/80 rounded-xl bg-white max-h-56 overflow-y-auto divide-y divide-neutral-100 no-scrollbar">
+
+                                            {/* A) CATÁLOGO UNIFICADO */}
+                                            {pickerTab === 'products' && (
+                                                storeProducts
+                                                    .filter(p => p.name.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                    .map(prod => {
+                                                        const selected = isItemInCollection('product', prod.id)
+                                                        return (
+                                                            <div
+                                                                key={prod.id}
+                                                                onClick={() => toggleItem('product', prod)}
+                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
+                                                                        {prod.image_url ? (
+                                                                            <Image src={getOptimizedUrl(prod.image_url)} alt="" fill className="object-cover" />
+                                                                        ) : null}
                                                                     </div>
-                                                                    <p className="text-[10px] font-mono text-neutral-400">${Number(prod.usd_cash_price).toFixed(2)} • {prod.category}</p>
+                                                                    <div className="min-w-0">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <p className="font-bold text-xs text-neutral-900 truncate">{prod.name}</p>
+                                                                            {prod.wholesale_active && (
+                                                                                <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold uppercase px-1 rounded border border-emerald-200/60">
+                                                                                    Mayorista (-{prod.wholesale_discount_pct}%)
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-[10px] font-mono text-neutral-400">${Number(prod.usd_cash_price).toFixed(2)} • {prod.category}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                    }`}>
+                                                                    {selected && <Check size={12} strokeWidth={3} />}
                                                                 </div>
                                                             </div>
-                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                                                                selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                            }`}>
-                                                                {selected && <Check size={12} strokeWidth={3} />}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })
-                                        )}
+                                                        )
+                                                    })
+                                            )}
 
-                                 
-                                        {/* C) PROMOCIONES */}
-                                        {pickerTab === 'promotions' && (
-                                            storePromotions
-                                                .filter(p => p.title.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                .map(promo => {
-                                                    const selected = isItemInCollection('promotion', promo.id)
-                                                    return (
-                                                        <div 
-                                                            key={promo.id} 
-                                                            onClick={() => toggleItem('promotion', promo)}
-                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                                                                selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                                <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
-                                                                    {promo.image_url ? (
-                                                                        <Image src={getOptimizedUrl(promo.image_url)} alt="" fill className="object-cover" />
-                                                                    ) : null}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="font-bold text-xs text-neutral-900 truncate">{promo.title}</p>
-                                                                    <p className="text-[10px] font-mono text-purple-700">{promo.discount_percentage ? `-${promo.discount_percentage}% OFF` : 'Campaña'}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                                                                selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                            }`}>
-                                                                {selected && <Check size={12} strokeWidth={3} />}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })
-                                        )}
 
-                                        {/* D) CATEGORÍAS COMPLETAS */}
-                                        {pickerTab === 'categories' && (
-                                            storeCategories
-                                                .filter(c => c.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                .map(cat => {
-                                                    const selected = isItemInCollection('category', cat)
-                                                    return (
-                                                        <div 
-                                                            key={cat} 
-                                                            onClick={() => toggleItem('category', cat)}
-                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                                                                selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <Layers size={14} className="text-neutral-500 shrink-0" />
-                                                                <p className="font-bold text-xs text-neutral-900 truncate">{cat}</p>
+                                            {/* C) PROMOCIONES */}
+                                            {pickerTab === 'promotions' && (
+                                                storePromotions
+                                                    .filter(p => p.title.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                    .map(promo => {
+                                                        const selected = isItemInCollection('promotion', promo.id)
+                                                        return (
+                                                            <div
+                                                                key={promo.id}
+                                                                onClick={() => toggleItem('promotion', promo)}
+                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
+                                                                        {promo.image_url ? (
+                                                                            <Image src={getOptimizedUrl(promo.image_url)} alt="" fill className="object-cover" />
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-bold text-xs text-neutral-900 truncate">{promo.title}</p>
+                                                                        <p className="text-[10px] font-mono text-purple-700">{promo.discount_percentage ? `-${promo.discount_percentage}% OFF` : 'Campaña'}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                    }`}>
+                                                                    {selected && <Check size={12} strokeWidth={3} />}
+                                                                </div>
                                                             </div>
-                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                                                                selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                            }`}>
-                                                                {selected && <Check size={12} strokeWidth={3} />}
+                                                        )
+                                                    })
+                                            )}
+
+                                            {/* D) CATEGORÍAS COMPLETAS */}
+                                            {pickerTab === 'categories' && (
+                                                storeCategories
+                                                    .filter(c => c.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                    .map(cat => {
+                                                        const selected = isItemInCollection('category', cat)
+                                                        return (
+                                                            <div
+                                                                key={cat}
+                                                                onClick={() => toggleItem('category', cat)}
+                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <Layers size={14} className="text-neutral-500 shrink-0" />
+                                                                    <p className="font-bold text-xs text-neutral-900 truncate">{cat}</p>
+                                                                </div>
+                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                    }`}>
+                                                                    {selected && <Check size={12} strokeWidth={3} />}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )
-                                                })
-                                        )}
+                                                        )
+                                                    })
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Footer de Guardado */}
-                            <div className="p-4 md:p-5 border-t border-neutral-100 bg-white shrink-0 flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => !saving && setIsDrawerOpen(false)}
-                                    className="px-4 py-3 rounded-xl border border-neutral-200 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={saving}
-                                    onClick={handleSaveCollection}
-                                    className="flex-1 bg-neutral-950 hover:bg-black text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50"
-                                >
-                                    {saving ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                                    <span>Guardar y Publicar</span>
-                                </button>
-                            </div>
+                                {/* Footer de Guardado */}
+                                <div className="p-4 md:p-5 border-t border-neutral-100 bg-white shrink-0 flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => !saving && setIsDrawerOpen(false)}
+                                        className="px-4 py-3 rounded-xl border border-neutral-200 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={saving}
+                                        onClick={handleSaveCollection}
+                                        className="flex-1 bg-neutral-950 hover:bg-black text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {saving ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                                        <span>Guardar y Publicar</span>
+                                    </button>
+                                </div>
                         </motion.div>
                     </div>
                 )}

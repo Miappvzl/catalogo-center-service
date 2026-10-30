@@ -456,15 +456,15 @@ const activePaymentMethods = useMemo(() => {
         msg += `NOMBRE: ${clientData.name}\n`;
         msg += `CONTACTO: ${clientData.phone}\n\n`;
 
-        msg += `*DETALLE DE COMPRA*\n`;
+    msg += `*DETALLE DE COMPRA*\n`;
         cartEngine.processedItems.forEach((item: any) => {
-            // Buscamos el ítem original del carrito para extraer foodModifiers
+            // Buscamos el ítem original del carrito para extraer modificadores y metadatos de combo
             const originalItem = items.find(i => i.id === item.id);
             const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
 
             const pt = item.finalListPrice < item.listPrice
                 ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
-                : `*$${item.listPrice.toFixed(2)}*`;
+                : `*$${item.finalListPrice.toFixed(2)}*`;
 
             const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : "";
 
@@ -473,11 +473,13 @@ const activePaymentMethods = useMemo(() => {
                 const itemName = `*${item.quantity}x ${item.name}*`;
                 msg += row(`${skuText}${itemName}`, pt);
 
+                if (originalItem?.bundleName) {
+                    msg += `  📦 Combo: ${originalItem.bundleName}\n`;
+                }
+
                 // Desglosamos los modificadores cuantitativos matemáticamente
                 originalItem?.foodModifiers?.forEach((mod: any) => {
                     const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
-                    // Si el cliente pidió 2 cajas, el cocinero debe saber que son "2 x 3x Arequipe = 6x Arequipe"
-                    // Multiplicamos la cantidad del carrito por el texto base del modificador
                     const cleanModName = mod.name.includes('x ')
                         ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
                         : `${item.quantity}x ${mod.name}`;
@@ -493,6 +495,10 @@ const activePaymentMethods = useMemo(() => {
                     msg += row(`  Var: ${item.variantInfo}`, pt);
                 } else {
                     msg += row(`${skuText}${itemName}`, pt);
+                }
+
+                if (originalItem?.bundleName) {
+                    msg += `  📦 Combo: ${originalItem.bundleName}\n`;
                 }
             }
 
@@ -1219,17 +1225,25 @@ switch (pm) {
                             subtotal_usd: Number(totalListUSD_base.toFixed(2)),
                             discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
                         },
-                        items: items.map(item => ({
-                            productId: item.productId,
-                            name: item.name,
-                            quantity: item.quantity,
-                            basePrice: item.basePrice,
-                            variantInfo: item.variantInfo,
-                            variantId: item.variantId,
-                            sku: item.sku,
-                            foodModifiers: item.foodModifiers,
-                            foodNotes: item.foodNotes
-                        }))
+                      items: items.map(item => {
+                            const enrichedVariant = item.bundleName
+                                ? (item.variantInfo && item.variantInfo !== 'N/A' 
+                                    ? `${item.variantInfo} • [Combo: ${item.bundleName}]` 
+                                    : `[Combo: ${item.bundleName}]`)
+                                : item.variantInfo;
+
+                            return {
+                                productId: item.productId,
+                                name: item.name,
+                                quantity: item.quantity,
+                                basePrice: item.basePrice,
+                                variantInfo: enrichedVariant,
+                                variantId: item.variantId,
+                                sku: item.sku,
+                                foodModifiers: item.foodModifiers,
+                                foodNotes: item.foodNotes
+                            };
+                        })
                     })
                 });
 
@@ -1333,16 +1347,23 @@ switch (pm) {
                 order = insertedOrder;
             }
 
-            const orderItemsPayload = items.map((item) => {
+          const orderItemsPayload = items.map((item) => {
                 const numericProductId = item.productId && !isNaN(Number(item.productId)) && Number(item.productId) > 0
                     ? Number(item.productId)
                     : null;
+
+                // 💎 TRAZABILIDAD VISUAL: Si el producto pertenece a un combo, lo sellamos en variant_info
+                const enrichedVariantInfo = item.bundleName
+                    ? (item.variantInfo && item.variantInfo !== 'N/A'
+                        ? `${item.variantInfo} • [Combo: ${item.bundleName}]`
+                        : `[Combo: ${item.bundleName}]`)
+                    : (item.variantInfo || "N/A");
 
                 return {
                     order_id: order.id,
                     product_id: numericProductId,
                     product_name: item.name,
-                    variant_info: item.variantInfo || "N/A",
+                    variant_info: enrichedVariantInfo,
                     quantity: item.quantity,
                     price_at_purchase: item.basePrice,
                     variant_id: item.variantId && item.variantId.length === 36 ? item.variantId : null,
@@ -1373,24 +1394,70 @@ switch (pm) {
                 ? `*COBRO RÁPIDO #${order.order_number}*` 
                 : `*PEDIDO #${order.order_number}*`;
             let message = `${ticketHeader}\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*DETALLE DEL PEDIDO:*\n`;
-            cartEngine.processedItems.forEach((item: any) => {
-                const originalItem = items.find(i => i.id === item.id);
-                const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
+         // 💎 AGRUPACIÓN JERÁRQUICA: Combos consolidados vs Productos Sueltos
+            const bundleMap = new Map<string, any[]>();
+            const looseItems: any[] = [];
 
-                const priceText = item.finalListPrice < item.listPrice ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` : `($${item.listPrice.toFixed(2)})`;
-                const skuText = item.sku ? `*[${item.sku.toUpperCase()}]* ` : "";
+            cartEngine.processedItems.forEach((processedItem: any) => {
+                const originalItem = items.find(i => i.id === processedItem.id);
+                const bundleInstanceId = originalItem?.bundleInstanceId || processedItem.bundleInstanceId;
+
+                if (bundleInstanceId) {
+                    if (!bundleMap.has(bundleInstanceId)) bundleMap.set(bundleInstanceId, []);
+                    bundleMap.get(bundleInstanceId)!.push({ item: processedItem, originalItem });
+                } else {
+                    looseItems.push({ item: processedItem, originalItem });
+                }
+            });
+
+            // 1. Renderizado de Combos (Árbol Limpio de Componentes)
+            bundleMap.forEach((bundleEntries) => {
+                const first = bundleEntries[0];
+                const bundleName = first.originalItem?.bundleName || first.item.bundleName || 'Combo Especial';
+                const bundleQty = first.item.quantity;
+                const bundleTotalUSD = bundleEntries.reduce((sum, e) => sum + (e.item.finalListPrice * e.item.quantity), 0);
+
+                message += `📦 *${bundleQty}x COMBO: ${bundleName}* ($${bundleTotalUSD.toFixed(2)})\n`;
+
+                bundleEntries.forEach((entry, idx) => {
+                    const isLast = idx === bundleEntries.length - 1;
+                    const branch = isLast ? '   └' : '   ├';
+                    const skuText = entry.item.sku ? `[${entry.item.sku.toUpperCase()}] ` : '';
+                    const varText = entry.item.variantInfo && entry.item.variantInfo !== 'N/A' && !entry.item.variantInfo.includes('Combo') 
+                        ? ` (${entry.item.variantInfo})` 
+                        : '';
+
+                    message += `${branch} ${skuText}${entry.item.name}${varText}\n`;
+
+                    if (entry.originalItem?.foodModifiers && entry.originalItem.foodModifiers.length > 0) {
+                        entry.originalItem.foodModifiers.forEach((mod: any) => {
+                            const modPrice = mod.priceAdjustment > 0 ? ` (+$${mod.priceAdjustment.toFixed(2)})` : '';
+                            message += `   │  • ${mod.name}${modPrice}\n`;
+                        });
+                    }
+                    if (entry.item.foodNotes) {
+                        message += `   │  ⚠️ Nota: ${entry.item.foodNotes}\n`;
+                    }
+                });
+                message += `\n`;
+            });
+
+            // 2. Renderizado de Productos Sueltos
+            looseItems.forEach(({ item, originalItem }) => {
+                const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
+                const priceText = item.finalListPrice < item.listPrice 
+                    ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` 
+                    : `($${item.finalListPrice.toFixed(2)})`;
+                const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : '';
 
                 if (isFoodItem) {
-                    message += `🔸 ${skuText}*${item.quantity}x ${item.name}* ${priceText}\n`;
+                    message += `• ${skuText}*${item.quantity}x ${item.name}* ${priceText}\n`;
                     originalItem?.foodModifiers?.forEach((mod: any) => {
                         const modPrice = mod.priceAdjustment > 0 ? `(+$${mod.priceAdjustment.toFixed(2)})` : '';
-                        const cleanModName = mod.name.includes('x ')
-                            ? `${parseInt(mod.name.split('x')[0]) * item.quantity}x ${mod.name.split('x ')[1]}`
-                            : `${item.quantity}x ${mod.name}`;
-                        message += `   └ ${cleanModName} ${modPrice}\n`;
+                        message += `   └ ${mod.name} ${modPrice}\n`;
                     });
                 } else {
-                    message += `🔸 ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ""} ${priceText}\n`;
+                    message += `• ${skuText}${item.quantity}x ${item.name} ${item.variantInfo ? `(${item.variantInfo})` : ''} ${priceText}\n`;
                 }
 
                 if (item.foodNotes) {

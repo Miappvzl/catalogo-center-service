@@ -361,6 +361,56 @@ export default function OrdersPage() {
         return selectedOrder.delivery_info?.match(/⚠️ VUELTO VIRTUAL: \$([0-9.]+) \(Entregó: \$([0-9.]+) \| Correo: ([^)]+)\)/) || null;
     }, [selectedOrder]);
 
+    // 💎 RECONSTRUCTOR VISUAL DE COMANDA: Agrupa productos de un mismo combo en una sola entidad
+    const groupedOrderItems = useMemo(() => {
+        if (!selectedOrder?.order_items) return []
+
+        const groups: Array<{
+            type: 'single' | 'combo'
+            comboName?: string
+            quantity: number
+            items: Array<OrderItem & { cleanVariantInfo: string | null }>
+        }> = []
+
+        const comboMap = new Map<string, Array<OrderItem & { cleanVariantInfo: string | null }>>()
+        const comboRegex = /\[Combo:\s*([^\]]+)\]/i
+
+        selectedOrder.order_items.forEach((item) => {
+            const match = item.variant_info ? item.variant_info.match(comboRegex) : null
+            const cleanVariant = item.variant_info
+                ? item.variant_info.replace(comboRegex, '').replace(/^[•\s-]+|[•\s-]+$/g, '').trim() || null
+                : null
+
+            const enrichedItem = { ...item, cleanVariantInfo: cleanVariant }
+
+            if (match) {
+                const comboName = match[1].trim()
+                if (!comboMap.has(comboName)) {
+                    comboMap.set(comboName, [])
+                }
+                comboMap.get(comboName)!.push(enrichedItem)
+            } else {
+                groups.push({
+                    type: 'single',
+                    quantity: item.quantity,
+                    items: [enrichedItem]
+                })
+            }
+        })
+
+        // Agrupamos los combos detectados
+        comboMap.forEach((comboItems, comboName) => {
+            groups.push({
+                type: 'combo',
+                comboName,
+                quantity: comboItems[0]?.quantity || 1,
+                items: comboItems
+            })
+        })
+
+        return groups
+    }, [selectedOrder?.order_items])
+
     return (
         <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-900 selection:text-white">
 
@@ -910,28 +960,107 @@ export default function OrdersPage() {
                                     })()}
                                 </div>
 
-                                {/* Artículos / Comanda de Cocina */}
+                             {/* Artículos / Comanda de Cocina Unificada */}
                                 <div>
-                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5">
-                                        {storeType === 'restaurant' ? 'Comanda de Pedido' : 'Artículos del Pedido'} ({selectedOrder.order_items.length})
-                                    </p>
-                                    <div className="space-y-2 mb-2">
-                                        {selectedOrder.order_items.map((item) => {
-                                            const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0;
-                                            const hasCustomerNotes = Boolean(item.customer_notes && item.customer_notes.trim() !== '');
+                                    <div className="flex items-center justify-between mb-2.5">
+                                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                                            {storeType === 'restaurant' ? 'Comanda de Pedido' : 'Artículos del Pedido'} ({groupedOrderItems.length})
+                                        </p>
+                                        <span className="text-[10px] font-mono text-neutral-400">
+                                            {selectedOrder.order_items.length} unidades totales
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2.5 mb-2">
+                                        {groupedOrderItems.map((group, gIdx) => {
+                                            // =========================================================
+                                            // CASO A: TARJETA DE COMBO CONSOLIDADA
+                                            // =========================================================
+                                            if (group.type === 'combo') {
+                                                return (
+                                                    <div 
+                                                        key={`combo-group-${gIdx}`} 
+                                                        className="bg-neutral-50/80 rounded-xl p-3 border border-neutral-200/80 space-y-2.5 shadow-2xs"
+                                                    >
+                                                        {/* Cabecera del Combo */}
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 shadow-2xs">
+                                                                    <Package size={10} strokeWidth={2.5} />
+                                                                    <span>COMBO</span>
+                                                                </span>
+                                                                <h4 className="font-black text-xs text-neutral-900 truncate leading-tight capitalize">
+                                                                    {group.comboName}
+                                                                </h4>
+                                                            </div>
+                                                            <span className="font-mono font-black text-xs text-neutral-900 bg-white px-2.5 py-0.5 rounded-md border border-neutral-200/80 shadow-2xs shrink-0">
+                                                                x{group.quantity}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Árbol de Componentes del Combo */}
+                                                        <div className="bg-white rounded-lg p-2.5 border border-neutral-200/60 divide-y divide-neutral-100 space-y-2">
+                                                            {group.items.map((subItem, sIdx) => {
+                                                                const hasModifiers = Array.isArray(subItem.modifiers_selected) && subItem.modifiers_selected.length > 0
+                                                                const hasCustomerNotes = Boolean(subItem.customer_notes && subItem.customer_notes.trim() !== '')
+
+                                                                return (
+                                                                    <div key={subItem.id || sIdx} className="pt-2 first:pt-0 space-y-1">
+                                                                        <div className="flex items-start justify-between gap-2">
+                                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                                <span className="text-neutral-400 font-mono text-[11px] shrink-0">└</span>
+                                                                                <p className="font-bold text-xs text-neutral-800 truncate leading-snug">
+                                                                                    {subItem.product_name}
+                                                                                </p>
+                                                                            </div>
+                                                                            {subItem.cleanVariantInfo && (
+                                                                                <span className="text-[10px] text-neutral-500 font-mono shrink-0 bg-neutral-50 px-1.5 py-0.5 rounded border border-neutral-200/50">
+                                                                                    {subItem.cleanVariantInfo}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Modificadores del plato dentro del combo */}
+                                                                        {hasModifiers && (
+                                                                            <div className="pl-4 text-[11px] space-y-0.5 text-neutral-600">
+                                                                                {subItem.modifiers_selected!.map((mod, mIdx) => (
+                                                                                    <p key={mIdx}>+ {mod.name}</p>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Notas de Cocina */}
+                                                                        {hasCustomerNotes && (
+                                                                            <div className="ml-4 mt-1 bg-amber-50/80 border border-amber-200/60 rounded px-2 py-1 text-[10px] text-amber-900 font-medium">
+                                                                                <span className="font-bold uppercase tracking-wider text-amber-700 mr-1 font-mono">Nota:</span>
+                                                                                &quot;{subItem.customer_notes}&quot;
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+
+                                            // =========================================================
+                                            // CASO B: PRODUCTO INDIVIDUAL SUELTO
+                                            // =========================================================
+                                            const item = group.items[0]
+                                            const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0
+                                            const hasCustomerNotes = Boolean(item.customer_notes && item.customer_notes.trim() !== '')
 
                                             return (
                                                 <div key={item.id} className="bg-white p-3 rounded-lg border border-neutral-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.01)] space-y-2">
-                                                    {/* Nombre del Plato y Cantidad */}
                                                     <div className="flex justify-between items-start gap-2">
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-bold text-xs text-neutral-900 tracking-tight leading-snug">
                                                                 {item.product_name}
                                                             </p>
-                                                            {/* Fallback de Variante para tiendas Retail */}
-                                                            {!hasModifiers && item.variant_info && item.variant_info !== 'N/A' && (
+                                                            {!hasModifiers && item.cleanVariantInfo && (
                                                                 <p className="text-[10px] text-neutral-500 font-mono mt-0.5">
-                                                                    {item.variant_info}
+                                                                    {item.cleanVariantInfo}
                                                                 </p>
                                                             )}
                                                         </div>
@@ -940,7 +1069,6 @@ export default function OrdersPage() {
                                                         </span>
                                                     </div>
 
-                                                    {/* Desglose de Modificadores (Extras, Términos, Combos) */}
                                                     {hasModifiers && (
                                                         <div className="pl-2 border-l-2 border-neutral-200 space-y-1 pt-1">
                                                             {item.modifiers_selected!.map((mod, mIdx) => (
@@ -958,7 +1086,6 @@ export default function OrdersPage() {
                                                         </div>
                                                     )}
 
-                                                    {/* Alerta Destacada de Instrucciones de Cocina */}
                                                     {hasCustomerNotes && (
                                                         <div className="bg-amber-50/80 border border-amber-200/70 rounded p-2 text-[11px] text-amber-900 font-medium">
                                                             <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block mb-0.5 font-mono">
@@ -968,11 +1095,10 @@ export default function OrdersPage() {
                                                         </div>
                                                     )}
                                                 </div>
-                                            );
+                                            )
                                         })}
                                     </div>
                                 </div>
-
                                 {/* Actualizador de Estado */}
                                 <div className="pt-5 border-t border-neutral-200/50">
                                     <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5">Actualizar Estado</p>
@@ -1234,15 +1360,37 @@ export default function OrdersPage() {
                     <div className="py-2 border-b-2 border-black my-1">
                         <p className="text-[10px] font-black uppercase pb-1 border-b border-black mb-2">PLATOS Y MODIFICADORES</p>
                         <div className="space-y-2">
-                            {selectedOrder.order_items.map((item) => {
-                                const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0;
+                          <div className="space-y-2">
+                            {groupedOrderItems.map((group, gIdx) => {
+                                if (group.type === 'combo') {
+                                    return (
+                                        <div key={`print-combo-${gIdx}`} className="text-left space-y-1">
+                                            <p className="text-xs font-black uppercase">
+                                                [{group.quantity}x] COMBO: {group.comboName}
+                                            </p>
+                                            <div className="pl-2 text-[10px] space-y-0.5">
+                                                {group.items.map((sub, sIdx) => {
+                                                    const isLast = sIdx === group.items.length - 1
+                                                    return (
+                                                        <p key={sIdx}>
+                                                            {isLast ? '└' : '├'} {sub.product_name} {sub.cleanVariantInfo ? `(${sub.cleanVariantInfo})` : ''}
+                                                        </p>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
+                                const item = group.items[0]
+                                const hasModifiers = Array.isArray(item.modifiers_selected) && item.modifiers_selected.length > 0
+
                                 return (
                                     <div key={item.id} className="text-left">
                                         <div className="flex justify-between items-start font-bold">
                                             <span className="text-xs">[{item.quantity}x] {item.product_name}</span>
                                         </div>
 
-                                        {/* Modificadores */}
                                         {hasModifiers && (
                                             <div className="pl-3 text-[10px] space-y-0.5 mt-0.5">
                                                 {item.modifiers_selected!.map((mod, mIdx) => (
@@ -1251,15 +1399,15 @@ export default function OrdersPage() {
                                             </div>
                                         )}
 
-                                        {/* Notas Especiales de Cocina */}
                                         {item.customer_notes && (
                                             <div className="pl-3 mt-1 font-bold text-[10px] uppercase">
                                                 <p>&gt;&gt; NOTA: &quot;{item.customer_notes}&quot;</p>
                                             </div>
                                         )}
                                     </div>
-                                );
+                                )
                             })}
+                        </div>
                         </div>
                     </div>
 

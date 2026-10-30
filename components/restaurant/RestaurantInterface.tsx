@@ -9,7 +9,7 @@ import { getSupabase } from '@/lib/supabase-client'
 import CustomerAuth from '@/components/passport/CustomerAuth'
 import { getTenantHref } from '@/utils/navigation'
 import { isValidUUID } from '@/utils/validations'
-import { Search, SlidersHorizontal, ArrowRight, Home, User, Heart, ShoppingBag, X, Utensils, RotateCcw } from 'lucide-react'
+import { Search, SlidersHorizontal, ArrowRight, Home, User, Heart, ShoppingBag, X, Utensils, RotateCcw, Package, Layers } from 'lucide-react'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import { evaluateStoreHours } from '@/utils/storeHours'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -553,6 +553,56 @@ export default function RestaurantInterface({
         setIsFoodModalOpen(true)
     }, [])
 
+    // 💎 ACCIÓN ATÓMICA: Despacha el combo completo hacia el Atomic Bundle Engine de Zustand
+    const handleAddComboToCart = useCallback((collection: any, e?: React.MouseEvent) => {
+        if (!collection || !Array.isArray(collection.collection_items)) return
+
+        // 1. Resolvemos los platos reales asociados al combo
+        const bundleItems = collection.collection_items
+            .filter((it: any) => it.item_type === 'product' && it.product_id)
+            .map((it: any) => {
+                const prod = products.find((p: any) => String(p.id) === String(it.product_id))
+                if (!prod) return null
+                return {
+                    product: prod,
+                    quantity: 1,
+                    variant: null,
+                    foodModifiers: [],
+                    foodNotes: ''
+                }
+            })
+            .filter(Boolean)
+
+        if (bundleItems.length === 0) return
+
+        // 2. Determinamos si aplica precio cerrado o valor base
+        const nominalSum = bundleItems.reduce((acc: number, item: any) => acc + Number(item.product.usd_cash_price || 0), 0)
+        const customPrice = collection.settings?.combo_price_usd ? Number(collection.settings.combo_price_usd) : null
+        const finalComboPrice = customPrice && customPrice > 0 ? customPrice : nominalSum
+
+        // 3. Inyección atómica en Zustand sin re-renderizar la raíz
+        useCart.getState().addBundle(
+            {
+                collectionId: collection.id,
+                name: collection.name,
+                comboPriceUSD: finalComboPrice
+            },
+            bundleItems
+        )
+
+        // 4. Efectos sensoriales: física parabólica y squash & stretch en la bolsa
+        const targetEl = e?.currentTarget as HTMLElement | null
+        const rect = targetEl ? targetEl.getBoundingClientRect() : null
+
+        document.dispatchEvent(new CustomEvent('flyToCart', {
+            detail: {
+                startRect: rect,
+                src: collection.image_url || bundleItems[0]?.product?.image_url || null
+            }
+        }))
+        document.dispatchEvent(new CustomEvent('cartImpact'))
+    }, [products])
+
     // 🚀 MOTOR SCROLL-SPY DE ALTA FIDELIDAD (Algoritmo de Ocupación Visual Dominante)
     useEffect(() => {
         if (isFilteringActive) return
@@ -654,7 +704,7 @@ export default function RestaurantInterface({
         }
     }, [categories, isFilteringActive])
 
-      // 🚀 REFERENCIA AL INDICADOR GPU MÓVIL (0% CPU en gama baja)
+    // 🚀 REFERENCIA AL INDICADOR GPU MÓVIL (0% CPU en gama baja)
     const mobileIndicatorRef = useRef<HTMLSpanElement>(null)
 
     useEffect(() => {
@@ -819,8 +869,8 @@ export default function RestaurantInterface({
                                 }
                             }}
                             className={`w-11 h-11 border-[length:var(--border-width-ui)] flex items-center justify-center active:scale-95 shrink-0 transition-all ${activeFiltersCount > 0
-                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-sm'
-                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
+                                ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-sm'
+                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
                                 }`}
                             style={{ borderRadius: 'var(--radius-btn, 12px)' }}
                             title={activeFiltersCount > 0 ? "Limpiar filtros" : "Filtrar menú"}
@@ -872,67 +922,64 @@ export default function RestaurantInterface({
                             aria-label="Selector de categorías"
                             className="w-full py-2 overflow-hidden"
                         >
-                      {/* 🚀 CARRIL MÓVIL COMPACTO Y DE ALTO RENDIMIENTO (Escala 48px) */}
-                            <div 
+                            {/* 🚀 CARRIL MÓVIL COMPACTO Y DE ALTO RENDIMIENTO (Escala 48px) */}
+                            <div
                                 id="mobile-categories-rail"
                                 className="relative flex items-start gap-3 sm:gap-4 overflow-x-auto no-scrollbar pl-4 pr-4 pt-1 pb-3 snap-x snap-mandatory scroll-pl-4"
                             >
-                                <button 
+                                <button
                                     type="button"
                                     id="rail-cat-todos"
-                                    onClick={() => handleScrollToSection('Todos')} 
+                                    onClick={() => handleScrollToSection('Todos')}
                                     className="flex flex-col items-center gap-1 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
                                 >
-                                    <div 
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 bg-[var(--store-surface)] shadow-2xs ${
-                                            activeCategory === 'Todos' 
-                                                ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105' 
+                                    <div
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 bg-[var(--store-surface)] shadow-2xs ${activeCategory === 'Todos'
+                                                ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
                                                 : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
-                                        }`}
+                                            }`}
                                     >
-                                        <Utensils 
-                                            size={16} 
-                                            strokeWidth={2} 
-                                            className={activeCategory === 'Todos' ? 'text-[var(--store-primary)]' : 'text-[var(--store-surface-text)]'} 
+                                        <Utensils
+                                            size={16}
+                                            strokeWidth={2}
+                                            className={activeCategory === 'Todos' ? 'text-[var(--store-primary)]' : 'text-[var(--store-surface-text)]'}
                                         />
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className={`text-[10px] tracking-tight leading-tight transition-colors duration-200 ${
-                                            activeCategory === 'Todos' 
-                                                ? 'text-[var(--store-primary)] font-black' 
+                                        <span className={`text-[10px] tracking-tight leading-tight transition-colors duration-200 ${activeCategory === 'Todos'
+                                                ? 'text-[var(--store-primary)] font-black'
                                                 : 'text-[var(--store-surface-text)] font-semibold'
-                                        }`}>
+                                            }`}>
                                             Todos
                                         </span>
                                     </div>
                                 </button>
-                                
+
                                 {categories.map(cat => {
                                     const isActive = activeCategory === cat
                                     const imgUrl = categoryImages[cat]
 
                                     return (
-                                        <button 
-                                            key={cat} 
+                                        <button
+                                            key={cat}
                                             type="button"
                                             id={`rail-cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
-                                            onClick={() => handleScrollToSection(cat)} 
+                                            onClick={() => handleScrollToSection(cat)}
                                             className="flex flex-col items-center gap-1 shrink-0 snap-start outline-none group active:scale-95 transition-transform select-none"
                                         >
-                                            <div 
-                                                className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200 relative bg-[var(--store-surface)] shadow-2xs ${
-                                                    isActive 
-                                                        ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105' 
+                                            <div
+                                                className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200 relative bg-[var(--store-surface)] shadow-2xs ${isActive
+                                                        ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
                                                         : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
-                                                }`}
+                                                    }`}
                                             >
                                                 {imgUrl ? (
-                                                    <Image 
-                                                        src={getOptimizedUrl(imgUrl)} 
-                                                        alt={cat} 
-                                                        fill 
-                                                        sizes="48px" 
-                                                        className="object-cover p-1 rounded-full" 
+                                                    <Image
+                                                        src={getOptimizedUrl(imgUrl)}
+                                                        alt={cat}
+                                                        fill
+                                                        sizes="48px"
+                                                        className="object-cover p-1 rounded-full"
                                                     />
                                                 ) : (
                                                     <span className="text-[9px] font-black uppercase text-[var(--store-surface-text)] opacity-40 tracking-wider">
@@ -941,11 +988,10 @@ export default function RestaurantInterface({
                                                 )}
                                             </div>
                                             <div className="flex flex-col items-center max-w-[58px]">
-                                                <span className={`text-[10px] tracking-tight truncate w-full text-center leading-tight transition-colors duration-200 ${
-                                                    isActive 
-                                                        ? 'text-[var(--store-primary)] font-black' 
+                                                <span className={`text-[10px] tracking-tight truncate w-full text-center leading-tight transition-colors duration-200 ${isActive
+                                                        ? 'text-[var(--store-primary)] font-black'
                                                         : 'text-[var(--store-surface-text)] font-semibold'
-                                                }`}>
+                                                    }`}>
                                                     {cat}
                                                 </span>
                                             </div>
@@ -954,7 +1000,7 @@ export default function RestaurantInterface({
                                 })}
 
                                 {/* 🚀 PASTILLA MAGNÉTICA GPU COMPACTA */}
-                                <span 
+                                <span
                                     ref={mobileIndicatorRef}
                                     className="absolute bottom-0.5 h-0.5 bg-[var(--store-primary)] rounded-full transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-transform pointer-events-none opacity-0"
                                     style={{ left: 0 }}
@@ -982,7 +1028,7 @@ export default function RestaurantInterface({
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                 {favoriteProducts.map((dish, idx) => (
-                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={true}  isOutOfStock={Number(dish.stock ?? 0) <= 0}  />
+                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={true} isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                 ))}
                             </div>
                         )}
@@ -990,33 +1036,99 @@ export default function RestaurantInterface({
                 ) : isFilteringActive ? (
                     <div className="px-5 py-6 space-y-4">
 
-                        {/* 🚀 BANNER HERO DEL COMBO ACTIVO EN MÓVIL */}
-                        {selectedCollectionData && (
-                            <div id="restaurant-combo-view-anchor" className="p-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] text-left space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2 py-0.5 rounded">
-                                        {selectedCollectionData.settings?.badge_text || 'Combo Seleccionado'}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveCollectionSlug(null)}
-                                        className="text-xs font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] underline flex items-center gap-1"
-                                    >
-                                        <X size={12} /> Ver Todo el Menú
-                                    </button>
+                    {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN MÓVIL */}
+                        {selectedCollectionData && (() => {
+                            const isCombo = selectedCollectionData.settings?.entity_type === 'combo' || Boolean(selectedCollectionData.settings?.combo_price_usd)
+                            const nominalSum = (selectedCollectionData.collection_items || []).reduce((acc: number, it: any) => {
+                                if (it.item_type === 'product' && it.product_id) {
+                                    const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                    return acc + Number(p?.usd_cash_price || 0)
+                                }
+                                return acc
+                            }, 0)
+                            const customPrice = selectedCollectionData.settings?.combo_price_usd ? Number(selectedCollectionData.settings.combo_price_usd) : null
+                            const finalPrice = isCombo && customPrice && customPrice > 0 ? customPrice : nominalSum
+                            const savings = isCombo && nominalSum > finalPrice ? nominalSum - finalPrice : 0
+                            const itemCount = selectedCollectionData.collection_items?.length || 0
+
+                            return (
+                                <div id="restaurant-combo-view-anchor" className="p-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] text-left space-y-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            {isCombo ? (
+                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2 py-0.5 rounded shadow-2xs flex items-center gap-1">
+                                                    <Package size={10} strokeWidth={2.5} />
+                                                    <span>{selectedCollectionData.settings?.badge_text || 'Combo Especial'}</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-200/80 px-2 py-0.5 rounded flex items-center gap-1">
+                                                    <Layers size={10} strokeWidth={2.2} />
+                                                    <span>{selectedCollectionData.settings?.badge_text || 'Colección'}</span>
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveCollectionSlug(null)}
+                                            className="text-xs font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] underline flex items-center gap-1"
+                                        >
+                                            <X size={12} /> Ver Todo el Menú
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <h2 className="text-lg font-black text-[var(--store-text-main)] leading-tight">
+                                            {selectedCollectionData.name}
+                                        </h2>
+                                        {selectedCollectionData.description && (
+                                            <p className="text-xs text-[var(--store-surface-text)] leading-relaxed mt-1">
+                                                {selectedCollectionData.description}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Pie del Banner: Si es Combo muestra compra en 1 clic; si es Colección muestra contador informativo */}
+                                    <div className="pt-2.5 border-t border-[var(--store-border)]/50 flex items-center justify-between gap-3">
+                                        {isCombo ? (
+                                            <>
+                                                <div className="flex flex-col text-left">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-base font-black font-mono text-[var(--store-text-main)] leading-none">
+                                                            ${finalPrice.toFixed(2)}
+                                                        </span>
+                                                        {savings > 0 && (
+                                                            <span className="text-[10px] font-mono line-through text-[var(--store-surface-text)]">
+                                                                ${nominalSum.toFixed(2)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] mt-0.5 leading-none">
+                                                        Bs. {(finalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleAddComboToCart(selectedCollectionData, e)}
+                                                    className="px-4 py-2 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn,999px)] font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0"
+                                                >
+                                                    <ShoppingBag size={13} strokeWidth={2.5} />
+                                                    <span>Pedir Combo</span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="flex items-center justify-between w-full text-[11px] font-mono text-[var(--store-surface-text)]">
+                                                <span>{itemCount} platos curados en esta lista</span>
+                                                <span className="text-[10px] font-bold text-[var(--store-primary)] uppercase tracking-wider">
+                                                    Precios individuales abajo ↓
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-
-                                <h2 className="text-lg font-black text-[var(--store-text-main)] leading-tight">
-                                    {selectedCollectionData.name}
-                                </h2>
-
-                                {selectedCollectionData.description && (
-                                    <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
-                                        {selectedCollectionData.description}
-                                    </p>
-                                )}
-                            </div>
-                        )}
+                            )
+                        })()}
 
                         <div className="flex items-center justify-between border-b border-[var(--store-border)]/40 pb-2">
                             <h2 className="text-base font-black text-[var(--store-text-main)]">
@@ -1054,7 +1166,7 @@ export default function RestaurantInterface({
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                 {filteredProductsList.map((dish, idx) => (
-                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
+                                    <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                 ))}
                             </div>
                         )}
@@ -1203,12 +1315,12 @@ export default function RestaurantInterface({
                             </div>
                         )}
 
-                        {/* 🍔 SECCIÓN: COMBOS & ESPECIALES GASTRONÓMICOS (MÓVIL) */}
+                       {/* 🍔 SECCIÓN: COMBOS & COLECCIONES GASTRONÓMICAS (MÓVIL) */}
                         {collections && collections.length > 0 && !isFilteringActive && (
                             <div className="px-5 pb-3">
                                 <div className="mb-3 border-b border-[var(--store-border)]/40 pb-2 flex items-center justify-between">
                                     <h3 className="text-base font-black text-[var(--store-text-main)] tracking-tight">
-                                        Combos & Especiales
+                                        Combos & Colecciones
                                     </h3>
                                     <span className="text-[10px] font-mono text-[var(--store-surface-text)]">
                                         {collections.length} disponibles
@@ -1217,10 +1329,10 @@ export default function RestaurantInterface({
 
                                 <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory">
                                     {collections.map((col: any) => {
+                                        const isCombo = col.settings?.entity_type === 'combo' || Boolean(col.settings?.combo_price_usd)
                                         const itemCount = col.collection_items?.length || 0
 
-                                        // Cálculo en vivo del precio consolidado del combo
-                                        const comboTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
+                                        const nominalTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
                                             if (it.item_type === 'product' && it.product_id) {
                                                 const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
                                                 return acc + Number(p?.usd_cash_price || 0)
@@ -1228,9 +1340,10 @@ export default function RestaurantInterface({
                                             return acc
                                         }, 0)
 
-                                        const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(comboTotalUSD * activeRate)
+                                        const customPriceUSD = col.settings?.combo_price_usd ? Number(col.settings.combo_price_usd) : null
+                                        const finalPriceUSD = isCombo && customPriceUSD && customPriceUSD > 0 ? customPriceUSD : nominalTotalUSD
+                                        const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(finalPriceUSD * activeRate)
 
-                                        // Miniaturas de los platos incluidos
                                         const dishThumbs = (col.collection_items || [])
                                             .filter((it: any) => it.item_type === 'product' && it.product_id)
                                             .slice(0, 3)
@@ -1244,19 +1357,19 @@ export default function RestaurantInterface({
                                             <div
                                                 key={col.id}
                                                 onClick={() => {
-                                                    setActiveCollectionSlug(col.slug);
+                                                    setActiveCollectionSlug(col.slug)
                                                     setTimeout(() => {
-                                                        const anchor = document.getElementById('restaurant-menu-anchor');
+                                                        const anchor = document.getElementById('restaurant-menu-anchor')
                                                         if (anchor) {
-                                                            const yOffset = -120;
-                                                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
-                                                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                                                            const yOffset = -120
+                                                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                                                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
                                                         }
-                                                    }, 50);
+                                                    }, 50)
                                                 }}
                                                 className="w-[84vw] max-w-[340px] shrink-0 snap-start p-4.5 rounded-[var(--radius-card)] bg-neutral-950 border border-neutral-800 shadow-lg flex flex-col justify-between gap-3.5 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden text-left"
                                             >
-                                                {/* 🍔 FOTO VIVA CON GRADIENTE OSCURO CINEMÁTICO (Alto Contraste y Apetito) */}
+                                                {/* Portada con Gradiente Cinemático */}
                                                 {col.image_url ? (
                                                     <div className="absolute inset-0 z-0">
                                                         <Image
@@ -1274,13 +1387,15 @@ export default function RestaurantInterface({
 
                                                 {/* Capa Superior: Badge de Contraste + Miniaturas */}
                                                 <div className="relative z-10 flex items-center justify-between gap-2">
-                                                    {col.settings?.badge_text ? (
-                                                        <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white text-neutral-950 px-2.5 py-0.5 rounded shadow-xs">
-                                                            {col.settings.badge_text}
+                                                    {isCombo ? (
+                                                        <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white text-neutral-950 px-2.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                                            <Package size={10} strokeWidth={2.5} />
+                                                            <span>{col.settings?.badge_text || 'COMBO'}</span>
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-white/90 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded border border-white/15">
-                                                            Combo Especial
+                                                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-white/90 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded border border-white/15 flex items-center gap-1">
+                                                            <Layers size={10} strokeWidth={2.2} />
+                                                            <span>{col.settings?.badge_text || 'COLECCIÓN'}</span>
                                                         </span>
                                                     )}
 
@@ -1295,7 +1410,7 @@ export default function RestaurantInterface({
                                                     )}
                                                 </div>
 
-                                                {/* Título y Descripción con Lectura Impecable */}
+                                                {/* Título y Descripción */}
                                                 <div className="relative z-10 space-y-1">
                                                     <h4 className="font-black text-base text-white leading-tight drop-shadow-xs line-clamp-1">
                                                         {col.name}
@@ -1307,25 +1422,32 @@ export default function RestaurantInterface({
                                                     )}
                                                 </div>
 
-                                                {/* Precios en Blanco Puro y Tasa BCV */}
+                                                {/* Pie: Precios (Combo) vs Contador de Platos (Colección) */}
                                                 <div className="relative z-10 pt-2.5 border-t border-white/15 flex items-center justify-between">
-                                                    {comboTotalUSD > 0 ? (
+                                                    {isCombo && finalPriceUSD > 0 ? (
                                                         <div className="flex flex-col text-left">
-                                                            <span className="text-base font-black font-mono text-white leading-none">
-                                                                ${comboTotalUSD.toFixed(2)}
-                                                            </span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-base font-black font-mono text-white leading-none">
+                                                                    ${finalPriceUSD.toFixed(2)}
+                                                                </span>
+                                                                {customPriceUSD && nominalTotalUSD > finalPriceUSD && (
+                                                                    <span className="text-[10px] font-mono line-through text-white/50">
+                                                                        ${nominalTotalUSD.toFixed(2)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <span className="text-[10px] font-mono text-neutral-300 mt-1 leading-none">
                                                                 Bs. {formattedBs}
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs font-mono text-neutral-400">
-                                                            {itemCount} opciones
+                                                        <span className="text-xs font-mono text-neutral-300">
+                                                            {itemCount} {itemCount === 1 ? 'plato' : 'platos'}
                                                         </span>
                                                     )}
 
                                                     <span className="text-xs font-bold text-white flex items-center gap-1">
-                                                        Ver Combo &rarr;
+                                                        {isCombo ? 'Ver Combo →' : 'Explorar →'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1334,7 +1456,6 @@ export default function RestaurantInterface({
                                 </div>
                             </div>
                         )}
-
                         {/* Menú por Categorías */}
                         <div className="px-5 space-y-9 pt-1">
                             {categories.map((catName) => {
@@ -1349,7 +1470,7 @@ export default function RestaurantInterface({
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                             {dishes.map((dish, idx) => (
-                                                <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
+                                                <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                             ))}
                                         </div>
                                     </section>
@@ -1370,8 +1491,8 @@ export default function RestaurantInterface({
                             type="button"
                             onClick={() => setBottomTab('home')}
                             className={`flex flex-col items-center justify-center py-1 transition-colors select-none w-full ${bottomTab === 'home'
-                                    ? 'text-[var(--store-text-main)] font-bold'
-                                    : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] font-medium'
+                                ? 'text-[var(--store-text-main)] font-bold'
+                                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] font-medium'
                                 }`}
                         >
                             <div
@@ -1404,8 +1525,8 @@ export default function RestaurantInterface({
                             type="button"
                             onClick={() => setBottomTab('favorites')}
                             className={`flex flex-col items-center justify-center py-1 transition-colors select-none w-full ${bottomTab === 'favorites'
-                                    ? 'text-rose-500 font-bold'
-                                    : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] font-medium'
+                                ? 'text-rose-500 font-bold'
+                                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] font-medium'
                                 }`}
                         >
                             <div
@@ -1491,8 +1612,8 @@ export default function RestaurantInterface({
                                     else setIsFilterModalOpen(true)
                                 }}
                                 className={`w-12 h-12 shrink-0 flex items-center justify-center transition-all border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] active:scale-95 ${activeFiltersCount > 0
-                                        ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
-                                        : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/30'
+                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
+                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/30'
                                     }`}
                                 style={{ borderRadius: 'var(--radius-btn, 12px)' }}
                                 title={activeFiltersCount > 0 ? "Limpiar filtros" : "Filtrar menú"}
@@ -1587,8 +1708,8 @@ export default function RestaurantInterface({
 
                                                         <span
                                                             className={`text-xs truncate transition-colors duration-200 ${isActive
-                                                                    ? 'font-black text-[var(--store-text-main)]'
-                                                                    : 'font-semibold text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
+                                                                ? 'font-black text-[var(--store-text-main)]'
+                                                                : 'font-semibold text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
                                                                 }`}
                                                         >
                                                             {cat}
@@ -1597,8 +1718,8 @@ export default function RestaurantInterface({
 
                                                     <span
                                                         className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-all duration-200 shrink-0 relative z-10 ${isActive
-                                                                ? 'bg-[var(--store-text-main)] text-[var(--store-bg)] font-bold shadow-2xs'
-                                                                : 'text-[var(--store-surface-text)] opacity-75 group-hover:opacity-100 bg-[var(--store-bg)]/40'
+                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-bg)] font-bold shadow-2xs'
+                                                            : 'text-[var(--store-surface-text)] opacity-75 group-hover:opacity-100 bg-[var(--store-bg)]/40'
                                                             }`}
                                                     >
                                                         {count}
@@ -1614,59 +1735,129 @@ export default function RestaurantInterface({
                         <main className="flex-1 min-w-0 space-y-16 pb-32">
                             <div id="restaurant-desktop-content-anchor" className="w-full h-px" />
 
-                            {/* 🚀 BANNER HERO DE COMBO ACTIVO EN DESKTOP */}
-                            {selectedCollectionData && (
-                                <div className="p-6 md:p-8 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center justify-between gap-6 text-left animate-in fade-in">
-                                    <div className="space-y-1.5 max-w-xl">
-                                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2.5 py-0.5 rounded-full">
-                                            {selectedCollectionData.settings?.badge_text || 'Combo Seleccionado'}
-                                        </span>
-                                        <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight">
-                                            {selectedCollectionData.name}
-                                        </h2>
-                                        {selectedCollectionData.description && (
-                                            <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
-                                                {selectedCollectionData.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveCollectionSlug(null)}
-                                        className="px-4 py-2.5 rounded-[var(--radius-btn)] bg-[var(--store-bg)] border border-[var(--store-border)] text-xs font-bold text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
-                                    >
-                                        <X size={14} />
-                                        <span>Ver Menú Completo</span>
-                                    </button>
-                                </div>
-                            )}
+                          {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN DESKTOP */}
+                            {selectedCollectionData && (() => {
+                                const isCombo = selectedCollectionData.settings?.entity_type === 'combo' || Boolean(selectedCollectionData.settings?.combo_price_usd)
+                                const nominalSum = (selectedCollectionData.collection_items || []).reduce((acc: number, it: any) => {
+                                    if (it.item_type === 'product' && it.product_id) {
+                                        const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                        return acc + Number(p?.usd_cash_price || 0)
+                                    }
+                                    return acc
+                                }, 0)
+                                const customPrice = selectedCollectionData.settings?.combo_price_usd ? Number(selectedCollectionData.settings.combo_price_usd) : null
+                                const finalPrice = isCombo && customPrice && customPrice > 0 ? customPrice : nominalSum
+                                const savings = isCombo && nominalSum > finalPrice ? nominalSum - finalPrice : 0
+                                const itemCount = selectedCollectionData.collection_items?.length || 0
 
-                            {/* 🍔 RIEL DE COMBOS VISUALES EN DESKTOP (ALTO IMPACTO GASTRONÓMICO) */}
+                                return (
+                                    <div className="p-6 md:p-8 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center justify-between gap-6 text-left animate-in fade-in">
+                                        <div className="space-y-2 max-w-xl">
+                                            <div className="flex items-center gap-2">
+                                                {isCombo ? (
+                                                    <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Package size={11} strokeWidth={2.5} />
+                                                        <span>{selectedCollectionData.settings?.badge_text || 'Combo Especial'}</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-200/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Layers size={11} strokeWidth={2.2} />
+                                                        <span>{selectedCollectionData.settings?.badge_text || 'Colección Temática'}</span>
+                                                    </span>
+                                                )}
+                                                <span className="text-[11px] font-mono text-[var(--store-surface-text)]">
+                                                    ({itemCount} {itemCount === 1 ? 'plato' : 'platos'})
+                                                </span>
+                                            </div>
+
+                                            <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight">
+                                                {selectedCollectionData.name}
+                                            </h2>
+                                            {selectedCollectionData.description && (
+                                                <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
+                                                    {selectedCollectionData.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-4 shrink-0">
+                                            {isCombo ? (
+                                                <>
+                                                    <div className="text-right leading-none">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <span className="text-xl font-black font-mono text-[var(--store-text-main)] leading-none">
+                                                                ${finalPrice.toFixed(2)} USD
+                                                            </span>
+                                                            {savings > 0 && (
+                                                                <span className="text-xs font-mono line-through text-[var(--store-surface-text)]">
+                                                                    ${nominalSum.toFixed(2)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[11px] font-mono text-[var(--store-surface-text)] block mt-1.5 leading-none">
+                                                            Bs. {(finalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleAddComboToCart(selectedCollectionData, e)}
+                                                        className="px-5 py-3 rounded-[var(--radius-btn)] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+                                                    >
+                                                        <ShoppingBag size={14} strokeWidth={2.5} />
+                                                        <span>Pedir Combo Completo</span>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="text-xs font-mono font-medium text-[var(--store-surface-text)] px-3 py-1 bg-[var(--store-bg)] rounded-lg border border-[var(--store-border)]">
+                                                    Explorando platos individuales
+                                                </span>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveCollectionSlug(null)}
+                                                className="px-3 py-3 rounded-[var(--radius-btn)] bg-[var(--store-bg)] border border-[var(--store-border)] text-xs font-bold text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all flex items-center gap-1.5 active:scale-95"
+                                                title="Cerrar vista"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+
+                         {/* 🍔 RIEL DE COMBOS & COLECCIONES EN DESKTOP */}
                             {collections && collections.length > 0 && !isFilteringActive && (
                                 <section className="space-y-4 animate-in fade-in">
                                     <div className="border-b border-[var(--store-border)]/40 pb-2.5 flex items-center justify-between">
                                         <div>
                                             <h2 className="text-xl font-black tracking-tight text-[var(--store-text-main)]">
-                                                Combos & Especiales del Menú
+                                                Combos & Colecciones del Menú
                                             </h2>
                                             <p className="text-xs text-[var(--store-surface-text)] mt-0.5">
-                                                Combinaciones preparadas con precio especial para pedir en un toque
+                                                Paquetes con precio especial y curadurías temáticas preparadas por la cocina
                                             </p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4.5">
                                         {collections.map((col: any) => {
-                                            const comboTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
+                                            const isCombo = col.settings?.entity_type === 'combo' || Boolean(col.settings?.combo_price_usd)
+                                            const itemCount = col.collection_items?.length || 0
+
+                                            const nominalTotalUSD = (col.collection_items || []).reduce((acc: number, it: any) => {
                                                 if (it.item_type === 'product' && it.product_id) {
                                                     const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
                                                     return acc + Number(p?.usd_cash_price || 0)
                                                 }
                                                 return acc
                                             }, 0)
-                                            const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(comboTotalUSD * activeRate)
 
-                                            // Extraer miniaturas de los platos incluidos
+                                            const customPriceUSD = col.settings?.combo_price_usd ? Number(col.settings.combo_price_usd) : null
+                                            const finalPriceUSD = isCombo && customPriceUSD && customPriceUSD > 0 ? customPriceUSD : nominalTotalUSD
+                                            const formattedBs = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(finalPriceUSD * activeRate)
+
                                             const dishThumbs = (col.collection_items || [])
                                                 .filter((it: any) => it.item_type === 'product' && it.product_id)
                                                 .slice(0, 4)
@@ -1680,20 +1871,19 @@ export default function RestaurantInterface({
                                                 <div
                                                     key={`desktop-col-${col.id}`}
                                                     onClick={() => {
-                                                        setActiveCollectionSlug(col.slug);
-                                                        // 🚀 Desplazamiento milimétrico sin interrupciones
+                                                        setActiveCollectionSlug(col.slug)
                                                         setTimeout(() => {
-                                                            const anchor = document.getElementById('restaurant-desktop-content-anchor');
+                                                            const anchor = document.getElementById('restaurant-desktop-content-anchor')
                                                             if (anchor) {
-                                                                const yOffset = -90;
-                                                                const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset;
-                                                                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                                                                const yOffset = -90
+                                                                const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                                                                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
                                                             }
-                                                        }, 40);
+                                                        }, 40)
                                                     }}
                                                     className="group relative rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)]/80 transition-all duration-300 shadow-[var(--shadow-ui)] p-5 flex flex-col justify-between gap-4 cursor-pointer text-left overflow-hidden active:scale-[0.99]"
                                                 >
-                                                    {/* Portada de Comida con Gradiente Suave */}
+                                                    {/* Portada */}
                                                     {col.image_url ? (
                                                         <div className="relative aspect-[16/8] w-full rounded-xl overflow-hidden bg-neutral-900 border border-[var(--store-border)]/30">
                                                             <Image
@@ -1706,16 +1896,32 @@ export default function RestaurantInterface({
                                                             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
                                                             <div className="absolute top-2.5 left-2.5 z-10">
-                                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white/95 text-neutral-900 px-2 py-0.5 rounded shadow-xs">
-                                                                    {col.settings?.badge_text || 'COMBO'}
-                                                                </span>
+                                                                {isCombo ? (
+                                                                    <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-white/95 text-neutral-900 px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                                                        <Package size={10} strokeWidth={2.5} />
+                                                                        <span>{col.settings?.badge_text || 'COMBO'}</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-950/80 backdrop-blur-md text-white border border-white/20 px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                                                        <Layers size={10} strokeWidth={2.2} />
+                                                                        <span>{col.settings?.badge_text || 'COLECCIÓN'}</span>
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="flex items-center justify-between">
-                                                            <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-[var(--store-primary)] text-[var(--store-primary-text)] px-2 py-0.5 rounded shadow-xs">
-                                                                {col.settings?.badge_text || 'COMBO'}
-                                                            </span>
+                                                            {isCombo ? (
+                                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                                                                    <Package size={10} strokeWidth={2.5} />
+                                                                    <span>{col.settings?.badge_text || 'COMBO'}</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-200/80 px-2 py-0.5 rounded flex items-center gap-1">
+                                                                    <Layers size={10} strokeWidth={2.2} />
+                                                                    <span>{col.settings?.badge_text || 'COLECCIÓN'}</span>
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )}
 
@@ -1730,7 +1936,7 @@ export default function RestaurantInterface({
                                                         )}
                                                     </div>
 
-                                                    {/* Pie de Tarjeta: Miniaturas de Platos + Precios */}
+                                                    {/* Pie: Miniaturas + Precios (Combo) o Platos (Colección) */}
                                                     <div className="pt-3 border-t border-[var(--store-border)]/30 flex items-center justify-between gap-3 mt-auto">
                                                         {dishThumbs.length > 0 ? (
                                                             <div className="flex items-center gap-1.5">
@@ -1742,24 +1948,35 @@ export default function RestaurantInterface({
                                                                     ))}
                                                                 </div>
                                                                 <span className="text-[10px] font-mono text-[var(--store-surface-text)] font-semibold">
-                                                                    {col.collection_items?.length} platos
+                                                                    {itemCount} platos
                                                                 </span>
                                                             </div>
                                                         ) : (
                                                             <span className="text-[11px] font-mono text-[var(--store-surface-text)]">
-                                                                {col.collection_items?.length || 0} opciones
+                                                                {itemCount} {itemCount === 1 ? 'opción' : 'opciones'}
                                                             </span>
                                                         )}
 
-                                                        {comboTotalUSD > 0 && (
+                                                        {isCombo && finalPriceUSD > 0 ? (
                                                             <div className="text-right shrink-0 leading-none">
-                                                                <span className="text-base font-black font-mono text-[var(--store-text-main)] leading-none">
-                                                                    ${comboTotalUSD.toFixed(2)}
-                                                                </span>
+                                                                <div className="flex items-center justify-end gap-1.5">
+                                                                    <span className="text-base font-black font-mono text-[var(--store-text-main)] leading-none">
+                                                                        ${finalPriceUSD.toFixed(2)}
+                                                                    </span>
+                                                                    {customPriceUSD && nominalTotalUSD > finalPriceUSD && (
+                                                                        <span className="text-[10px] font-mono line-through text-[var(--store-surface-text)]">
+                                                                            ${nominalTotalUSD.toFixed(2)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <span className="text-[10px] font-mono text-[var(--store-surface-text)] block mt-1 leading-none tabular-nums">
                                                                     Bs. {formattedBs}
                                                                 </span>
                                                             </div>
+                                                        ) : (
+                                                            <span className="text-xs font-bold text-[var(--store-primary)] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                                                Ver lista &rarr;
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1878,7 +2095,7 @@ export default function RestaurantInterface({
                                     </div>
                                     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                         {filteredProductsList.map((dish: any, idx: number) => (
-                                            <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
+                                            <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                         ))}
                                     </div>
                                 </section>
@@ -1922,7 +2139,7 @@ export default function RestaurantInterface({
                                                 </div>
                                                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                                                     {dishes.map((dish, idx) => (
-                                                        <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))}  isOutOfStock={Number(dish.stock ?? 0) <= 0} />
+                                                        <FoodDishCard key={dish.id} product={dish} activeRate={activeRate} onOpenModal={handleOpenDishModal} index={idx} layoutVariant="grid" isFavorite={favoriteIds.has(String(dish.id))} isOutOfStock={Number(dish.stock ?? 0) <= 0} />
                                                     ))}
                                                 </div>
                                             </section>

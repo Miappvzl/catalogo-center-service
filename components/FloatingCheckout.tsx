@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap, ArrowRight } from 'lucide-react'
+import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap, ArrowRight, Package } from 'lucide-react'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { useCart } from '@/app/store/useCart'
 import { AnimatePresence, motion, Variants, useAnimation } from 'framer-motion'
@@ -327,6 +327,68 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
 
+    // 💎 MOTOR DE AGRUPACIÓN DE BOLSA: Consolida combos en un solo bloque visual indivisible
+    const displayGroups = useMemo(() => {
+        const groups: Array<
+            | { type: 'single'; item: any }
+            | {
+                type: 'bundle';
+                bundleInstanceId: string;
+                bundleName: string;
+                items: any[];
+                quantity: number;
+                totalFinalPrice: number;
+                totalListPrice: number;
+                maxStock: number;
+            }
+        > = [];
+
+        const bundleMap = new Map<string, any[]>();
+
+        cartEngine.processedItems.forEach((processedItem: any) => {
+            const originalItem = items.find(i => i.id === processedItem.id);
+            const bundleInstanceId = originalItem?.bundleInstanceId || processedItem.bundleInstanceId;
+
+            if (bundleInstanceId) {
+                if (!bundleMap.has(bundleInstanceId)) {
+                    bundleMap.set(bundleInstanceId, []);
+                }
+                bundleMap.get(bundleInstanceId)!.push({
+                    ...processedItem,
+                    original: originalItem
+                });
+            } else {
+                groups.push({
+                    type: 'single',
+                    item: processedItem
+                });
+            }
+        });
+
+        // Insertamos los combos consolidados
+        bundleMap.forEach((bundleItems, bundleInstanceId) => {
+            const first = bundleItems[0];
+            const bundleName = first.original?.bundleName || first.bundleName || 'Combo Especial';
+            const quantity = first.quantity;
+            const totalFinalPrice = bundleItems.reduce((acc, it) => acc + (it.finalListPrice * it.quantity), 0);
+            const totalListPrice = bundleItems.reduce((acc, it) => acc + (it.listPrice * it.quantity), 0);
+            const maxStock = Math.min(...bundleItems.map(it => it.maxStock ?? 9999));
+
+            groups.push({
+                type: 'bundle',
+                bundleInstanceId,
+                bundleName,
+                items: bundleItems,
+                quantity,
+                totalFinalPrice,
+                totalListPrice,
+                maxStock
+            });
+        });
+
+        return groups;
+    }, [cartEngine.processedItems, items]);
+
     // 👇 AÑADE ESTA LÍNEA AQUÍ 👇
     // Restauramos el booleano estrictamente para que la UI sepa cuándo pintar la barra verde
     // 1. Calculamos el volumen REAL elegible para la barra global (Aislamiento Estricto)
@@ -378,22 +440,22 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const stepVariants = { hidden: { opacity: 0, x: 20 }, enter: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } }
     const modalVariants: Variants = {
-        hidden: { 
-            opacity: 0, 
-            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, 
-            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0 
+        hidden: {
+            opacity: 0,
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0,
+            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0
         },
-        visible: { 
-            opacity: 1, 
-            y: 0, 
-            x: 0, 
-            transition: { duration: 0.35, ease: [0.32, 0.72, 0, 1] } 
+        visible: {
+            opacity: 1,
+            y: 0,
+            x: 0,
+            transition: { duration: 0.35, ease: [0.32, 0.72, 0, 1] }
         },
-        exit: { 
-            opacity: 0, 
-            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0, 
-            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0, 
-            transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] } 
+        exit: {
+            opacity: 0,
+            y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0,
+            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0,
+            transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] }
         }
     }
 
@@ -402,351 +464,350 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     return (
         <>
 
-{/* 🚀 GATILLO MOBILE DINÁMICO (Polimorfismo Estructural Awwwards) */}
-<AnimatePresence mode="wait">
-    {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
-       <motion.div
-       id="floating-checkout-trigger" // 👈 AÑADE ESTO AQUÍ
-            initial={{ y: "120%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "120%", opacity: 0 }}
-            transition={{ type: "spring", damping: 26, stiffness: 220 }}
-            layout
-            className={`fixed z-50 ${
-                isRestaurant 
-                    ? 'bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--store-bg)] via-[var(--store-bg)]/90 to-transparent pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))]' 
-                    : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
-            }`}
-        >
-             {isRestaurant ? (
-                /* PÍLDORA FLOTANTE DE ALTA DENSIDAD EN ESCRITORIO (ANCLADA A LA DERECHA) */
-                <div className="hidden md:block fixed bottom-6 right-8 z-50 pointer-events-auto">
-                    {items.length > 0 ? (
-                        <motion.button
-                            data-cart-target="true" // 🚀 UX FIX: Este atributo atrae la parábola hacia este botón.
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.96 }}
-                            onClick={() => setIsOpen(true)}
-                            className="h-14 px-6 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center gap-4 shadow-[0_16px_36px_-6px_rgba(0,0,0,0.35)] border border-white/10 active:opacity-95 transition-all cursor-pointer"
-                        >
-                            {/* 🚀 UX FIX: Añadimos animate={cartControls} para que reaccione al impacto y haga el rebote físico. */}
-                            <motion.div animate={cartControls} className="relative flex items-center justify-center shrink-0">
-                                <ShoppingBag size={20} strokeWidth={2.2} />
-                                {totalItemsCount > 0 && (
-                                    <span 
-                                        className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full font-mono text-[9px] font-black flex items-center justify-center border leading-none shadow-xs"
-                                        style={{
-                                            backgroundColor: 'var(--store-primary)',
-                                            color: 'var(--store-primary-text)',
-                                            borderColor: 'var(--store-text-main)'
-                                        }}
+            {/* 🚀 GATILLO MOBILE DINÁMICO (Polimorfismo Estructural Awwwards) */}
+            <AnimatePresence mode="wait">
+                {!isOpen && (items.length > 0 || (generatedOrderNumber && !hasClickedWhatsApp)) && (
+                    <motion.div
+                        id="floating-checkout-trigger" // 👈 AÑADE ESTO AQUÍ
+                        initial={{ y: "120%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "120%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 26, stiffness: 220 }}
+                        layout
+                        className={`fixed z-50 ${isRestaurant
+                                ? 'bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--store-bg)] via-[var(--store-bg)]/90 to-transparent pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))]'
+                                : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
+                            }`}
+                    >
+                        {isRestaurant ? (
+                            /* PÍLDORA FLOTANTE DE ALTA DENSIDAD EN ESCRITORIO (ANCLADA A LA DERECHA) */
+                            <div className="hidden md:block fixed bottom-6 right-8 z-50 pointer-events-auto">
+                                {items.length > 0 ? (
+                                    <motion.button
+                                        data-cart-target="true" // 🚀 UX FIX: Este atributo atrae la parábola hacia este botón.
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        onClick={() => setIsOpen(true)}
+                                        className="h-14 px-6 rounded-full bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center gap-4 shadow-[0_16px_36px_-6px_rgba(0,0,0,0.35)] border border-white/10 active:opacity-95 transition-all cursor-pointer"
                                     >
-                                        {totalItemsCount}
-                                    </span>
+                                        {/* 🚀 UX FIX: Añadimos animate={cartControls} para que reaccione al impacto y haga el rebote físico. */}
+                                        <motion.div animate={cartControls} className="relative flex items-center justify-center shrink-0">
+                                            <ShoppingBag size={20} strokeWidth={2.2} />
+                                            {totalItemsCount > 0 && (
+                                                <span
+                                                    className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full font-mono text-[9px] font-black flex items-center justify-center border leading-none shadow-xs"
+                                                    style={{
+                                                        backgroundColor: 'var(--store-primary)',
+                                                        color: 'var(--store-primary-text)',
+                                                        borderColor: 'var(--store-text-main)'
+                                                    }}
+                                                >
+                                                    {totalItemsCount}
+                                                </span>
+                                            )}
+                                        </motion.div>
+
+                                        <span className="font-bold text-xs uppercase tracking-wider">Ver Pedido</span>
+
+                                        <div className="w-[1px] h-5 bg-white/20 shrink-0" />
+
+                                        <div className="flex flex-col items-end leading-none text-right">
+                                            <span className="font-mono font-black text-sm tracking-tight">
+                                                {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                            </span>
+                                            <span className="font-mono text-[9px] font-medium opacity-75 tabular-nums mt-0.5">
+                                                Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </motion.button>
+                                ) : (
+                                    <motion.button
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        onClick={() => setIsOpen(true)}
+                                        className="h-12 px-5 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] flex items-center gap-2.5 shadow-xl border border-[var(--store-border)] cursor-pointer"
+                                    >
+                                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+                                            Pedido #{generatedOrderNumber}
+                                        </span>
+                                        <span className="text-xs font-bold text-emerald-600">
+                                            Confirmar WhatsApp
+                                        </span>
+                                    </motion.button>
                                 )}
-                            </motion.div>
+                            </div>
+                        ) : activeTheme.layout?.card_style === 'brutalist' ? (
+                            /* 🏴‍☠️ VARIANTE STREETWEAR MODERNA: Dock Táctico de Alta Conversión */
+                            <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)]/50 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                                {items.length > 0 ? (
+                                    <div className="flex items-center justify-between gap-4">
+                                        {/* Gatillo Táctil de Bolsa y Precios */}
+                                        <div
+                                            className="flex items-center gap-3 cursor-pointer select-none group flex-1 min-w-0"
+                                            onClick={() => setIsOpen(true)}
+                                        >
+                                            <div className="relative shrink-0" data-cart-target="true">
+                                                <motion.div
+                                                    animate={cartControls}
+                                                    className="w-10 h-10 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center border border-[var(--store-border)]/40 shadow-sm"
+                                                >
+                                                    <ShoppingBag size={18} strokeWidth={2} />
+                                                </motion.div>
+                                                <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono text-[9px] font-black min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border border-[var(--store-surface)] shadow-sm">
+                                                    {totalItemsCount}
+                                                </span>
+                                            </div>
 
-                            <span className="font-bold text-xs uppercase tracking-wider">Ver Pedido</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-xl font-bold font-sans text-[var(--store-text-main)] leading-none tracking-tight truncate">
+                                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                </span>
+                                                <span className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-1 leading-none tabular-nums truncate">
+                                                    Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
 
-                            <div className="w-[1px] h-5 bg-white/20 shrink-0" />
-
-                            <div className="flex flex-col items-end leading-none text-right">
-                                <span className="font-mono font-black text-sm tracking-tight">
-                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                </span>
-                                <span className="font-mono text-[9px] font-medium opacity-75 tabular-nums mt-0.5">
-                                    Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                        </motion.button>
-                    ) : (
-                        <motion.button
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.96 }}
-                            onClick={() => setIsOpen(true)}
-                            className="h-12 px-5 rounded-full bg-[var(--store-surface)] text-[var(--store-text-main)] flex items-center gap-2.5 shadow-xl border border-[var(--store-border)] cursor-pointer"
-                        >
-                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
-                                Pedido #{generatedOrderNumber}
-                            </span>
-                            <span className="text-xs font-bold text-emerald-600">
-                                Confirmar WhatsApp
-                            </span>
-                        </motion.button>
-                    )}
-                </div>
-            ) : activeTheme.layout?.card_style === 'brutalist' ? (
-                /* 🏴‍☠️ VARIANTE STREETWEAR MODERNA: Dock Táctico de Alta Conversión */
-                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)]/50 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-                    {items.length > 0 ? (
-                        <div className="flex items-center justify-between gap-4">
-                            {/* Gatillo Táctil de Bolsa y Precios */}
-                            <div 
-                                className="flex items-center gap-3 cursor-pointer select-none group flex-1 min-w-0"
-                                onClick={() => setIsOpen(true)}
-                            >
-                                <div className="relative shrink-0" data-cart-target="true">
-                                    <motion.div 
-                                        animate={cartControls} 
-                                        className="w-10 h-10 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center border border-[var(--store-border)]/40 shadow-sm"
-                                    >
-                                        <ShoppingBag size={18} strokeWidth={2} />
-                                    </motion.div>
-                                    <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono text-[9px] font-black min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border border-[var(--store-surface)] shadow-sm">
-                                        {totalItemsCount}
-                                    </span>
-                                </div>
-
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-xl font-bold font-sans text-[var(--store-text-main)] leading-none tracking-tight truncate">
-                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                    </span>
-                                    <span className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-1 leading-none tabular-nums truncate">
-                                        Bs. {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Botón de Acción Directa */}
-                            <motion.button 
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => setIsOpen(true)} 
-                                className="h-11 px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-[var(--store-border)]/40 active:scale-95 transition-all shrink-0 shadow-sm"
-                            >
-                                <span>PAGAR</span>
-                                <ArrowRight size={14} strokeWidth={2.5} />
-                            </motion.button>
-                        </div>
-                    ) : (
-                        <div 
-                            className="flex items-center justify-between w-full cursor-pointer select-none gap-3" 
-                            onClick={() => setIsOpen(true)}
-                        >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-primary)] font-bold">
-                                        // ORDEN #{generatedOrderNumber}
-                                    </span>
-                                    <span className="text-xs font-sans font-bold text-[var(--store-text-main)] truncate uppercase">
-                                        Confirmar WhatsApp
-                                    </span>
-                                </div>
-                            </div>
-                            <button className="h-10 px-4 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider shadow-sm shrink-0">
-                                <MessageCircle size={14} strokeWidth={2.5} />
-                                <span>ENVIAR</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
-            ) : activeTheme.layout?.card_style === 'dense_hardware' ? (
-                /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
-                <div className="w-full bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] h-[72px]">
-                    {items.length > 0 ? (
-                        <>
-                            <div className="flex flex-col justify-center px-5 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
-                                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total a Pagar</span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tighter">
-                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                    </span>
-                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)]">
-                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </div>
-                            <motion.button 
-                                whileTap={{ scale: 0.95, borderRadius: "0px" }}
-                                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                                onClick={() => setIsOpen(true)} 
-                                className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)] active:bg-[var(--store-text-main)] transition-colors"
-                            ><div className="flex items-center gap-1.5 mb-0.5">
-                                    <span className="font-mono font-black text-xs uppercase tracking-widest flex items-center gap-1.5"><Zap size={14} className="fill-current" /> PROCESAR</span>
-                                </div>
-                                <span className="font-mono text-[9px] font-bold opacity-80 uppercase tracking-widest">{totalItemsCount} Items</span>
-                            </motion.button>
-                        </>
-                    ) : (
-                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
-                            <div className="flex flex-col justify-center px-5 flex-1">
-                                <span className="text-[10px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
-                                <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate">
-                                    Pedido #{generatedOrderNumber}
-                                </span>
-                            </div>
-                            <motion.button 
-                                whileTap={{ scale: 0.95, borderRadius: "0px" }}
-                                className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)]"
-                            >
-                                <MessageCircle size={18} className="mb-1" />
-                                <span className="font-mono font-black text-[9px] uppercase tracking-widest">WhatsApp</span>
-                            </motion.button>
-                        </div>
-                    )}
-                </div>
-            ) : activeTheme.layout?.card_style === 'editorial' ? (
-                /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
-                <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/75 border-[0.5px] border-[var(--store-border)]/50 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-stretch overflow-hidden h-[64px]">
-                    {items.length > 0 ? (
-                        <>
-                            <div className="flex flex-col justify-center px-6 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
-                                <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Subtotal</span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-lg font-heading font-medium text-[var(--store-text-main)] leading-none tracking-wide">
-                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                    </span>
-                                    <span className="text-[10px] text-[var(--store-surface-text)] font-medium tracking-wide">
-                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </div>
-                            <motion.button 
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-                                onClick={() => setIsOpen(true)} 
-                                className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 relative overflow-hidden group"
-                            >
-                                <motion.div 
-                                    animate={{ x: ["-100%", "200%"] }} 
-                                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 2 }} 
-                                    className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--store-text-main)]/10 to-transparent skew-x-12" 
-                                />
-                                <ShoppingBag size={16} strokeWidth={1} />
-                                <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Ver Bolsa</span>
-                                <div className="absolute top-2 right-2 w-3.5 h-3.5 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-full flex items-center justify-center text-[7px] font-bold">
-                                    {totalItemsCount}
-                                </div>
-                            </motion.button>
-                        </>
-                    ) : (
-                        <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
-                            <div className="flex flex-col justify-center px-6 flex-1">
-                                <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Pendiente</span>
-                                <span className="text-sm font-heading font-medium text-[var(--store-text-main)] tracking-wide truncate">
-                                    Orden #{generatedOrderNumber}
-                                </span>
-                            </div>
-                            <motion.button 
-                                whileTap={{ scale: 0.96 }} 
-                                className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40"
-                            >
-                                <MessageCircle size={16} strokeWidth={1} />
-                                <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Enviar</span>
-                            </motion.button>
-                        </div>
-                    )}
-                </div>
-            ) : activeTheme.layout?.card_style === 'modular_tech' ? (
-                /* ⚡ VARIANTE MODULAR TECH: Consola Táctica de Checkout (Clean CRO) */
-                <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] shadow-[0_-8px_25px_rgba(0,0,0,0.04)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-                    {items.length > 0 ? (
-                        <div className="flex items-center justify-between gap-4">
-                            {/* Telemetría Financiera Alineada con Notificación Pip */}
-                            <div 
-                                className="flex flex-col justify-center min-w-0 flex-1 cursor-pointer select-none" 
-                                onClick={() => setIsOpen(true)}
-                            >
-                                <div className="flex items-center">
-                                    <div className="relative inline-flex items-center">
-                                        <span className="text-2xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight">
-                                            {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                        </span>
-                                        {/* Círculo de Notificación en la esquina del precio */}
-                                        <span className="absolute -top-1.5 -right-4.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-mono font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
-                                            {totalItemsCount}
-                                        </span>
+                                        {/* Botón de Acción Directa */}
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => setIsOpen(true)}
+                                            className="h-11 px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-[var(--store-border)]/40 active:scale-95 transition-all shrink-0 shadow-sm"
+                                        >
+                                            <span>PAGAR</span>
+                                            <ArrowRight size={14} strokeWidth={2.5} />
+                                        </motion.button>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none tabular-nums">
-                                        Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                    {step1FxSavings > 0 && (
-                                        <span className="text-[9px] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-wider leading-none">
-                                            -${step1FxSavings.toFixed(2)}
-                                        </span>
-                                    )}
-                                </div>
+                                ) : (
+                                    <div
+                                        className="flex items-center justify-between w-full cursor-pointer select-none gap-3"
+                                        onClick={() => setIsOpen(true)}
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-primary)] font-bold">
+                                        // ORDEN #{generatedOrderNumber}
+                                                </span>
+                                                <span className="text-xs font-sans font-bold text-[var(--store-text-main)] truncate uppercase">
+                                                    Confirmar WhatsApp
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button className="h-10 px-4 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider shadow-sm shrink-0">
+                                            <MessageCircle size={14} strokeWidth={2.5} />
+                                            <span>ENVIAR</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
+                        ) : activeTheme.layout?.card_style === 'dense_hardware' ? (
+                            /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
+                            <div className="w-full bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] h-[72px]">
+                                {items.length > 0 ? (
+                                    <>
+                                        <div className="flex flex-col justify-center px-5 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
+                                            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total a Pagar</span>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tighter">
+                                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                </span>
+                                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)]">
+                                                    Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <motion.button
+                                            whileTap={{ scale: 0.95, borderRadius: "0px" }}
+                                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                                            onClick={() => setIsOpen(true)}
+                                            className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)] active:bg-[var(--store-text-main)] transition-colors"
+                                        ><div className="flex items-center gap-1.5 mb-0.5">
+                                                <span className="font-mono font-black text-xs uppercase tracking-widest flex items-center gap-1.5"><Zap size={14} className="fill-current" /> PROCESAR</span>
+                                            </div>
+                                            <span className="font-mono text-[9px] font-bold opacity-80 uppercase tracking-widest">{totalItemsCount} Items</span>
+                                        </motion.button>
+                                    </>
+                                ) : (
+                                    <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
+                                        <div className="flex flex-col justify-center px-5 flex-1">
+                                            <span className="text-[10px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
+                                            <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate">
+                                                Pedido #{generatedOrderNumber}
+                                            </span>
+                                        </div>
+                                        <motion.button
+                                            whileTap={{ scale: 0.95, borderRadius: "0px" }}
+                                            className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)]"
+                                        >
+                                            <MessageCircle size={18} className="mb-1" />
+                                            <span className="font-mono font-black text-[9px] uppercase tracking-widest">WhatsApp</span>
+                                        </motion.button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : activeTheme.layout?.card_style === 'editorial' ? (
+                            /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
+                            <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/75 border-[0.5px] border-[var(--store-border)]/50 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-stretch overflow-hidden h-[64px]">
+                                {items.length > 0 ? (
+                                    <>
+                                        <div className="flex flex-col justify-center px-6 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
+                                            <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Subtotal</span>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-lg font-heading font-medium text-[var(--store-text-main)] leading-none tracking-wide">
+                                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                </span>
+                                                <span className="text-[10px] text-[var(--store-surface-text)] font-medium tracking-wide">
+                                                    Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <motion.button
+                                            whileTap={{ scale: 0.96 }}
+                                            transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                                            onClick={() => setIsOpen(true)}
+                                            className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 relative overflow-hidden group"
+                                        >
+                                            <motion.div
+                                                animate={{ x: ["-100%", "200%"] }}
+                                                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 2 }}
+                                                className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--store-text-main)]/10 to-transparent skew-x-12"
+                                            />
+                                            <ShoppingBag size={16} strokeWidth={1} />
+                                            <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Ver Bolsa</span>
+                                            <div className="absolute top-2 right-2 w-3.5 h-3.5 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-full flex items-center justify-center text-[7px] font-bold">
+                                                {totalItemsCount}
+                                            </div>
+                                        </motion.button>
+                                    </>
+                                ) : (
+                                    <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
+                                        <div className="flex flex-col justify-center px-6 flex-1">
+                                            <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Pendiente</span>
+                                            <span className="text-sm font-heading font-medium text-[var(--store-text-main)] tracking-wide truncate">
+                                                Orden #{generatedOrderNumber}
+                                            </span>
+                                        </div>
+                                        <motion.button
+                                            whileTap={{ scale: 0.96 }}
+                                            className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40"
+                                        >
+                                            <MessageCircle size={16} strokeWidth={1} />
+                                            <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Enviar</span>
+                                        </motion.button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : activeTheme.layout?.card_style === 'modular_tech' ? (
+                            /* ⚡ VARIANTE MODULAR TECH: Consola Táctica de Checkout (Clean CRO) */
+                            <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] shadow-[0_-8px_25px_rgba(0,0,0,0.04)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                                {items.length > 0 ? (
+                                    <div className="flex items-center justify-between gap-4">
+                                        {/* Telemetría Financiera Alineada con Notificación Pip */}
+                                        <div
+                                            className="flex flex-col justify-center min-w-0 flex-1 cursor-pointer select-none"
+                                            onClick={() => setIsOpen(true)}
+                                        >
+                                            <div className="flex items-center">
+                                                <div className="relative inline-flex items-center">
+                                                    <span className="text-2xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight">
+                                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                    </span>
+                                                    {/* Círculo de Notificación en la esquina del precio */}
+                                                    <span className="absolute -top-1.5 -right-4.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[9px] font-mono font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                                                        {totalItemsCount}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none tabular-nums">
+                                                    Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                                {step1FxSavings > 0 && (
+                                                    <span className="text-[9px] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-wider leading-none">
+                                                        -${step1FxSavings.toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
 
-                            {/* Botón Compacto de Conversión */}
-                            <motion.button 
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => setIsOpen(true)} 
-                                className="h-11 px-5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0"
-                            >
-                                <span>PAGAR</span>
-                                <ArrowRight size={14} strokeWidth={2.5} />
-                            </motion.button>
-                        </div>
-                    ) : (
-                        <div 
-                            className="flex items-center justify-between w-full cursor-pointer select-none gap-3" 
-                            onClick={() => setIsOpen(true)}
-                        >
-                            <div className="flex flex-col flex-1 min-w-0">
-                                <span className="text-[9px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest leading-none mb-1">
-                                    [ PENDIENTE ]
-                                </span>
-                                <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate leading-none">
-                                    Pedido #{generatedOrderNumber}
-                                </span>
+                                        {/* Botón Compacto de Conversión */}
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => setIsOpen(true)}
+                                            className="h-11 px-5 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0"
+                                        >
+                                            <span>PAGAR</span>
+                                            <ArrowRight size={14} strokeWidth={2.5} />
+                                        </motion.button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="flex items-center justify-between w-full cursor-pointer select-none gap-3"
+                                        onClick={() => setIsOpen(true)}
+                                    >
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="text-[9px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest leading-none mb-1">
+                                                [ PENDIENTE ]
+                                            </span>
+                                            <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate leading-none">
+                                                Pedido #{generatedOrderNumber}
+                                            </span>
+                                        </div>
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            className="h-10 px-4 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider shadow-sm shrink-0"
+                                        >
+                                            <MessageCircle size={14} strokeWidth={2.5} />
+                                            <span>ENVIAR</span>
+                                        </motion.button>
+                                    </div>
+                                )}
                             </div>
-                            <motion.button 
-                                whileTap={{ scale: 0.95 }} 
-                                className="h-10 px-4 bg-[var(--store-primary)] text-[var(--store-primary-text)] rounded-[var(--radius-btn)] flex items-center justify-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider shadow-sm shrink-0"
-                            >
-                                <MessageCircle size={14} strokeWidth={2.5} />
-                                <span>ENVIAR</span>
-                            </motion.button>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                /* 🌟 VARIANTE UNIVERSAL: Diseño Original Intacto */
-                <div className="w-full backdrop-blur-2xl flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--store-surface)]/85 border-t border-[var(--store-border)]/30">
-                    {items.length > 0 ? (
-                        <>
-                            <motion.div whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 15 }} className="flex items-center gap-3.5 cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
-                                <div className="relative" data-cart-target="true">
-                                    <motion.div animate={cartControls} className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom">
-                                        <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                        ) : (
+                            /* 🌟 VARIANTE UNIVERSAL: Diseño Original Intacto */
+                            <div className="w-full backdrop-blur-2xl flex items-center justify-between px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--store-surface)]/85 border-t border-[var(--store-border)]/30">
+                                {items.length > 0 ? (
+                                    <>
+                                        <motion.div whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 15 }} className="flex items-center gap-3.5 cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
+                                            <div className="relative" data-cart-target="true">
+                                                <motion.div animate={cartControls} className="bg-[var(--store-primary)] p-2.5 rounded-full shadow-md transition-colors group-hover:bg-[var(--store-border)] origin-bottom">
+                                                    <ShoppingCart size={22} className="text-[var(--store-primary-text)]" strokeWidth={1.5} />
+                                                </motion.div>
+                                                <motion.span key={totalItemsCount} initial={{ scale: 0, y: 8, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 600, damping: 14, mass: 0.8 }} className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
+                                                    {totalItemsCount}
+                                                </motion.span>
+                                            </div>
+                                            <div className="flex flex-col items-start structural-subcontainer">
+                                                <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">
+                                                    {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                </span>
+                                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">
+                                                    Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </motion.div>
+                                        <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
+                                            Pagar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <motion.div whileTap={{ scale: 0.99 }} className="flex items-center gap-3 w-full cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
+                                        <motion.div animate={{ scale: [1, 1.04, 1], boxShadow: ["0 0 10px var(--store-primary)/20", "0 0 20px var(--store-primary)/50", "0 0 10px var(--store-primary)/20"] }} transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }} className="p-2.5 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)]">
+                                            <MessageCircle size={22} strokeWidth={1.75} />
+                                        </motion.div>
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">Pedido #{generatedOrderNumber}</span>
+                                            <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)] uppercase tracking-wider">Pendiente por WhatsApp</span>
+                                        </div>
+                                        <span className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-colors group-hover:bg-[var(--store-border)]/50 pointer-events-none select-none">Abrir</span>
                                     </motion.div>
-                                    <motion.span key={totalItemsCount} initial={{ scale: 0, y: 8, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 600, damping: 14, mass: 0.8 }} className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[10px] font-black min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--store-surface)] shadow-sm">
-                                        {totalItemsCount}
-                                    </motion.span>
-                                </div>
-                                <div className="flex flex-col items-start structural-subcontainer">
-                                    <span className="text-xl font-black text-[var(--store-text-main)] tracking-tighter leading-none">
-                                        {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
-                                    </span>
-                                    <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none">
-                                        Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </motion.div>
-                            <button onClick={() => setIsOpen(true)} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-7 py-3.5 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[var(--store-primary)]/20 cursor-pointer">
-                                Pagar
-                            </button>
-                        </>
-                    ) : (
-                        <motion.div whileTap={{ scale: 0.99 }} className="flex items-center gap-3 w-full cursor-pointer group select-none" onClick={() => setIsOpen(true)}>
-                            <motion.div animate={{ scale: [1, 1.04, 1], boxShadow: ["0 0 10px var(--store-primary)/20", "0 0 20px var(--store-primary)/50", "0 0 10px var(--store-primary)/20"] }} transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }} className="p-2.5 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)]">
-                                <MessageCircle size={22} strokeWidth={1.75} />
-                            </motion.div>
-                            <div className="flex flex-col flex-1 min-w-0">
-                                <span className="text-sm font-black text-[var(--store-text-main)] tracking-tight truncate">Pedido #{generatedOrderNumber}</span>
-                                <span className="text-[10px] font-bold truncate mt-0.5 text-[var(--store-primary)] uppercase tracking-wider">Pendiente por WhatsApp</span>
+                                )}
                             </div>
-                            <span className="bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)] px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-colors group-hover:bg-[var(--store-border)]/50 pointer-events-none select-none">Abrir</span>
-                        </motion.div>
-                    )}
-                </div>
-            )}
-        </motion.div>
-    )}
-</AnimatePresence>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/*  NUEVO: DESKTOP FLOATING NUDGE (Notificación Minimalista) */}
             <AnimatePresence>
@@ -782,7 +843,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                     <div className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={isWhatsAppInterception ? undefined : handleCloseModal} />
 
-                          {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
+                        {/* El contenedor raíz hereda la tipografía viva de la plantilla */}
                         <motion.div
                             variants={modalVariants}
                             initial="hidden"
@@ -873,9 +934,127 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             >
                                                 <div className="space-y-0 flex-1 overflow-x-hidden">
                                                     {/* 🚀 EL MOTOR DE COLAPSO ORGÁNICO (Cero popLayout) */}
-                                                    <AnimatePresence initial={false}>
-                                                        {cartEngine.processedItems.map((item: any) => {
-                                                            // 🚀 FIX: Recuperamos la exención fiscal del item original
+                                                <AnimatePresence initial={false}>
+                                                        {displayGroups.map((group) => {
+                                                            // =========================================================
+                                                            // CASO A: TARJETA UNIFICADA DE COMBO (MINIMALIST CARD)
+                                                            // =========================================================
+                                                            if (group.type === 'bundle') {
+                                                                const firstItem = group.items[0];
+
+                                                                return (
+                                                                    <motion.div
+                                                                        key={group.bundleInstanceId}
+                                                                        layout="position"
+                                                                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                                                        animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                                                        exit={{ opacity: 0, height: 0, scale: 0.95, overflow: 'hidden' }}
+                                                                        transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+                                                                        className="p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top space-y-3"
+                                                                    >
+                                                                        {/* Cabecera del Combo */}
+                                                                        <div className="flex items-center justify-between gap-3">
+                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-[var(--store-text-main)] text-[var(--store-bg)] px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 shadow-2xs">
+                                                                                    <Package size={10} strokeWidth={2.5} />
+                                                                                    <span>Combo</span>
+                                                                                </span>
+                                                                                <h3 className="text-xs md:text-[13px] font-black text-[var(--store-text-main)] truncate leading-tight">
+                                                                                    {group.bundleName}
+                                                                                </h3>
+                                                                            </div>
+
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removeItem(firstItem.id)}
+                                                                                className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors p-1 shrink-0 active:scale-90"
+                                                                                title="Eliminar combo completo"
+                                                                            >
+                                                                                <Trash2 size={13} />
+                                                                            </button>
+                                                                        </div>
+
+                                                                        {/* Bandeja de Platos/Productos incluidos en el Combo */}
+                                                                        <div className="bg-[var(--store-bg)]/60 rounded-xl p-2.5 border border-[var(--store-border)]/40 space-y-2">
+                                                                            {group.items.map((subItem) => (
+                                                                                <div key={subItem.id} className="flex items-center gap-2.5 min-w-0">
+                                                                                    <div className="w-8 h-8 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)]/50 overflow-hidden relative shrink-0">
+                                                                                        <Image
+                                                                                            src={getOptimizedUrl(subItem.image)}
+                                                                                            alt={subItem.name}
+                                                                                            fill
+                                                                                            sizes="32px"
+                                                                                            className="object-cover"
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div className="flex-1 min-w-0 leading-tight">
+                                                                                        <p className="text-[11px] font-bold text-[var(--store-text-main)] truncate">
+                                                                                            {subItem.name}
+                                                                                        </p>
+                                                                                        {subItem.variantInfo && subItem.variantInfo !== 'N/A' && (
+                                                                                            <p className="text-[9px] font-mono text-[var(--store-surface-text)] truncate mt-0.5">
+                                                                                                {subItem.variantInfo}
+                                                                                            </p>
+                                                                                        )}
+                                                                                        {subItem.foodModifiers && subItem.foodModifiers.length > 0 && (
+                                                                                            <p className="text-[9px] text-[var(--store-surface-text)] truncate mt-0.5">
+                                                                                                + {subItem.foodModifiers.map((m: any) => m.name).join(', ')}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+
+                                                                        {/* Pie: Precio Cerrado del Combo + Control Único de Cantidad */}
+                                                                        <div className="flex items-center justify-between pt-1">
+                                                                            <div className="flex flex-col">
+                                                                                <div className="flex items-baseline gap-1.5">
+                                                                                    {group.totalFinalPrice < group.totalListPrice && (
+                                                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
+                                                                                            {currencySymbol}{group.totalListPrice.toFixed(2)}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
+                                                                                        {currencySymbol}{group.totalFinalPrice.toFixed(2)}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
+                                                                                    Bs {(group.totalFinalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Stepper Único del Combo Completo */}
+                                                                            <div className="flex items-center p-0.5 gap-2 border border-[var(--store-border)]/60 bg-[var(--store-bg)] rounded-[var(--radius-btn)] shrink-0">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateQuantity(firstItem.id, group.quantity - 1)}
+                                                                                    disabled={group.quantity <= 1}
+                                                                                    className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]"
+                                                                                >
+                                                                                    <Minus size={12} strokeWidth={2.5} />
+                                                                                </button>
+                                                                                <span className="text-center font-mono font-bold text-xs text-[var(--store-text-main)] w-3.5 leading-none">
+                                                                                    {group.quantity}
+                                                                                </span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateQuantity(firstItem.id, group.quantity + 1)}
+                                                                                    disabled={group.quantity >= group.maxStock}
+                                                                                    className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]"
+                                                                                >
+                                                                                    <Plus size={12} strokeWidth={2.5} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                );
+                                                            }
+
+                                                            // =========================================================
+                                                            // CASO B: PRODUCTO INDIVIDUAL SUELTO (REGULAR)
+                                                            // =========================================================
+                                                            const item = group.item;
                                                             const originalItem = items.find(i => i.id === item.id);
                                                             const isExempt = originalItem?.isTaxExempt === true;
 
@@ -885,17 +1064,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                     layout="position"
                                                                     initial={{ opacity: 0, height: 0, scale: 0.9 }}
                                                                     animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                                                                    // 🚀 Colapsa la altura a 0 y corta el contenido. El resto sube suavemente.
-                                                                    exit={{
-                                                                        opacity: 0,
-                                                                        height: 0,
-                                                                        scale: 0.9,
-                                                                        x: -20,
-                                                                        paddingTop: 0,
-                                                                        paddingBottom: 0,
-                                                                        borderWidth: 0,
-                                                                        overflow: 'hidden'
-                                                                    }}
+                                                                    exit={{ opacity: 0, height: 0, scale: 0.9, x: -20, overflow: 'hidden' }}
                                                                     transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
                                                                     className="flex gap-4 p-4 bg-[var(--store-surface)] border-b border-[var(--store-border)]/20 last:border-0 origin-top"
                                                                 >
@@ -908,103 +1077,85 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                             className="object-cover"
                                                                         />
                                                                     </div>
-                                                                    {/* ... (Todo el resto de tu código interno de la tarjeta, botones, precios, se mantiene idéntico de aquí en adelante) ... */}
-                                                                   <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
-                                        <div>
-                                          {item.badge && !isRestaurant && (
-    <span className={`inline-flex items-center gap-1 w-fit text-[8px] md:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider uppercase mb-1 transition-colors ${item.badge.type === 'pending'
-        ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 border-dashed'
-        : 'bg-[var(--store-text-main)] text-[var(--store-bg)]'
-        }`}>
-        {item.badge.text}
-    </span>
-)}
-                                           <div className="flex justify-between items-start gap-2">
-                                                <h3 className="text-xs md:text-[13px] font-bold text-[var(--store-text-main)] line-clamp-2 leading-snug tracking-tight pr-1">
-                                                    {item.name}
-                                                </h3>
-                                                <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors p-1 shrink-0 active:scale-90" title="Eliminar">
-                                                    <Trash2 size={13} />
-                                                </button>
-                                            </div>
 
-                                            {/* Desglose de Modificadores Gastronómicos */}
-                                            {isRestaurant && item.foodModifiers && Array.isArray(item.foodModifiers) && item.foodModifiers.length > 0 ? (
-                                                <div className="mt-1 pl-2 border-l border-[var(--store-border)]/70 space-y-0.5">
-                                                    {item.foodModifiers.map((mod: any, mIdx: number) => (
-                                                        <p key={mIdx} className="text-[10px] text-[var(--store-surface-text)] font-medium leading-tight">
-                                                            + {mod.name}
-                                                        </p>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                item.variantInfo && item.variantInfo !== 'N/A' && (
-                                                    <p className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-0.5 truncate">
-                                                        {item.variantInfo}
-                                                    </p>
-                                                )
-                                            )}
+                                                                    <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
+                                                                        <div>
+                                                                            {item.badge && !isRestaurant && (
+                                                                                <span className={`inline-flex items-center gap-1 w-fit text-[8px] md:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider uppercase mb-1 transition-colors ${item.badge.type === 'pending'
+                                                                                    ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border border-[var(--store-border)]/60 border-dashed'
+                                                                                    : 'bg-[var(--store-text-main)] text-[var(--store-bg)]'
+                                                                                    }`}>
+                                                                                    {item.badge.text}
+                                                                                </span>
+                                                                            )}
 
-                                            {/* Instrucción Especial de Cocina (Encapsulada) */}
-                                            {item.foodNotes && (
-                                                <div className="mt-1.5 p-1.5 rounded-md bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-900 font-medium leading-tight">
-                                                    <span className="font-bold font-mono text-[9px] uppercase tracking-wider text-amber-700 mr-1">Nota:</span>
-                                                    &quot;{item.foodNotes}&quot;
-                                                </div>
-                                            )}
+                                                                            <div className="flex justify-between items-start gap-2">
+                                                                                <h3 className="text-xs md:text-[13px] font-bold text-[var(--store-text-main)] line-clamp-2 leading-snug tracking-tight pr-1">
+                                                                                    {item.name}
+                                                                                </h3>
+                                                                                <button onClick={() => removeItem(item.id)} className="text-[var(--store-surface-text)] hover:text-red-500 transition-colors p-1 shrink-0 active:scale-90" title="Eliminar">
+                                                                                    <Trash2 size={13} />
+                                                                                </button>
+                                                                            </div>
 
-                                            {/* Etiqueta de Servicio solo para Retail */}
-                                            {!isRestaurant && item.requiresShipping === false && (
-                                                <span className="inline-flex items-center gap-1 mt-1 text-[8px] font-bold text-[var(--store-primary)] bg-[var(--store-bg)] border border-[var(--store-border)] px-1.5 py-0.5 rounded uppercase tracking-wider w-fit">
-                                                    <Sparkle size={9} className="shrink-0" />
-                                                    <span className="truncate">
-                                                        {storeConfig?.shipping_config?.service_badge || "Se consume en tienda"}
-                                                    </span>
-                                                </span>
-                                            )}
-                                        </div>
+                                                                            {isRestaurant && item.foodModifiers && Array.isArray(item.foodModifiers) && item.foodModifiers.length > 0 ? (
+                                                                                <div className="mt-1 pl-2 border-l border-[var(--store-border)]/70 space-y-0.5">
+                                                                                    {item.foodModifiers.map((mod: any, mIdx: number) => (
+                                                                                        <p key={mIdx} className="text-[10px] text-[var(--store-surface-text)] font-medium leading-tight">
+                                                                                            + {mod.name}
+                                                                                        </p>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                item.variantInfo && item.variantInfo !== 'N/A' && (
+                                                                                    <p className="text-[10px] font-mono text-[var(--store-surface-text)] tracking-wider mt-0.5 truncate">
+                                                                                        {item.variantInfo}
+                                                                                    </p>
+                                                                                )
+                                                                            )}
 
-                                        <div className="flex items-end justify-between gap-2 mt-2 pt-1.5 border-t border-[var(--store-border)]/20">
-                                            <div className="flex flex-col min-w-0">
-                                               {item.finalListPrice < item.listPrice ? (
-                                                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
-                                                            {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
-                                                        </span>
-                                                        <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-red-500">
-                                                            {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
-                                                        </span>
-                                                    </div>
-                                              ) : (
-                                                    <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
-                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
-                                                    </span>
-                                                )}
-                                                <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
-                                                    Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                                </span>
-                                                
-                                                {/* 🚀 INYECCIÓN: IVA POR PRODUCTO */}
-                                                {storeConfig?.show_tax_in_catalog && isStrictTax && !isExempt && (
-                                                    <span className="text-[8px] font-mono text-[var(--store-surface-text)]/70 mt-0.5">
-                                                        + {currencySymbol}{((item.finalListPrice * item.quantity) * (taxPct / 100)).toFixed(2)} IVA
-                                                    </span>
-                                                )}
-                                            </div>
+                                                                            {item.foodNotes && (
+                                                                                <div className="mt-1.5 p-1.5 rounded-md bg-amber-50/70 border border-amber-200/50 text-[10px] text-amber-900 font-medium leading-tight">
+                                                                                    <span className="font-bold font-mono text-[9px] uppercase tracking-wider text-amber-700 mr-1">Nota:</span>
+                                                                                    &quot;{item.foodNotes}&quot;
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
 
-                                         <div className="flex items-center p-0.5 gap-2 border border-[var(--store-border)]/60 bg-[var(--store-bg)] rounded-[var(--radius-btn)] shrink-0">
-                                                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
-                                                    <Minus size={12} strokeWidth={2.5} />
-                                                </button>
-                                                <span className="text-center font-mono font-bold text-xs text-[var(--store-text-main)] w-3.5 leading-none">{item.quantity}</span>
-                                                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
-                                                    <Plus size={12} strokeWidth={2.5} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                                        <div className="flex items-end justify-between gap-2 mt-2 pt-1.5 border-t border-[var(--store-border)]/20">
+                                                                            <div className="flex flex-col min-w-0">
+                                                                                {item.finalListPrice < item.listPrice ? (
+                                                                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
+                                                                                            {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                        </span>
+                                                                                        <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-red-500">
+                                                                                            {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
+                                                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                    </span>
+                                                                                )}
+                                                                                <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
+                                                                                    Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            <div className="flex items-center p-0.5 gap-2 border border-[var(--store-border)]/60 bg-[var(--store-bg)] rounded-[var(--radius-btn)] shrink-0">
+                                                                                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
+                                                                                    <Minus size={12} strokeWidth={2.5} />
+                                                                                </button>
+                                                                                <span className="text-center font-mono font-bold text-xs text-[var(--store-text-main)] w-3.5 leading-none">{item.quantity}</span>
+                                                                                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= (item.maxStock ?? 9999)} className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]">
+                                                                                    <Plus size={12} strokeWidth={2.5} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                 </motion.div>
-                                                            ); // 🚀 FIX: Cerramos el return
+                                                            );
                                                         })}
                                                     </AnimatePresence>
                                                 </div>
@@ -1106,7 +1257,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                 )}
                                             </motion.div>
 
-                                       {/* 2. FOOTER ABSOLUTO DE LA BOLSA (Línea Base Plana & Simétrica) */}
+                                            {/* 2. FOOTER ABSOLUTO DE LA BOLSA (Línea Base Plana & Simétrica) */}
                                             <div className="absolute bottom-0 left-0 right-0 w-full bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 py-4 z-20 border-t border-[var(--store-border)]/40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <div className="flex flex-col">
@@ -1117,8 +1268,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             </span>
                                                         )}
                                                     </div>
-                                                    
-                                                      <div className="flex flex-col items-end">
+
+                                                    <div className="flex flex-col items-end">
                                                         <span className="text-lg md:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight tabular-nums">
                                                             {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
                                                         </span>
@@ -1126,9 +1277,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
                                                     </div>
-                                                    </div>
-                                                <button 
-                                                    onClick={() => changeStep(2)} 
+                                                </div>
+                                                <button
+                                                    onClick={() => changeStep(2)}
                                                     className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] h-12 px-6 rounded-[var(--radius-btn)] font-sans font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[var(--store-border)]/40 shadow-sm"
                                                 >
                                                     <span>IR AL CHECKOUT</span>
