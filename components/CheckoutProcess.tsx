@@ -281,9 +281,8 @@ const activePaymentMethods = useMemo(() => {
         if (payments.pago_movil?.active) active.push("Pago Móvil");
         if (payments.zelle?.active) active.push("Zelle");
         
-        // 🚀 FEATURE FLAG (Dark Launch): Binance Pay solo visible para pruebas
-        // Cambia 'tu-tienda-demo' por el slug exacto de la tienda donde harás la prueba real
-        if (payments.binance?.active && storeConfig?.slug === 'theo') {
+ // 💎 RESTAURADO: Binance disponible para cualquier tienda que lo tenga activo
+        if (payments.binance?.active) {
             active.push("Binance");
         }
         
@@ -2555,7 +2554,8 @@ switch (pm) {
                                                                 Transfiere desde tu banco y tu orden se aprobará en segundos.
                                                             </p>
                                                         </div>
-                                                    ) : activePaymentInput === "Binance" ? (
+                                              
+                                                    ) : (activePaymentInput === "Binance" && storeConfig?.slug === 'theo') ? (
                                                         <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
                                                             <BinanceGateway
                                                                 storeId={storeId}

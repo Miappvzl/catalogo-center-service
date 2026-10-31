@@ -322,63 +322,76 @@ const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
           )}
         </div>
 
-   {/* BINANCE PAY (AUTOMATIZADO - FLAT DESIGN PREMIUM) */}
-        <div className={`p-4 rounded-xl border transition-all duration-300 md:col-span-2 ${methods.binance.active ? 'border-neutral-900 bg-[#FAFAFC]' : 'border-neutral-200/60 bg-white hover:bg-neutral-50/50'}`}>
+  {/* 💎 BINANCE MANUAL TRADICIONAL (DISPONIBLE PARA TODOS LOS CLIENTES) */}
+        <div className={`p-4 rounded-xl border transition-all duration-300 ${methods.binance.active ? 'border-neutral-200 bg-white shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
           <div
-            className="flex justify-between items-start md:items-center mb-2 cursor-pointer gap-4"
+            className="flex justify-between items-center mb-3 cursor-pointer"
             onClick={() => handleChange('binance', 'active', !methods.binance.active)}
           >
-            <div className="space-y-1">
-              <div className={`flex items-center gap-2 text-sm font-semibold transition-colors ${methods.binance.active ? 'text-neutral-950' : 'text-neutral-500'}`}>
-                <Bitcoin size={16} strokeWidth={1.5} className={methods.binance.active ? 'text-[#FCD535]' : 'text-neutral-400'} /> 
-                <span>Binance Pay Automatizado</span>
-              </div>
-              <p className={`text-xs font-normal ${methods.binance.active ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                Genera un código QR dinámico. Las órdenes se validan y aprueban automáticamente en tiempo real.
-              </p>
+            <div className={`flex items-center gap-2 text-xs font-semibold transition-colors ${methods.binance.active ? 'text-amber-600' : 'text-neutral-400'}`}>
+              <Bitcoin size={15} className={methods.binance.active ? 'text-amber-500' : 'text-neutral-400'} /> 
+              <span>Binance (Pay ID / USDT)</span>
             </div>
-            <AnimatedSwitch active={methods.binance.active} activeColor="bg-[#FCD535]" />
+            <AnimatedSwitch active={methods.binance.active} activeColor="bg-amber-500" />
           </div>
-          
           {methods.binance.active && (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-200 pt-4 mt-4 border-t border-neutral-200/60">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">Binance API Key</label>
-                  <input
-                    placeholder="Pega tu API Key de Binance"
-                    autoComplete="off"
-                    value={binanceKeys.apiKey}
-                    onChange={e => {
-                      if (e.isTrusted) setIsDirty(true);
-                      setBinanceKeys(prev => ({ ...prev, apiKey: e.target.value.trim() }));
-                    }}
-                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-white text-neutral-950 font-mono placeholder:text-neutral-300 border border-neutral-200/60 focus:border-neutral-900 outline-none transition-all"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">Binance Secret Key</label>
-                  <input
-                    type="password"
-                    placeholder="Pega tu Secret Key"
-                    autoComplete="new-password"
-                    value={binanceKeys.secretKey}
-                    onChange={e => {
-                      if (e.isTrusted) setIsDirty(true);
-                      setBinanceKeys(prev => ({ ...prev, secretKey: e.target.value.trim() }));
-                    }}
-                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-white text-neutral-950 font-mono placeholder:text-neutral-300 border border-neutral-200/60 focus:border-neutral-900 outline-none transition-all"
-                  />
-                </div>
-
-                <p className="text-[10px] text-neutral-500 md:col-span-2 flex items-center gap-1.5 font-normal mt-1">
-                  <AlertCircle size={12} strokeWidth={1.5} />
-                  Encriptación AES-256 Activa. Tus claves nunca se exponen en texto plano.
-                </p>
-              </div>
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <input
+                placeholder="Pay ID, Correo o UID (Ej: Pay ID: 12345678, correo@binance.com)"
+                value={methods.binance.details || ''}
+                onChange={e => handleChange('binance', 'details', e.target.value)}
+                className="w-full text-xs px-3 py-2 rounded-md bg-neutral-50/90 font-semibold focus:bg-white focus:border-neutral-400 outline-none transition-all"
+              />
             </div>
           )}
         </div>
+
+        {/* 🔒 PILOTO PRIVADO: BINANCE PAY AUTOMATIZADO (SOLO VISIBLE PARA TU TIENDA) */}
+        {storeId === 'be6326b1-f712-4f40-8e29-00149164a319' && (
+          <div className="p-4.5 rounded-xl border-2 border-amber-500/40 bg-amber-50/20 md:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap size={16} className="text-amber-600" />
+                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                  [BETA PRIVADA] Binance Pay API Automatizado
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-bold bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded">
+                Solo SuperAdmin
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">Binance API Key</label>
+                <input
+                  placeholder="API Key de Binance Pay"
+                  autoComplete="off"
+                  value={binanceKeys.apiKey}
+                  onChange={e => {
+                    if (e.isTrusted) setIsDirty(true);
+                    setBinanceKeys(prev => ({ ...prev, apiKey: e.target.value.trim() }));
+                  }}
+                  className="w-full text-xs px-3 py-2 rounded-lg bg-white border border-neutral-300 font-mono outline-none focus:border-amber-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">Binance Secret Key</label>
+                <input
+                  type="password"
+                  placeholder="Secret Key"
+                  autoComplete="new-password"
+                  value={binanceKeys.secretKey}
+                  onChange={e => {
+                    if (e.isTrusted) setIsDirty(true);
+                    setBinanceKeys(prev => ({ ...prev, secretKey: e.target.value.trim() }));
+                  }}
+                  className="w-full text-xs px-3 py-2 rounded-lg bg-white border border-neutral-300 font-mono outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* TRANSFERENCIA BANCARIA (GRIS ACERADO MUTED) */}
         <div className={`p-4 rounded-xl border transition-all duration-300 ${methods.transferencia.active ? 'border-neutral-200 bg-white shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
