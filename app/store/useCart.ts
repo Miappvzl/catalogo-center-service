@@ -47,9 +47,10 @@ export interface CartItem {
   foodModifiers?: FoodSelectedModifier[] | null;
   foodNotes?: string | null;
   // 🚀 ATOMIC BUNDLE ENGINE (Vínculo de Combo)
-  bundleInstanceId?: string | null; // Agrupador único de esta instancia en el carrito
-  bundleId?: string | null;         // ID de la colección en la base de datos
-  bundleName?: string | null;       // Nombre legible del combo
+bundleInstanceId?: string | null;
+  bundleId?: string | null;
+  bundleName?: string | null;
+  bundleItemRatio?: number; // 🚀 Ratio de unidades de este plato por cada 1 combo (ej: 5)
 }
 
 // 🚀 NUEVO TIPO: Contrato de Orden Histórica
@@ -63,10 +64,11 @@ interface CartState {
   items: CartItem[]
   orderHistory: SavedOrder[]
   addItem: (product: any, variant?: any, quantity?: number, foodModifiers?: FoodSelectedModifier[], foodNotes?: string) => void
-  addBundle: (bundle: BundleConfig, bundleItems: BundleItemInput[]) => void // 🚀 NUEVO: Adición atómica de combos
+ addBundle: (bundle: BundleConfig, bundleItems: BundleItemInput[]) => void
   removeItem: (itemId: string) => void
-  removeBundle: (bundleInstanceId: string) => void // 🚀 NUEVO: Retiro atómico de combo
+  removeBundle: (bundleInstanceId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
+  updateBundleQuantity: (bundleInstanceId: string, newBundleQty: number) => void // 🚀 Escala limpia de combos
   clearCart: () => void
   addOrderToHistory: (order: Omit<SavedOrder, 'date'>) => void
 }
@@ -161,22 +163,22 @@ export const useCart = create<CartState>()(
         })
       },
 
-      // 💎 ACCIÓN ATÓMICA: Inyecta el combo prorrateando el precio cerrado al centavo exacto
+      // 💎 ACCIÓN ATÓMICA: Inyecta el combo prorrateando el precio cerrado y el penalty sin inflación
       addBundle: (bundle, bundleItems) => {
         if (!bundleItems || bundleItems.length === 0) return;
 
         set((state) => {
-          // 1. Calculamos el valor nominal regular de los productos sumados
+          // 1. Calculamos el valor nominal regular ponderado
           const itemCalculations = bundleItems.map((entry) => {
             const base = Number(entry.variant?.override_usd_price ?? entry.product.usd_cash_price ?? 0);
             const extra = entry.foodModifiers ? entry.foodModifiers.reduce((acc, m) => acc + m.priceAdjustment, 0) : 0;
             const nominalUnit = base + extra;
-            const qty = entry.quantity || 1;
+            const ratio = entry.quantity || 1; // Unidades del plato por cada combo
             return {
               ...entry,
               nominalUnit,
-              nominalTotal: nominalUnit * qty,
-              qty
+              nominalTotal: nominalUnit * ratio,
+              ratio
             };
           });
 
@@ -185,30 +187,35 @@ export const useCart = create<CartState>()(
           const hasDiscount = bundlePrice > 0 && totalNominal > 0;
           const factor = hasDiscount ? bundlePrice / totalNominal : 1;
 
-          // 2. Identificador único irrepetible para esta instancia del combo en el carrito
+          // 2. ID único de instancia para este combo
           const bundleInstanceId = `bndl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-          // 3. Algoritmo Anti-Penny Rounding (Ajuste del Centavo Huérfano)
+          // 3. Algoritmo Anti-Penny Rounding
           let distributedSum = 0;
           const preprocessed = itemCalculations.map((entry) => {
             const rawUnit = hasDiscount ? Math.floor(entry.nominalUnit * factor * 100) / 100 : entry.nominalUnit;
-            distributedSum += rawUnit * entry.qty;
+            distributedSum += rawUnit * entry.ratio;
             return { ...entry, finalUnit: rawUnit };
           });
 
-          // Si hay centavos restantes por truncamiento, se los asignamos secuencialmente al plato de mayor valor
           let centsRemaining = hasDiscount ? Math.round((bundlePrice - distributedSum) * 100) : 0;
           preprocessed.sort((a, b) => b.finalUnit - a.finalUnit);
 
-          const finalItemsToAdd: CartItem[] = preprocessed.map((entry) => {
+      const finalItemsToAdd: CartItem[] = preprocessed.map((entry) => {
             let unitPrice = entry.finalUnit;
-            if (centsRemaining > 0) {
+            // 💎 REPARTO PROPORCIONAL EXACTO: Si el plato tiene multiplicador (ej. 5x),
+            // sumarle 0.01 a su precio unitario en realidad cubre (0.01 * ratio) del combo.
+            if (centsRemaining >= entry.ratio) {
               unitPrice = Number((unitPrice + 0.01).toFixed(2));
-              centsRemaining -= 1;
+              centsRemaining -= entry.ratio;
             }
 
             const variantId = entry.variant ? entry.variant.id : null;
             const currentMaxStock = entry.variant ? Number(entry.variant.stock) : Number(entry.product.stock || 9999);
+
+  // 🛡️ PRECIO CERRADO ABSOLUTO: Un combo promocional no lleva recargos cambiarios individuales
+            // Esto asegura que el total del combo sea exactamente los $56.00 configurados sin distorsiones
+            const comboItemPenalty = 0;
 
             let displayVariantInfo = entry.variant ? `${entry.variant.color_name} / ${entry.variant.size}` : null;
             if (entry.foodModifiers && entry.foodModifiers.length > 0) {
@@ -216,21 +223,21 @@ export const useCart = create<CartState>()(
               displayVariantInfo = displayVariantInfo ? `${displayVariantInfo} • ${modsText}` : modsText;
             }
 
-            return {
+           return {
               id: `${entry.product.id}-${variantId || 'base'}-${bundleInstanceId}-${Math.random().toString(36).substring(2, 5)}`,
               productId: String(entry.product.id),
               variantId: variantId,
               name: entry.product.name,
               price: unitPrice,
               basePrice: unitPrice,
-              penalty: Number(entry.variant?.override_usd_penalty ?? entry.product.usd_penalty ?? 0),
+              penalty: comboItemPenalty,
               image: entry.variant?.variant_image || entry.product.image_url,
-              quantity: Math.min(entry.qty, currentMaxStock),
+              quantity: Math.min(entry.ratio, currentMaxStock), // Arranca en 1 combo * ratio
               variantInfo: displayVariantInfo,
               category: entry.product.category,
               maxStock: currentMaxStock,
               compareAtPrice: entry.nominalUnit > unitPrice ? entry.nominalUnit : null,
-              productWholesaleActive: false, // Inmune a mayorista dentro del combo
+              productWholesaleActive: false,
               productWholesaleMinQty: 6,
               productWholesaleDiscountPct: 0,
               requiresShipping: entry.product.requires_shipping ?? true,
@@ -240,14 +247,14 @@ export const useCart = create<CartState>()(
               foodNotes: entry.foodNotes || null,
               bundleInstanceId: bundleInstanceId,
               bundleId: bundle.collectionId,
-              bundleName: bundle.name
+              bundleName: bundle.name,
+              bundleItemRatio: entry.ratio // 🚀 Memoriza que van X unidades por combo (ej: 5)
             };
           });
 
           return { items: [...state.items, ...finalItemsToAdd] };
         });
       },
-
       // 🛡️ ELIMINACIÓN DEFENSIVA: Si se borra un plato de un combo, se retira todo el combo para no corromper el precio
       removeItem: (itemId) => {
         set((state) => {
@@ -265,6 +272,25 @@ export const useCart = create<CartState>()(
         }));
       },
 
+
+      // 🚀 ESCALADOR ENTERO DE COMBOS: Multiplica limpiamente comboQty * bundleItemRatio sin fallos de redondeo
+      updateBundleQuantity: (bundleInstanceId, newBundleQty) => {
+        set((state) => {
+          const safeBundleQty = Math.max(1, newBundleQty);
+
+          return {
+            items: state.items.map((item) => {
+              if (item.bundleInstanceId === bundleInstanceId) {
+                const ratio = item.bundleItemRatio || 1;
+                const limit = item.maxStock ?? 9999;
+                const targetQuantity = Math.min(safeBundleQty * ratio, limit);
+                return { ...item, quantity: targetQuantity };
+              }
+              return item;
+            })
+          };
+        });
+      },
       // 🔄 ESCALADO SINCRONIZADO: Modificar un componente del combo escala todos sus elementos proporcionalmente
       updateQuantity: (itemId, quantity) => {
         set((state) => {

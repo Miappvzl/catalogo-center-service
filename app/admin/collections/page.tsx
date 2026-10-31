@@ -10,7 +10,9 @@ import {
     Clock, Eye, Percent, ArrowUpRight, FolderPlus, CheckCircle2,
     Calendar, AlertCircle,
     ChevronUp,
-    ChevronDown
+    ChevronDown,
+    PlusCircle,
+    Minus
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
@@ -27,8 +29,8 @@ interface CollectionSettings {
     accent_color: string | null
     combo_price_usd?: number | null
     entity_type?: 'combo' | 'collection'
+    items_quantities?: Record<string, number> | null // 🚀 Multiplicador de unidades por plato en combo
 }
-
 
 interface CollectionItemRecord {
     id?: string
@@ -93,7 +95,8 @@ export default function CollectionsPage() {
         badge_text: '',
         valid_until: '' as string,
         combo_price_usd: '' as string | number,
-        entity_type: 'combo' as 'combo' | 'collection', // 🚀 TIPO DE ENTIDAD DETERMINISTA
+        entity_type: 'combo' as 'combo' | 'collection',
+        items_quantities: {} as Record<string, number>, // 🚀 Mapa reactivo de cantidades { [productId]: 5 }
         items: [] as CollectionItemRecord[]
     })
 
@@ -124,17 +127,31 @@ export default function CollectionsPage() {
         ? ['COMBO', '2X1', 'FAMILIAR', 'EJECUTIVO', 'PROMO', 'DEL CHEF']
         : ['DROP', 'LOOK', 'SET', '2X1', 'PACK', 'OFERTA']
 
-    // 🚀 CÁLCULO EN VIVO DEL VALOR CONSOLIDADO EN LA BANDEJA (USD)
+    // 🚀 CÁLCULO PONDERADO: Multiplica el precio por la cantidad configurada del plato en el combo
     const totalSelectedValueUSD = useMemo(() => {
         return formData.items.reduce((acc, item) => {
             if (item.item_type === 'product' && item.product_id) {
                 const prod = storeProducts.find(p => String(p.id) === String(item.product_id))
-                return acc + Number(prod?.usd_cash_price || 0)
+                const qty = formData.entity_type === 'combo'
+                    ? (formData.items_quantities[String(item.product_id)] || 1)
+                    : 1
+                return acc + (Number(prod?.usd_cash_price || 0) * qty)
             }
             return acc
         }, 0)
-    }, [formData.items, storeProducts])
+    }, [formData.items, formData.items_quantities, formData.entity_type, storeProducts])
 
+    // 💎 CONTROLADOR DE CANTIDAD POR PLATO DENTRO DEL COMBO
+    const updateItemQuantity = (productId: string | number, newQty: number) => {
+        const safeQty = Math.max(1, Math.min(99, newQty))
+        setFormData(prev => ({
+            ...prev,
+            items_quantities: {
+                ...prev.items_quantities,
+                [String(productId)]: safeQty
+            }
+        }))
+    }
     // 🚀 REORDENAMIENTO DE ÍTEMS EN LA BANDEJA (Subir / Bajar)
     const moveItem = (index: number, direction: 'up' | 'down') => {
         const targetIndex = direction === 'up' ? index - 1 : index + 1
@@ -173,9 +190,9 @@ export default function CollectionsPage() {
                     .eq('store_id', storeData.id)
                     .order('display_order', { ascending: true })
                     .order('created_at', { ascending: false }),
-                supabase
+            supabase
                     .from('products')
-                    .select('id, name, category, image_url, usd_cash_price, wholesale_active, wholesale_min_qty, wholesale_discount_pct')
+                    .select('id, name, category, image_url, usd_cash_price, stock, wholesale_active, wholesale_min_qty, wholesale_discount_pct')
                     .eq('store_id', storeData.id)
                     .eq('status', 'active'),
                 supabase
@@ -204,10 +221,9 @@ export default function CollectionsPage() {
         fetchContextData()
     }, [fetchContextData])
 
-      const openCreateDrawer = (typeOrEvent?: 'combo' | 'collection' | React.MouseEvent) => {
-        const defaultType: 'combo' | 'collection' = 
+    const openCreateDrawer = (typeOrEvent?: 'combo' | 'collection' | React.MouseEvent) => {
+        const defaultType: 'combo' | 'collection' =
             typeof typeOrEvent === 'string' ? typeOrEvent : (isRestaurant ? 'combo' : 'collection')
-
         setFormData({
             id: null,
             name: '',
@@ -219,6 +235,7 @@ export default function CollectionsPage() {
             valid_until: '',
             combo_price_usd: '',
             entity_type: defaultType,
+            items_quantities: {}, // 🚀 Inicializa limpio
             items: []
         })
         setPickerTab('products')
@@ -269,6 +286,7 @@ export default function CollectionsPage() {
             valid_until: collection.valid_until ? collection.valid_until.slice(0, 16) : '',
             combo_price_usd: collection.settings?.combo_price_usd ?? '',
             entity_type: resolvedType,
+            items_quantities: collection.settings?.items_quantities || {}, // 🚀 Carga cantidades previas
             items: enrichedItems
         })
         setPickerTab('products')
@@ -421,7 +439,8 @@ export default function CollectionsPage() {
                     accent_color: null,
                     layout_override: null,
                     combo_price_usd: parsedComboPrice,
-                    entity_type: formData.entity_type
+                    entity_type: formData.entity_type,
+                    items_quantities: isCombo ? formData.items_quantities : null // 🚀 Persiste el mapa de unidades
                 }
             }
 
@@ -630,8 +649,8 @@ export default function CollectionsPage() {
                                 type="button"
                                 onClick={() => setActiveFilterTab('all')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'all'
-                                        ? 'bg-white text-neutral-950 shadow-2xs'
-                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    ? 'bg-white text-neutral-950 shadow-2xs'
+                                    : 'text-neutral-500 hover:text-neutral-900'
                                     }`}
                             >
                                 <span>Todos</span>
@@ -641,8 +660,8 @@ export default function CollectionsPage() {
                                 type="button"
                                 onClick={() => setActiveFilterTab('combos')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'combos'
-                                        ? 'bg-white text-neutral-950 shadow-2xs'
-                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    ? 'bg-white text-neutral-950 shadow-2xs'
+                                    : 'text-neutral-500 hover:text-neutral-900'
                                     }`}
                             >
                                 <Package size={12} strokeWidth={2.2} />
@@ -653,8 +672,8 @@ export default function CollectionsPage() {
                                 type="button"
                                 onClick={() => setActiveFilterTab('collections')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeFilterTab === 'collections'
-                                        ? 'bg-white text-neutral-950 shadow-2xs'
-                                        : 'text-neutral-500 hover:text-neutral-900'
+                                    ? 'bg-white text-neutral-950 shadow-2xs'
+                                    : 'text-neutral-500 hover:text-neutral-900'
                                     }`}
                             >
                                 <Layers size={12} strokeWidth={2.2} />
@@ -713,10 +732,13 @@ export default function CollectionsPage() {
                                 })
                                 .filter(Boolean) as string[]
 
+                         // 💎 CÁLCULO EXACTO: Multiplica por las cantidades configuradas de cada plato
+                            const quantitiesMap = col.settings?.items_quantities || {}
                             const comboTotalUSD = (col.collection_items || []).reduce((acc, it) => {
                                 if (it.item_type === 'product' && it.product_id) {
                                     const p = storeProducts.find(prod => String(prod.id) === String(it.product_id))
-                                    return acc + Number(p?.usd_cash_price || 0)
+                                    const qty = Number(quantitiesMap[String(it.product_id)] || 1)
+                                    return acc + (Number(p?.usd_cash_price || 0) * qty)
                                 }
                                 return acc
                             }, 0)
@@ -920,8 +942,8 @@ export default function CollectionsPage() {
                                                 setPickerTab('products')
                                             }}
                                             className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${formData.entity_type === 'combo'
-                                                    ? 'bg-neutral-950 text-white shadow-xs'
-                                                    : 'text-neutral-600 hover:text-neutral-950'
+                                                ? 'bg-neutral-950 text-white shadow-xs'
+                                                : 'text-neutral-600 hover:text-neutral-950'
                                                 }`}
                                         >
                                             <Package size={14} strokeWidth={2.2} />
@@ -938,8 +960,8 @@ export default function CollectionsPage() {
                                                 }))
                                             }}
                                             className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${formData.entity_type === 'collection'
-                                                    ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/60'
-                                                    : 'text-neutral-600 hover:text-neutral-950'
+                                                ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/60'
+                                                : 'text-neutral-600 hover:text-neutral-950'
                                                 }`}
                                         >
                                             <Layers size={14} strokeWidth={2.2} />
@@ -948,7 +970,7 @@ export default function CollectionsPage() {
                                     </div>
                                 )}
 
-                              {/* 1. DATOS DE IDENTIDAD */}
+                                {/* 1. DATOS DE IDENTIDAD */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
@@ -976,7 +998,7 @@ export default function CollectionsPage() {
                                             <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
                                                 {formData.entity_type === 'combo' ? 'Nombre del Combo *' : 'Nombre de la Colección *'}
                                             </label>
-                                            <input 
+                                            <input
                                                 type="text"
                                                 value={formData.name}
                                                 onChange={(e) => handleNameChange(e.target.value)}
@@ -1001,7 +1023,7 @@ export default function CollectionsPage() {
                                                 )}
                                             </div>
 
-                                            <input 
+                                            <input
                                                 type="text"
                                                 maxLength={20}
                                                 value={formData.badge_text}
@@ -1017,11 +1039,10 @@ export default function CollectionsPage() {
                                                         key={badge}
                                                         type="button"
                                                         onClick={() => setFormData(prev => ({ ...prev, badge_text: badge }))}
-                                                        className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded transition-all ${
-                                                            formData.badge_text === badge
+                                                        className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded transition-all ${formData.badge_text === badge
                                                                 ? 'bg-neutral-950 text-white'
                                                                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {badge}
                                                     </button>
@@ -1065,7 +1086,7 @@ export default function CollectionsPage() {
                                             ))}
                                         </div>
 
-                                        <input 
+                                        <input
                                             type="datetime-local"
                                             value={formData.valid_until}
                                             onChange={(e) => setFormData(prev => ({ ...prev, valid_until: e.target.value }))}
@@ -1078,23 +1099,23 @@ export default function CollectionsPage() {
                                         <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">
                                             Imagen de Cabecera (Banner)
                                         </label>
-                                        <input 
+                                        <input
                                             ref={fileInputRef}
-                                            type="file" 
-                                            accept="image/*" 
-                                            className="hidden" 
-                                            onChange={(e) => handleUploadCover(e.target.files)} 
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => handleUploadCover(e.target.files)}
                                         />
 
                                         {formData.image_url ? (
                                             <div className="h-28 w-full rounded-xl border border-neutral-200 overflow-hidden relative group">
-                                                <Image 
-                                                    src={getOptimizedUrl(formData.image_url)} 
-                                                    alt="Cover" 
-                                                    fill 
-                                                    className="object-cover" 
+                                                <Image
+                                                    src={getOptimizedUrl(formData.image_url)}
+                                                    alt="Cover"
+                                                    fill
+                                                    className="object-cover"
                                                 />
-                                                <button 
+                                                <button
                                                     type="button"
                                                     onClick={() => setFormData(prev => ({ ...prev, image_url: null }))}
                                                     className="absolute top-2 right-2 p-1.5 bg-neutral-950/70 hover:bg-neutral-950 text-white rounded-md transition-colors"
@@ -1103,7 +1124,7 @@ export default function CollectionsPage() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <button 
+                                            <button
                                                 type="button"
                                                 disabled={uploadingImage}
                                                 onClick={() => fileInputRef.current?.click()}
@@ -1124,7 +1145,7 @@ export default function CollectionsPage() {
                                     </div>
                                 </div>
 
-                                {/* 2. BANDEJA ACTIVA DEL COMBO / COLECCIÓN */}
+                               {/* 2. BANDEJA ACTIVA DEL COMBO / COLECCIÓN */}
                                 <div className="space-y-3 pt-4 border-t border-neutral-100">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -1143,7 +1164,7 @@ export default function CollectionsPage() {
                                         )}
                                     </div>
 
-                                    {/* Lista de Ítems en Bandeja */}
+                                    {/* Lista de Ítems en Bandeja (UNA SOLA VEZ, SIN DUPLICADOS) */}
                                     {formData.items.length === 0 ? (
                                         <div className="p-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 text-center">
                                             <p className="text-xs text-neutral-400 font-medium">
@@ -1153,80 +1174,121 @@ export default function CollectionsPage() {
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-1.5 max-h-44 overflow-y-auto no-scrollbar border border-neutral-200/80 rounded-xl p-2 bg-neutral-50/60 divide-y divide-neutral-100">
-                                            {formData.items.map((item, idx) => (
-                                                <div 
-                                                    key={`${item.item_type}-${item.product_id || item.promotion_id || item.category_name}-${idx}`}
-                                                    className="pt-1.5 first:pt-0 flex items-center justify-between gap-2.5 text-left"
-                                                >
-                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                                        <span className="text-[10px] font-mono font-bold text-neutral-400 w-3 text-center">
-                                                            {idx + 1}
-                                                        </span>
+                                        <div className="space-y-1.5 max-h-52 overflow-y-auto no-scrollbar border border-neutral-200/80 rounded-xl p-2 bg-neutral-50/60 divide-y divide-neutral-100">
+                                            {formData.items.map((item, idx) => {
+                                                const isCombo = formData.entity_type === 'combo' && item.item_type === 'product' && item.product_id
+                                                const currentQty = isCombo ? (formData.items_quantities[String(item.product_id)] || 1) : 1
+                                                const prod = isCombo ? storeProducts.find(p => String(p.id) === String(item.product_id)) : null
+                                                const unitPrice = Number(prod?.usd_cash_price || 0)
 
-                                                        <div className="w-7 h-7 rounded bg-white border border-neutral-200/80 relative overflow-hidden shrink-0">
-                                                            {item.previewImage ? (
-                                                                <Image src={getOptimizedUrl(item.previewImage)} alt="" fill className="object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-[9px] font-mono font-bold text-neutral-400">
-                                                                    #
+                                                return (
+                                                    <div 
+                                                        key={`${item.item_type}-${item.product_id || item.promotion_id || item.category_name}-${idx}`}
+                                                        className="pt-2 first:pt-0 flex items-center justify-between gap-2.5 text-left"
+                                                    >
+                                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                            <span className="text-[10px] font-mono font-bold text-neutral-400 w-3 text-center">
+                                                                {idx + 1}
+                                                            </span>
+
+                                                            <div className="w-8 h-8 rounded bg-white border border-neutral-200/80 relative overflow-hidden shrink-0">
+                                                                {item.previewImage ? (
+                                                                    <Image src={getOptimizedUrl(item.previewImage)} alt="" fill className="object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-[9px] font-mono font-bold text-neutral-400">
+                                                                        #
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                                <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <p className="text-xs font-bold text-neutral-900 truncate leading-tight">
+                                                                        {isCombo && currentQty > 1 && (
+                                                                            <span className="text-neutral-950 font-black mr-1">{currentQty}x</span>
+                                                                        )}
+                                                                        {item.previewTitle}
+                                                                    </p>
+                                                                    {prod && Number(prod.stock || 0) <= 0 && (
+                                                                        <span className="bg-rose-50 text-rose-600 border border-rose-200/80 px-1 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider">
+                                                                            Agotado
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-[10px] font-mono text-neutral-500 truncate leading-tight">
+                                                                    {isCombo 
+                                                                        ? `$${(unitPrice * currentQty).toFixed(2)} USD (${currentQty} x $${unitPrice.toFixed(2)})`
+                                                                        : item.previewSub}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Controles: Stepper de Cantidad (Solo Combos) + Reordenar + Eliminar */}
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            {isCombo && (
+                                                                <div className="flex items-center bg-white border border-neutral-200 rounded-lg p-0.5 shadow-2xs mr-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateItemQuantity(item.product_id!, currentQty - 1)}
+                                                                        disabled={currentQty <= 1}
+                                                                        className="w-5 h-5 flex items-center justify-center text-neutral-500 hover:text-neutral-950 disabled:opacity-20 transition-colors"
+                                                                    >
+                                                                        <Minus size={12} strokeWidth={2.5} />
+                                                                    </button>
+                                                                    <span className="text-[10px] font-mono font-bold text-neutral-900 px-1 min-w-[18px] text-center">
+                                                                        {currentQty}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateItemQuantity(item.product_id!, currentQty + 1)}
+                                                                        className="w-5 h-5 flex items-center justify-center text-neutral-500 hover:text-neutral-950 transition-colors"
+                                                                    >
+                                                                        <Plus size={12} strokeWidth={2.5} />
+                                                                    </button>
                                                                 </div>
                                                             )}
-                                                        </div>
 
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-xs font-bold text-neutral-900 truncate leading-tight">
-                                                                {item.previewTitle}
-                                                            </p>
-                                                            {item.previewSub && (
-                                                                <p className="text-[10px] font-mono text-neutral-500 truncate leading-tight">
-                                                                    {item.previewSub}
-                                                                </p>
-                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                disabled={idx === 0}
+                                                                onClick={() => moveItem(idx, 'up')}
+                                                                className="p-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-20 transition-colors"
+                                                                title="Subir posición"
+                                                            >
+                                                                <ChevronUp size={13} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={idx === formData.items.length - 1}
+                                                                onClick={() => moveItem(idx, 'down')}
+                                                                className="p-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-20 transition-colors"
+                                                                title="Bajar posición"
+                                                            >
+                                                                <ChevronDown size={13} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        items: prev.items.filter((_, i) => i !== idx)
+                                                                    }))
+                                                                }}
+                                                                className="p-1 text-neutral-400 hover:text-rose-600 transition-colors ml-0.5"
+                                                                title="Quitar de la bandeja"
+                                                            >
+                                                                <X size={13} />
+                                                            </button>
                                                         </div>
                                                     </div>
-
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <button
-                                                            type="button"
-                                                            disabled={idx === 0}
-                                                            onClick={() => moveItem(idx, 'up')}
-                                                            className="p-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-20 transition-colors"
-                                                            title="Subir posición"
-                                                        >
-                                                            <ChevronUp size={14} />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            disabled={idx === formData.items.length - 1}
-                                                            onClick={() => moveItem(idx, 'down')}
-                                                            className="p-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-20 transition-colors"
-                                                            title="Bajar posición"
-                                                        >
-                                                            <ChevronDown size={14} />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setFormData(prev => ({
-                                                                    ...prev,
-                                                                    items: prev.items.filter((_, i) => i !== idx)
-                                                                }))
-                                                            }}
-                                                            className="p-1 text-neutral-400 hover:text-rose-600 transition-colors ml-1"
-                                                            title="Quitar de la bandeja"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     )}
 
-                                    {/* 💎 CONTROL DE PRECIO CERRADO (EXCLUSIVO PARA COMBOS) */}
+                                    {/* 💎 CONTROL DE PRECIO CERRADO DEL COMBO (RESTAURADO & DESTACADO) */}
                                     {formData.entity_type === 'combo' && formData.items.length > 0 && (
-                                        <div className="p-3.5 bg-neutral-50/80 border border-neutral-200/70 rounded-xl space-y-2.5">
+                                        <div className="p-3.5 bg-neutral-50/80 border border-neutral-200/80 rounded-xl space-y-2.5 mt-2">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-800">
@@ -1242,7 +1304,7 @@ export default function CollectionsPage() {
                                                         onClick={() => setFormData(prev => ({ ...prev, combo_price_usd: '' }))}
                                                         className="text-[9px] font-mono text-neutral-400 hover:text-rose-600 transition-colors"
                                                     >
-                                                        Usar suma regular
+                                                        Usar valor base (${totalSelectedValueUSD.toFixed(2)})
                                                     </button>
                                                 )}
                                             </div>
@@ -1257,14 +1319,15 @@ export default function CollectionsPage() {
                                                     min="0"
                                                     value={formData.combo_price_usd}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, combo_price_usd: e.target.value }))}
-                                                    placeholder={totalSelectedValueUSD > 0 ? `Precio especial (Valor base: $${totalSelectedValueUSD.toFixed(2)})` : "0.00"}
-                                                    className="w-full bg-white border border-neutral-200/80 rounded-lg pl-7 pr-12 py-2 text-xs font-mono font-bold text-neutral-900 outline-none focus:border-neutral-950 transition-colors shadow-2xs placeholder:font-sans placeholder:font-normal placeholder:text-neutral-400"
+                                                    placeholder={totalSelectedValueUSD > 0 ? `Ingresa el precio especial (Valor regular: $${totalSelectedValueUSD.toFixed(2)})` : "0.00"}
+                                                    className="w-full bg-white border border-neutral-200/80 rounded-lg pl-7 pr-12 py-2.5 text-xs font-mono font-bold text-neutral-900 outline-none focus:border-neutral-950 transition-colors shadow-2xs placeholder:font-sans placeholder:font-normal placeholder:text-neutral-400"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-neutral-400">
                                                     USD
                                                 </span>
                                             </div>
 
+                                            {/* Micro-Feedback Contable y Ahorro */}
                                             {formData.combo_price_usd !== '' && Number(formData.combo_price_usd) > 0 && totalSelectedValueUSD > 0 && (() => {
                                                 const comboPrice = Number(formData.combo_price_usd)
                                                 const diff = totalSelectedValueUSD - comboPrice
@@ -1290,172 +1353,181 @@ export default function CollectionsPage() {
                                     )}
                                 </div>
 
-                                    {/* 3. SELECTOR MULTIENTIDAD (EL CATÁLOGO) */}
-                                    <div className="space-y-3 pt-3">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-                                                3. Añadir más elementos al catálogo
-                                            </h4>
-                                        </div>
-                                        {/* 🚀 PESTAÑAS SIMPLIFICADAS Y LIMPIAS (3 SECCIONES PURAS) */}
-                                        <div className="flex gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/60 overflow-x-auto no-scrollbar">
-                                            {[
-                                                { id: 'products', label: isRestaurant ? 'Platos del Menú' : 'Productos', icon: Package },
-                                                { id: 'promotions', label: 'Promociones Activas', icon: Tag },
-                                                { id: 'categories', label: 'Categorías Completas', icon: Layers },
-                                            ].map(tab => (
-                                                <button
-                                                    key={tab.id}
-                                                    type="button"
-                                                    onClick={() => { setPickerTab(tab.id as any); setPickerSearch(''); }}
-                                                    className={`flex-1 py-1.5 px-2.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${pickerTab === tab.id
-                                                            ? 'bg-white text-neutral-950 shadow-xs'
-                                                            : 'text-neutral-500 hover:text-neutral-900'
-                                                        }`}
-                                                >
-                                                    <tab.icon size={11} />
-                                                    <span>{tab.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
+                                {/* 3. SELECTOR MULTIENTIDAD (EL CATÁLOGO) */}
+                                <div className="space-y-3 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+                                            3. Añadir más elementos al catálogo
+                                        </h4>
+                                    </div>
+                                    {/* 🚀 PESTAÑAS SIMPLIFICADAS Y LIMPIAS (3 SECCIONES PURAS) */}
+                                    <div className="flex gap-1 bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/60 overflow-x-auto no-scrollbar">
+                                        {[
+                                            { id: 'products', label: isRestaurant ? 'Platos del Menú' : 'Productos', icon: Package },
+                                            { id: 'promotions', label: 'Promociones Activas', icon: Tag },
+                                            { id: 'categories', label: 'Categorías Completas', icon: Layers },
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                type="button"
+                                                onClick={() => { setPickerTab(tab.id as any); setPickerSearch(''); }}
+                                                className={`flex-1 py-1.5 px-2.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${pickerTab === tab.id
+                                                    ? 'bg-white text-neutral-950 shadow-xs'
+                                                    : 'text-neutral-500 hover:text-neutral-900'
+                                                    }`}
+                                            >
+                                                <tab.icon size={11} />
+                                                <span>{tab.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
 
-                                        {/* Buscador de Catálogo */}
-                                        <div className="relative">
-                                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                            <input
-                                                type="text"
-                                                value={pickerSearch}
-                                                onChange={(e) => setPickerSearch(e.target.value)}
-                                                placeholder="Buscar por nombre de producto o plato..."
-                                                className="w-full bg-neutral-50 border border-neutral-200/70 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold text-neutral-900 outline-none focus:border-neutral-950 transition-colors"
-                                            />
-                                        </div>
+                                    {/* Buscador de Catálogo */}
+                                    <div className="relative">
+                                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        <input
+                                            type="text"
+                                            value={pickerSearch}
+                                            onChange={(e) => setPickerSearch(e.target.value)}
+                                            placeholder="Buscar por nombre de producto o plato..."
+                                            className="w-full bg-neutral-50 border border-neutral-200/70 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold text-neutral-900 outline-none focus:border-neutral-950 transition-colors"
+                                        />
+                                    </div>
 
-                                        {/* Listado Unificado de Productos con Indicador de Venta al Mayor */}
-                                        <div className="border border-neutral-200/80 rounded-xl bg-white max-h-56 overflow-y-auto divide-y divide-neutral-100 no-scrollbar">
+                                    {/* Listado Unificado de Productos con Indicador de Venta al Mayor */}
+                                    <div className="border border-neutral-200/80 rounded-xl bg-white max-h-56 overflow-y-auto divide-y divide-neutral-100 no-scrollbar">
 
-                                            {/* A) CATÁLOGO UNIFICADO */}
-                                            {pickerTab === 'products' && (
-                                                storeProducts
-                                                    .filter(p => p.name.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                    .map(prod => {
-                                                        const selected = isItemInCollection('product', prod.id)
-                                                        return (
-                                                            <div
-                                                                key={prod.id}
-                                                                onClick={() => toggleItem('product', prod)}
-                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                                    <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
-                                                                        {prod.image_url ? (
-                                                                            <Image src={getOptimizedUrl(prod.image_url)} alt="" fill className="object-cover" />
-                                                                        ) : null}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <p className="font-bold text-xs text-neutral-900 truncate">{prod.name}</p>
-                                                                            {prod.wholesale_active && (
-                                                                                <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold uppercase px-1 rounded border border-emerald-200/60">
-                                                                                    Mayorista (-{prod.wholesale_discount_pct}%)
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-[10px] font-mono text-neutral-400">${Number(prod.usd_cash_price).toFixed(2)} • {prod.category}</p>
-                                                                    </div>
+                                        {/* A) CATÁLOGO UNIFICADO */}
+                                        {pickerTab === 'products' && (
+                                            storeProducts
+                                                .filter(p => p.name.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                .map(prod => {
+                                                    const selected = isItemInCollection('product', prod.id)
+                                                    return (
+                                                        <div
+                                                            key={prod.id}
+                                                            onClick={() => toggleItem('product', prod)}
+                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
+                                                                    {prod.image_url ? (
+                                                                        <Image src={getOptimizedUrl(prod.image_url)} alt="" fill className="object-cover" />
+                                                                    ) : null}
                                                                 </div>
-                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                                    }`}>
-                                                                    {selected && <Check size={12} strokeWidth={3} />}
+                                                                <div className="min-w-0">
+                                                                   <div className="flex items-center gap-1.5">
+                                                                        <p className="font-bold text-xs text-neutral-900 truncate">{prod.name}</p>
+                                                                        {Number(prod.stock || 0) <= 0 ? (
+                                                                            <span className="bg-rose-50 text-rose-600 text-[8px] font-mono font-bold uppercase px-1 rounded border border-rose-200/60">
+                                                                                Agotado (0)
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-[8px] font-mono text-neutral-400">
+                                                                                Stock: {prod.stock}
+                                                                            </span>
+                                                                        )}
+                                                                        {prod.wholesale_active && (
+                                                                            <span className="bg-emerald-50 text-emerald-700 text-[8px] font-mono font-bold uppercase px-1 rounded border border-emerald-200/60">
+                                                                                Mayorista (-{prod.wholesale_discount_pct}%)
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] font-mono text-neutral-400">${Number(prod.usd_cash_price).toFixed(2)} • {prod.category}</p>
                                                                 </div>
                                                             </div>
-                                                        )
-                                                    })
-                                            )}
+                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                }`}>
+                                                                {selected && <Check size={12} strokeWidth={3} />}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })
+                                        )}
 
 
-                                            {/* C) PROMOCIONES */}
-                                            {pickerTab === 'promotions' && (
-                                                storePromotions
-                                                    .filter(p => p.title.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                    .map(promo => {
-                                                        const selected = isItemInCollection('promotion', promo.id)
-                                                        return (
-                                                            <div
-                                                                key={promo.id}
-                                                                onClick={() => toggleItem('promotion', promo)}
-                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                                    <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
-                                                                        {promo.image_url ? (
-                                                                            <Image src={getOptimizedUrl(promo.image_url)} alt="" fill className="object-cover" />
-                                                                        ) : null}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="font-bold text-xs text-neutral-900 truncate">{promo.title}</p>
-                                                                        <p className="text-[10px] font-mono text-purple-700">{promo.discount_percentage ? `-${promo.discount_percentage}% OFF` : 'Campaña'}</p>
-                                                                    </div>
+                                        {/* C) PROMOCIONES */}
+                                        {pickerTab === 'promotions' && (
+                                            storePromotions
+                                                .filter(p => p.title.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                .map(promo => {
+                                                    const selected = isItemInCollection('promotion', promo.id)
+                                                    return (
+                                                        <div
+                                                            key={promo.id}
+                                                            onClick={() => toggleItem('promotion', promo)}
+                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <div className="w-8 h-8 rounded bg-neutral-100 relative overflow-hidden shrink-0">
+                                                                    {promo.image_url ? (
+                                                                        <Image src={getOptimizedUrl(promo.image_url)} alt="" fill className="object-cover" />
+                                                                    ) : null}
                                                                 </div>
-                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                                    }`}>
-                                                                    {selected && <Check size={12} strokeWidth={3} />}
+                                                                <div className="min-w-0">
+                                                                    <p className="font-bold text-xs text-neutral-900 truncate">{promo.title}</p>
+                                                                    <p className="text-[10px] font-mono text-purple-700">{promo.discount_percentage ? `-${promo.discount_percentage}% OFF` : 'Campaña'}</p>
                                                                 </div>
                                                             </div>
-                                                        )
-                                                    })
-                                            )}
-
-                                            {/* D) CATEGORÍAS COMPLETAS */}
-                                            {pickerTab === 'categories' && (
-                                                storeCategories
-                                                    .filter(c => c.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                    .map(cat => {
-                                                        const selected = isItemInCollection('category', cat)
-                                                        return (
-                                                            <div
-                                                                key={cat}
-                                                                onClick={() => toggleItem('category', cat)}
-                                                                className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <Layers size={14} className="text-neutral-500 shrink-0" />
-                                                                    <p className="font-bold text-xs text-neutral-900 truncate">{cat}</p>
-                                                                </div>
-                                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
-                                                                    }`}>
-                                                                    {selected && <Check size={12} strokeWidth={3} />}
-                                                                </div>
+                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                }`}>
+                                                                {selected && <Check size={12} strokeWidth={3} />}
                                                             </div>
-                                                        )
-                                                    })
-                                            )}
-                                        </div>
+                                                        </div>
+                                                    )
+                                                })
+                                        )}
+
+                                        {/* D) CATEGORÍAS COMPLETAS */}
+                                        {pickerTab === 'categories' && (
+                                            storeCategories
+                                                .filter(c => c.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                .map(cat => {
+                                                    const selected = isItemInCollection('category', cat)
+                                                    return (
+                                                        <div
+                                                            key={cat}
+                                                            onClick={() => toggleItem('category', cat)}
+                                                            className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${selected ? 'bg-neutral-100/80' : 'hover:bg-neutral-50'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <Layers size={14} className="text-neutral-500 shrink-0" />
+                                                                <p className="font-bold text-xs text-neutral-900 truncate">{cat}</p>
+                                                            </div>
+                                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? 'bg-neutral-950 border-neutral-950 text-white' : 'border-neutral-300'
+                                                                }`}>
+                                                                {selected && <Check size={12} strokeWidth={3} />}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })
+                                        )}
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Footer de Guardado */}
-                                <div className="p-4 md:p-5 border-t border-neutral-100 bg-white shrink-0 flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => !saving && setIsDrawerOpen(false)}
-                                        className="px-4 py-3 rounded-xl border border-neutral-200 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={saving}
-                                        onClick={handleSaveCollection}
-                                        className="flex-1 bg-neutral-950 hover:bg-black text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50"
-                                    >
-                                        {saving ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                                        <span>Guardar y Publicar</span>
-                                    </button>
-                                </div>
+                            {/* Footer de Guardado */}
+                            <div className="p-4 md:p-5 border-t border-neutral-100 bg-white shrink-0 flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !saving && setIsDrawerOpen(false)}
+                                    className="px-4 py-3 rounded-xl border border-neutral-200 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-neutral-950 hover:bg-neutral-50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={handleSaveCollection}
+                                    className="flex-1 bg-neutral-950 hover:bg-black text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                                    <span>Guardar y Publicar</span>
+                                </button>
+                            </div>
                         </motion.div>
                     </div>
                 )}

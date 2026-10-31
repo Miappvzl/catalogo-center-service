@@ -361,19 +361,25 @@ export default function OrdersPage() {
         return selectedOrder.delivery_info?.match(/⚠️ VUELTO VIRTUAL: \$([0-9.]+) \(Entregó: \$([0-9.]+) \| Correo: ([^)]+)\)/) || null;
     }, [selectedOrder]);
 
-    // 💎 RECONSTRUCTOR VISUAL DE COMANDA: Agrupa productos de un mismo combo en una sola entidad
+interface EnrichedOrderItem extends OrderItem {
+        cleanVariantInfo: string | null
+        itemRatio: number // 💎 Valor garantizado (1 o múltiplo del combo)
+    }
+
+    interface GroupedOrderDisplay {
+        type: 'single' | 'combo'
+        comboName?: string
+        quantity: number
+        items: EnrichedOrderItem[]
+    }
+
     const groupedOrderItems = useMemo(() => {
         if (!selectedOrder?.order_items) return []
 
-        const groups: Array<{
-            type: 'single' | 'combo'
-            comboName?: string
-            quantity: number
-            items: Array<OrderItem & { cleanVariantInfo: string | null }>
-        }> = []
-
-        const comboMap = new Map<string, Array<OrderItem & { cleanVariantInfo: string | null }>>()
-        const comboRegex = /\[Combo:\s*([^\]]+)\]/i
+        const groups: GroupedOrderDisplay[] = []
+        const comboMap = new Map<string, { items: EnrichedOrderItem[]; ratio: number }>()
+        // Regex robusto: extrae [Combo: Nombre] o [Combo: Nombre (x5)]
+        const comboRegex = /\[Combo:\s*([^\](]+?)(?:\s*\(x(\d+)\))?\]/i
 
         selectedOrder.order_items.forEach((item) => {
             const match = item.variant_info ? item.variant_info.match(comboRegex) : null
@@ -381,29 +387,33 @@ export default function OrdersPage() {
                 ? item.variant_info.replace(comboRegex, '').replace(/^[•\s-]+|[•\s-]+$/g, '').trim() || null
                 : null
 
-            const enrichedItem = { ...item, cleanVariantInfo: cleanVariant }
-
             if (match) {
                 const comboName = match[1].trim()
+                const ratio = match[2] ? parseInt(match[2], 10) : 1
+                const enrichedItem: EnrichedOrderItem = { ...item, cleanVariantInfo: cleanVariant, itemRatio: ratio }
+
                 if (!comboMap.has(comboName)) {
-                    comboMap.set(comboName, [])
+                    comboMap.set(comboName, { items: [], ratio })
                 }
-                comboMap.get(comboName)!.push(enrichedItem)
+                comboMap.get(comboName)!.items.push(enrichedItem)
             } else {
                 groups.push({
                     type: 'single',
                     quantity: item.quantity,
-                    items: [enrichedItem]
+                    items: [{ ...item, cleanVariantInfo: cleanVariant, itemRatio: 1 }]
                 })
             }
         })
 
-        // Agrupamos los combos detectados
-        comboMap.forEach((comboItems, comboName) => {
+        // Cantidad de combos = total_piezas / ratio
+        comboMap.forEach(({ items: comboItems, ratio }, comboName) => {
+            const firstQty = comboItems[0]?.quantity || 1
+            const realComboQuantity = Math.max(1, Math.round(firstQty / ratio))
+
             groups.push({
                 type: 'combo',
                 comboName,
-                quantity: comboItems[0]?.quantity || 1,
+                quantity: realComboQuantity,
                 items: comboItems
             })
         })
@@ -1006,11 +1016,19 @@ export default function OrdersPage() {
 
                                                                 return (
                                                                     <div key={subItem.id || sIdx} className="pt-2 first:pt-0 space-y-1">
-                                                                        <div className="flex items-start justify-between gap-2">
+                                                                   <div className="flex items-start justify-between gap-2">
                                                                             <div className="flex items-center gap-1.5 min-w-0">
                                                                                 <span className="text-neutral-400 font-mono text-[11px] shrink-0">└</span>
+                                                                                <span className="font-mono font-black text-xs text-neutral-900 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200/80 shrink-0">
+                                                                                    {subItem.quantity}x
+                                                                                </span>
                                                                                 <p className="font-bold text-xs text-neutral-800 truncate leading-snug">
                                                                                     {subItem.product_name}
+                                                                                    {(subItem.itemRatio ?? 1) > 1 && (
+                                                                                        <span className="text-[10px] font-mono text-neutral-400 font-normal ml-1.5">
+                                                                                            ({subItem.itemRatio}x por combo)
+                                                                                        </span>
+                                                                                    )}
                                                                                 </p>
                                                                             </div>
                                                                             {subItem.cleanVariantInfo && (
@@ -1371,9 +1389,9 @@ export default function OrdersPage() {
                                             <div className="pl-2 text-[10px] space-y-0.5">
                                                 {group.items.map((sub, sIdx) => {
                                                     const isLast = sIdx === group.items.length - 1
-                                                    return (
+                                                   return (
                                                         <p key={sIdx}>
-                                                            {isLast ? '└' : '├'} {sub.product_name} {sub.cleanVariantInfo ? `(${sub.cleanVariantInfo})` : ''}
+                                                            {isLast ? '└' : '├'} [{sub.quantity}x] {sub.product_name} {sub.cleanVariantInfo ? `(${sub.cleanVariantInfo})` : ''}
                                                         </p>
                                                     )
                                                 })}

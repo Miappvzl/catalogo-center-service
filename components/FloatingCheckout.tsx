@@ -365,24 +365,28 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             }
         });
 
-        // Insertamos los combos consolidados
+      // Insertamos los combos consolidados con cálculo estricto de la cantidad de paquetes pedidos
         bundleMap.forEach((bundleItems, bundleInstanceId) => {
             const first = bundleItems[0];
             const bundleName = first.original?.bundleName || first.bundleName || 'Combo Especial';
-            const quantity = first.quantity;
+            
+            // 💎 RATIO REAL: La cantidad del combo es (unidades_en_carrito / unidades_por_combo)
+            const ratio = Number(first.original?.bundleItemRatio || 1);
+            const bundleQuantity = Math.max(1, Math.round(first.quantity / ratio));
+
             const totalFinalPrice = bundleItems.reduce((acc, it) => acc + (it.finalListPrice * it.quantity), 0);
             const totalListPrice = bundleItems.reduce((acc, it) => acc + (it.listPrice * it.quantity), 0);
-            const maxStock = Math.min(...bundleItems.map(it => it.maxStock ?? 9999));
+            const maxStock = Math.min(...bundleItems.map(it => Math.floor((it.maxStock ?? 9999) / (it.original?.bundleItemRatio || 1))));
 
             groups.push({
                 type: 'bundle',
                 bundleInstanceId,
                 bundleName,
                 items: bundleItems,
-                quantity,
+                quantity: bundleQuantity, // 🚀 Muestra 1 en el stepper (no 5)
                 totalFinalPrice,
                 totalListPrice,
-                maxStock
+                maxStock: Math.max(1, maxStock)
             });
         });
 
@@ -974,39 +978,41 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                             </button>
                                                                         </div>
 
-                                                                        {/* Bandeja de Platos/Productos incluidos en el Combo */}
+                                                               {/* Bandeja de Platos/Productos incluidos con multiplicador visible */}
                                                                         <div className="bg-[var(--store-bg)]/60 rounded-xl p-2.5 border border-[var(--store-border)]/40 space-y-2">
-                                                                            {group.items.map((subItem) => (
-                                                                                <div key={subItem.id} className="flex items-center gap-2.5 min-w-0">
-                                                                                    <div className="w-8 h-8 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)]/50 overflow-hidden relative shrink-0">
-                                                                                        <Image
-                                                                                            src={getOptimizedUrl(subItem.image)}
-                                                                                            alt={subItem.name}
-                                                                                            fill
-                                                                                            sizes="32px"
-                                                                                            className="object-cover"
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div className="flex-1 min-w-0 leading-tight">
-                                                                                        <p className="text-[11px] font-bold text-[var(--store-text-main)] truncate">
-                                                                                            {subItem.name}
-                                                                                        </p>
-                                                                                        {subItem.variantInfo && subItem.variantInfo !== 'N/A' && (
-                                                                                            <p className="text-[9px] font-mono text-[var(--store-surface-text)] truncate mt-0.5">
-                                                                                                {subItem.variantInfo}
+                                                                            {group.items.map((subItem) => {
+                                                                                // 💎 RESOLUCIÓN ROBUSTA: Lee el ratio guardado o deduce (cantidad_total / combos_pedidos)
+                                                                                const itemRatio = subItem.original?.bundleItemRatio 
+                                                                                    || subItem.bundleItemRatio 
+                                                                                    || Math.max(1, Math.round(subItem.quantity / group.quantity))
+
+                                                                                return (
+                                                                                    <div key={subItem.id} className="flex items-center gap-2.5 min-w-0">
+                                                                                        <div className="w-8 h-8 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)]/50 overflow-hidden relative shrink-0">
+                                                                                            <Image
+                                                                                                src={getOptimizedUrl(subItem.image)}
+                                                                                                alt={subItem.name}
+                                                                                                fill
+                                                                                                sizes="32px"
+                                                                                                className="object-cover"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="flex-1 min-w-0 leading-tight">
+                                                                                            <p className="text-[11px] font-bold text-[var(--store-text-main)] truncate">
+                                                                                                {itemRatio > 1 && (
+                                                                                                    <span className="font-mono font-black text-neutral-950 bg-neutral-100 px-1 py-0.2 rounded border border-neutral-200/80 mr-1">
+                                                                                                        {itemRatio}x
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                {subItem.name}
                                                                                             </p>
-                                                                                        )}
-                                                                                        {subItem.foodModifiers && subItem.foodModifiers.length > 0 && (
-                                                                                            <p className="text-[9px] text-[var(--store-surface-text)] truncate mt-0.5">
-                                                                                                + {subItem.foodModifiers.map((m: any) => m.name).join(', ')}
-                                                                                            </p>
-                                                                                        )}
+                                                                                        </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            ))}
+                                                                                )
+                                                                            })}
                                                                         </div>
 
-                                                                        {/* Pie: Precio Cerrado del Combo + Control Único de Cantidad */}
+                                                                        {/* Pie: Precio del Combo y Stepper de Cantidad del Paquete */}
                                                                         <div className="flex items-center justify-between pt-1">
                                                                             <div className="flex flex-col">
                                                                                 <div className="flex items-baseline gap-1.5">
@@ -1024,11 +1030,11 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                                 </span>
                                                                             </div>
 
-                                                                            {/* Stepper Único del Combo Completo */}
+                                                                            {/* 🚀 Stepper Conectado a updateBundleQuantity */}
                                                                             <div className="flex items-center p-0.5 gap-2 border border-[var(--store-border)]/60 bg-[var(--store-bg)] rounded-[var(--radius-btn)] shrink-0">
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() => updateQuantity(firstItem.id, group.quantity - 1)}
+                                                                                    onClick={() => useCart.getState().updateBundleQuantity(group.bundleInstanceId, group.quantity - 1)}
                                                                                     disabled={group.quantity <= 1}
                                                                                     className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]"
                                                                                 >
@@ -1039,7 +1045,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                                 </span>
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() => updateQuantity(firstItem.id, group.quantity + 1)}
+                                                                                    onClick={() => useCart.getState().updateBundleQuantity(group.bundleInstanceId, group.quantity + 1)}
                                                                                     disabled={group.quantity >= group.maxStock}
                                                                                     className="w-5 h-5 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 transition-all active:scale-90 rounded-[var(--radius-btn)]"
                                                                                 >

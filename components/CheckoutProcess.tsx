@@ -1352,11 +1352,14 @@ switch (pm) {
                     ? Number(item.productId)
                     : null;
 
-                // 💎 TRAZABILIDAD VISUAL: Si el producto pertenece a un combo, lo sellamos en variant_info
+   // 💎 TRAZABILIDAD VISUAL Y RATIO: Sellamos el nombre del combo y las unidades por paquete (ej: x5)
+                const ratioText = (item.bundleItemRatio && item.bundleItemRatio > 1) ? ` (x${item.bundleItemRatio})` : '';
+                const comboTag = `[Combo: ${item.bundleName}${ratioText}]`;
+
                 const enrichedVariantInfo = item.bundleName
                     ? (item.variantInfo && item.variantInfo !== 'N/A'
-                        ? `${item.variantInfo} • [Combo: ${item.bundleName}]`
-                        : `[Combo: ${item.bundleName}]`)
+                        ? `${item.variantInfo} • ${comboTag}`
+                        : comboTag)
                     : (item.variantInfo || "N/A");
 
                 return {
@@ -1410,14 +1413,17 @@ switch (pm) {
                 }
             });
 
-            // 1. Renderizado de Combos (Árbol Limpio de Componentes)
+       // 1. Renderizado de Combos (Árbol Limpio con Cálculo Estricto de Paquetes)
             bundleMap.forEach((bundleEntries) => {
                 const first = bundleEntries[0];
                 const bundleName = first.originalItem?.bundleName || first.item.bundleName || 'Combo Especial';
-                const bundleQty = first.item.quantity;
+                
+                // 💎 CÁLCULO EXACTO: La cantidad de combos pedidos es (unidades_totales / ratio_por_combo)
+                const ratio = Number(first.originalItem?.bundleItemRatio || first.item.bundleItemRatio || 1);
+                const comboQty = Math.max(1, Math.round(first.item.quantity / ratio));
                 const bundleTotalUSD = bundleEntries.reduce((sum, e) => sum + (e.item.finalListPrice * e.item.quantity), 0);
 
-                message += `📦 *${bundleQty}x COMBO: ${bundleName}* ($${bundleTotalUSD.toFixed(2)})\n`;
+                message += `📦 *${comboQty}x COMBO: ${bundleName}* ($${bundleTotalUSD.toFixed(2)})\n`;
 
                 bundleEntries.forEach((entry, idx) => {
                     const isLast = idx === bundleEntries.length - 1;
@@ -1427,7 +1433,11 @@ switch (pm) {
                         ? ` (${entry.item.variantInfo})` 
                         : '';
 
-                    message += `${branch} ${skuText}${entry.item.name}${varText}\n`;
+                    const totalComponentQty = entry.item.quantity;
+                    const itemRatio = entry.originalItem?.bundleItemRatio || entry.item.bundleItemRatio || 1;
+                    const qtyBreakdown = itemRatio > 1 ? ` (${itemRatio}x por combo)` : '';
+
+                    message += `${branch} ${totalComponentQty}x ${skuText}${entry.item.name}${varText}${qtyBreakdown}\n`;
 
                     if (entry.originalItem?.foodModifiers && entry.originalItem.foodModifiers.length > 0) {
                         entry.originalItem.foodModifiers.forEach((mod: any) => {
