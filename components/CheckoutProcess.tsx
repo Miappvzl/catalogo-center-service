@@ -30,8 +30,8 @@ import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
 import { evaluateStoreHours } from '@/utils/storeHours'
 import { useCart } from "@/app/store/useCart";
-import Swal from "sweetalert2";
-import { verifyOrderPricingAction } from "@/app/admin/orders/action"; // 🚀 CENTINELA ZERO-TRUST
+import { feedback } from "@/app/store/useFeedBackStore";
+import { verifyOrderPricingAction } from "@/app/admin/orders/action";
 import { Icon } from "@iconify/react";
 // 🚀 IMPORTS DE LOGÍSTICA
 import { MrwIcon } from "@/components/ui/icons/MrwIcon";
@@ -328,18 +328,18 @@ const activePaymentMethods = useMemo(() => {
 
 
 
-    // 🚀 LÓGICA DE KYC (CONOCE A TU CLIENTE) VÍA OTP
-    const handleSendOtp = async () => {
+const handleSendOtp = async () => {
         if (!changeEmail || !changeEmail.includes('@')) {
-            return Swal.fire({ title: 'Correo inválido', icon: 'warning', confirmButtonColor: '#000', customClass: { popup: 'rounded-xl' } });
+            return feedback.alert('Correo Inválido', 'Ingresa una dirección de correo válida para proteger tu saldo.', 'warning');
         }
         setIsOtpProcessing(true);
         const { error } = await supabase.auth.signInWithOtp({ email: changeEmail });
         setIsOtpProcessing(false);
         if (error) {
-            return Swal.fire({ title: 'Error', text: error.message, icon: 'error', confirmButtonColor: '#000', customClass: { popup: 'rounded-xl' } });
+            return feedback.alert('Error de Seguridad', error.message || 'No se pudo enviar el código de verificación.', 'danger');
         }
         setOtpSent(true);
+        feedback.toast.info('Código Enviado', `Revisa tu bandeja de entrada en ${changeEmail}`);
     };
 
     const handleVerifyOtp = async () => {
@@ -349,12 +349,12 @@ const activePaymentMethods = useMemo(() => {
         setIsOtpProcessing(false);
 
         if (error) {
-            return Swal.fire({ title: 'Código inválido', text: 'Revisa el código e intenta de nuevo.', icon: 'error', confirmButtonColor: '#000', customClass: { popup: 'rounded-xl' } });
+            return feedback.alert('Código Incorrecto', 'El código de 6 dígitos no coincide o ha expirado.', 'danger');
         }
         if (data.user) {
             setCurrentUser(data.user);
             setOtpVerified(true);
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Identidad verificada', showConfirmButton: false, timer: 2000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } });
+            feedback.toast.success('Identidad Verificada', 'Tu saldo a favor ha quedado vinculado de forma segura.');
         }
     };
 
@@ -792,16 +792,13 @@ const activePaymentMethods = useMemo(() => {
         // 1. Calculamos el límite exacto según la moneda seleccionada
         const maxAllowed = isHard ? remainingCashUSD : remainingBs;
 
-        // 2. Escudo Anti-Sobrepago (Permitimos 0.01 de tolerancia por redondeos de JavaScript)
+      // 2. Escudo Anti-Sobrepago
         if (amount > maxAllowed + 0.01) {
-            Swal.fire({
-                title: "Monto Excedido",
-                text: `Solo debes ${isHard ? "$" : "Bs"} ${maxAllowed.toFixed(2)}. No puedes ingresar un monto mayor.`,
-                icon: "warning",
-                confirmButtonColor: "#000",
-                customClass: { popup: "rounded-xl" },
-            });
-            // Auto-completamos el input con el máximo permitido para ayudar al usuario (UX de élite)
+            feedback.alert(
+                'Monto Excedido',
+                `El abono supera el saldo pendiente. Solo debes ${isHard ? "$" : "Bs"} ${maxAllowed.toFixed(2)}.`,
+                'warning'
+            );
             setPaymentAmount(maxAllowed.toFixed(2));
             return;
         }
@@ -824,27 +821,16 @@ const activePaymentMethods = useMemo(() => {
     const removePaymentBlock = (id: string) =>
         setSplitPayments(splitPayments.filter((p) => p.id !== id));
 
-    const handleAttachReceipt = (id: string, file: File | null) => {
+   const handleAttachReceipt = (id: string, file: File | null) => {
         if (file) {
-            // 1. Validar Mime Type real
             if (!file.type.startsWith("image/")) {
-                return Swal.fire({
-                    title: "Formato inválido",
-                    text: "Por seguridad, solo se permiten imágenes (JPG, PNG, WEBP).",
-                    icon: "error",
-                    confirmButtonColor: "#000",
-                });
+                return feedback.alert('Formato Inválido', 'Por seguridad, solo se permiten capturas en formato JPG, PNG o WEBP.', 'warning');
             }
-            // 2. Limitar tamaño máximo a 5MB (Prevención de saturación de memoria)
             if (file.size > 5 * 1024 * 1024) {
-                return Swal.fire({
-                    title: "Archivo muy pesado",
-                    text: "El comprobante no debe superar los 5MB.",
-                    icon: "error",
-                    confirmButtonColor: "#000",
-                });
+                return feedback.alert('Archivo Muy Pesado', 'El comprobante no debe superar los 5MB de tamaño.', 'warning');
             }
         }
+        
         setSplitPayments(
             splitPayments.map((p) => (p.id === id ? { ...p, receiptFile: file } : p)),
         );
@@ -1002,18 +988,16 @@ switch (pm) {
 
 
 
-    // --- PROCESAR ORDEN A BASE DE DATOS (CON LABOR ILLUSION) ---
+    // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
     const handleCheckout = async () => {
         // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
         const newErrors: Record<string, string> = {};
         if (!clientData.name) newErrors.name = "El nombre es obligatorio";
         if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
 
-          // 🚀 NUEVO: Validación orgánica (Permite avanzar si es un regalo o el saldo cubre todo)
         if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
             newErrors.payment = "Selecciona un método de pago";
         }
-
 
         if (isStrictTax && wantsFiscalData) {
             if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
@@ -1021,13 +1005,7 @@ switch (pm) {
         }
 
         if (!storeHoursStatus.isOpen) {
-            Swal.fire({
-                title: 'Local Fuera de Servicio',
-                text: `En este momento no se reciben pedidos. ${storeHoursStatus.detailLabel}.`,
-                icon: 'info',
-                confirmButtonColor: '#000',
-                customClass: { popup: 'rounded-xl' }
-            });
+            feedback.alert('Local Fuera de Servicio', `En este momento no se reciben pedidos. ${storeHoursStatus.detailLabel}.`, 'info');
             return;
         }
 
@@ -1055,12 +1033,10 @@ switch (pm) {
             }
         }
 
-        // 🚀 NUEVO: Validación orgánica (Permite avanzar si el saldo cubre todo)
         if (splitPayments.length === 0 && appliedCreditUSD === 0) {
             newErrors.payment = "Selecciona un método de pago";
         }
 
-        // 🚀 CANDADO LEGAL: VUELTO VIRTUAL Y KYC (Sincronizado con isStoreCreditActive)
         if (isStoreCreditActive && activePaymentInput === 'Efectivo' && paymentMode === 'single') {
             if (tenderedAmount < targetCashAmount) {
                 newErrors.tendered = "El monto entregado es menor al total a pagar.";
@@ -1084,26 +1060,24 @@ switch (pm) {
             const errorElement = document.getElementById(`field-${firstErrorKey}`);
 
             if (errorElement) {
-                // Si el elemento existe, hacemos el scroll suave
                 errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
-                // FALLBACK VITAL: Si el DOM falla, mostramos alerta nativa
-                Swal.fire({
-                    title: "Faltan datos",
-                    text: "Por favor, revisa que todos los campos requeridos marcados en rojo estén completos.",
-                    icon: "warning",
-                    confirmButtonColor: "#000",
-                    customClass: { popup: "rounded-xl" }
-                });
+                feedback.alert('Faltan Datos', 'Revisa que todos los campos obligatorios marcados en rojo estén completos.', 'warning');
             }
             return;
         }
 
-     setErrors({}); // Limpiamos errores
-        if (!isPaidInFull && grandTotalUSD > 0) return Swal.fire({ title: "Saldo Pendiente", text: "Debes completar el 100% del pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
-        if (missingReceipts && grandTotalUSD > 0) return Swal.fire({ title: "Comprobantes Faltantes", text: "Adjunta los captures de pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+        setErrors({}); // Limpiamos errores
+        if (!isPaidInFull && grandTotalUSD > 0) {
+            feedback.alert('Saldo Pendiente', 'Debes cubrir el 100% del monto total de la orden para finalizar.', 'warning');
+            return;
+        }
+        if (missingReceipts && grandTotalUSD > 0) {
+            feedback.alert('Comprobantes Requeridos', 'Adjunta las capturas de tus pagos para poder procesar la orden.', 'warning');
+            return;
+        }
 
-        // 🛡️ BÓVEDA ZERO-TRUST: Auditoría de precios en tiempo real contra Postgres antes de asentar la orden
+        // 🛡️ BÓVEDA ZERO-TRUST: Auditoría de precios en tiempo real contra Postgres
         setCheckoutState('validating');
 
         const auditResult = await verifyOrderPricingAction({
@@ -1121,24 +1095,20 @@ switch (pm) {
         if (!auditResult.valid) {
             setCheckoutState('idle');
 
-            // Si la base de datos devolvió precios frescos, actualizamos el carrito en vivo
             if (auditResult.freshProducts && auditResult.freshProducts.length > 0) {
                 useCart.getState().reconcilePrices(auditResult.freshProducts);
             }
 
-            Swal.fire({
-                title: 'Precios Actualizados',
-                text: auditResult.message || 'El comerciante ha actualizado los precios oficiales de estos productos. Tu pedido ha sido recalculado con los valores vigentes.',
-                icon: 'info',
-                confirmButtonColor: '#000',
-                customClass: { popup: 'rounded-2xl font-sans text-xs' }
-            });
+            feedback.alert(
+                'Precios Actualizados',
+                auditResult.message || 'El comerciante ha actualizado los precios oficiales de estos productos. Tu pedido ha sido recalculado con los valores vigentes.',
+                'info'
+            );
             return;
         }
 
         // 🚀 2. LA ILUSIÓN DE BÓVEDA (LABOR ILLUSION)
-        setCheckoutState('validating');
-        await new Promise(resolve => setTimeout(resolve, 800)); // Retenemos al cliente para darle seguridad psicológica
+        await new Promise(resolve => setTimeout(resolve, 800));
         setCheckoutState('processing');
 
         try {
@@ -1572,20 +1542,20 @@ switch (pm) {
             setCheckoutState('success');
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 50, 20]);
 
-            setTimeout(() => {
+          setTimeout(() => {
                 onSuccess(order.order_number, waLink, order.id);
             }, 600);
 
         } catch (error: any) {
-            setCheckoutState('idle'); // Restablecemos el botón
-            Swal.fire({ title: "Falla de Conexión", text: error.message, icon: "info", iconColor: "#000", confirmButtonColor: "#000", customClass: { popup: "rounded-xl border border-[var(--store-border)]" } });
+            setCheckoutState('idle');
+            feedback.alert('Interrupción de Red', error.message || 'Ocurrió un problema de comunicación al registrar tu pedido. Intenta nuevamente.', 'danger');
         }
     };
 
-    // 🚀 MOTOR VERIFICADOR P2P
+    // 🚀 MOTOR VERIFICADOR P2P (PAGO FLASH)
     const handleVerifyP2P = async () => {
         if (!p2pForm.bankCode || !p2pForm.phone || !p2pForm.reference || !p2pForm.document) {
-            return Swal.fire({ title: 'Faltan Datos', text: 'Completa todos los campos para verificar.', icon: 'warning', confirmButtonColor: '#000' });
+            return feedback.alert('Datos Incompletos', 'Completa todos los campos bancarios para conciliar tu pago móvil.', 'warning');
         }
 
         setIsVerifying(true);
@@ -1601,8 +1571,6 @@ switch (pm) {
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok || !verifyData.success) throw new Error(verifyData.error || 'No pudimos validar tu pago. Verifica la referencia.');
 
-
-            // ÉXITO ABSOLUTO (Corregido sin encadenar .catch)
             if (appliedCreditUSD > 0 && currentUser) {
                 const { error: rpcError } = await supabase.rpc('process_store_credit', {
                     p_customer_id: currentUser.id,
@@ -1616,14 +1584,13 @@ switch (pm) {
                     console.error('Error descontando saldo en P2P (RPC):', rpcError);
                 }
             }
-            sessionStorage.removeItem(`pz_checkout_${storeId}`); // 🚀 Limpiamos la memoria caché
+            sessionStorage.removeItem(`pz_checkout_${storeId}`);
             clearCart();
             const waLink = generateWaMessage(pfTransaction.orderNumber, true);
             onSuccess(pfTransaction.orderNumber, waLink, pfTransaction.orderId);
 
         } catch (error: any) {
-            // Mantiene el modal en Paso 2 para que corrija el error
-            Swal.fire({ title: 'Validación Rechazada', text: error.message, icon: 'error', confirmButtonColor: '#000' });
+            feedback.alert('Validación Rechazada', error.message || 'No pudimos validar tu transferencia. Revisa el número de referencia.', 'danger');
         } finally {
             setIsVerifying(false);
         }
@@ -1632,17 +1599,13 @@ switch (pm) {
     // 🚀 MOTOR DE AUTO-CHECKOUT
     useEffect(() => {
         if (autoSubmitTrigger) {
-            // Si el pago se cubrió por completo y no faltan captures de otros métodos
             if (isPaidInFull && !missingReceipts) {
                 handleCheckout();
             } else {
-                // Si es un pago mixto y aún debe dinero, solo le avisamos
-                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, customClass: { popup: 'bg-black text-white rounded-xl text-xs font-bold' } });
-                Toast.fire({ icon: 'success', title: 'Abono validado. Completa el resto.' });
+                feedback.toast.success('Abono validado', 'Completa el saldo pendiente para enviar el pedido.');
             }
-            setAutoSubmitTrigger(false); // Reseteamos el gatillo
+            setAutoSubmitTrigger(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoSubmitTrigger, isPaidInFull, missingReceipts]);
 
 
@@ -3433,7 +3396,7 @@ switch (pm) {
                                                 {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
                                             </button>
                                         </div>
-                                    </motion.div>
+                                  </motion.div>
                                 )}
                             </AnimatePresence>
                         </motion.div>

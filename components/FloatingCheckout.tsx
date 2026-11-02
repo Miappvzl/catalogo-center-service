@@ -13,7 +13,7 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import { calculateCartEngine } from '@/utils/cartLogic'
 import NumberTicker from './NumberTicker'
 import { getSupabase } from '@/lib/supabase-client'
-import Swal from 'sweetalert2'
+import { feedback } from '@/app/store/useFeedBackStore'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -161,13 +161,40 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const [isWhatsAppInterception, setIsWhatsAppInterception] = useState(false) // 🚀 NUEVO: Peaje Psicológico
     const [hasClickedWhatsApp, setHasClickedWhatsApp] = useState(false) // 🚀 NUEVO: Memoria de acción
 
-    // 🚀 EFECTO 1: Escucha del Botón del Header
+    // 🛡️ CENTINELA EN CALIENTE: Cada vez que se abre la bolsa, audita que los precios coincidan con Postgres
     useEffect(() => {
-        setIsMounted(true)
-        const handleToggleCart = () => { setIsOpen(true); };
-        document.addEventListener('toggleCartDrawer', handleToggleCart);
-        return () => document.removeEventListener('toggleCartDrawer', handleToggleCart);
-    }, [])
+        if (!isOpen || items.length === 0) return
+
+        const auditCartPrices = async () => {
+            const looseItems = items.filter(i => !i.bundleInstanceId)
+            if (looseItems.length === 0) return
+
+            const productIds = Array.from(new Set(looseItems.map(i => i.productId)))
+            const supabase = getSupabase()
+
+            try {
+                const { data: freshProducts } = await supabase
+                    .from('products')
+                    .select('id, usd_cash_price, usd_penalty, status, product_variants(id, override_usd_price, override_usd_penalty)')
+                    .in('id', productIds)
+
+                if (freshProducts && freshProducts.length > 0) {
+                    const priceChanged = useCart.getState().reconcilePrices(freshProducts)
+
+                    if (priceChanged) {
+                        feedback.toast.info(
+                            'Precios actualizados',
+                            'Los artículos de tu bolsa se sincronizaron con su valor oficial vigente.'
+                        )
+                    }
+                }
+            } catch (err) {
+                console.error('Silencioso: Error verificando precios en caliente:', err)
+            }
+        }
+
+        auditCartPrices()
+    }, [isOpen, items])
 
     // 🚀 EFECTO 2: Enrutador Automático (Si abre el carrito vacío pero hay orden, va al Paso 3)
     useEffect(() => {
@@ -367,11 +394,11 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             }
         });
 
-      // Insertamos los combos consolidados con cálculo estricto de la cantidad de paquetes pedidos
+        // Insertamos los combos consolidados con cálculo estricto de la cantidad de paquetes pedidos
         bundleMap.forEach((bundleItems, bundleInstanceId) => {
             const first = bundleItems[0];
             const bundleName = first.original?.bundleName || first.bundleName || 'Combo Especial';
-            
+
             // 💎 RATIO REAL: La cantidad del combo es (unidades_en_carrito / unidades_por_combo)
             const ratio = Number(first.original?.bundleItemRatio || 1);
             const bundleQuantity = Math.max(1, Math.round(first.quantity / ratio));
@@ -481,8 +508,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                         transition={{ type: "spring", damping: 26, stiffness: 220 }}
                         layout
                         className={`fixed z-50 ${isRestaurant
-                                ? 'bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--store-bg)] via-[var(--store-bg)]/90 to-transparent pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))]'
-                                : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
+                            ? 'bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--store-bg)] via-[var(--store-bg)]/90 to-transparent pointer-events-none pb-[calc(1rem+env(safe-area-inset-bottom))]'
+                            : activeTheme.layout?.card_style === 'editorial' ? 'bottom-6 left-4 right-4 md:hidden' : 'bottom-0 left-0 right-0 md:hidden'
                             }`}
                     >
                         {isRestaurant ? (
@@ -940,7 +967,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             >
                                                 <div className="space-y-0 flex-1 overflow-x-hidden">
                                                     {/* 🚀 EL MOTOR DE COLAPSO ORGÁNICO (Cero popLayout) */}
-                                                <AnimatePresence initial={false}>
+                                                    <AnimatePresence initial={false}>
                                                         {displayGroups.map((group) => {
                                                             // =========================================================
                                                             // CASO A: TARJETA UNIFICADA DE COMBO (MINIMALIST CARD)
@@ -980,12 +1007,12 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                             </button>
                                                                         </div>
 
-                                                               {/* Bandeja de Platos/Productos incluidos con multiplicador visible */}
+                                                                        {/* Bandeja de Platos/Productos incluidos con multiplicador visible */}
                                                                         <div className="bg-[var(--store-bg)]/60 rounded-xl p-2.5 border border-[var(--store-border)]/40 space-y-2">
                                                                             {group.items.map((subItem) => {
                                                                                 // 💎 RESOLUCIÓN ROBUSTA: Lee el ratio guardado o deduce (cantidad_total / combos_pedidos)
-                                                                                const itemRatio = subItem.original?.bundleItemRatio 
-                                                                                    || subItem.bundleItemRatio 
+                                                                                const itemRatio = subItem.original?.bundleItemRatio
+                                                                                    || subItem.bundleItemRatio
                                                                                     || Math.max(1, Math.round(subItem.quantity / group.quantity))
 
                                                                                 return (
@@ -1362,56 +1389,73 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             className="absolute inset-0 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-[var(--store-bg)] z-30 origin-top will-change-transform shadow-[0_-20px_40px_rgba(0,0,0,0.3)]"
                                         >
 
-                                            {/* 🚀 MODAL DE INTERCEPCIÓN (PEAJE PSICOLÓGICO) */}
-                                            <AnimatePresence>
-                                                {isWhatsAppInterception && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        exit={{ opacity: 0 }}
-                                                        className="absolute inset-0 z-[100] flex items-center justify-center p-5 bg-[var(--store-bg)]/60 backdrop-blur-xl"
-                                                    >
-                                                        <motion.div
-                                                            initial={{ scale: 0.95, opacity: 0, y: 15 }}
-                                                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                                                            exit={{ scale: 0.95, opacity: 0, y: -15 }}
-                                                            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                                                            className="bg-[var(--store-surface)] w-full max-w-sm p-8 md:p-10 rounded-[32px] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.07)] border border-[var(--store-border)]/40 flex flex-col items-center text-center"
-                                                        >
-                                                            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-                                                                <AlertCircle size={36} className="text-amber-500" strokeWidth={2.5} />
-                                                            </div>
-                                                            <h3 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none mb-4">
-                                                                ¡Falta un paso!
-                                                            </h3>
-                                                            <p className="text-sm font-medium text-[var(--store-surface-text)] leading-relaxed mb-8">
-                                                                Tu pedido <strong className="text-[var(--store-text-main)] font-black">#{generatedOrderNumber}</strong> está reservado, pero necesitamos que nos envíes el resumen para procesarlo inmediatamente.
-                                                            </p>
+                                          {/* 🚀 MODAL DE INTERCEPCIÓN (PEAJE PSICOLÓGICO) */}
+<AnimatePresence>
+    {isWhatsAppInterception && (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] flex items-center justify-center p-5 bg-[var(--store-bg)]/60 backdrop-blur-xl"
+        >
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: -15 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="bg-[var(--store-surface)] w-full max-w-sm p-8 md:p-10 rounded-[32px] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.07)] border border-[var(--store-border)]/40 flex flex-col items-center text-center overflow-hidden"
+            >
+                <div className="w-20 h-20 bg-[var(--store-primary)]/10 rounded-full flex items-center justify-center mb-6">
+                    <AlertCircle size={36} className="text-[var(--store-text-main)]" strokeWidth={2.5} />
+                </div>
+                <h3 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight leading-none mb-4">
+                    ¡Falta un paso!
+                </h3>
+                <p className="text-sm font-medium text-[var(--store-surface-text)] leading-relaxed mb-8">
+                    Tu pedido <strong className="text-[var(--store-text-main)] font-black">#{generatedOrderNumber}</strong> está reservado, pero necesitamos que nos envíes el resumen para procesarlo inmediatamente.
+                </p>
 
-                                                            <a
-                                                                href={whatsappUrl}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                // 🚀 Magia: Al hacer clic, abre WhatsApp y a la vez oculta el modal
-                                                                onClick={() => {
-                                                                    setIsWhatsAppInterception(false);
-                                                                    setHasClickedWhatsApp(true); // 🚀 Registramos que el usuario ya accionó
-                                                                }} // 🚀 Registramos que el usuario ya accionó
-                                                                className="w-full bg-[#25D366] text-white px-6 py-4 rounded-2xl font-black text-sm hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-[0_10px_40px_-10px_rgba(37,211,102,0.3)]"
-                                                            >
-                                                                <MessageCircle size={20} /> Enviar WhatsApp Ahora
-                                                            </a>
+                <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                        setIsWhatsAppInterception(false);
+                        setHasClickedWhatsApp(true);
+                    }}
+                    className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] px-6 py-4 rounded-2xl font-black text-sm hover:bg-[var(--store-primary)]/80 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-[var(--shadow-ui)]"
+                >
+                    <MessageCircle size={20} /> Enviar WhatsApp Ahora
+                </a>
 
-                                                            <button
-                                                                onClick={() => setIsWhatsAppInterception(false)}
-                                                                className="mt-6 text-[11px] font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors underline decoration-[var(--store-border)] underline-offset-4"
-                                                            >
-                                                                Ya lo envié / Omitir
-                                                            </button>
-                                                        </motion.div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                <button
+                    onClick={() => setIsWhatsAppInterception(false)}
+                    className="mt-6 text-[11px] font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors underline decoration-[var(--store-border)] underline-offset-4"
+                >
+                    Ya lo envié / Omitir
+                </button>
+
+                {/* ⚡ MINI FOOTER PREZISO.SHOP */}
+                <div className="mt-10 pt-4 w-full border-t border-[var(--store-border)]/30 flex flex-col items-center justify-center gap-1 group">
+                    <p className="text-[10px] tracking-wider uppercase font-semibold text-[var(--store-surface-text)]/50 transition-colors group-hover:text-[var(--store-surface-text)]/80">
+                        Tecnología de
+                    </p>
+                    <a
+                        href="https://preziso.shop"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-black text-[var(--store-text-main)] flex items-center gap-0.5 group-hover:opacity-80 transition-opacity"
+                    >
+                        preziso<span className="font-medium text-[var(--store-surface-text)]">.shop</span>
+                        <ArrowUpRight size={13} className="text-[var(--store-surface-text)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2.5} />
+                    </a>
+                </div>
+
+            </motion.div>
+        </motion.div>
+    )}
+</AnimatePresence>
+
 
                                             {/* 🚀 EL CHECKMARK GLORIOSO ANIMADO */}
                                             <motion.div

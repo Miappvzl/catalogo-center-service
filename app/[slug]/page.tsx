@@ -9,6 +9,7 @@ import StoreLoadingSkeleton from './StoreLoadingSkeleton'
 import RestaurantInterface from '@/components/restaurant/RestaurantInterface'
 import { Metadata } from 'next'
 import { Rocket } from 'lucide-react'
+import PrezisoFeedbackProvider from '@/components/ui/PrezisoFeedbackProvider'
 
 export const revalidate = 60
 
@@ -124,13 +125,16 @@ export default async function StorePage({
     '--store-primary': colors.primary || '#000000',
   } as React.CSSProperties
 
-  return (
+return (
     <div
       style={{ ...themeVariables, backgroundColor: 'var(--store-background)' }}
       className={`min-h-screen font-sans antialiased ${isDark ? 'dark text-neutral-50' : 'text-neutral-900'}`}
     >
       {/* 🚀 Ahorro de escrituras BD: Tracker desactivado en modo preview */}
       {!isPreview && <StoreTracker storeId={store.id} />}
+
+      {/* 💎 MOTOR NATIVO DE ALERTAS Y TOASTS ADAPTATIVOS */}
+      <PrezisoFeedbackProvider />
 
       <Suspense fallback={<StoreLoadingSkeleton />}>
         <DeferredStoreContent store={store} isPreview={isPreview} />
