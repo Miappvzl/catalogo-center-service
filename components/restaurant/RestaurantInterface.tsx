@@ -22,6 +22,7 @@ import FloatingCheckout from '@/components/FloatingCheckout'
 import RestaurantFilterModal, { DEFAULT_FILTERS, RestaurantFiltersState } from './RestaurantFilterModal'
 import BCVLogo from '@/components/icons/BCVLogo'
 import { memo } from 'react'
+import ComboCustomizerModal from './ComboCustomizerModal'
 
 // 🚀 PERF FIX: Sub-componente aislado. Evita que TODA la pantalla del restaurante
 // se re-renderice al agregar/quitar platos. Solo este pequeño nodo escucha a Zustand.
@@ -293,10 +294,14 @@ export default function RestaurantInterface({
             return allowedProductIds.has(pid) || allowedCategories.has(pcat)
         })
     }, [products, selectedCollectionData])
-    const [isRateModalOpen, setIsRateModalOpen] = useState(false)
+   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
     const [isFoodModalOpen, setIsFoodModalOpen] = useState(false)
     const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
     const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
+
+    // 💎 ESTADOS DEL ASISTENTE "ARMA TU COMBO" (Scope Global del Componente)
+    const [isComboCustomizerOpen, setIsComboCustomizerOpen] = useState(false)
+    const [comboToCustomize, setComboToCustomize] = useState<any>(null)
 
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
     const [filters, setFilters] = useState<RestaurantFiltersState>(DEFAULT_FILTERS)
@@ -585,7 +590,7 @@ export default function RestaurantInterface({
         setIsFoodModalOpen(true)
     }, [])
 
-// 🛡️ CANDADO DE INVENTARIO: Evalúa si todos los componentes de un combo tienen stock disponible
+    // 🛡️ CANDADO DE INVENTARIO: Evalúa si todos los componentes de un combo tienen stock disponible
     const isComboOutOfStock = useCallback((collection: any) => {
         if (!collection || !Array.isArray(collection.collection_items)) return false
         const qtyMap = collection.settings?.items_quantities || {}
@@ -600,17 +605,37 @@ export default function RestaurantInterface({
         })
     }, [products])
 
-    // 💎 ACCIÓN ATÓMICA: Despacha el combo completo hacia el Atomic Bundle Engine de Zustand
+   // 💎 ACCIÓN DEL ASISTENTE: Confirma la selección de modificadores y añade el combo a la bolsa
+    const handleConfirmCustomizedCombo = useCallback((configuredItems: any[], totalExtraCost: number) => {
+        if (!comboToCustomize) return
+
+        const basePrice = Number(comboToCustomize.settings?.combo_price_usd || 0)
+        const finalComboPrice = basePrice + totalExtraCost
+
+        useCart.getState().addBundle(
+            {
+                collectionId: comboToCustomize.id,
+                name: comboToCustomize.name,
+                comboPriceUSD: finalComboPrice
+            },
+            configuredItems
+        )
+
+        document.dispatchEvent(new CustomEvent('cartImpact'))
+    }, [comboToCustomize])
+
+    // 💎 BIFURCACIÓN INTELIGENTE: Si algún plato tiene extras abre el asistente; si no, 1-Click directo
     const handleAddComboToCart = useCallback((collection: any, e?: React.MouseEvent) => {
         if (!collection || !Array.isArray(collection.collection_items)) return
-const quantitiesMap = collection.settings?.items_quantities || {}
 
+        const quantitiesMap = collection.settings?.items_quantities || {}
+
+        // 1. Resolver los platos incluidos
         const bundleItems = collection.collection_items
             .filter((it: any) => it.item_type === 'product' && it.product_id)
             .map((it: any) => {
                 const prod = products.find((p: any) => String(p.id) === String(it.product_id))
                 if (!prod) return null
-                // 🚀 Extraemos la cantidad configurada (ej. 5 perros) o fallback a 1
                 const itemQty = Number(quantitiesMap[String(it.product_id)] || 1)
                 return {
                     product: prod,
@@ -624,14 +649,23 @@ const quantitiesMap = collection.settings?.items_quantities || {}
 
         if (bundleItems.length === 0) return
 
-        // 2. Determinamos si aplica precio cerrado o valor base ponderado (precio * cantidad)
+        // 2. Evaluamos si algún plato del combo tiene modificadores asignados
+        const hasCustomizableDishes = bundleItems.some(
+            (it: any) => it.product.product_modifier_groups && it.product.product_modifier_groups.length > 0
+        )
+
+        if (hasCustomizableDishes) {
+            // 🛡️ CASO CON EXTRAS: Abrimos el asistente "Arma tu Combo"
+            setComboToCustomize(collection)
+            setIsComboCustomizerOpen(true)
+            return
+        }
+
+        // 🛡️ CASO SIMPLE (Sin extras): 1-Click directo a la bolsa con animación
         const nominalSum = bundleItems.reduce((acc: number, item: any) => acc + (Number(item.product.usd_cash_price || 0) * item.quantity), 0)
-
-
         const customPrice = collection.settings?.combo_price_usd ? Number(collection.settings.combo_price_usd) : null
         const finalComboPrice = customPrice && customPrice > 0 ? customPrice : nominalSum
 
-        // 3. Inyección atómica en Zustand sin re-renderizar la raíz
         useCart.getState().addBundle(
             {
                 collectionId: collection.id,
@@ -641,7 +675,6 @@ const quantitiesMap = collection.settings?.items_quantities || {}
             bundleItems
         )
 
-        // 4. Efectos sensoriales: física parabólica y squash & stretch en la bolsa
         const targetEl = e?.currentTarget as HTMLElement | null
         const rect = targetEl ? targetEl.getBoundingClientRect() : null
 
@@ -919,17 +952,17 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                     setIsFilterModalOpen(true)
                                 }
                             }}
-                            className={`w-11 h-11 border-[length:var(--border-width-ui)] flex items-center justify-center active:scale-95 shrink-0 transition-all ${activeFiltersCount > 0
-                                ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-sm'
-                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
+                            className={`w-11 h-11 flex items-center justify-center active:scale-95 shrink-0 transition-all ${activeFiltersCount > 0
+                                ? 'btext-[var(--store-text-main)] hover:text-[var(--store-text-main)]/80'
+                                : 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/80'
                                 }`}
                             style={{ borderRadius: 'var(--radius-btn, 12px)' }}
                             title={activeFiltersCount > 0 ? "Limpiar filtros" : "Filtrar menú"}
                         >
                             {activeFiltersCount > 0 ? (
-                                <RotateCcw size={15} strokeWidth={2.5} />
+                                <RotateCcw size={21} strokeWidth={2.5} />
                             ) : (
-                                <SlidersHorizontal size={15} strokeWidth={2.2} />
+                                <SlidersHorizontal size={21} strokeWidth={2.2} />
                             )}
                         </button>
                     </div>
@@ -986,8 +1019,8 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                 >
                                     <div
                                         className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 bg-[var(--store-surface)] shadow-2xs ${activeCategory === 'Todos'
-                                                ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
-                                                : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
+                                            ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
+                                            : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
                                             }`}
                                     >
                                         <Utensils
@@ -998,8 +1031,8 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <span className={`text-[10px] tracking-tight leading-tight transition-colors duration-200 ${activeCategory === 'Todos'
-                                                ? 'text-[var(--store-primary)] font-black'
-                                                : 'text-[var(--store-surface-text)] font-semibold'
+                                            ? 'text-[var(--store-primary)] font-black'
+                                            : 'text-[var(--store-surface-text)] font-semibold'
                                             }`}>
                                             Todos
                                         </span>
@@ -1020,8 +1053,8 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                         >
                                             <div
                                                 className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200 relative bg-[var(--store-surface)] shadow-2xs ${isActive
-                                                        ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
-                                                        : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
+                                                    ? 'border-2 border-[var(--store-primary)] ring-2 ring-[var(--store-primary)]/15 scale-105'
+                                                    : 'border-[length:var(--border-width-ui)] border-[var(--store-border)] group-hover:border-[var(--store-text-main)]/30'
                                                     }`}
                                             >
                                                 {imgUrl ? (
@@ -1040,8 +1073,8 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                             </div>
                                             <div className="flex flex-col items-center max-w-[58px]">
                                                 <span className={`text-[10px] tracking-tight truncate w-full text-center leading-tight transition-colors duration-200 ${isActive
-                                                        ? 'text-[var(--store-primary)] font-black'
-                                                        : 'text-[var(--store-surface-text)] font-semibold'
+                                                    ? 'text-[var(--store-primary)] font-black'
+                                                    : 'text-[var(--store-surface-text)] font-semibold'
                                                     }`}>
                                                     {cat}
                                                 </span>
@@ -1087,80 +1120,70 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                 ) : isFilteringActive ? (
                     <div className="px-5 py-6 space-y-4">
 
-                    {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN MÓVIL */}
+                        {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN MÓVIL */}
                         {selectedCollectionData && (() => {
                             const isCombo = selectedCollectionData.settings?.entity_type === 'combo' || Boolean(selectedCollectionData.settings?.combo_price_usd)
-                     const quantitiesMap = selectedCollectionData.settings?.items_quantities || {}
-                                const nominalSum = (selectedCollectionData.collection_items || []).reduce((acc: number, it: any) => {
-                                    if (it.item_type === 'product' && it.product_id) {
-                                        const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
-                                        const qty = Number(quantitiesMap[String(it.product_id)] || 1)
-                                        return acc + (Number(p?.usd_cash_price || 0) * qty)
-                                    }
-                                    return acc
-                                }, 0)
+                            const quantitiesMap = selectedCollectionData.settings?.items_quantities || {}
+                            const nominalSum = (selectedCollectionData.collection_items || []).reduce((acc: number, it: any) => {
+                                if (it.item_type === 'product' && it.product_id) {
+                                    const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
+                                    const qty = Number(quantitiesMap[String(it.product_id)] || 1)
+                                    return acc + (Number(p?.usd_cash_price || 0) * qty)
+                                }
+                                return acc
+                            }, 0)
                             const customPrice = selectedCollectionData.settings?.combo_price_usd ? Number(selectedCollectionData.settings.combo_price_usd) : null
                             const finalPrice = isCombo && customPrice && customPrice > 0 ? customPrice : nominalSum
                             const savings = isCombo && nominalSum > finalPrice ? nominalSum - finalPrice : 0
                             const itemCount = selectedCollectionData.collection_items?.length || 0
 
                             return (
-                                <div id="restaurant-combo-view-anchor" className="p-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] text-left space-y-5">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            {isCombo ? (
-                                                <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2 py-0.5 rounded shadow-2xs flex items-center gap-1">
-                                                    <Package size={10} strokeWidth={2.5} />
-                                                    <span>{selectedCollectionData.settings?.badge_text || 'Combo Especial'}</span>
-                                                </span>
-                                            ) : (
-                                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-200/80 px-2 py-0.5 rounded flex items-center gap-1">
-                                                    <Layers size={10} strokeWidth={2.2} />
-                                                    <span>{selectedCollectionData.settings?.badge_text || 'Colección'}</span>
-                                                </span>
+                                <div id="restaurant-combo-view-anchor" className="p-5 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] text-left space-y-4">
+
+                                    {/* Header: Título, Descripción y Botón de Cierre Integrado */}
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h2 className="text-lg font-black text-[var(--store-text-main)] tracking-tight leading-tight">
+                                                {selectedCollectionData.name}
+                                            </h2>
+                                            {selectedCollectionData.description && (
+                                                <p className="text-xs text-[var(--store-surface-text)] leading-relaxed line-clamp-2">
+                                                    {selectedCollectionData.description}
+                                                </p>
                                             )}
                                         </div>
 
                                         <button
                                             type="button"
                                             onClick={() => setActiveCollectionSlug(null)}
-                                            className="text-xs font-bold text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] underline flex items-center gap-1"
+                                            className="p-1.5 rounded-full text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-border)]/30 transition-colors shrink-0"
+                                            aria-label="Ver todo el menú"
                                         >
-                                            <X size={12} /> Ver Todo el Menú
+                                            <X size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
 
-                                    <div>
-                                        <h2 className="text-lg font-black text-[var(--store-text-main)] leading-tight">
-                                            {selectedCollectionData.name}
-                                        </h2>
-                                        {selectedCollectionData.description && (
-                                            <p className="text-xs text-[var(--store-surface-text)] leading-relaxed mt-1">
-                                                {selectedCollectionData.description}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Pie del Banner: Si es Combo muestra compra en 1 clic; si es Colección muestra contador informativo */}
-                                    <div className="pt-2.5 border-t border-[var(--store-border)]/50 flex items-center justify-between gap-3">
+                                    {/* Pie de Tarjeta: Combo (Compra 1 Clic) o Colección (Contador Curado) */}
+                                    <div className="pt-3 border-t border-[var(--store-border)]/40 flex items-center justify-between gap-4">
                                         {isCombo ? (
                                             <>
-                                                <div className="flex flex-col text-left">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-base font-black font-mono text-[var(--store-text-main)] leading-none">
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-lg font-black font-mono text-[var(--store-text-main)] tracking-tight">
                                                             ${finalPrice.toFixed(2)}
                                                         </span>
                                                         {savings > 0 && (
-                                                            <span className="text-[10px] font-mono line-through text-[var(--store-surface-text)]">
+                                                            <span className="text-xs font-mono line-through text-[var(--store-surface-text)] opacity-75">
                                                                 ${nominalSum.toFixed(2)}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] mt-0.5 leading-none">
+                                                    <span className="text-[10px] font-mono text-[var(--store-surface-text)] font-medium">
                                                         Bs. {(finalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
- {(() => {
+
+                                                {(() => {
                                                     const outOfStock = isComboOutOfStock(selectedCollectionData)
 
                                                     return (
@@ -1168,23 +1191,22 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                                             type="button"
                                                             disabled={outOfStock}
                                                             onClick={(e) => !outOfStock && handleAddComboToCart(selectedCollectionData, e)}
-                                                            className={`px-4 py-2 rounded-[var(--radius-btn,999px)] font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 ${
-                                                                outOfStock
-                                                                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed opacity-80'
-                                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm active:scale-95'
-                                                            }`}
+                                                            className={`px-5 py-2.5 rounded-[var(--radius-btn,999px)] font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all duration-200 shrink-0 ${outOfStock
+                                                                    ? 'bg-[var(--store-primary)]/40 text-[var(--store-primary-text)] cursor-not-allowed opacity-80'
+                                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-md hover:opacity-95 active:scale-95'
+                                                                }`}
                                                         >
-                                                            <ShoppingBag size={13} strokeWidth={2.5} />
-                                                            <span>{outOfStock ? 'Combo Agotado' : 'Pedir Combo'}</span>
+                                                            <ShoppingBag size={14} strokeWidth={2.5} />
+                                                            <span>{outOfStock ? 'Agotado' : 'Pedir Combo'}</span>
                                                         </button>
                                                     )
                                                 })()}
                                             </>
                                         ) : (
-                                            <div className="flex items-center justify-between w-full text-[11px] font-mono text-[var(--store-surface-text)]">
-                                                <span>{itemCount} platos curados en esta lista</span>
-                                                <span className="text-[10px] font-bold text-[var(--store-primary)] uppercase tracking-wider">
-                                                    Precios individuales abajo ↓
+                                            <div className="flex items-center justify-between w-full text-xs font-mono text-[var(--store-surface-text)] py-1">
+                                                <span className="font-medium">{itemCount} platos disponibles</span>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--store-primary)]/10 text-[var(--store-primary)] uppercase tracking-wider">
+                                                    Colección
                                                 </span>
                                             </div>
                                         )}
@@ -1378,7 +1400,7 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                             </div>
                         )}
 
-                       {/* 🍔 SECCIÓN: COMBOS & COLECCIONES GASTRONÓMICAS (MÓVIL) */}
+                        {/* 🍔 SECCIÓN: COMBOS & COLECCIONES GASTRONÓMICAS (MÓVIL) */}
                         {collections && collections.length > 0 && !isFilteringActive && (
                             <div className="px-5 pb-3">
                                 <div className="mb-3 border-b border-[var(--store-border)]/40 pb-2 flex items-center justify-between">
@@ -1448,7 +1470,7 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                                     <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-black opacity-95" />
                                                 )}
 
-                                               {/* Capa Superior: Badge de Contraste con Bloqueo de Stock */}
+                                                {/* Capa Superior: Badge de Contraste con Bloqueo de Stock */}
                                                 <div className="relative z-10 flex items-center justify-between gap-2">
                                                     {isCombo ? (
                                                         isComboOutOfStock(col) ? (
@@ -1680,17 +1702,17 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                     if (activeFiltersCount > 0) handleResetAllFilters()
                                     else setIsFilterModalOpen(true)
                                 }}
-                                className={`w-12 h-12 shrink-0 flex items-center justify-center transition-all border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] active:scale-95 ${activeFiltersCount > 0
-                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
-                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/30'
+                                className={`w-12 h-12 shrink-0 flex items-center justify-center transition-all  active:scale-95 ${activeFiltersCount > 0
+                                    ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/80'
+                                    : ' text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/80'
                                     }`}
                                 style={{ borderRadius: 'var(--radius-btn, 12px)' }}
                                 title={activeFiltersCount > 0 ? "Limpiar filtros" : "Filtrar menú"}
                             >
                                 {activeFiltersCount > 0 ? (
-                                    <RotateCcw size={16} strokeWidth={2.5} />
+                                    <RotateCcw size={22} strokeWidth={2.5} />
                                 ) : (
-                                    <SlidersHorizontal size={16} strokeWidth={2.2} />
+                                    <SlidersHorizontal size={22} strokeWidth={2.2} />
                                 )}
                             </button>
                         </div>
@@ -1708,9 +1730,9 @@ const quantitiesMap = collection.settings?.items_quantities || {}
 
                             <div className="w-px h-8 bg-[var(--store-border)]/50" />
 
-                            <button onClick={() => document.dispatchEvent(new CustomEvent('openAuthModal'))} className="flex items-center gap-2 text-[var(--store-text-main)] transition-opacity active:scale-95 group outline-none">
-                                <div className="w-11 h-11 rounded-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center justify-center group-hover:border-[var(--store-primary)] transition-colors">
-                                    <User size={18} strokeWidth={2.5} />
+                            <button onClick={() => document.dispatchEvent(new CustomEvent('openAuthModal'))} className="flex items-center gap-2text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/80 transition-opacity active:scale-95 group outline-none">
+                                <div className="w-11 h-11 rounded-full flex items-center justify-center group-hover:border-[var(--store-primary)] transition-colors">
+                                    <User size={22} strokeWidth={2.5} />
                                 </div>
                             </button>
                         </div>
@@ -1804,10 +1826,10 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                         <main className="flex-1 min-w-0 space-y-16 pb-32">
                             <div id="restaurant-desktop-content-anchor" className="w-full h-px" />
 
-                          {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN DESKTOP */}
+                            {/* 🚀 BANNER HERO POLIMÓRFICO (COMBO VS COLECCIÓN) EN DESKTOP */}
                             {selectedCollectionData && (() => {
                                 const isCombo = selectedCollectionData.settings?.entity_type === 'combo' || Boolean(selectedCollectionData.settings?.combo_price_usd)
-                            const quantitiesMap = selectedCollectionData.settings?.items_quantities || {}
+                                const quantitiesMap = selectedCollectionData.settings?.items_quantities || {}
                                 const nominalSum = (selectedCollectionData.collection_items || []).reduce((acc: number, it: any) => {
                                     if (it.item_type === 'product' && it.product_id) {
                                         const p = products.find((prod: any) => String(prod.id) === String(it.product_id))
@@ -1822,93 +1844,100 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                 const itemCount = selectedCollectionData.collection_items?.length || 0
 
                                 return (
-                                    <div className="p-6 md:p-8 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center justify-between gap-6 text-left animate-in fade-in">
-                                        <div className="space-y-2 max-w-xl">
-                                            <div className="flex items-center gap-2">
-                                                {isCombo ? (
-                                                    <span className="text-[9px] font-mono font-black uppercase tracking-wider bg-neutral-950 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Package size={11} strokeWidth={2.5} />
-                                                        <span>{selectedCollectionData.settings?.badge_text || 'Combo Especial'}</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 border border-neutral-200/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Layers size={11} strokeWidth={2.2} />
-                                                        <span>{selectedCollectionData.settings?.badge_text || 'Colección Temática'}</span>
-                                                    </span>
-                                                )}
-                                                <span className="text-[11px] font-mono text-[var(--store-surface-text)]">
-                                                    ({itemCount} {itemCount === 1 ? 'plato' : 'platos'})
-                                                </span>
-                                            </div>
+                                   <div id="restaurant-combo-view-anchor" className="p-6 md:p-8 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 text-left animate-in fade-in duration-200">
+    
+    {/* Izquierda: Metadata, Badge y Título */}
+    <div className="space-y-3 max-w-xl">
+        <div className="flex items-center gap-2.5">
+            {isCombo ? (
+                <span className="text-[10px] font-mono font-black uppercase tracking-wider bg-[var(--store-text-main)] text-[var(--store-primary-text)] px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                    <Package size={12} strokeWidth={2.5} />
+                    <span>{selectedCollectionData.settings?.badge_text || 'Combo Especial'}</span>
+                </span>
+            ) : (
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[var(--store-border)]/40 text-[var(--store-primary-text)] px-3 py-1 rounded-full flex items-center gap-1.5">
+                    <Layers size={12} strokeWidth={2.2} />
+                    <span>{selectedCollectionData.settings?.badge_text || 'Colección Temática'}</span>
+                </span>
+            )}
+            <span className="text-xs font-mono text-[var(--store-surface-text)] font-medium">
+                ({itemCount} {itemCount === 1 ? 'plato' : 'platos'})
+            </span>
+        </div>
 
-                                            <h2 className="text-2xl font-black text-[var(--store-text-main)] tracking-tight">
-                                                {selectedCollectionData.name}
-                                            </h2>
-                                            {selectedCollectionData.description && (
-                                                <p className="text-xs text-[var(--store-surface-text)] leading-relaxed">
-                                                    {selectedCollectionData.description}
-                                                </p>
-                                            )}
-                                        </div>
+        <div className="space-y-1">
+            <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] tracking-tight leading-tight">
+                {selectedCollectionData.name}
+            </h2>
+            {selectedCollectionData.description && (
+                <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed line-clamp-2">
+                    {selectedCollectionData.description}
+                </p>
+            )}
+        </div>
+    </div>
 
-                                        <div className="flex items-center gap-4 shrink-0">
-                                            {isCombo ? (
-                                                <>
-                                                    <div className="text-right leading-none">
-                                                        <div className="flex items-center justify-end gap-1.5">
-                                                            <span className="text-xl font-black font-mono text-[var(--store-text-main)] leading-none">
-                                                                ${finalPrice.toFixed(2)} USD
-                                                            </span>
-                                                            {savings > 0 && (
-                                                                <span className="text-xs font-mono line-through text-[var(--store-surface-text)]">
-                                                                    ${nominalSum.toFixed(2)}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-[11px] font-mono text-[var(--store-surface-text)] block mt-1.5 leading-none">
-                                                            Bs. {(finalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                                        </span>
-                                                    </div>
+    {/* Derecha: Precios, Acción de Compra y Botón de Cierre */}
+    <div className="flex items-center justify-between md:justify-end gap-5 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-[var(--store-border)]/40">
+        {isCombo ? (
+            <>
+                <div className="text-right leading-none space-y-1">
+                    <div className="flex items-center justify-end gap-2">
+                        <span className="text-xl md:text-2xl font-black font-mono text-[var(--store-text-main)] tracking-tight">
+                            ${finalPrice.toFixed(2)}
+                        </span>
+                        {savings > 0 && (
+                            <span className="text-xs font-mono line-through text-[var(--store-surface-text)] opacity-75">
+                                ${nominalSum.toFixed(2)}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-xs font-mono text-[var(--store-surface-text)] font-medium block">
+                        Bs. {(finalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                    </span>
+                </div>
 
-                                                      {(() => {
-                                                        const outOfStock = isComboOutOfStock(selectedCollectionData)
+                {(() => {
+                    const outOfStock = isComboOutOfStock(selectedCollectionData)
 
-                                                        return (
-                                                            <button
-                                                                type="button"
-                                                                disabled={outOfStock}
-                                                                onClick={(e) => !outOfStock && handleAddComboToCart(selectedCollectionData, e)}
-                                                                className={`px-5 py-3 rounded-[var(--radius-btn)] text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
-                                                                    outOfStock
-                                                                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed opacity-80'
-                                                                        : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90 active:scale-95 shadow-sm'
-                                                                }`}
-                                                            >
-                                                                <ShoppingBag size={14} strokeWidth={2.5} />
-                                                                <span>{outOfStock ? 'Combo Agotado (Sin Stock)' : 'Pedir Combo Completo'}</span>
-                                                            </button>
-                                                        )
-                                                    })()}
-                                                </>
-                                            ) : (
-                                                <span className="text-xs font-mono font-medium text-[var(--store-surface-text)] px-3 py-1 bg-[var(--store-bg)] rounded-lg border border-[var(--store-border)]">
-                                                    Explorando platos individuales
-                                                </span>
-                                            )}
+                    return (
+                        <button
+                            type="button"
+                            disabled={outOfStock}
+                            onClick={(e) => !outOfStock && handleAddComboToCart(selectedCollectionData, e)}
+                            className={`px-6 py-3 rounded-[var(--radius-btn,999px)] text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${
+                                outOfStock
+                                    ? 'bg-[var(--store-primary)]/40 text-[var(--store-primary-text)] cursor-not-allowed opacity-80'
+                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-95 active:scale-95 shadow-md'
+                            }`}
+                        >
+                            <ShoppingBag size={15} strokeWidth={2.5} />
+                            <span>{outOfStock ? 'Agotado' : 'Pedir Combo'}</span>
+                        </button>
+                    )
+                })()}
+            </>
+        ) : (
+            <div className="hidden md:flex items-center gap-2 text-xs font-mono text-[var(--store-surface-text)] bg-[var(--store-border)]/20 px-3.5 py-2 rounded-xl">
+                <span className="w-2 h-2 rounded-full bg-[var(--store-primary)] animate-pulse"></span>
+                <span>Explorando selección de menú</span>
+            </div>
+        )}
 
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveCollectionSlug(null)}
-                                                className="px-3 py-3 rounded-[var(--radius-btn)] bg-[var(--store-bg)] border border-[var(--store-border)] text-xs font-bold text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all flex items-center gap-1.5 active:scale-95"
-                                                title="Cerrar vista"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
+        <button
+            type="button"
+            onClick={() => setActiveCollectionSlug(null)}
+            className="p-2.5 rounded-full text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-border)]/30 transition-colors shrink-0"
+            aria-label="Cerrar vista de colección"
+            title="Cerrar vista"
+        >
+            <X size={20} strokeWidth={2.5} />
+        </button>
+    </div>
+</div>
                                 )
                             })()}
-{/* 🍔 CARRUSEL FLUIDO DE COMBOS & COLECCIONES EN DESKTOP (CHASIS CINEMÁTICO IDÉNTICO A MÓVIL) */}
+                            {/* 🍔 CARRUSEL FLUIDO DE COMBOS & COLECCIONES EN DESKTOP (CHASIS CINEMÁTICO IDÉNTICO A MÓVIL) */}
                             {collections && collections.length > 0 && !isFilteringActive && (
                                 <section className="space-y-4 animate-in fade-in">
                                     <div className="border-b border-[var(--store-border)]/40 pb-3 flex items-end justify-between">
@@ -1945,7 +1974,7 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                                     </div>
 
                                     {/* Carrusel Deslizable en una sola fila (Snap-X) */}
-                                    <div 
+                                    <div
                                         ref={desktopCollectionsScrollRef}
                                         onScroll={checkCollectionsScrollStatus}
                                         className="flex gap-4 overflow-x-auto no-scrollbar pb-3 snap-x snap-mandatory scroll-smooth items-stretch"
@@ -2253,7 +2282,7 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                 </div>
             </div>
 
-            {/* MODALES GLOBALES */}
+           {/* MODALES GLOBALES */}
             <ProductFoodModal
                 isOpen={isFoodModalOpen}
                 onClose={() => setIsFoodModalOpen(false)}
@@ -2261,6 +2290,16 @@ const quantitiesMap = collection.settings?.items_quantities || {}
                 activeRate={activeRate}
             />
 
+          {/* 💎 ASISTENTE DE COMBOS CON EXTRAS Y MODIFICADORES (100% DINÁMICO) */}
+            <ComboCustomizerModal
+                isOpen={isComboCustomizerOpen}
+                onClose={() => setIsComboCustomizerOpen(false)}
+                combo={comboToCustomize}
+                products={products}
+                activeRate={activeRate}
+                onConfirm={handleConfirmCustomizedCombo}
+                themeVariables={activeThemeVariables}
+            />
             <FloatingCheckout
                 rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
                 currency={isEur ? 'eur' : 'usd'}

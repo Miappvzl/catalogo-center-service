@@ -496,13 +496,13 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                     >
                                         {/* 🚀 UX FIX: Añadimos animate={cartControls} para que reaccione al impacto y haga el rebote físico. */}
                                         <motion.div animate={cartControls} className="relative flex items-center justify-center shrink-0">
-                                            <ShoppingBag size={20} strokeWidth={2.2} />
+                                            <ShoppingBag size={22} strokeWidth={2.2} />
                                             {totalItemsCount > 0 && (
                                                 <span
-                                                    className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full font-mono text-[9px] font-black flex items-center justify-center border leading-none shadow-xs"
+                                                    className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full font-mono text-[9px] font-black flex items-center justify-center border-2 leading-none shadow-xs"
                                                     style={{
-                                                        backgroundColor: 'var(--store-primary)',
-                                                        color: 'var(--store-primary-text)',
+                                                        backgroundColor: 'var(--store-bg)',
+                                                        color: 'var(--store-text-main)',
                                                         borderColor: 'var(--store-text-main)'
                                                     }}
                                                 >
