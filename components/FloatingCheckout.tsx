@@ -42,9 +42,23 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const [isTransitioning, setIsTransitioning] = useState(false) // 🚀 CANDADO SÍNCRONO
     const [cartBump, setCartBump] = useState(false)
 
-
-
-
+    // 🚀 INTERCEPTOR GLOBAL DE APERTURA (Nervio Receptor)
+    // Escucha el evento 'toggleCartDrawer' disparado desde el Header, HUD o Notificaciones mágicas
+    useEffect(() => {
+        const openCartFromAnywhere = () => {
+            changeStep(1); // Nos aseguramos de que abra en la vista de la bolsa
+            setIsOpen(true);
+        };
+        
+        // Atrapamos el evento sin importar si burbujeó al window o al document
+        window.addEventListener('toggleCartDrawer', openCartFromAnywhere);
+        document.addEventListener('toggleCartDrawer', openCartFromAnywhere);
+        
+        return () => {
+            window.removeEventListener('toggleCartDrawer', openCartFromAnywhere);
+            document.removeEventListener('toggleCartDrawer', openCartFromAnywhere);
+        };
+    }, []);
 
     // 🚀 ENRUTADOR ESPACIAL BLINDADO
     const changeStep = (newStep: number) => {

@@ -220,6 +220,21 @@ export default function StoreHeader(props: StoreHeaderProps) {
     const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    // 🚀 MOTOR DE APERTURA DE BOLSA/CARRITO (Bulletproof 360°)
+    const handleOpenCart = () => {
+        // 1. Propagación global (Burbujeo garantizado para React y Vanilla)
+        const event = new CustomEvent('toggleCartDrawer', { bubbles: true, composed: true });
+        window.dispatchEvent(event);
+        document.dispatchEvent(event);
+        
+        // 2. Fallback Sensorial: Scroll suave si la bolsa está montada en el DOM inferior
+        const cartSection = document.getElementById('cart-section') || document.getElementById('floating-checkout') || document.getElementById('bolsa');
+        if (cartSection) {
+            cartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+
     // 🚀 CEREBRO DEL TICKER EDITORIAL (Desplazamiento Vertical)
     const [tickerIndex, setTickerIndex] = useState(0);
     const tickerItems = useMemo(() => [
@@ -382,8 +397,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 </button>
             )}
 
-            {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
-            <button data-cart-target="true" onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
+        {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
+            <button data-cart-target="true" onClick={handleOpenCart} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
                 <motion.div animate={props.cartControls} className="inline-block origin-top">
                     <ShoppingCart size={24} strokeWidth={1.5} />
                 </motion.div>
@@ -674,7 +689,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             <button onClick={props.onProfileClick} className="w-10 h-10 hidden md:flex items-center justify-center text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
                                 <UserCircle size={22} strokeWidth={1} />
                             </button>
-                            <button data-cart-target="true" onClick={() => document.dispatchEvent(new CustomEvent('toggleCartDrawer'))} className="hidden md:flex relative p-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
+                            <button data-cart-target="true" onClick={handleOpenCart} className="hidden md:flex relative p-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
                                 <motion.div animate={props.cartControls} className="flex items-center justify-center origin-top">
                                     <ShoppingBag size={20} strokeWidth={1} />
                                 </motion.div>
