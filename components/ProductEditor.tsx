@@ -844,8 +844,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             if (varError) throw varError;
             const { error: prodError } = await supabase.from('products').delete().eq('id', productId);
             if (prodError) throw prodError;
-
-            await revalidateStoreCache()
+await revalidateStoreCache(storeSlug, storeSettings?.id)
 
             setIsDirty(false);
             Swal.fire({ title: 'Eliminado', text: 'El producto se ha removido de su inventario.', icon: 'success', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } });
@@ -1043,9 +1042,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
                 await supabase.from('stores').update({ onboarding_missions: missionPayload }).eq('id', storeSettings!.id);
 
-                // 🚀 Purgar caché de servidor
+         // 🚀 Purgar caché de servidor con tags
                 await revalidateAdminDashboard();
-                await revalidateStoreCache();
+                await revalidateStoreCache(storeSlug, storeSettings?.id);
 
                 setIsDirty(false);
 
@@ -1062,7 +1061,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                 router.push('/admin');
                 return;
             }
-            await revalidateStoreCache()
+       await revalidateStoreCache(storeSlug, storeSettings?.id)
 
             setIsDirty(false)
             Swal.fire({ title: '¡Guardado con éxito!', icon: 'success', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })

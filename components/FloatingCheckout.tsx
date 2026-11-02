@@ -12,6 +12,8 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { calculateCartEngine } from '@/utils/cartLogic'
 import NumberTicker from './NumberTicker'
+import { getSupabase } from '@/lib/supabase-client'
+import Swal from 'sweetalert2'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }

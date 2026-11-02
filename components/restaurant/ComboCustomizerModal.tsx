@@ -498,10 +498,9 @@ export default function ComboCustomizerModal({
                         </span>
                       </div>
                     </div>
-
-                    {/* Grupos de Modificadores (Idéntico a ProductFoodModal) */}
+{/* Grupos de Modificadores (Idéntico a ProductFoodModal) */}
                     {hasModifiers && (
-                      <div className="space-y-5 pt-2 border-t border-[var(--store-border)]/40">
+                      <div className="space-y-5 pt-2 border-t border-(--store-border)/40">
                         {slot.modifierGroups.map((group, gIdx) => {
                           const currentSelected = slotData.selectedOptions[group.id] || []
                           const selectedCount = currentSelected.length

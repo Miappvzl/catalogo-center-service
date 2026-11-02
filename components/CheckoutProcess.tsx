@@ -31,6 +31,7 @@ import { compressImage } from "@/utils/imageOptimizer";
 import { evaluateStoreHours } from '@/utils/storeHours'
 import { useCart } from "@/app/store/useCart";
 import Swal from "sweetalert2";
+import { verifyOrderPricingAction } from "@/app/admin/orders/action"; // 🚀 CENTINELA ZERO-TRUST
 import { Icon } from "@iconify/react";
 // 🚀 IMPORTS DE LOGÍSTICA
 import { MrwIcon } from "@/components/ui/icons/MrwIcon";
@@ -1098,9 +1099,42 @@ switch (pm) {
             return;
         }
 
-        setErrors({}); // Limpiamos errores
+     setErrors({}); // Limpiamos errores
         if (!isPaidInFull && grandTotalUSD > 0) return Swal.fire({ title: "Saldo Pendiente", text: "Debes completar el 100% del pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
         if (missingReceipts && grandTotalUSD > 0) return Swal.fire({ title: "Comprobantes Faltantes", text: "Adjunta los captures de pago.", icon: "warning", confirmButtonColor: "#000", customClass: { popup: "rounded-xl" } });
+
+        // 🛡️ BÓVEDA ZERO-TRUST: Auditoría de precios en tiempo real contra Postgres antes de asentar la orden
+        setCheckoutState('validating');
+
+        const auditResult = await verifyOrderPricingAction({
+            storeId,
+            items: items.map(i => ({
+                productId: String(i.productId),
+                variantId: i.variantId,
+                clientBasePrice: Number(i.basePrice || 0),
+                bundleInstanceId: i.bundleInstanceId || null,
+                bundleId: i.bundleId || null,
+                foodModifiers: i.foodModifiers || []
+            }))
+        });
+
+        if (!auditResult.valid) {
+            setCheckoutState('idle');
+
+            // Si la base de datos devolvió precios frescos, actualizamos el carrito en vivo
+            if (auditResult.freshProducts && auditResult.freshProducts.length > 0) {
+                useCart.getState().reconcilePrices(auditResult.freshProducts);
+            }
+
+            Swal.fire({
+                title: 'Precios Actualizados',
+                text: auditResult.message || 'El comerciante ha actualizado los precios oficiales de estos productos. Tu pedido ha sido recalculado con los valores vigentes.',
+                icon: 'info',
+                confirmButtonColor: '#000',
+                customClass: { popup: 'rounded-2xl font-sans text-xs' }
+            });
+            return;
+        }
 
         // 🚀 2. LA ILUSIÓN DE BÓVEDA (LABOR ILLUSION)
         setCheckoutState('validating');

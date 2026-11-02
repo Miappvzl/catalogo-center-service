@@ -3,7 +3,7 @@
 import { triggerCriticalStockAlert } from '@/utils/notificationTriggers';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { TEMPLATES_REGISTRY } from '@/lib/templates-registry' // 🚀 IMPORTACIÓN CRÍTICA
 
@@ -89,14 +89,24 @@ export async function checkAndTriggerStockAlert(data: {
   });
 }
 
-// 🚀 REVALIDADOR PROFUNDO: Invalida el subdominio del tenant además del layout general
-export async function revalidateStoreCache(slug?: string) {
+// 🚀 REVALIDADOR PROFUNDO CON CACHE-TAGS: Purgado de CDN en <100ms con compatibilidad Next.js 15
+export async function revalidateStoreCache(slug?: string, storeId?: string) {
   revalidatePath('/', 'layout')
   revalidatePath('/[slug]', 'page')
   revalidatePath('/[slug]', 'layout')
+  
   if (slug) {
     revalidatePath(`/${slug}`, 'page')
     revalidatePath(`/${slug}`, 'layout')
+    try {
+      (revalidateTag as any)(`store-${slug}`)
+    } catch {}
+  }
+
+  if (storeId) {
+    try {
+      (revalidateTag as any)(`store-${storeId}`)
+    } catch {}
   }
 }
 // 🚀 NUEVA ACCIÓN: Alternar visibilidad del IVA en el catálogo

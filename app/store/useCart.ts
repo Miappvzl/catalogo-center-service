@@ -69,8 +69,9 @@ interface CartState {
   removeBundle: (bundleInstanceId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
   updateBundleQuantity: (bundleInstanceId: string, newBundleQty: number) => void // 🚀 Escala limpia de combos
-  clearCart: () => void
+clearCart: () => void
   addOrderToHistory: (order: Omit<SavedOrder, 'date'>) => void
+  reconcilePrices: (freshProducts: any[]) => boolean // 🚀 Sincronizador en caliente de precios
 }
 
 export const useCart = create<CartState>()(
@@ -320,6 +321,58 @@ export const useCart = create<CartState>()(
             items: state.items.map((item) => item.id === itemId ? { ...item, quantity: newQuantity } : item)
           };
         });
+      },
+
+      // 🛡️ BÓVEDA ANTI-DESFASE: Actualiza en caliente los precios del carrito con la base de datos
+      reconcilePrices: (freshProducts: any[]) => {
+        let hasChanges = false;
+
+        set((state) => {
+          const newItems = state.items.map((item) => {
+            // Los ítems de combo están blindados a precio cerrado pactado
+            if (item.bundleInstanceId) return item;
+
+            const fresh = freshProducts.find((p) => String(p.id) === String(item.productId));
+            if (!fresh) return item;
+
+            let targetBasePrice = Number(fresh.usd_cash_price || 0);
+            let targetPenalty = Number(fresh.usd_penalty || 0);
+
+            // Reconciliación si tiene variante con precio propio
+            if (item.variantId && fresh.product_variants && fresh.product_variants.length > 0) {
+              const v = fresh.product_variants.find((variant: any) => String(variant.id) === String(item.variantId));
+              if (v) {
+                if (v.override_usd_price !== null && v.override_usd_price !== undefined) {
+                  targetBasePrice = Number(v.override_usd_price);
+                }
+                if (v.override_usd_penalty !== null && v.override_usd_penalty !== undefined) {
+                  targetPenalty = Number(v.override_usd_penalty);
+                }
+              }
+            }
+
+            // Sumamos los extras si tiene modificadores gastronómicos
+            const extraCosts = item.foodModifiers ? item.foodModifiers.reduce((sum, mod) => sum + mod.priceAdjustment, 0) : 0;
+            const finalBasePrice = targetBasePrice + extraCosts;
+
+            // Detección de divergencia de precio
+            if (Math.abs(item.basePrice - finalBasePrice) > 0.009 || Math.abs(item.penalty - targetPenalty) > 0.009) {
+              hasChanges = true;
+              return {
+                ...item,
+                basePrice: finalBasePrice,
+                price: finalBasePrice,
+                penalty: targetPenalty
+              };
+            }
+
+            return item;
+          });
+
+          return hasChanges ? { items: newItems } : state;
+        });
+
+        return hasChanges;
       },
 
       clearCart: () => set({ items: [] }),

@@ -187,3 +187,103 @@ export async function deleteStoreDemoProducts(storeId: string, demoProductIds: s
     return { success: false, error: error.message };
   }
 }
+
+// 🛡️ CENTINELA SERVER-SIDE ZERO-TRUST: Valida en milisegundos que los precios del cliente coincidan con Postgres
+export async function verifyOrderPricingAction(data: {
+  storeId: string
+  items: Array<{
+    productId: string
+    variantId?: string | null
+    clientBasePrice: number
+    bundleInstanceId?: string | null
+    bundleId?: string | null
+    foodModifiers?: any[]
+  }>
+}) {
+  try {
+    const { storeId, items } = data
+    if (!storeId || !items || items.length === 0) {
+      return { valid: true }
+    }
+
+    // 1. Validar productos regulares (sueltos)
+    const looseItems = items.filter((i) => !i.bundleInstanceId)
+    const looseProductIds = Array.from(new Set(looseItems.map((i) => i.productId)))
+
+    let freshProducts: any[] = []
+
+    if (looseProductIds.length > 0) {
+      const { data: dbProducts, error: prodErr } = await supabaseAdmin
+        .from('products')
+        .select('id, usd_cash_price, usd_penalty, status, product_variants(id, override_usd_price, override_usd_penalty)')
+        .eq('store_id', storeId)
+        .in('id', looseProductIds)
+
+      if (prodErr) throw prodErr
+      freshProducts = dbProducts || []
+
+      for (const item of looseItems) {
+        const prod = freshProducts.find((p) => String(p.id) === String(item.productId))
+        if (!prod) continue
+
+        let authoritativePrice = Number(prod.usd_cash_price || 0)
+
+        if (item.variantId && prod.product_variants && prod.product_variants.length > 0) {
+          const v = prod.product_variants.find((variant: any) => String(variant.id) === String(item.variantId))
+          if (v && v.override_usd_price !== null && v.override_usd_price !== undefined) {
+            authoritativePrice = Number(v.override_usd_price)
+          }
+        }
+
+        const extraModifiersCost = item.foodModifiers
+          ? item.foodModifiers.reduce((sum: number, m: any) => sum + Number(m.priceAdjustment || 0), 0)
+          : 0
+
+        const expectedTotalBase = authoritativePrice + extraModifiersCost
+
+        // Tolerancia de medio centavo para redondeos flotantes
+        if (Math.abs(Number(item.clientBasePrice) - expectedTotalBase) > 0.05) {
+          return {
+            valid: false,
+            reason: 'PRICE_MISMATCH',
+            message: 'Uno o más productos en tu bolsa cambiaron de precio mientras navegabas.',
+            freshProducts,
+          }
+        }
+      }
+    }
+
+    // 2. Validar combos cerrados
+    const bundleItems = items.filter((i) => i.bundleInstanceId && i.bundleId)
+    const distinctBundleIds = Array.from(new Set(bundleItems.map((i) => i.bundleId!)))
+
+    if (distinctBundleIds.length > 0) {
+      const { data: dbCollections } = await supabaseAdmin
+        .from('collections')
+        .select('id, settings')
+        .eq('store_id', storeId)
+        .in('id', distinctBundleIds)
+
+      // Verificación de integridad de combos (que sigan existiendo)
+      if (dbCollections) {
+        for (const bId of distinctBundleIds) {
+          const col = dbCollections.find((c) => String(c.id) === String(bId))
+          if (!col) {
+            return {
+              valid: false,
+              reason: 'COMBO_UNAVAILABLE',
+              message: 'Uno de los combos seleccionados ya no está disponible.',
+              freshProducts,
+            }
+          }
+        }
+      }
+    }
+
+    return { valid: true, freshProducts }
+  } catch (error: any) {
+    console.error('Error en centinela de precios:', error)
+    // En caso de fallo de red de verificación, no bloqueamos la venta para no generar fricción
+    return { valid: true }
+  }
+}

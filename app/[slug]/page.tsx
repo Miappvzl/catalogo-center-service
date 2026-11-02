@@ -20,9 +20,8 @@ const createUncachedClient = () =>
     { auth: { persistSession: false } }
   )
 
-// Consulta memoizada (Producción - 0ms CPU vía CDN/Cache)
 const getStoreData = cache(async (slug: string) => {
-  const supabase = createPublicCachedClient()
+  const supabase = createPublicCachedClient([`store-${slug}`])
   const { data } = await supabase
     .from('stores')
     .select('*, payment_config, shipping_config, theme_config')
@@ -141,8 +140,9 @@ export default async function StorePage({
 }
 
 async function DeferredStoreContent({ store, isPreview }: { store: any, isPreview: boolean }) {
-  const supabase = isPreview ? createUncachedClient() : createPublicCachedClient()
-
+  const supabase = isPreview 
+    ? createUncachedClient() 
+    : createPublicCachedClient([`store-${store.slug}`, `store-${store.id}`])
   // 🚀 CONSULTA PARALELA O(1): Inyectamos colecciones activas e ítems vinculados
  // 🚀 CONSULTA PARALELA O(1): Inyectamos image_url en modifier_options
   const [productsResponse, ratesResponse, promotionsResponse, collectionsResponse] = await Promise.all([

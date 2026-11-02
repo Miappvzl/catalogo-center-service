@@ -27,21 +27,24 @@ export async function createClient() {
   )
 }
 
-// 2. CLIENTE CACHEADO (NUEVO): Usado EXCLUSIVAMENTE para datos públicos (Catálogo, Tasas, Promos).
-export function createPublicCachedClient() {
+// 2. CLIENTE CACHEADO CON TAGS (ON-DEMAND PURGE): Habilita revalidación instantánea por tienda
+export function createPublicCachedClient(tags: string[] = []) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return [] }, // Ignoramos cookies para no romper la caché estática de Next.js
+        getAll() { return [] },
         setAll() {}
       },
       global: {
         fetch: (url, options) => {
           return fetch(url, {
             ...options,
-            next: { revalidate: 60 } // Cachea la respuesta en RAM por 60 segundos
+            next: {
+              revalidate: 60, // Fallback TTL en segundos
+              tags: tags.length > 0 ? tags : undefined // 🚀 Tag dinámico para purgado por evento
+            }
           })
         }
       }
