@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ArrowLeft, Save, Loader2, Palette, MonitorSmartphone, RotateCcw, Type, ExternalLink, Check, Sliders, Store, Search as SearchIcon, Image as ImageIcon, Upload, CheckCircle2, AlertCircle, Sparkles, Lock, Eye, SlidersHorizontal, BadgeCheck, Truck, ShieldCheck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Zap, Package, Star, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, Palette, MonitorSmartphone, RotateCcw, Type, ExternalLink, Check, Sliders, Store, Search as SearchIcon, Image as ImageIcon, Upload, CheckCircle2, AlertCircle, Sparkles, Lock, Eye, SlidersHorizontal, BadgeCheck, Truck, ShieldCheck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Zap, Package, Star, ChevronDown, LayoutGrid } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner' // 🚀 SILENT DELIGHT: Notificaciones Awwwards
 import Link from 'next/link'
@@ -988,6 +988,77 @@ export default function CustomizationPage() {
                                             />
                                         </div>
                                     )}
+                                </div>
+
+                                {/* 🚀 IMAGE ENGINE CUSTOMIZER (Encuadre Élite) */}
+                                <div className="space-y-5 pt-5 border-t border-neutral-200/60 animate-in fade-in duration-300">
+                                    <div>
+                                        <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5"><LayoutGrid size={14} className="text-neutral-500"/> Encuadre de Productos</h3>
+                                        <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Adapte la geometría de las tarjetas según el tipo de fotografía de su catálogo.</p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {/* Selector de Relación de Aspecto */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                                                Proporción de la Imagen
+                                            </label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { id: 'aspect-square', label: '1:1 Cuadrado', desc: 'Hardware / Comida' },
+                                                    { id: 'aspect-[4/5]', label: '4:5 Retrato', desc: 'Moda / Lujo' },
+                                                    { id: 'aspect-[4/3]', label: '4:3 Apaisado', desc: 'Tech / Inmuebles' },
+                                                ].map(item => (
+                                                    <button
+                                                        key={item.id}
+                                                        onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, ratio: item.id })}
+                                                        className={`p-2.5 text-center rounded-xl border transition-all flex flex-col items-center justify-center gap-1 h-16 ${config.layout.card_media?.ratio === item.id ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs' : 'border-neutral-200/50 bg-white hover:border-neutral-300 text-neutral-700'}`}
+                                                    >
+                                                        <span className="text-[11px] font-bold leading-none">{item.label}</span>
+                                                        <span className={`text-[9px] font-medium leading-none ${config.layout.card_media?.ratio === item.id ? 'text-neutral-400' : 'text-neutral-400'}`}>{item.desc}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Selector de Llenado */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                                                Comportamiento de la Fotografía
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div
+                                                    onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'cover' })}
+                                                    className={`cursor-pointer p-3 rounded-xl border flex flex-col gap-1 transition-all ${config.layout.card_media?.fit === 'cover' ? 'border-neutral-900 bg-neutral-900 text-white' : 'bg-white border-neutral-200/50 hover:border-neutral-300 text-neutral-700'}`}
+                                                >
+                                                    <span className="text-[11px] font-bold uppercase">Inmersivo (Cover)</span>
+                                                    <span className="text-[9px] opacity-80 leading-snug">Llena el 100%. Ideal para fotos Lifestyle con fondo de paisaje.</span>
+                                                </div>
+                                                <div
+                                                    onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'contain' })}
+                                                    className={`cursor-pointer p-3 rounded-xl border flex flex-col gap-1 transition-all ${config.layout.card_media?.fit === 'contain' ? 'border-neutral-900 bg-neutral-900 text-white' : 'bg-white border-neutral-200/50 hover:border-neutral-300 text-neutral-700'}`}
+                                                >
+                                                    <span className="text-[11px] font-bold uppercase">Encapsulado (Contain)</span>
+                                                    <span className="text-[9px] opacity-80 leading-snug">Protege los bordes con padding. Ideal para PNGs o fondo blanco.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Selector de Color de Fondo Dinámico (Solo visible si es Contain) */}
+                                        <AnimatePresence>
+                                            {config.layout.card_media?.fit === 'contain' && (
+                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden pt-2">
+                                                    <EliteColorPicker
+                                                        label="Color de Fondo del Empaque"
+                                                        value={config.layout.card_media?.bg_color || 'transparent'}
+                                                        description="Color del espacio sobrante para fusionar la foto con la tarjeta."
+                                                        enableAlpha={true}
+                                                        onChange={(val) => handleLayoutChange('card_media', { ...config.layout.card_media, bg_color: val })}
+                                                    />
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
 
                                 {/* EDITOR DE TEXTOS GASTRONÓMICOS */}

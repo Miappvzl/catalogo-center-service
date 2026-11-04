@@ -43,6 +43,15 @@ export interface ThemeTypography {
 // types/theme.ts
 // (Modifica únicamente la interfaz ThemeLayout agregando esta propiedad)
 
+export type AspectRatioOption = 'aspect-square' | 'aspect-[4/5]' | 'aspect-[4/3]';
+export type ObjectFitOption = 'cover' | 'contain';
+
+export interface CardMediaConfig {
+    ratio: AspectRatioOption;
+    fit: ObjectFitOption;
+    bg_color: string;
+}
+
 export interface TrustBadge {
     id: string;
     title: string;
@@ -63,7 +72,8 @@ export interface ThemeLayout {
     trust_badges?: TrustBadge[];
      greeting_text?: string;
     slogan_text?: string;
-    hero_button_text?: string;
+   hero_button_text?: string;
+    card_media?: CardMediaConfig; // 🚀 MOTOR DE ENCUADRE DE PRODUCTOS
 }
 
 export interface ThemeConfig {

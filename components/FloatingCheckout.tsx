@@ -1214,8 +1214,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         {activeTheme.layout?.card_style === 'brutalist' ? (
                                                             <div className="flex items-end justify-between mb-5 border-b border-[var(--store-border)]/30 pb-3">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em] mb-1">// SYSTEM_RECOMMENDATIONS</span>
-                                                                    <h3 className="text-sm md:text-base font-bold text-[var(--store-text-main)] font-heading uppercase tracking-[0.1em]">RELATED ARCHIVE</h3>
+                                                                    <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em] mb-1">// MAS PARA TI</span>
+                                                                    <h3 className="text-sm md:text-base font-bold text-[var(--store-text-main)] font-heading uppercase tracking-[0.1em]">SUGERENCIAS</h3>
                                                                 </div>
                                                             </div>
                                                         ) : (
@@ -1267,6 +1267,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                                 isFavorite={favoriteIds.has(String(product.id))}
                                                                                 showTaxIndicator={storeConfig?.show_tax_in_catalog === true && storeConfig?.fiscal_profile !== 'informal'} // 🚀 AÑADIDO
                                                                                 taxPercentage={storeConfig?.default_tax_percentage || 16} // 🚀 AÑADIDO
+                                                                                 mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
                                                                             />
                                                                         </div>
                                                                     )

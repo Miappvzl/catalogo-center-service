@@ -1141,6 +1141,7 @@ useEffect(() => {
           showTaxIndicator={showTaxInCatalog}
           taxPercentage={taxPercentage}
           cardStyle={activeTheme.layout?.card_style || 'standard'}
+           mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
         />
       )
 
@@ -1510,6 +1511,7 @@ useEffect(() => {
                           taxPercentage={taxPercentage}
                           cardStyle={activeTheme.layout?.card_style || 'standard'} 
                           isFeatured={true} // 🚀 INYECCIÓN DEL PROP PARA DISEÑO ESPECIAL
+                           mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
                         />
                       </div>
                     )

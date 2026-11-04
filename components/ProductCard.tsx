@@ -12,6 +12,7 @@ const currencyFormatter = new Intl.NumberFormat('es-VE', { maximumFractionDigits
 
 interface ProductCardProps {
   product: any;
+  mediaConfig?: { ratio: string; fit: string; bg_color: string }; // 🚀 NUEVO: Image Engine
   pricing: {
     cashPrice: number;
     priceInBs: number;
@@ -40,9 +41,16 @@ function ProductCardComponent({
   taxPercentage = 16,
   cardStyle = 'standard',
   index = 99,
-  isFeatured = false // 🚀 Inyección del prop
+  isFeatured = false,
+  mediaConfig
 }: ProductCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+  // 🚀 MOTOR GEOMÉTRICO (Fallback automático si no se pasa la prop)
+  const aspectClass = mediaConfig?.ratio || (['dense_hardware', 'food_menu', 'modular_tech'].includes(cardStyle) ? 'aspect-square' : 'aspect-[4/5]');
+  const isContain = mediaConfig?.fit === 'contain';
+  const fitClass = isContain ? 'object-contain p-4 md:p-5' : 'object-cover'; // Breathing Room
+  const imageBgStyle = isContain && mediaConfig?.bg_color ? { backgroundColor: mediaConfig.bg_color } : {};
 
   // Cálculos financieros protegidos
   const penalty = Number(product.usd_penalty || 0);
@@ -92,8 +100,8 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-colors duration-150 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
         onClick={handleOpenCard}
       >
-        {/* 1. ENCUADRE TÉCNICO 1:1 (Fondo integrado y foto a sangre completa) */}
-        <div className="relative aspect-square w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]/40">
+     {/* 1. ENCUADRE TÉCNICO 1:1 (Fondo integrado y foto a sangre completa) */}
+        <div className={`relative ${aspectClass} w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]/40`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -103,7 +111,7 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-300 group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-transform duration-300 will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -218,7 +226,7 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-50' : ''}`}
         onClick={handleOpenCard}
       >
-        <div className="relative aspect-[3/4] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-3">
+      <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-3`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -228,7 +236,7 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-transform duration-500 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -303,8 +311,8 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col transition-all duration-500 ease-out hover:-translate-y-1 ${isOutOfStock ? 'opacity-50' : ''}`}
         onClick={handleOpenCard}
       >
-        {/* 1. IMAGEN DE PASARELA (4:5 Ratio, High-End Feel) */}
-        <div className="relative aspect-[4/5] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/20 mb-3">
+    {/* 1. IMAGEN DE PASARELA (High-End Feel) */}
+        <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/20 mb-3`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -314,7 +322,7 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.03] ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-neutral-400 font-mono text-xs tracking-widest">
@@ -435,8 +443,8 @@ function ProductCardComponent({
       className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-200 relative overflow-hidden shadow-xs hover:shadow-lg ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`} 
       onClick={handleOpenCard}
     >
-      {/* Contenedor de Imagen (Proporción 1:1 Cuadrada) */}
-      <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
+  {/* Contenedor de Imagen */}
+      <div className={`relative ${aspectClass} w-full bg-neutral-100 overflow-hidden`} style={imageBgStyle}>
         {product.image_url ? (
           <Image 
             src={getOptimizedUrl(product.image_url)} 
@@ -446,7 +454,7 @@ function ProductCardComponent({
             loading={isPriorityImage ? undefined : 'lazy'} 
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw" 
             onLoad={() => setIsImageLoaded(true)} 
-            className={`object-cover transition-transform duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
+            className={`transition-transform duration-500 ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -548,8 +556,8 @@ function ProductCardComponent({
         }}
         onClick={handleOpenCard}
       >
-        {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
-        <div className="relative aspect-[4/5] w-full p-6 flex items-center justify-center">
+       {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
+        <div className={`relative ${aspectClass} w-full flex items-center justify-center`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -559,7 +567,7 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`object-contain p-4 md:p-6 transition-transform duration-500 ease-out group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-transform duration-500 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] opacity-30"><ImageIcon size={32} strokeWidth={1.5} /></div>
@@ -639,8 +647,8 @@ function ProductCardComponent({
       className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-200 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-60 grayscale-[50%]' : ''}`}
       onClick={handleOpenCard}
     >
-      {/* Proporción 4:5 de Alta Gama: +25% de presencia visual y cero recortes arriba/abajo */}
-      <div className="relative aspect-[4/5] w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)]">
+      {/* Encuadre Dinámico controlado por Image Engine */}
+      <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)]`} style={imageBgStyle}>
         {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
@@ -650,7 +658,7 @@ function ProductCardComponent({
             loading={isPriorityImage ? undefined : 'lazy'}
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             onLoad={() => setIsImageLoaded(true)}
-            className={`object-cover transition-transform duration-300 ease-out group-hover:scale-105 will-change-transform ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`transition-transform duration-300 ease-out will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
