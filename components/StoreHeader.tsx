@@ -735,9 +735,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 {/* 🚀 EL MENÚ EDITORIAL A PANTALLA COMPLETA */}
                 <MobileMenu />
 
-                {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Segregación Estricta) */}
+              {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Segregación Estricta) */}
                 {/* Renderizado fuera del fixed con padding superior para el efecto de cristal líquido */}
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) ? (
                     <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden pt-[90px] md:pt-[130px]">
                         <div className="w-full max-w-[1500px] px-4 md:px-12 py-4 md:py-6">
                             <div
@@ -785,6 +785,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             </div>
                         </div>
                     </div>
+                ) : (
+                    /* 🚀 ESCUDO GEOMÉTRICO: Spacer fantasma para compensar el header fixed cuando NO hay banner */
+                    <div className="w-full pt-[90px] md:pt-[120px] pointer-events-none shrink-0" />
                 )}
             </>
         );
