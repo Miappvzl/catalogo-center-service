@@ -34,10 +34,10 @@ export async function issueStoreCredit(data: {
     // FASE A: RESOLUCIÓN DE IDENTIDAD (De Invitado a Cliente Unificado)
     if (!finalCustomerId && data.email) {
       const emailLower = data.email.toLowerCase().trim();
-      
+
       // Verificar si el usuario ya existe por email
       const { data: searchId } = await supabaseAdmin.rpc('get_user_id_by_email', { p_email: emailLower });
-      
+
       if (searchId) {
         finalCustomerId = searchId;
       } else {
@@ -50,7 +50,7 @@ export async function issueStoreCredit(data: {
 
         if (createErr) throw new Error(`Error creando cliente: ${createErr.message}`);
         if (!newUser.user) throw new Error('No se generó el UUID del usuario');
-        
+
         finalCustomerId = newUser.user.id;
 
         // Crear el registro obligatorio en public.customers
@@ -188,7 +188,7 @@ export async function deleteStoreDemoProducts(storeId: string, demoProductIds: s
   }
 }
 
-// 🛡️ CENTINELA SERVER-SIDE ZERO-TRUST: Valida en milisegundos que los precios del cliente coincidan con Postgres
+// 🛡️ CENTINELA SERVER-SIDE ZERO-TRUST ACORAZADO (Fail-Closed & Multi-Tenant Resilient)
 export async function verifyOrderPricingAction(data: {
   storeId: string
   items: Array<{
@@ -206,7 +206,16 @@ export async function verifyOrderPricingAction(data: {
       return { valid: true }
     }
 
-    // 1. Validar productos regulares (sueltos)
+    // 1. Obtener contexto de identidad de la tienda (inmune a productos con store_id nulo)
+    const { data: storeData } = await supabaseAdmin
+      .from('stores')
+      .select('id, user_id')
+      .eq('id', storeId)
+      .single()
+
+    const storeUserId = storeData?.user_id
+
+    // 2. Validar productos regulares (sueltos)
     const looseItems = items.filter((i) => !i.bundleInstanceId)
     const looseProductIds = Array.from(new Set(looseItems.map((i) => i.productId)))
 
@@ -215,33 +224,59 @@ export async function verifyOrderPricingAction(data: {
     if (looseProductIds.length > 0) {
       const { data: dbProducts, error: prodErr } = await supabaseAdmin
         .from('products')
-        .select('id, usd_cash_price, usd_penalty, status, product_variants(id, override_usd_price, override_usd_penalty)')
-        .eq('store_id', storeId)
+        .select('id, store_id, user_id, usd_cash_price, usd_penalty, status, product_variants(id, override_usd_price, override_usd_penalty)')
         .in('id', looseProductIds)
 
       if (prodErr) throw prodErr
-      freshProducts = dbProducts || []
+
+      // 🔒 FILTRO DE PERTENENCIA: Valida por store_id O por user_id del dueño
+      freshProducts = (dbProducts || []).filter(
+        (p) => p.store_id === storeId || (storeUserId && p.user_id === storeUserId)
+      )
 
       for (const item of looseItems) {
         const prod = freshProducts.find((p) => String(p.id) === String(item.productId))
-        if (!prod) continue
+
+        // 🚨 CANDADO FAIL-CLOSED 1: Si el producto no existe o fue eliminado, RECHAZA la orden
+        if (!prod) {
+          return {
+            valid: false,
+            reason: 'PRODUCT_NOT_FOUND',
+            message: 'Uno de los productos seleccionados ya no se encuentra disponible en la tienda.',
+            freshProducts,
+          }
+        }
 
         let authoritativePrice = Number(prod.usd_cash_price || 0)
 
+        // Verificación de Variante
         if (item.variantId && prod.product_variants && prod.product_variants.length > 0) {
           const v = prod.product_variants.find((variant: any) => String(variant.id) === String(item.variantId))
-          if (v && v.override_usd_price !== null && v.override_usd_price !== undefined) {
+
+          // 🚨 CANDADO FAIL-CLOSED 2: Si la variante fue borrada en inventario, RECHAZA la orden
+          if (!v) {
+            return {
+              valid: false,
+              reason: 'VARIANT_NOT_FOUND',
+              message: 'La opción o talla seleccionada para uno de los productos ya no está disponible.',
+              freshProducts,
+            }
+          }
+
+          // Si la variante tiene precio propio asignado, ese es el valor oficial de la ley
+          if (v.override_usd_price !== null && v.override_usd_price !== undefined && v.override_usd_price !== '') {
             authoritativePrice = Number(v.override_usd_price)
           }
         }
 
+        // Modificadores gastronómicos adicionales
         const extraModifiersCost = item.foodModifiers
           ? item.foodModifiers.reduce((sum: number, m: any) => sum + Number(m.priceAdjustment || 0), 0)
           : 0
 
         const expectedTotalBase = authoritativePrice + extraModifiersCost
 
-        // Tolerancia de medio centavo para redondeos flotantes
+        // Tolerancia de 5 centavos para absorción de redondeos fraccionarios
         if (Math.abs(Number(item.clientBasePrice) - expectedTotalBase) > 0.05) {
           return {
             valid: false,
@@ -253,28 +288,25 @@ export async function verifyOrderPricingAction(data: {
       }
     }
 
-    // 2. Validar combos cerrados
+    // 3. Validar integridad de Combos
     const bundleItems = items.filter((i) => i.bundleInstanceId && i.bundleId)
     const distinctBundleIds = Array.from(new Set(bundleItems.map((i) => i.bundleId!)))
 
     if (distinctBundleIds.length > 0) {
       const { data: dbCollections } = await supabaseAdmin
         .from('collections')
-        .select('id, settings')
+        .select('id, is_active, settings')
         .eq('store_id', storeId)
         .in('id', distinctBundleIds)
 
-      // Verificación de integridad de combos (que sigan existiendo)
-      if (dbCollections) {
-        for (const bId of distinctBundleIds) {
-          const col = dbCollections.find((c) => String(c.id) === String(bId))
-          if (!col) {
-            return {
-              valid: false,
-              reason: 'COMBO_UNAVAILABLE',
-              message: 'Uno de los combos seleccionados ya no está disponible.',
-              freshProducts,
-            }
+      for (const bId of distinctBundleIds) {
+        const col = (dbCollections || []).find((c) => String(c.id) === String(bId))
+        if (!col || !col.is_active) {
+          return {
+            valid: false,
+            reason: 'COMBO_UNAVAILABLE',
+            message: 'Uno de los combos de tu pedido ya no está vigente.',
+            freshProducts,
           }
         }
       }
@@ -282,8 +314,13 @@ export async function verifyOrderPricingAction(data: {
 
     return { valid: true, freshProducts }
   } catch (error: any) {
-    console.error('Error en centinela de precios:', error)
-    // En caso de fallo de red de verificación, no bloqueamos la venta para no generar fricción
-    return { valid: true }
+    console.error('Fallo de seguridad en centinela de precios:', error)
+    // 🔒 FAIL-CLOSED ABSOLUTO: Jamás retornar valid: true si hubo una excepción de servidor
+    return {
+      valid: false,
+      reason: 'VERIFICATION_ERROR',
+      message: 'No pudimos verificar la vigencia de los precios oficiales por una interrupción de red. Intenta nuevamente.',
+      freshProducts: [],
+    }
   }
 }

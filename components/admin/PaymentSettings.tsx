@@ -38,14 +38,17 @@ export default function PaymentSettings({ storeId, initialData }: { storeId: str
   const [isDirty, setIsDirty] = useState(false)
    // Estado aislado para credenciales cifradas
 
-const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
-  const [skylinkKeys, setSkylinkKeys] = useState({ commerceCode: '', apiKey: '' }) // 🚀 NUEVO: Estado Skylink
-  const [binanceKeys, setBinanceKeys] = useState({ apiKey: '', secretKey: '' }) // 🚀 NUEVO: Estado Binance Pay
+// Estado aislado para credenciales cifradas
+  const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
+  const [skylinkKeys, setSkylinkKeys] = useState({ commerceCode: '', apiKey: '' }) 
+  const [binanceKeys, setBinanceKeys] = useState({ apiKey: '', secretKey: '' })
+  const [casheaKeys, setCasheaKeys] = useState({ publicKey: '', secretKey: '' }) // 🚀 NUEVO: Estado Cashea
  
   const [methods, setMethods] = useState({
     allow_split_payments: initialData?.allow_split_payments || false,
     pago_flash: { active: false, ...initialData?.pago_flash }, 
-    skylink: { active: false, ...initialData?.skylink }, // 🚀 NUEVO: Configuración Skylink
+    skylink: { active: false, ...initialData?.skylink },
+    cashea: { active: false, externalClientId: '', ...initialData?.cashea }, // 🚀 NUEVO: Configuración Cashea
     transferencia: { active: false, details: '', ...initialData?.transferencia }, 
     pago_movil: { active: false, details: '', ...initialData?.pago_movil },
     zelle: { active: false, details: '', ...initialData?.zelle },
@@ -144,7 +147,7 @@ const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
       setSkylinkKeys({ commerceCode: '', apiKey: '' });
     }
 
-    // 🚀 NUEVO: Guardado seguro de credenciales Binance Pay
+// 🚀 NUEVO: Guardado seguro de credenciales Binance Pay
     if (methods.binance.active && binanceKeys.apiKey && binanceKeys.secretKey) {
       const credRes = await fetch('/api/admin/payment-credentials', {
         method: 'POST',
@@ -165,6 +168,30 @@ const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
       }
       setBinanceKeys({ apiKey: '', secretKey: '' });
     }
+
+    // 🚀 NUEVO: Guardado seguro de credenciales Cashea (BNPL)
+    if (methods.cashea.active && casheaKeys.publicKey && casheaKeys.secretKey) {
+      const credRes = await fetch('/api/admin/payment-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId,
+          provider: 'cashea',
+          publicKey: casheaKeys.publicKey, // Cashea PUBLIC_API_KEY
+          secretKey: casheaKeys.secretKey  // Cashea PRIVATE_API_KEY
+        })
+      });
+
+      if (!credRes.ok) {
+        const errData = await credRes.json();
+        Swal.fire('Fallo Criptográfico', errData.error || 'Las credenciales de Cashea NO se guardaron.', 'error');
+        setSaving(false);
+        return;
+      }
+      setCasheaKeys({ publicKey: '', secretKey: '' });
+    }
+
+    setSaving(false)
 
     setSaving(false)
     if (error) {
@@ -391,7 +418,76 @@ const [pfKeys, setPfKeys] = useState({ publicKey: '', secretKey: '' })
               </div>
             </div>
           </div>
+
+          
         )}
+
+        {/* 💎 CASHEA: BUY NOW, PAY LATER (INDIGO NEON UI) */}
+        <div className={`p-4.5 rounded-xl border transition-all duration-300 md:col-span-2 ${methods.cashea.active ? 'border-indigo-500/40 bg-indigo-50/20 shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>
+          <div
+            className="flex justify-between items-start md:items-center mb-3 cursor-pointer gap-4"
+            onClick={() => handleChange('cashea', 'active', !methods.cashea.active)}
+          >
+            <div className="space-y-1">
+              <div className={`flex items-center gap-2 text-sm font-bold transition-colors ${methods.cashea.active ? 'text-indigo-900' : 'text-neutral-900'}`}>
+                <Zap size={16} className={methods.cashea.active ? 'text-indigo-500' : 'text-neutral-500'} /> 
+                <span>Cashea (Compra ahora, Paga después)</span>
+              </div>
+              <p className={`text-xs ${methods.cashea.active ? 'text-indigo-800/70' : 'text-neutral-500'}`}>
+                Permite a tus clientes fraccionar sus pagos sin intereses. Liquidación manual de inicial gestionada por ti.
+              </p>
+            </div>
+            <AnimatedSwitch active={methods.cashea.active} activeColor="bg-indigo-500" />
+          </div>
+
+          {methods.cashea.active && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="pt-4 mt-2 border-t border-indigo-500/10 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Client ID (Externo)</label>
+                  <input
+                    placeholder="Ej: 351"
+                    autoComplete="off"
+                    value={methods.cashea.externalClientId || ''}
+                    onChange={e => handleChange('cashea', 'externalClientId', e.target.value.trim())}
+                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-white text-neutral-900 font-mono placeholder:text-neutral-400 border border-neutral-300 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Public Key (SDK)</label>
+                  <input
+                    placeholder="Clave pública de Cashea"
+                    autoComplete="off"
+                    value={casheaKeys.publicKey}
+                    onChange={e => {
+                      if (e.isTrusted) setIsDirty(true);
+                      setCasheaKeys(prev => ({ ...prev, publicKey: e.target.value.trim() }));
+                    }}
+                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-white text-neutral-900 font-mono placeholder:text-neutral-400 border border-neutral-300 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Private Key (API)</label>
+                  <input
+                    type="password"
+                    placeholder="Secret Key (Cifrada en bóveda)"
+                    autoComplete="new-password"
+                    value={casheaKeys.secretKey}
+                    onChange={e => {
+                      if (e.isTrusted) setIsDirty(true);
+                      setCasheaKeys(prev => ({ ...prev, secretKey: e.target.value.trim() }));
+                    }}
+                    className="w-full text-xs px-3 py-2.5 rounded-lg bg-white text-neutral-900 font-mono placeholder:text-neutral-400 border border-neutral-300 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                  />
+                </div>
+                <p className="text-[10px] text-indigo-600/80 md:col-span-3 flex items-center gap-1.5 font-medium mt-1">
+                  <AlertCircle size={12} />
+                  Las llaves públicas y privadas se cifrarán con AES-256 en nuestra bóveda. El Client ID será público para inicializar el SDK.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* TRANSFERENCIA BANCARIA (GRIS ACERADO MUTED) */}
         <div className={`p-4 rounded-xl border transition-all duration-300 ${methods.transferencia.active ? 'border-neutral-200 bg-white shadow-xs' : 'border-neutral-200/50 bg-neutral-50/40 hover:bg-neutral-50'}`}>

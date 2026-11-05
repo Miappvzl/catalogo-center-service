@@ -475,9 +475,20 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
 
 
+ // 💎 SANEAMIENTO AUTOMÁTICO: Si el usuario vacía el input o pone 0, se resetea a null para que herede
     const updateVariantOverride = (id: string, field: string, value: any) => {
+        let sanitizedValue = value;
+        if (field.startsWith('override_')) {
+            const num = Number(value);
+            if (value === '' || value === null || value === undefined || isNaN(num) || num <= 0) {
+                sanitizedValue = null; // Vuelve a heredar el precio base
+            } else {
+                sanitizedValue = num;
+            }
+        }
+
         setVariants(variants.map(v => {
-            if (v.id === id) return { ...v, [field]: value }
+            if (v.id === id) return { ...v, [field]: sanitizedValue }
             return v
         }))
         setIsDirty(true)
@@ -541,7 +552,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }
     };
 
-    const math = useMemo(() => {
+  const math = useMemo(() => {
         const cashPrice = Number(formData.price) || 0
         const markup = Number(formData.penalty) || 0
         const listPrice = cashPrice + markup
@@ -549,6 +560,33 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         const refBs = listPrice * activeRate
         return { listPrice, discountPercent, refBs }
     }, [formData.price, formData.penalty, activeRate])
+
+  // 🛡️ MEMORIA DE PRECIO BASE ORIGINAL (Para saber si el usuario lo modificó en esta sesión)
+    const initialBasePriceRef = useRef<number | null>(null);
+
+    // Solo cuenta como precio propio si es estrictamente un número mayor a 0
+    const variantsWithCustomPrice = useMemo(() => {
+        if (!hasVariants || !variants || variants.length === 0) return []
+        return variants.filter(v => Number(v.override_usd_price || 0) > 0)
+    }, [hasVariants, variants])
+
+    // 💎 DETECTOR DE INTENCIÓN: Solo es true si el comerciante cambió el precio base original
+    const isBasePriceModified = useMemo(() => {
+        if (initialBasePriceRef.current === null) return false;
+        const current = Number(formData.price || 0);
+        return current !== initialBasePriceRef.current;
+    }, [formData.price]);
+
+    const scrollToVariantMatrix = () => {
+        const el = document.getElementById('tour-step-2-matrix')
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // Abrimos la primera variante con precio desacoplado para edición inmediata
+            if (variantsWithCustomPrice.length > 0) {
+                setExpandedVariantId(variantsWithCustomPrice[0].id)
+            }
+        }
+    }
 
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -591,6 +629,9 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     router.push('/admin/inventory')
                     return
                 }
+            // 🚀 Memorizamos el precio base original para el centinela reactivo
+                initialBasePriceRef.current = Number(product.usd_cash_price || 0);
+
                 setFormData({
                     name: product.name,
                     sku: product.sku || '',
@@ -1593,7 +1634,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             </div>
                         </div>
 
-                        <div id="tour-step-4-penalty" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? getUniversalSpotlightClass('tour-step-4-penalty') : ''}`}>
+                      <div id="tour-step-4-penalty" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? getUniversalSpotlightClass('tour-step-4-penalty') : ''}`}>
                             <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Margen Conversión (Opcional)</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
@@ -1601,6 +1642,34 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             </div>
                         </div>
                     </div>
+
+                         {/* 🛡️ BANNER REACTIVO: Solo aparece si el usuario modificó el precio base Y hay variantes con precio propio */}
+                    {isBasePriceModified && variantsWithCustomPrice.length > 0 && (
+                        <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5">
+                                    <p className="text-xs font-bold text-amber-950 leading-tight">
+                                        {variantsWithCustomPrice.length === 1 
+                                            ? `La variante "${variantsWithCustomPrice[0].color_name}" tiene un precio propio asignado ($${Number(variantsWithCustomPrice[0].override_usd_price).toFixed(2)})`
+                                            : `Tienes ${variantsWithCustomPrice.length} variantes con precio fijo asignado`
+                                        }
+                                    </p>
+                                    <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                                        Cambiar el precio base a <b className="text-amber-950 font-mono">${Number(formData.price || 0).toFixed(2)}</b> no afectará a esas variantes a menos que entres a editarlas o borres su precio propio para que lo hereden.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={scrollToVariantMatrix}
+                                className="px-3 py-1.5 bg-amber-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all active:scale-95 shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
+                            >
+                                <span>Ver Variantes ↓</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* EXENCIÓN FISCAL (SENIAT) */}
                     {storeSettings?.fiscalProfile !== 'informal' && (
@@ -1673,7 +1742,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                     </div>
                 )}
                 {/* CARD 4: INVENTARIO Y VARIANTES */}
-                <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                <div className="bg-white p-3 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
                     {/* 🚀 EVALUACIÓN FOODTECH VS RETAIL */}
                     {storeSettings?.storeType === 'restaurant' ? (
                         <div id="tour-food-modifiers" className="p-1 rounded-xl">
@@ -2031,12 +2100,23 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-1.5">
                                                                         <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
-                                                                        {v.sku && (
+                                                                      {v.sku && (
                                                                             <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
                                                                                 {v.sku}
                                                                             </span>
                                                                         )}
-                                                                        {v.override_usd_price !== null && v.override_usd_price !== undefined && <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200/60 rounded flex items-center gap-0.5 font-mono"><DollarSign size={10} /> {v.override_usd_price}</span>}
+                                                                      {/* 💎 DISTINCIÓN ÓPTICA PURA: Solo se pinta amarilla si tiene un precio propio real > 0 */}
+                                                                        {Number(v.override_usd_price || 0) > 0 ? (
+                                                                            <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 border border-amber-300 rounded flex items-center gap-1">
+                                                                                <span>Precio Fijo: ${Number(v.override_usd_price).toFixed(2)}</span>
+                                                                                <span className="text-[8px] opacity-70 font-sans font-normal">(Base: ${Number(formData.price || 0).toFixed(2)})</span>
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-[9px] font-mono text-neutral-400">
+                                                                                Hereda ${Number(formData.price || 0).toFixed(2)}
+                                                                            </span>
+                                                                        )}
+
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2151,13 +2231,25 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                             </div>
                                                                         </div>
 
-                                                                        {/* Sobrescribir Precios por SKU */}
+                                                                     {/* Sobrescribir Precios por SKU */}
                                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 border-t border-neutral-200/50">
                                                                             <div>
-                                                                                <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 block font-mono">Precio Propio $</label>
+                                                                                <div className="flex items-center justify-between mb-1">
+                                                                                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider font-mono">Precio Propio $</label>
+                                                                                    {v.override_usd_price !== null && v.override_usd_price !== undefined && v.override_usd_price !== '' && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => updateVariantOverride(v.id, 'override_usd_price', null)}
+                                                                                            className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer"
+                                                                                            title="Restablecer para que adopte el precio base"
+                                                                                        >
+                                                                                            Heredar Base (${Number(formData.price || 0).toFixed(2)})
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
                                                                                 <div className="relative">
                                                                                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                                                                    <NumberInput min="0" placeholder="Heredado" value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                                                                                    <NumberInput min="0" placeholder={`Hereda $${Number(formData.price || 0).toFixed(2)}`} value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
                                                                                 </div>
                                                                             </div>
                                                                             <div>
