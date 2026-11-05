@@ -524,7 +524,7 @@ function ProductCardComponent({
 
             {/* Línea 2: El precio Web en grande y sus Bolívares abajo organizados */}
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm md:text-base font-black font-price text-[var(--store-badge-discount-bg)] leading-none">
+              <span className="text-sm md:text-base font-black font-price text-[var(--store-text-main)] leading-none">
                 ${listPrice.toFixed(2)}
               </span>
               {/* El precio en Bs. ahora tiene su propio espacio exclusivo y no estorba */}
