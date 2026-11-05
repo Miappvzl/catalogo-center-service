@@ -91,17 +91,17 @@ function ProductCardComponent({
   const formattedBs = currencyFormatter.format(pricing.priceInBs);
 
 
-  // =========================================================================
-  // 🛠️ VARIANTE: TEMA 2 (DENSE HARDWARE CARD / ALTA DENSIDAD)
+// =========================================================================
+  // 🛠️ VARIANTE: TEMA 2 (INDUSTRIAL & HARDWARE / ALTA DENSIDAD)
   // =========================================================================
   if (cardStyle === 'dense_hardware') {
     return (
       <div
-        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-colors duration-150 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-text-main)] transition-all duration-200 relative overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] ${isOutOfStock ? 'opacity-60 grayscale-[40%]' : ''}`}
         onClick={handleOpenCard}
       >
-     {/* 1. ENCUADRE TÉCNICO 1:1 (Fondo integrado y foto a sangre completa) */}
-        <div className={`relative ${aspectClass} w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]/40`} style={imageBgStyle}>
+        {/* 1. ENCUADRE TÉCNICO (Limpio y sin etiquetas invasivas) */}
+        <div className={`relative ${aspectClass} w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -111,122 +111,113 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-300 will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-transform duration-500 will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={24} strokeWidth={1.5} />
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-border)]">
+              <ImageIcon size={32} strokeWidth={1} />
             </div>
           )}
 
-          {/* SEMÁFORO DE STOCK TÉCNICO */}
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
-            {isOutOfStock ? (
-              <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-soldout-bg)]">
-                Agotado
-              </span>
-            ) : isCriticalStock ? (
-              <span className="bg-amber-50 text-amber-900 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-amber-300 flex items-center gap-1 shadow-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                Últimas {product.stock}
-              </span>
-            ) : (
-              <span className="bg-emerald-50 text-emerald-800 text-[8px] md:text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-emerald-200/80 flex items-center gap-1 shadow-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                En Stock
-              </span>
-            )}
-          </div>
-
-          {/* BADGE DE DESCUENTO */}
+          {/* INSIGNIA DE OFERTA (Única etiqueta técnica visible si aplica) */}
           {isPromo && !isOutOfStock && (
-            <div className="absolute top-2 right-2 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] md:text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--store-badge-discount-bg)] shadow-xs">
-              -{promoPercent}%
+            <div className="absolute top-2 left-2 z-10 pointer-events-none">
+              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[8px] font-mono font-bold uppercase tracking-[0.2em] px-2 py-1 shadow-sm">
+                -{promoPercent}% OFF
+              </span>
             </div>
           )}
 
-          {/* BOTÓN DE FAVORITO */}
+          {/* FAVORITO TÉCNICO */}
           <button
             onClick={handleToggleFav}
-            className={`absolute bottom-2 right-2 z-20 p-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors active:scale-95 shadow-sm ${isFavorite
-                ? 'text-[var(--store-action-favorite)] border-[var(--store-action-favorite)] bg-white'
-                : 'bg-black/60 text-white border-white/20 hover:text-[var(--store-action-favorite)] hover:border-[var(--store-action-favorite)] backdrop-blur-xs'
+            className={`absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center transition-colors shadow-sm bg-[var(--store-surface)] border border-[var(--store-border)] active:scale-90 ${isFavorite
+                ? 'text-red-600'
+                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
               }`}
+            style={{ borderRadius: 'calc(var(--radius-btn) * 0.5)' }}
             aria-label="Favorito"
           >
-            <Heart size={14} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
+            <Heart size={13} strokeWidth={2} className={isFavorite ? "fill-current" : ""} />
           </button>
         </div>
 
-      {/* 2. CAJA DE INFORMACIÓN TÉCNICA (RANURAS MATEMÁTICAS) */}
-        <div className="p-2.5 md:p-3 flex flex-col flex-1 justify-between min-w-0">
-          <div>
-            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--store-surface-text)] truncate block mb-1">
-              {product.category || 'General'}
+        {/* 2. FICHA DE ESPECIFICACIONES (Spec Sheet Layout) */}
+        <div className="flex flex-col flex-1 min-w-0">
+          
+          {/* Metadata y Título */}
+          <div className="p-3 pb-3 flex-1 flex flex-col justify-start">
+            <span className="text-[8px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-1.5 truncate">
+              {product.category ? `// ${product.category}` : '// COMPONENTE'}
             </span>
 
-            <div className="min-h-[2.6em] max-h-[2.6em] flex items-start overflow-hidden">
-              <h3 className="text-xs md:text-[13px] font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 group-hover:text-[var(--store-primary)] transition-colors">
-                {product.name}
-              </h3>
-            </div>
+            <h3 className="text-[12px] font-semibold text-[var(--store-text-main)] leading-snug line-clamp-2 tracking-tight">
+              {product.name}
+            </h3>
           </div>
 
-          <div className="pt-2 border-t border-[var(--store-border)]/40 flex flex-col mt-auto justify-end">
-            <div className="flex items-end justify-between gap-1.5 min-h-[44px]">
-              <div className="flex flex-col justify-end min-w-0">
-                <div className="min-h-[14px] flex items-center">
-                  {isPromo && (
-                    <span className="text-[9px] font-bold text-[var(--store-surface-text)] line-through leading-none">
-                      ${activeCompareAt.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+          {/* 🚀 CONSOLA FINANCIERA (Altura Fija H-66px & Línea Base Continua) */}
+          <div className="grid grid-cols-[1fr_40px] border-t border-[var(--store-border)] bg-[var(--store-bg)]/40 mt-auto h-[66px] shrink-0">
+            
+            {/* Lector de Precios (Apilado Vertical Autocentrado) */}
+            <div className="px-3 py-1 flex flex-col justify-center min-w-0 border-r border-[var(--store-border)]">
+              
+              {/* Fila 1: Precio Dólar */}
+              <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
+                {isPromo && (
+                  <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
+                    ${activeCompareAt.toFixed(2)}
+                  </span>
+                )}
+                <span className={`text-[14px] font-black font-mono tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                   ${listPrice.toFixed(2)}
                 </span>
-                <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
-                  Bs {formattedBs}
-                </span>
               </div>
+              
+              {/* Fila 2: Precio Bs */}
+              <span className="text-[9.5px] font-mono font-medium text-[var(--store-surface-text)] tabular-nums truncate leading-none mt-1.5">
+                Bs {formattedBs}
+              </span>
+              
+              {/* Fila 3: Divisa (Si aplica) */}
+              {penalty > 0 && !isOutOfStock && (
+                <span className="text-[8.5px] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-wider flex items-center gap-1.5 truncate mt-1.5 leading-none">
+                  <span className="w-1 h-1 rounded-full bg-[var(--store-incentive)] shrink-0" />
+                  Divisas: ${cashPrice.toFixed(2)}
+                </span>
+              )}
+            </div>
 
-              <button
+            {/* Switch de Acción Rápida (Botón exacto de 40px de ancho y 100% de alto) */}
+            <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] flex items-center justify-center shrink-0 transition-colors ${
+              className={`w-full h-full flex items-center justify-center shrink-0 transition-colors ${
                 isOutOfStock
-                  ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] border-transparent cursor-not-allowed shadow-none'
-                  : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-95 shadow-xs'
+                  ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)]/50 cursor-not-allowed'
+                  : 'bg-[var(--store-surface)] text-[var(--store-text-main)] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] active:bg-neutral-800'
               }`}
-              aria-label="Ver detalles"
+              aria-label="Añadir/Ver"
             >
-                <ShoppingCart size={14} strokeWidth={2.2} />
-              </button>
-            </div>
-
-            <div className="min-h-[18px] flex items-center mt-1">
-              {penalty > 0 && !isOutOfStock ? (
-                <div className="flex items-center gap-1 text-[9px] font-medium text-[var(--store-incentive)] font-mono leading-none truncate">
-                  <Flame size={10} className="text-[var(--store-incentive)] shrink-0 fill-current" />
-                  <span className="truncate">Paga ${cashPrice.toFixed(2)} Divisa</span>
-                </div>
-              ) : null}
-            </div>
+              <Plus size={16} strokeWidth={2.5} />
+            </button>
+            
           </div>
         </div>
       </div>
     );
   }
 
-  // =========================================================================
+ // =========================================================================
   // 💎 VARIANTE: TEMA 3 (EDITORIAL LUXURY CARD)
   // =========================================================================
   if (cardStyle === 'editorial') {
     return (
       <div
-        className={`w-full h-full group cursor-pointer flex flex-col relative transition-transform duration-300 ease-out hover:-translate-y-1.5 ${isOutOfStock ? 'opacity-50' : ''}`}
+        className={`w-full h-full group cursor-pointer flex flex-col relative ${isOutOfStock ? 'opacity-50' : ''}`}
         onClick={handleOpenCard}
       >
-      <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-3`} style={imageBgStyle}>
+        {/* Contenedor de Imagen (Sin rebote externo, animación contenida) */}
+        <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-4`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
@@ -236,67 +227,81 @@ function ProductCardComponent({
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-500 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-              <ImageIcon size={32} strokeWidth={1} />
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] opacity-40">
+              <ImageIcon size={24} strokeWidth={1} />
             </div>
           )}
 
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
+          {/* Insignias Translúcidas (Glassmorphism de alta gama) */}
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none">
             {isOutOfStock ? (
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-badge-soldout-text)] bg-[var(--store-badge-soldout-bg)]/90 px-2.5 py-1 rounded-[var(--radius-btn)]">Agotado</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-white bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] shadow-sm border border-white/10">
+                Agotado
+              </span>
             ) : isPromo ? (
-              <span className="text-[9px] font-bold tracking-widest text-[var(--store-text-main)] bg-[var(--store-bg)]/95 px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/50 shadow-sm">
+              <span className="text-[8.5px] font-bold tracking-[0.15em] text-[var(--store-text-main)] bg-[var(--store-bg)]/80 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                 -{promoPercent}%
               </span>
             ) : null}
           </div>
 
+          {/* Favorito Ultra-Minimalista */}
           <button
             onClick={handleToggleFav}
-            className={`absolute top-3 right-3 z-20 p-2 transition-opacity duration-200 active:scale-90 ${isFavorite ? 'opacity-100 text-[var(--store-action-favorite)]' : 'opacity-0 group-hover:opacity-100 text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)]'
+            className={`absolute top-3 right-3 z-20 p-2 transition-all duration-300 active:scale-90 ${isFavorite ? 'opacity-100 text-[var(--store-action-favorite)] drop-shadow-sm' : 'opacity-0 group-hover:opacity-100 text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)]'
               }`}
             aria-label="Favorito"
           >
-            <Heart size={18} strokeWidth={1.5} className={isFavorite ? "fill-current" : ""} />
+            <Heart size={17} strokeWidth={isFavorite ? 1.5 : 1} className={isFavorite ? "fill-current" : ""} />
           </button>
 
+          {/* Botón Flotante Quick Add (Aparición Sedosa) */}
           {!isOutOfStock && (
-            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-200 hidden md:block z-20">
-              <button className="w-full bg-[var(--store-bg)]/95 text-[var(--store-text-main)] py-3.5 text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors rounded-[var(--radius-btn)] shadow-sm">
+            <div className="absolute bottom-3 left-3 right-3 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hidden md:block z-20">
+              <button className="w-full bg-[var(--store-bg)]/85 backdrop-blur-md text-[var(--store-text-main)] py-3 text-[8.5px] font-bold uppercase tracking-[0.25em] hover:bg-[var(--store-text-main)] hover:text-[var(--store-bg)] transition-colors rounded-[var(--radius-btn)] shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-[var(--store-border)]/40">
                 Añadir a la bolsa
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col items-center text-center px-2 flex-1">
-  
-          <h3 className="text-sm md:text-base font-medium text-[var(--store-text-main)] leading-snug mb-2.5 font-heading line-clamp-2">
-            {product.name}
-          </h3>
-          <div className="flex items-center justify-center gap-2.5 mt-auto">
-            {isPromo && (
-              <span className="text-xs text-[var(--store-surface-text)] line-through decoration-[0.5px]">
-                ${activeCompareAt.toFixed(2)}
-              </span>
-            )}
-            <span className={`text-sm md:text-base font-medium tracking-wide ${isPromo ? 'text-red-800' : 'text-[var(--store-text-main)]'}`}>
-              ${listPrice.toFixed(2)}
-            </span>
-          </div>
-          <span className="text-[10px] text-[var(--store-surface-text)] mt-1.5 font-medium tabular-nums">
-            Bs {formattedBs}
+        {/* Textos Editoriales (Milimétricos y Refinados) */}
+        <div className="flex flex-col items-center text-center px-1 flex-1">
+          {/* Sobretítulo de Categoría (Vogue Style) */}
+          <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-[var(--store-surface-text)]/70 mb-1.5 line-clamp-1">
+            {product.category || 'Colección'}
           </span>
 
-          {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo Editorial Sutil) */}
-          {penalty > 0 && !isOutOfStock && (
-            <div className="mt-1.5 flex items-center justify-center gap-1 text-[9px] font-medium text-[var(--store-incentive)] tracking-wider">
-              <Flame size={10} className="fill-current shrink-0" /> Paga ${cashPrice.toFixed(2)} USD
+          <h3 className="text-[13px] md:text-[14px] font-normal text-[var(--store-text-main)] leading-snug mb-3 font-heading line-clamp-2 tracking-wide">
+            {product.name}
+          </h3>
+
+          <div className="mt-auto flex flex-col items-center justify-end gap-0.5">
+            <div className="flex items-center justify-center gap-2.5">
+              {isPromo && (
+                <span className="text-[11px] text-[var(--store-surface-text)]/60 line-through decoration-[0.5px]">
+                  ${activeCompareAt.toFixed(2)}
+                </span>
+              )}
+              <span className={`text-sm font-medium tracking-widest ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+                ${listPrice.toFixed(2)}
+              </span>
             </div>
-          )}
+            <span className="text-[9px] text-[var(--store-surface-text)] font-medium tabular-nums tracking-widest uppercase mt-0.5 opacity-80">
+              Bs {formattedBs}
+            </span>
+
+            {/* Ahorro en Divisas (Sin icono de fuego, puro texto editorial) */}
+            {penalty > 0 && !isOutOfStock && (
+              <div className="mt-1.5 flex items-center justify-center text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)] opacity-90">
+                <span className="mr-1.5 w-1 h-1 rounded-full bg-[var(--store-incentive)]" /> 
+                DIVISAS: ${cashPrice.toFixed(2)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -311,7 +316,7 @@ function ProductCardComponent({
         className={`w-full h-full group cursor-pointer flex flex-col transition-all duration-500 ease-out hover:-translate-y-1 ${isOutOfStock ? 'opacity-50' : ''}`}
         onClick={handleOpenCard}
       >
-    {/* 1. IMAGEN DE PASARELA (High-End Feel) */}
+        {/* 1. IMAGEN DE PASARELA (High-End Feel) */}
         <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/20 mb-3`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
@@ -351,8 +356,8 @@ function ProductCardComponent({
           <button
             onClick={handleToggleFav}
             className={`absolute top-3 right-3 z-20 p-2 transition-colors duration-300 active:scale-90 ${isFavorite
-                ? 'text-[var(--store-action-favorite)]'
-                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
+              ? 'text-[var(--store-action-favorite)]'
+              : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'
               }`}
             aria-label="Favorito"
           >
@@ -375,13 +380,13 @@ function ProductCardComponent({
           )}
 
           {/* Quick Add Integrado de Alta Costura (Desktop Hover) */}
-     {!isOutOfStock && (
-                <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
-                  <button className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity rounded-[var(--radius-btn)]">
-                    [ + ADD TO BAG ]
-                  </button>
-                </div>
-              )}
+          {!isOutOfStock && (
+            <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hidden md:block z-20">
+              <button className="w-full bg-[var(--store-primary)] text-[var(--store-primary-text)] py-3 text-[9px] font-mono font-bold uppercase tracking-[0.2em] hover:opacity-90 transition-opacity rounded-[var(--radius-btn)]">
+                [ + ADD TO BAG ]
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 2. FICHA TÉCNICA (Jerarquía Vertical Escaneable y Simétrica) */}
@@ -389,7 +394,7 @@ function ProductCardComponent({
           {/* Bloque Superior: Categoría + Nombre a 100% de Ancho */}
           <div>
             <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-wider block mb-1 truncate">
-                  {product.category || 'COLECCIÓN'}
+              {product.category || 'COLECCIÓN'}
             </span>
             <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight uppercase">
               {product.name}
@@ -437,110 +442,110 @@ function ProductCardComponent({
 
   // =========================================================================
   // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP CARD)
- if (cardStyle === 'food_menu') {
-  return (
-    <div 
-      className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-200 relative overflow-hidden shadow-xs hover:shadow-lg ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`} 
-      onClick={handleOpenCard}
-    >
-  {/* Contenedor de Imagen */}
-      <div className={`relative ${aspectClass} w-full bg-neutral-100 overflow-hidden`} style={imageBgStyle}>
-        {product.image_url ? (
-          <Image 
-            src={getOptimizedUrl(product.image_url)} 
-            alt={product.name} 
-            fill 
-            priority={isPriorityImage} 
-            loading={isPriorityImage ? undefined : 'lazy'} 
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw" 
-            onLoad={() => setIsImageLoaded(true)} 
-            className={`transition-transform duration-500 ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
-            <ImageIcon size={28} strokeWidth={1.5} />
-          </div>
-        )}
-
-        {/* Badges Superiores (Agotado / Descuento) */}
-        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
-          {isOutOfStock ? (
-            <span className="bg-neutral-900/90 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
-              Agotado
-            </span>
-          ) : isPromo ? (
-            <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
-              -{promoPercent}%
-            </span>
-          ) : null}
-        </div>
-
-        {/* Botón de Favorito */}
-        <button 
-          onClick={handleToggleFav} 
-          className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-all shadow-xs active:scale-90 ${isFavorite ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' : 'bg-white/80 backdrop-blur-xs text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`} 
-          aria-label="Favorito"
-        >
-          <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
-        </button>
-
-        {/* Botón de Acción Rápida (Añadir) */}
-        {!isOutOfStock && (
-          <div className="absolute bottom-2.5 right-2.5 z-20">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-transform duration-150">
-              <Plus size={18} strokeWidth={3} />
+  if (cardStyle === 'food_menu') {
+    return (
+      <div
+        className={`w-full h-full group cursor-pointer flex flex-col bg-[var(--store-surface)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]/50 rounded-2xl md:rounded-3xl transition-all duration-200 relative overflow-hidden shadow-xs hover:shadow-lg ${isOutOfStock ? 'opacity-50 grayscale-[40%]' : ''}`}
+        onClick={handleOpenCard}
+      >
+        {/* Contenedor de Imagen */}
+        <div className={`relative ${aspectClass} w-full bg-neutral-100 overflow-hidden`} style={imageBgStyle}>
+          {product.image_url ? (
+            <Image
+              src={getOptimizedUrl(product.image_url)}
+              alt={product.name}
+              fill
+              priority={isPriorityImage}
+              loading={isPriorityImage ? undefined : 'lazy'}
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+              onLoad={() => setIsImageLoaded(true)}
+              className={`transition-transform duration-500 ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
+              <ImageIcon size={28} strokeWidth={1.5} />
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Cuerpo de Contenido */}
-      <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
-        
-        {/* Bloque Superior: Categoría y Título */}
-        <div className="space-y-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--store-primary)] block">
-            {product.category || 'Especialidad'}
-          </span>
-          <h3 className="text-xs md:text-sm font-semibold text-[var(--store-text-main)] font-heading line-clamp-2 leading-snug">
-            {product.name}
-          </h3>
+          {/* Badges Superiores (Agotado / Descuento) */}
+          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
+            {isOutOfStock ? (
+              <span className="bg-neutral-900/90 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
+                Agotado
+              </span>
+            ) : isPromo ? (
+              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
+                -{promoPercent}%
+              </span>
+            ) : null}
+          </div>
+
+          {/* Botón de Favorito */}
+          <button
+            onClick={handleToggleFav}
+            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-all shadow-xs active:scale-90 ${isFavorite ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' : 'bg-white/80 backdrop-blur-xs text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`}
+            aria-label="Favorito"
+          >
+            <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
+          </button>
+
+          {/* Botón de Acción Rápida (Añadir) */}
+          {!isOutOfStock && (
+            <div className="absolute bottom-2.5 right-2.5 z-20">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center shadow-md active:scale-90 group-hover:scale-105 transition-transform duration-150">
+                <Plus size={18} strokeWidth={3} />
+              </div>
+            </div>
+          )}
         </div>
 
-      {/* Bloque Inferior: Precios e Incentivos */}
-<div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-2">
-  
-  {/* Línea 1: Precio anterior en $ y descuento (Limpio, sin Bs.) */}
-  {isPromo && (
-    <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--store-surface-text)]">
-      <span className="line-through">${activeCompareAt.toFixed(2)}</span>
-    </div>
-  )}
+        {/* Cuerpo de Contenido */}
+        <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
 
-  {/* Línea 2: El precio Web en grande y sus Bolívares abajo organizados */}
-  <div className="flex flex-col gap-0.5">
-    <span className="text-sm md:text-base font-black font-price text-[var(--store-badge-discount-bg)] leading-none">
-      ${listPrice.toFixed(2)} 
-    </span>
-    {/* El precio en Bs. ahora tiene su propio espacio exclusivo y no estorba */}
-    <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
-      Bs. {formattedBs}
-    </span>
-  </div>
+          {/* Bloque Superior: Categoría y Título */}
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--store-primary)] block">
+              {product.category || 'Especialidad'}
+            </span>
+            <h3 className="text-xs md:text-sm font-semibold text-[var(--store-text-main)] font-heading line-clamp-2 leading-snug">
+              {product.name}
+            </h3>
+          </div>
 
-  {/* Línea 3: Tu pastilla corta de Divisas */}
-  {penalty > 0 && !isOutOfStock && (
-    <div className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full text-[9px] font-medium w-fit mt-1">
-      <Flame size={10} className="fill-current shrink-0" />
-      <span>Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
-    </div>
-  )}
-</div>
+          {/* Bloque Inferior: Precios e Incentivos */}
+          <div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-2">
 
+            {/* Línea 1: Precio anterior en $ y descuento (Limpio, sin Bs.) */}
+            {isPromo && (
+              <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--store-surface-text)]">
+                <span className="line-through">${activeCompareAt.toFixed(2)}</span>
+              </div>
+            )}
+
+            {/* Línea 2: El precio Web en grande y sus Bolívares abajo organizados */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm md:text-base font-black font-price text-[var(--store-badge-discount-bg)] leading-none">
+                ${listPrice.toFixed(2)}
+              </span>
+              {/* El precio en Bs. ahora tiene su propio espacio exclusivo y no estorba */}
+              <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
+                Bs. {formattedBs}
+              </span>
+            </div>
+
+            {/* Línea 3: Tu pastilla corta de Divisas */}
+            {penalty > 0 && !isOutOfStock && (
+              <div className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full text-[9px] font-medium w-fit mt-1">
+                <Flame size={10} className="fill-current shrink-0" />
+                <span>Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
+              </div>
+            )}
+          </div>
+
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
   // =========================================================================
   // 💻 VARIANTE: TEMA 6 (MODULAR TECH / APP STYLE CARD)
   // =========================================================================
@@ -556,7 +561,7 @@ function ProductCardComponent({
         }}
         onClick={handleOpenCard}
       >
-       {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
+        {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
         <div className={`relative ${aspectClass} w-full flex items-center justify-center`} style={imageBgStyle}>
           {product.image_url ? (
             <Image
@@ -627,9 +632,9 @@ function ProductCardComponent({
         </div>
 
         {/* BOTÓN CIRCULAR DE ACCIÓN ABSOLUTO */}
-    <button 
-          disabled={isOutOfStock} 
-          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 ${isOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:scale-105 shadow-md shadow-[var(--store-primary)]/20' }`}
+        <button
+          disabled={isOutOfStock}
+          className={`absolute bottom-3 right-3 md:bottom-4 md:right-4 z-20 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 ${isOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:scale-105 shadow-md shadow-[var(--store-primary)]/20'}`}
           aria-label="Añadir al Carrito"
         >
           {isOutOfStock ? <X size={14} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2.5} />}
@@ -692,8 +697,8 @@ function ProductCardComponent({
         <button
           onClick={handleToggleFav}
           className={`absolute bottom-2.5 left-2.5 md:bottom-3 md:left-3 z-20 p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-colors shadow-[var(--shadow-ui)] active:scale-90 ${isFavorite
-              ? 'text-[var(--store-action-favorite)] border-transparent'
-              : 'bg-[var(--store-surface)]/90 text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:text-[var(--store-action-favorite)] hover:bg-[var(--store-surface)]'
+            ? 'text-[var(--store-action-favorite)] border-transparent'
+            : 'bg-[var(--store-surface)]/90 text-[var(--store-surface-text)] border-[var(--store-border)]/30 hover:text-[var(--store-action-favorite)] hover:bg-[var(--store-surface)]'
             }`}
           style={isFavorite ? { backgroundColor: 'color-mix(in srgb, var(--store-action-favorite) 15%, transparent)' } : undefined}
           aria-label="Añadir a favoritos"
@@ -701,27 +706,27 @@ function ProductCardComponent({
           <Heart size={16} strokeWidth={2.5} className={isFavorite ? "fill-current" : ""} />
         </button>
 
-       {/* 🚀 ELITE FIX: Soporte Bicolor / Sólido en catálogo */}
-{uniqueColors.length > 1 && (
-  <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/60 p-1.5 rounded-full shadow-sm pointer-events-none">
-    {uniqueColors.slice(0, 3).map((colorHex, idx) => (
-      <div 
-        key={idx} 
-        className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm" 
-        style={getVariantSwatchStyle(colorHex)} 
-      />
-    ))}
-    {uniqueColors.length > 3 && (
-      <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
-        +{uniqueColors.length - 3}
-      </span>
-    )}
-  </div>
-)}
+        {/* 🚀 ELITE FIX: Soporte Bicolor / Sólido en catálogo */}
+        {uniqueColors.length > 1 && (
+          <div className="absolute bottom-2.5 right-2.5 md:bottom-3 md:right-3 z-20 flex flex-col items-center gap-1.5 bg-black/60 p-1.5 rounded-full shadow-sm pointer-events-none">
+            {uniqueColors.slice(0, 3).map((colorHex, idx) => (
+              <div
+                key={idx}
+                className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full ring-1 ring-white/90 shadow-sm"
+                style={getVariantSwatchStyle(colorHex)}
+              />
+            ))}
+            {uniqueColors.length > 3 && (
+              <span className="text-[9px] font-bold text-white tabular-nums leading-none mt-0.5 mb-0.5 tracking-tighter">
+                +{uniqueColors.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-     {/* 🚀 FICHA UNIVERSAL: ARQUITECTURA DE 3 RANURAS RÍGIDAS (CERO DIENTES DE SIERRA) */}
+      {/* 🚀 FICHA UNIVERSAL: ARQUITECTURA DE 3 RANURAS RÍGIDAS (CERO DIENTES DE SIERRA) */}
       <div className="flex flex-col flex-1 pt-3 pb-1 justify-between min-w-0">
-        
+
         {/* RANURA 1: TÍTULO CON ALTURA EXACTA PARA 1 O 2 LÍNEAS */}
         <div className="min-h-[2.8em] max-h-[2.8em] flex items-start overflow-hidden">
           <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] tracking-[0.05em] leading-snug group-hover:text-[var(--store-primary)] transition-colors line-clamp-2">
@@ -731,7 +736,7 @@ function ProductCardComponent({
 
         {/* CONTENEDOR FINANCIERO ANCLADO (mt-auto) */}
         <div className="mt-auto pt-2.5 border-t border-[var(--store-border)]/30 flex flex-col justify-end">
-          
+
           {/* RANURA 2: PRECIOS Y BOTÓN CARRITO (ALTURA FIJA RESERVADA DE 44PX) */}
           <div className="flex items-end justify-between gap-2 min-h-[44px]">
             <div className="flex flex-col justify-end min-w-0">
@@ -752,13 +757,12 @@ function ProductCardComponent({
                 Bs {formattedBs}
               </span>
             </div>
-<button
+            <button
               disabled={isOutOfStock}
-              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] flex items-center justify-center shrink-0 transition-colors ${
-                isOutOfStock
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] flex items-center justify-center shrink-0 transition-colors ${isOutOfStock
                   ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] border-transparent cursor-not-allowed shadow-none'
                   : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] shadow-[var(--shadow-ui)] group-hover:bg-[var(--store-primary)] group-hover:text-[var(--store-primary-text)] group-hover:border-[var(--store-primary)] active:scale-90'
-              }`}
+                }`}
               aria-label="Ver producto"
             >
               <ShoppingCart size={14} strokeWidth={2.5} className="ml-[-1px]" />

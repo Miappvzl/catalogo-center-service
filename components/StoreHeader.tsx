@@ -226,7 +226,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
         const event = new CustomEvent('toggleCartDrawer', { bubbles: true, composed: true });
         window.dispatchEvent(event);
         document.dispatchEvent(event);
-        
+
         // 2. Fallback Sensorial: Scroll suave si la bolsa está montada en el DOM inferior
         const cartSection = document.getElementById('cart-section') || document.getElementById('floating-checkout') || document.getElementById('bolsa');
         if (cartSection) {
@@ -297,8 +297,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             width={isPng ? 140 : 44}
                             height={isPng ? 44 : 44}
                             className={`object-contain transition-all ${isPng
-                                    ? 'bg-transparent border-0 shadow-none w-24 h-8 md:w-32 md:h-10'
-                                    : 'w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
+                                ? 'bg-transparent border-0 shadow-none w-24 h-8 md:w-32 md:h-10'
+                                : 'w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
                                 } ${props.layoutStyle === 'minimal' && !isPng ? 'rounded-none' : 'rounded-full'}`}
                             alt="Logo"
                         />
@@ -340,7 +340,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
             </button>
         </div>
     );
- const renderSearchBlock = (isDense: boolean = false, customWidthClass?: string) => (
+    const renderSearchBlock = (isDense: boolean = false, customWidthClass?: string) => (
         <div className={`relative flex-1 group min-w-0 ${customWidthClass ? customWidthClass : (isDense ? 'w-full' : 'w-full md:max-w-sm')}`}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
             <input
@@ -397,7 +397,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 </button>
             )}
 
-        {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
+            {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
             <button data-cart-target="true" onClick={handleOpenCart} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
                 <motion.div animate={props.cartControls} className="inline-block origin-top">
                     <ShoppingCart size={24} strokeWidth={1.5} />
@@ -518,7 +518,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
             );
         }
 
-        // 🛠️ VARIANTE: MENÚ DESPLEGABLE ESTÁNDAR (TEMA INDUSTRIAL / CLASSIC)
+    // 🛠️ VARIANTE: MENÚ DESPLEGABLE ESTÁNDAR (TEMA INDUSTRIAL / CLASSIC)
         return (
             <AnimatePresence>
                 {isMobileMenuOpen && (
@@ -526,41 +526,76 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                        className="md:hidden border-t border-[var(--store-border)]/30 bg-[var(--store-bg)] overflow-hidden"
+                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                        className="md:hidden border-b border-[var(--store-border)] bg-[var(--store-bg)]/98 backdrop-blur-xl overflow-hidden shadow-xl"
                     >
-                        <div className="flex flex-col px-4 py-5 gap-3 max-h-[65vh] overflow-y-auto no-scrollbar">
+                        <div className="flex flex-col px-5 py-4 max-h-[60vh] overflow-y-auto overscroll-contain no-scrollbar">
+
+                            {/* Módulo de Mis Pedidos (Compacto y Técnico) */}
                             {props.orderHistory && props.orderHistory.length > 0 && (
                                 <button
                                     onClick={() => { setIsMobileMenuOpen(false); props.setIsHistoryModalOpen(true); }}
-                                    className="flex items-center gap-3 p-3.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text-main)] shadow-[var(--shadow-ui)] mb-2 active:scale-95 transition-transform text-left"
+                                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)] text-[var(--store-text-main)] mb-3 active:scale-[0.99] transition-all"
                                 >
-                                    <div className="bg-[var(--store-primary)]/10 p-2 rounded-[var(--radius-btn)]">
-                                        <Receipt size={18} className="text-[var(--store-primary)]" />
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="font-mono text-xs font-bold uppercase tracking-wider">Mis Pedidos</span>
                                     </div>
-                                    <div className="flex flex-col items-start min-w-0">
-                                        <span className="font-bold text-sm leading-none">Mis Pedidos</span>
-                                        <span className="text-[10px] font-semibold text-[var(--store-surface-text)] mt-1 truncate">Tienes {props.orderHistory.length} ordenes en curso</span>
-                                    </div>
+                                    <span className="font-mono text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                        {props.orderHistory.length} Activos →
+                                    </span>
                                 </button>
                             )}
 
-                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Categorías del Catálogo</span>
+                            {/* Encabezado del Directorio */}
+                            <div className="flex items-center justify-between pb-2 mb-1 border-b border-[var(--store-border)]/40">
+                                <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em]">
+                                    CATEGORÍAS DE LA TIENDA
+                                </span>
+                                <span className="text-[9px] font-mono text-[var(--store-surface-text)] opacity-70">
+                                    [{props.categories.length}]
+                                </span>
+                            </div>
 
-                            <div className="flex flex-col gap-2">
-                                {props.categories.map(cat => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => {
-                                            props.setSelectedCategory(cat);
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                        className={`flex items-center justify-between p-3.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] transition-all active:scale-95 ${props.selectedCategory === cat ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)] shadow-[var(--shadow-ui)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)]/50 hover:border-[var(--store-border)]'}`}
-                                    >
-                                        <span className="font-medium text-sm">{cat}</span>
-                                        {props.selectedCategory === cat && <ChevronRight size={16} />}
-                                    </button>
-                                ))}
+                            {/* Lista Depurada y Escaneable (Cero cajas pesadas) */}
+                            <div className="flex flex-col divide-y divide-[var(--store-border)]/20">
+                                {props.categories.map((cat, idx) => {
+                                    const isActive = props.selectedCategory === cat;
+                                    return (
+                                        <button
+                                            key={cat}
+                                            onClick={() => {
+                                                props.setSelectedCategory(cat);
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${
+                                                isActive
+                                                    ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
+                                                    : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="font-mono text-[9px] text-[var(--store-surface-text)] opacity-40 shrink-0">
+                                                    {(idx + 1).toString().padStart(2, '0')} //
+                                                </span>
+                                                <span className={`text-sm truncate tracking-tight ${isActive ? 'font-bold text-[var(--store-text-main)]' : 'font-medium'}`}>
+                                                    {cat}
+                                                </span>
+                                            </div>
+
+                                            {isActive ? (
+                                                <span className="flex items-center gap-1.5 font-mono text-[8.5px] font-bold uppercase tracking-widest text-[var(--store-text-main)] shrink-0">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
+                                                    ACTIVO
+                                                </span>
+                                            ) : (
+                                                <span className="font-mono text-[10px] text-[var(--store-surface-text)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                    →
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </motion.div>
@@ -735,7 +770,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 {/* 🚀 EL MENÚ EDITORIAL A PANTALLA COMPLETA */}
                 <MobileMenu />
 
-              {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Segregación Estricta) */}
+                {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Segregación Estricta) */}
                 {/* Renderizado fuera del fixed con padding superior para el efecto de cristal líquido */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) ? (
                     <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden pt-[90px] md:pt-[130px]">
@@ -1264,7 +1299,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
             </>
         );
     }
- // ==========================================
+    // ==========================================
     // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
     // ==========================================
     return (

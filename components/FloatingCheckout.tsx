@@ -648,63 +648,86 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                     </div>
                                 )}
                             </div>
+           /* 🛠️ VARIANTE INDUSTRIAL: "Consola de Precisión" */
                         ) : activeTheme.layout?.card_style === 'dense_hardware' ? (
-                            /* 🛠️ VARIANTE INDUSTRIAL: "El Tablero Táctico" */
-                            <div className="w-full bg-[var(--store-surface)] border-t-2 border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] h-[72px]">
+                            <div className="w-full bg-[var(--store-surface)] border-t border-[var(--store-border)] flex items-stretch pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.04)] h-[66px] sm:h-[70px]">
                                 {items.length > 0 ? (
                                     <>
-                                        <div className="flex flex-col justify-center px-5 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
-                                            <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Total a Pagar</span>
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tighter">
+                                        {/* Telemetría Financiera (Limpia y Tabular) */}
+                                        <div
+                                            className="flex flex-col justify-center px-4 sm:px-5 flex-1 min-w-0 cursor-pointer"
+                                            onClick={() => setIsOpen(true)}
+                                        >
+                                            <span className="text-[8px] sm:text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em] truncate mb-0.5">
+                                                TOTAL ORDEN
+                                            </span>
+
+                                            <div className="flex items-baseline gap-2 truncate">
+                                                <span className="text-lg sm:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight truncate">
                                                     {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
                                                 </span>
-                                                <span className="text-[11px] font-mono font-bold text-[var(--store-surface-text)]">
+                                                <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)] tabular-nums truncate">
                                                     Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         </div>
+
+                                        {/* Módulo de Acción Táctico */}
                                         <motion.button
-                                            whileTap={{ scale: 0.95, borderRadius: "0px" }}
-                                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            transition={{ type: "spring", stiffness: 450, damping: 25 }}
                                             onClick={() => setIsOpen(true)}
-                                            className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)] active:bg-[var(--store-text-main)] transition-colors"
-                                        ><div className="flex items-center gap-1.5 mb-0.5">
-                                                <span className="font-mono font-black text-xs uppercase tracking-widest flex items-center gap-1.5"><Zap size={14} className="fill-current" /> PROCESAR</span>
+                                            className="px-5 sm:px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center gap-2.5 border-l border-[var(--store-border)] transition-opacity hover:opacity-90 active:opacity-100 shrink-0 select-none"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-xs uppercase tracking-wider">
+                                                    Pagar
+                                                </span>
+                                                <span className="min-w-[18px] h-[18px] px-1 rounded-sm bg-[var(--store-primary-text)]/20 text-[var(--store-primary-text)] font-mono text-[9px] font-black flex items-center justify-center leading-none">
+                                                    {totalItemsCount}
+                                                </span>
                                             </div>
-                                            <span className="font-mono text-[9px] font-bold opacity-80 uppercase tracking-widest">{totalItemsCount} Items</span>
+                                            <ArrowRight size={14} strokeWidth={2.5} className="opacity-80" />
                                         </motion.button>
                                     </>
                                 ) : (
                                     <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
-                                        <div className="flex flex-col justify-center px-5 flex-1">
-                                            <span className="text-[10px] font-mono font-bold text-[var(--store-primary)] uppercase tracking-widest mb-0.5">Pendiente</span>
-                                            <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate">
+                                        <div className="flex flex-col justify-center px-4 sm:px-5 flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                                <span className="text-[8px] sm:text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] truncate">
+                                                    ORDEN PENDIENTE
+                                                </span>
+                                            </div>
+                                            <span className="text-sm font-mono font-black text-[var(--store-text-main)] tracking-tight truncate leading-tight">
                                                 Pedido #{generatedOrderNumber}
                                             </span>
                                         </div>
                                         <motion.button
-                                            whileTap={{ scale: 0.95, borderRadius: "0px" }}
-                                            className="w-[42%] bg-[var(--store-primary)] text-[var(--store-primary-text)] flex flex-col items-center justify-center border-l-2 border-[var(--store-border)]"
+                                            whileTap={{ scale: 0.97 }}
+                                            className="px-5 sm:px-6 bg-[var(--store-primary)] text-[var(--store-primary-text)] flex items-center justify-center gap-2 border-l border-[var(--store-border)] shrink-0"
                                         >
-                                            <MessageCircle size={18} className="mb-1" />
-                                            <span className="font-mono font-black text-[9px] uppercase tracking-widest">WhatsApp</span>
+                                            <MessageCircle size={15} strokeWidth={2.2} />
+                                            <span className="font-mono font-bold text-xs uppercase tracking-wider">Enviar</span>
                                         </motion.button>
                                     </div>
                                 )}
                             </div>
+                  
+                       /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
                         ) : activeTheme.layout?.card_style === 'editorial' ? (
-                            /* 💎 VARIANTE LUJO: "La Píldora de Conserjería" */
-                            <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/75 border-[0.5px] border-[var(--store-border)]/50 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-stretch overflow-hidden h-[64px]">
+                            <div className="w-full backdrop-blur-2xl bg-[var(--store-bg)]/85 border-[0.5px] border-[var(--store-border)]/40 rounded-full shadow-[0_12px_40px_rgba(0,0,0,0.08)] flex items-stretch overflow-hidden h-[60px] md:h-[64px]">
                                 {items.length > 0 ? (
                                     <>
-                                        <div className="flex flex-col justify-center px-6 flex-1 cursor-pointer" onClick={() => setIsOpen(true)}>
-                                            <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Subtotal</span>
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-lg font-heading font-medium text-[var(--store-text-main)] leading-none tracking-wide">
+                                        <div className="flex flex-col justify-center px-5 sm:px-6 flex-1 cursor-pointer min-w-0" onClick={() => setIsOpen(true)}>
+                                            <span className="text-[7.5px] md:text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-0.5 truncate">
+                                                Subtotal
+                                            </span>
+                                            <div className="flex items-baseline gap-1.5 md:gap-2 truncate">
+                                                <span className="text-lg md:text-xl font-heading font-medium text-[var(--store-text-main)] leading-none tracking-tight truncate">
                                                     {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
                                                 </span>
-                                                <span className="text-[10px] text-[var(--store-surface-text)] font-medium tracking-wide">
+                                                <span className="text-[9px] md:text-[10px] text-[var(--store-surface-text)] font-medium tracking-wide truncate">
                                                     Bs {step1GrandTotalBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
@@ -713,34 +736,38 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             whileTap={{ scale: 0.96 }}
                                             transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
                                             onClick={() => setIsOpen(true)}
-                                            className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 relative overflow-hidden group"
+                                            className="px-5 sm:px-6 bg-transparent text-[var(--store-text-main)] flex items-center justify-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 relative overflow-hidden group shrink-0"
                                         >
                                             <motion.div
                                                 animate={{ x: ["-100%", "200%"] }}
                                                 transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 2 }}
-                                                className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--store-text-main)]/10 to-transparent skew-x-12"
+                                                className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-[var(--store-text-main)]/5 to-transparent skew-x-12"
                                             />
-                                            <ShoppingBag size={16} strokeWidth={1} />
-                                            <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Ver Bolsa</span>
-                                            <div className="absolute top-2 right-2 w-3.5 h-3.5 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-full flex items-center justify-center text-[7px] font-bold">
-                                                {totalItemsCount}
+                                            <div className="relative flex items-center justify-center">
+                                                <ShoppingBag size={15} strokeWidth={1.5} className="group-hover:opacity-80 transition-opacity" />
+                                                <div className="absolute -top-1.5 -right-2 w-3.5 h-3.5 bg-[var(--store-text-main)] text-[var(--store-bg)] rounded-full flex items-center justify-center text-[7px] font-bold ring-2 ring-[var(--store-bg)]">
+                                                    {totalItemsCount}
+                                                </div>
                                             </div>
+                                            <span className="font-bold text-[8px] md:text-[9px] uppercase tracking-[0.2em] mt-px">Bolsa</span>
                                         </motion.button>
                                     </>
                                 ) : (
                                     <div className="flex items-stretch w-full cursor-pointer" onClick={() => setIsOpen(true)}>
-                                        <div className="flex flex-col justify-center px-6 flex-1">
-                                            <span className="text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-1">Pendiente</span>
-                                            <span className="text-sm font-heading font-medium text-[var(--store-text-main)] tracking-wide truncate">
+                                        <div className="flex flex-col justify-center px-5 sm:px-6 flex-1 min-w-0">
+                                            <span className="text-[7.5px] md:text-[8px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-0.5 truncate">
+                                                Pendiente
+                                            </span>
+                                            <span className="text-sm md:text-base font-heading font-medium text-[var(--store-text-main)] tracking-wide truncate">
                                                 Orden #{generatedOrderNumber}
                                             </span>
                                         </div>
                                         <motion.button
                                             whileTap={{ scale: 0.96 }}
-                                            className="px-6 bg-transparent text-[var(--store-text-main)] flex items-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40"
+                                            className="px-5 sm:px-6 bg-transparent text-[var(--store-text-main)] flex items-center justify-center gap-2 border-l-[0.5px] border-[var(--store-border)]/40 shrink-0"
                                         >
-                                            <MessageCircle size={16} strokeWidth={1} />
-                                            <span className="font-bold text-[9px] uppercase tracking-[0.2em]">Enviar</span>
+                                            <MessageCircle size={15} strokeWidth={1.5} />
+                                            <span className="font-bold text-[8px] md:text-[9px] uppercase tracking-[0.2em] mt-px">Enviar</span>
                                         </motion.button>
                                     </div>
                                 )}
