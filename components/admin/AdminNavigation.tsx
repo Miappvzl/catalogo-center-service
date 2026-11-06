@@ -208,8 +208,8 @@ const DesktopSidebar = ({
         </Link>
       </div>
 
-      {/* NAVEGACIÓN PRINCIPAL */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-6 px-3">
+    {/* NAVEGACIÓN PRINCIPAL CON SCROLLBAR ULTRADELGADA EN EL BORDE */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-6 px-3 sidebar-scroll-nav">
         {/* 👈 NUEVO: Agregamos 'Academia' al arreglo y usamos allowedLinks */}
         {['General', 'Ventas', 'Catálogo', 'Academia', 'Negocio'].map((category, idx) => {
           const linksInCategory = allowedLinks.filter(link => link.category === category);
@@ -555,8 +555,8 @@ const MobileSidebar = ({
               </div>
             </div>
 
-            {/* 🚀 NAVEGACIÓN AGRUPADA (Adiós a la sobrecarga cognitiva) */}
-            <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-7 no-scrollbar bg-[#FAFAFC]">
+       {/* 🚀 NAVEGACIÓN AGRUPADA CON SCROLLBAR ULTRADELGADA EN EL BORDE */}
+            <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-7 bg-[#FAFAFC] mobile-sidebar-scroll">
               
               {CATEGORIES.map((category) => {
                 const linksInCategory = allowedLinks.filter(link => link.category === category && !link.isAction);

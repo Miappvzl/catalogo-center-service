@@ -1,13 +1,8 @@
 'use client'
 
-'use client'
-
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Banknote, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowUpRight, ArrowDownRight, ChevronDown, Settings, ShieldCheck, ShoppingCart } from 'lucide-react'
-import { getSupabase } from '@/lib/supabase-client'
+import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowDownRight, ChevronDown, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
-import Swal from 'sweetalert2'
-import { toast } from 'sonner' // 🚀 El reemplazo premium de Swal
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animate } from 'framer-motion'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -364,10 +359,15 @@ interface ProductModalProps {
 
 export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext, storeConfig, isFavorite = false }: ProductModalProps) {
     const { addItem } = useCart()
-    const [supabase] = useState(() => getSupabase())
+
 
     // 🚀 INYECCIÓN DEL CEREBRO DE TOKENS
     const activeTheme = useMemo(() => normalizeThemeConfig(storeConfig?.theme_config), [storeConfig?.theme_config])
+
+    // 🚀 LECTOR GEOMÉTRICO (The Tight Wrapper Math)
+    const mediaRatio = activeTheme.layout?.card_media?.ratio || 'aspect-[4/5]';
+    const aspectRatioValue = mediaRatio === 'aspect-square' ? '1/1' : (mediaRatio === 'aspect-[4/3]' ? '4/3' : '4/5');
+    const isContainFit = activeTheme.layout?.card_media?.fit === 'contain';
 
     const [fullProduct, setFullProduct] = useState<any>(null)
     const [variants, setVariants] = useState<any[]>([])
@@ -385,31 +385,33 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [currentGallery, setCurrentGallery] = useState<string[]>([])
     const [galleryIndex, setGalleryIndex] = useState(0)
 
-    // 🚀 ESTADOS DEL ZOOM DUAL (Side-Zoom & Lightbox)
-    const [zoomData, setZoomData] = useState({ show: false, x: 0, y: 0 })
+    // 🚀 ESTADOS DEL ZOOM DUAL (Motores Desacoplados)
+    const [zoomData, setZoomData] = useState({ show: false, mouseX: 0, mouseY: 0, bgX: 0, bgY: 0 })
     const [isLightboxOpen, setIsLightboxOpen] = useState(false)
     const [lightboxIndex, setLightboxIndex] = useState(0)
 
     const handleZoomMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        const { left, top, width, height } = e.currentTarget.getBoundingClientRect()
-        const x = Math.max(0, Math.min(100, ((e.clientX - left) / width) * 100))
-        const y = Math.max(0, Math.min(100, ((e.clientY - top) / height) * 100))
+        // 1. Posición física real del ratón dentro del marco exacto de la foto
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const rawX = ((e.clientX - left) / width) * 100;
+        const rawY = ((e.clientY - top) / height) * 100;
 
-        // 🚀 MÁRGENES INVISIBLES: Desactiva la lupa en el 12% superior e inferior
-        // Esto evita que el hover se active en el espacio vacío del contenedor
-        if (y < 12 || y > 88) {
-            setZoomData(prev => prev.show ? { ...prev, show: false } : prev);
-            return;
-        }
+        // 2. MOTOR DE PROYECCIÓN (Overdrive 1.5x): Llega a los bordes sin esfuerzo
+        const bgX = Math.max(0, Math.min(100, (rawX - 50) * 1.5 + 50));
+        const bgY = Math.max(0, Math.min(100, (rawY - 50) * 1.5 + 50));
 
-        setZoomData({ show: true, x, y })
+        // 3. MOTOR DEL CRISTAL (Sincronización Láser 1:1)
+        // La lupa mide 24% de ancho. Su centro es 12%. Clampamos entre 12% y 88% para no salir del borde.
+        const mouseX = Math.max(12, Math.min(88, rawX));
+        const mouseY = Math.max(12, Math.min(88, rawY));
+
+        setZoomData({ show: true, mouseX, mouseY, bgX, bgY });
     }
 
-    const handleZoomEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-        const { top, height } = e.currentTarget.getBoundingClientRect();
-        const y = ((e.clientY - top) / height) * 100;
-        if (y >= 12 && y <= 88) setZoomData(prev => ({ ...prev, show: true }));
+    const handleZoomEnter = () => {
+        setZoomData(prev => ({ ...prev, show: true }));
     }
+
     const [isAdding, setIsAdding] = useState(false) // 🚀 Controla el micro-delay de feedback
     const [isHiding, setIsHiding] = useState(false); // 🚀 NUEVO: Controla la invisibilidad inmediata
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
@@ -497,10 +499,76 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const isEur = currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd
 
-    // Resetea el estado al abrir
-    useEffect(() => { if (isOpen) setIsHiding(false); }, [isOpen]);
+    // 🚀 1. INICIALIZACIÓN DIFERIDA (The Render Yielding Hack para 120 FPS)
+    useEffect(() => {
+        if (isOpen) setIsHiding(false); // Resetea el estado visual
 
-  // 🚀 CONTROLADOR DEL SCROLL DE FONDO (BLINDADO CROSS-BROWSER/iOS)
+        if (isOpen && product) {
+            setLoading(true);
+            
+            // 1. Cargamos lo más crítico al instante (Galería base)
+            const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean);
+            setCurrentGallery(defaultGallery);
+            setGalleryIndex(0);
+            setQuantity(1);
+
+            // 2. Cedemos el paso al Main Thread (El navegador anima el modal a 60-120fps sin tirones)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const vars = product.product_variants || [];
+                    if (vars.length > 0) {
+                        setVariants(vars);
+                    } else {
+                        setVariants([]);
+                    }
+                    setSelectedColor(null);
+                    setSelectedSize(null);
+                    setLoading(false);
+                });
+            });
+            
+        } else {
+            // 3. Limpieza absoluta al cerrar el modal (Libera RAM del teléfono)
+            setFullProduct(null);
+            setVariants([]);
+            setSelectedColor(null);
+            setSelectedSize(null);
+            setCurrentGallery([]);
+            setGalleryIndex(0);
+            setQuantity(1);
+            setZoomData({ show: false, mouseX: 0, mouseY: 0, bgX: 0, bgY: 0 });
+        }
+    }, [isOpen, product]);
+
+    // 🚀 2. AUTO-SELECCIÓN DE VARIANTES Y SINCRONIZACIÓN DE GALERÍA
+    useEffect(() => {
+        if (!selectedColor || variants.length === 0) return;
+
+        const variantsForColor = variants.filter(v => v.color_name === selectedColor);
+        
+        // Auto-selecciona la talla si solo hay una disponible para ese color
+        if (variantsForColor.length === 1 && selectedSize !== variantsForColor[0].size) {
+            setSelectedSize(variantsForColor[0].size);
+        } else if (variantsForColor.length > 1 && !variantsForColor.some(v => v.size === selectedSize)) {
+            setSelectedSize(null);
+        }
+
+        // Sincroniza la foto del modal con la foto de la variante seleccionada
+        const variant = variantsForColor[0];
+        if (variant) {
+            let images = [];
+            if (variant.gallery && variant.gallery.length > 0) images = variant.gallery;
+            else if (variant.variant_image) images = [variant.variant_image];
+            else images = [product.image_url, ...(product.gallery || [])].filter(Boolean);
+            
+            if (JSON.stringify(images) !== JSON.stringify(currentGallery)) {
+                setCurrentGallery(images);
+                setGalleryIndex(0);
+            }
+        }
+    }, [selectedColor, variants, product, currentGallery, selectedSize]);
+
+    // 🚀 CONTROLADOR DEL SCROLL DE FONDO (BLINDADO CROSS-BROWSER/iOS)
     useEffect(() => {
         if (isOpen) {
             document.documentElement.style.overflow = 'hidden';
@@ -531,33 +599,24 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         document.addEventListener('cartImpact', handleImpact);
         return () => document.removeEventListener('cartImpact', handleImpact);
     }, [cartControls]);
-    // 🚀 CEREBRO VISUAL (Context-Aware / Doble Capa)
+   // 🚀 CEREBRO VISUAL (Cortocircuitado para rendimiento)
     const bestPromo = useMemo(() => {
-        if (!product || !promotions) return null;
-
-        // Filtramos solo las campañas activas a las que pertenece este producto (Blindado contra Int8)
+        if (!isOpen || !product || !promotions) return null; // 🚀 EARLY RETURN: Cero RAM si está cerrado
         const applicablePromos = promotions.filter((p: any) =>
             p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(product.id))
         );
-
         if (applicablePromos.length === 0) return null;
+        if (activePromoContext && applicablePromos.some(p => p.id === activePromoContext.id)) return activePromoContext;
 
-        // 1. Prioridad de Contexto: Si entró por el Banner, mostramos esa campaña para no confundirlo
-        if (activePromoContext && applicablePromos.some(p => p.id === activePromoContext.id)) {
-            return activePromoContext;
-        }
-
-        // 2. Modo Exploración: Si navegó libremente, le mostramos la campaña que de el mayor % efectivo
         return applicablePromos.reduce((best, current) => {
             const getEffectiveDiscount = (p: any) => p.promo_type === 'percentage' ? Number(p.discount_percentage) : (p.promo_type === 'bogo' ? ((p.bogo_buy - p.bogo_pay) / p.bogo_buy) * 100 : 0);
             return getEffectiveDiscount(current) > getEffectiveDiscount(best) ? current : best;
         }, applicablePromos[0]);
+    }, [product, promotions, activePromoContext, isOpen]);
 
-    }, [product, promotions, activePromoContext]);
-
-    // 🚀 MOTOR DE PRECIOS Y UI (Sinceridad Radical)
+    // 🚀 MOTOR DE PRECIOS Y UI (Suspendido cuando está cerrado)
     const pricing = useMemo(() => {
-        if (!product) return { listPrice: 0, cashPrice: 0, priceInBs: 0, hasDiscount: false, exactSavings: 0, compareAt: 0, isPromo: false, promoPercent: 0, promoBadgeText: null }
+        if (!isOpen || !product) return { listPrice: 0, cashPrice: 0, priceInBs: 0, hasDiscount: false, exactSavings: 0, compareAt: 0, isPromo: false, promoPercent: 0, promoBadgeText: null }
 
         let targetCashPrice = Number(product.usd_cash_price || 0)
         let targetPenalty = Number(product.usd_penalty || 0)
@@ -576,18 +635,16 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
             }
         }
 
-        // PRECIO DE LISTA PÚBLICO (Base + Margen de conversión)
         let listPrice = targetCashPrice + targetPenalty;
-        if (targetCompareAt < listPrice && targetCompareAt > 0) targetCompareAt = listPrice; // El precio tachado nunca puede ser menor al público original
+        if (targetCompareAt < listPrice && targetCompareAt > 0) targetCompareAt = listPrice; 
 
-        // 🚀 TEXTO Y MATEMÁTICA DE LA CAMPAÑA
         let promoBadgeText = null;
         if (bestPromo) {
             if (bestPromo.promo_type === 'percentage' && bestPromo.discount_percentage > 0) {
                 const discount = listPrice * (bestPromo.discount_percentage / 100);
-                targetCompareAt = listPrice; // El precio de lista original es el nuevo precio tachado
+                targetCompareAt = listPrice; 
                 listPrice = listPrice - discount;
-                targetCashPrice = targetCashPrice - (targetCashPrice * (bestPromo.discount_percentage / 100)); // El precio en divisa también baja proporcionalmente
+                targetCashPrice = targetCashPrice - (targetCashPrice * (bestPromo.discount_percentage / 100)); 
                 promoBadgeText = `Campaña ${bestPromo.title} (-${bestPromo.discount_percentage}%)`;
             } else if (bestPromo.promo_type === 'bogo' && bestPromo.bogo_buy > 0) {
                 promoBadgeText = `Campaña ${bestPromo.title}: Lleva ${bestPromo.bogo_buy}, Paga ${bestPromo.bogo_pay}`;
@@ -597,78 +654,13 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         }
 
         return {
-            listPrice,
-            cashPrice: targetCashPrice,
-            priceInBs: listPrice * activeRate,
-            hasDiscount: targetPenalty > 0,
-            exactSavings: listPrice - targetCashPrice, // El ahorro real y transparente por pagar en divisas
-            compareAt: targetCompareAt,
-            isPromo: targetCompareAt > listPrice,
-            promoPercent: targetCompareAt > listPrice ? Math.round(((targetCompareAt - listPrice) / targetCompareAt) * 100) : 0,
-            promoBadgeText
+            listPrice, cashPrice: targetCashPrice, priceInBs: listPrice * activeRate, hasDiscount: targetPenalty > 0, exactSavings: listPrice - targetCashPrice, compareAt: targetCompareAt, isPromo: targetCompareAt > listPrice, promoPercent: targetCompareAt > listPrice ? Math.round(((targetCompareAt - listPrice) / targetCompareAt) * 100) : 0, promoBadgeText
         }
-    }, [product, activeRate, selectedColor, selectedSize, variants, bestPromo])
+    }, [product, activeRate, selectedColor, selectedSize, variants, bestPromo, isOpen])
 
-    useEffect(() => {
-        if (isOpen && product) {
-            setLoading(true)
-
-            // 🚀 OPTIMIZACIÓN: Extraemos las variantes directamente de la memoria (Cero latencia)
-            const vars = product.product_variants || []
-
-            const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean)
-            setCurrentGallery(defaultGallery)
-            setGalleryIndex(0)
-            setQuantity(1)
-
-            if (vars && vars.length > 0) {
-                setVariants(vars)
-                setSelectedColor(null)
-                setSelectedSize(null)
-                setCurrentGallery(defaultGallery)
-            } else {
-                setVariants([])
-                setSelectedColor(null)
-                setSelectedSize(null)
-            }
-            setLoading(false)
-        } else {
-            setFullProduct(null)
-            setVariants([])
-            setSelectedColor(null)
-            setSelectedSize(null)
-            setCurrentGallery([])
-            setGalleryIndex(0)
-            setQuantity(1)
-        }
-    }, [isOpen, product]) // 🚀 Eliminamos 'supabase' de las dependencias
-
-    useEffect(() => {
-        if (!selectedColor || variants.length === 0) return
-
-        // 🚀 AUTO-SELECCIÓN DINÁMICA (Capa 2: Cuando el usuario cambia de color)
-        const variantsForColor = variants.filter(v => v.color_name === selectedColor);
-        if (variantsForColor.length === 1 && selectedSize !== variantsForColor[0].size) {
-            setSelectedSize(variantsForColor[0].size); // Auto-selecciona la talla si solo hay una
-        } else if (variantsForColor.length > 1 && !variantsForColor.some(v => v.size === selectedSize)) {
-            setSelectedSize(null); // Resetea la talla si la anterior no existe en el nuevo color
-        }
-
-        const variant = variantsForColor[0]
-        if (variant) {
-            let images = []
-            if (variant.gallery && variant.gallery.length > 0) images = variant.gallery
-            else if (variant.variant_image) images = [variant.variant_image]
-            else images = [product.image_url, ...(product.gallery || [])].filter(Boolean)
-            if (JSON.stringify(images) !== JSON.stringify(currentGallery)) {
-                setCurrentGallery(images)
-                setGalleryIndex(0)
-            }
-        }
-    }, [selectedColor, variants, product, currentGallery, selectedSize]) // 🚀 Dependencia añadida
-
-    // --- STOCK ENGINE ---
+    // --- STOCK ENGINE (Cortocircuitado) ---
     const availableColors = useMemo(() => {
+        if (!isOpen || variants.length === 0) return [];
         const map = new Map()
         variants.forEach(v => {
             if (!map.has(v.color_name)) {
@@ -677,15 +669,14 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
             }
         })
         return Array.from(map.values())
-    }, [variants])
+    }, [variants, isOpen])
 
     const availableSizes = useMemo(() => {
-        if (!selectedColor) return []
+        if (!isOpen || !selectedColor) return []
         return variants
             .filter(v => v.color_name === selectedColor)
             .sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }))
-    }, [variants, selectedColor])
-
+    }, [variants, selectedColor, isOpen])
     const currentMaxStock = useMemo(() => {
         if (variants.length === 0) return product?.stock || 0;
         if (!selectedColor || !selectedSize) return 0;
@@ -806,27 +797,29 @@ Mi duda es la siguiente: `;
     const nextImage = () => setGalleryIndex((prev) => (prev + 1) % currentGallery.length)
     const prevImage = () => setGalleryIndex((prev) => (prev - 1 + currentGallery.length) % currentGallery.length)
 
-    // 🚀 OPTIMIZACIÓN: Curvas Bezier (Estilo iOS) en lugar de Resortes (Springs)
+ // 🚀 CURVAS DE BÉZIER OPTIMIZADAS PARA GPU (Aceleración por Hardware)
     const modalVariants: Variants = {
         hidden: {
             opacity: 0,
             y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0,
-            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0
+            x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0,
+            willChange: "transform, opacity" // Pre-reserva memoria VRAM
         },
         visible: {
             opacity: 1,
             y: 0,
             x: 0,
-            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 }
+            transition: { type: "tween", ease: [0.16, 1, 0.3, 1], duration: 0.45 },
+            willChange: "auto" // Libera la GPU al terminar para ahorrar batería
         },
         exit: {
             opacity: 0,
             y: typeof window !== 'undefined' && window.innerWidth < 768 ? "100%" : 0,
             x: typeof window !== 'undefined' && window.innerWidth >= 768 ? "100%" : 0,
-            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.4 }
+            transition: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.35 },
+            willChange: "transform, opacity"
         }
     }
-
 
 
     const isCompletelyOutOfStock = variants.length > 0
@@ -867,36 +860,47 @@ Mi duda es la siguiente: `;
                                 {/* SCROLL CONTAINER */}
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[100px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. IMAGEN NAKED (Side-Zoom & Lightbox) */}
-                                    <div
-                                        className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-transparent relative flex items-center justify-center shrink-0 group overflow-hidden cursor-zoom-in"
-                                        onMouseMove={handleZoomMove}
-                                        onMouseEnter={handleZoomEnter}
-                                        onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                        onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                    >
-                                        {currentGallery.length > 0 ? (
-                                            <>
-                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-8 md:p-12 transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                                {zoomData.show && (
-                                                    <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-full" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="text-4xl font-heading text-[var(--store-border)]">Preziso</span>
-                                        )}
+                                    {/* 1. VISOR DE IMÁGENES (Minimal Luxury Filmstrip) */}
+                                    <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 bg-transparent">
 
+                                        <div className="w-full flex-1 p-6 md:p-12 flex items-center justify-center min-h-[350px] md:min-h-0">
+                                            <div
+                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in  rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] border border-[var(--store-border)]/20"
+                                                style={{
+                                                    aspectRatio: aspectRatioValue, maxHeight: '100%',
+                                                    backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
+                                                }}
+                                                onMouseMove={handleZoomMove}
+                                                onMouseEnter={handleZoomEnter}
+                                                onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                                onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                            >
+                                                {currentGallery.length > 0 ? (
+                                                    <>
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.03]' : ''}`} />
+
+                                                        {/* LUPA LÁSER */}
+                                                        {zoomData.show && (
+                                                            <div className="hidden md:block absolute pointer-events-none bg-[var(--store-text-main)]/5 border border-white/60 backdrop-blur-[1px] shadow-sm z-20 rounded-md" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="text-4xl font-heading text-[var(--store-border)]">Preziso</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Tira de Película... */}
                                         {currentGallery.length > 1 && (
-                                            <>
-                                                <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] bg-white/50 backdrop-blur-sm hover:bg-white"><ChevronLeft size={20} strokeWidth={1} /></button>
-                                                <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] bg-white/50 backdrop-blur-sm hover:bg-white"><ChevronRight size={20} strokeWidth={1} /></button>
-                                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-                                                    {currentGallery.map((_, idx) => (<div key={`luxury-dot-${idx}`} className={`h-1 rounded-full transition-all duration-500 ${idx === galleryIndex ? 'bg-[var(--store-text-main)] w-6' : 'bg-[var(--store-text-main)]/30 w-1'}`} />))}
-                                                </div>
-                                            </>
+                                            <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/30 flex gap-2.5 p-2.5 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0 bg-[var(--store-bg)]/40">
+                                                {currentGallery.map((img, idx) => (
+                                                    <button key={`thumb-${idx}`} onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }} className={`relative h-full aspect-[4/5] rounded-md overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 ${idx === galleryIndex ? 'ring-1 ring-offset-2 ring-[var(--store-text-main)] opacity-100' : 'opacity-40 hover:opacity-100'}`}>
+                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
-
                                     {/* 2. DETALLES EDITORIALES */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[120px]">
@@ -984,7 +988,7 @@ Mi duda es la siguiente: `;
                                                                     }}
                                                                     disabled={!c.isAvailable}
                                                                     className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
-                                                                   style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
+                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                 >
                                                                     {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
                                                                     {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
@@ -1077,22 +1081,21 @@ Mi duda es la siguiente: `;
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                            initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25, ease: "easeOut" }}
+                                            className="hidden md:block absolute top-6 right-6 w-[280px] h-[360px] z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border border-[var(--store-border)] rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.18)]"
                                         >
-                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-
-                           <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
                                         <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
-                                 <motion.button
+                                    <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
@@ -1165,34 +1168,54 @@ Mi duda es la siguiente: `;
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
 
-                                   {/* 1. IMAGEN DE PASARELA (Side-Zoom & Lightbox) */}
-                                    <div
-                                        className="w-full h-auto aspect-[4/5] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-surface)] relative flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--store-border)]/20 overflow-hidden group cursor-zoom-in"
-                                        onMouseMove={handleZoomMove}
-                                        onMouseEnter={handleZoomEnter}
-                                        onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                        onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                    >
-                                    {currentGallery.length > 0 ? (
-                                            <>
-                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-4 md:p-6 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
-                                                {zoomData.show && (
-                                                    <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/20 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
-                                        )}
+                                    {/* 1. VISOR DE PASARELA (Filmstrip Layout) */}
+                                    <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-surface)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/20">
 
+                                        <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
+                                            {/* 🚀 WRAPPER ESTRICTO (Altura garantizada en móvil) */}
+                                            <div
+                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-[var(--radius-card)] border border-[var(--store-border)]/40"
+                                                style={{
+                                                    aspectRatio: aspectRatioValue, maxHeight: '100%',
+                                                    backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
+                                                }}
+                                                onMouseMove={handleZoomMove}
+                                                onMouseEnter={handleZoomEnter}
+                                                onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                                onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                            >
+                                                {currentGallery.length > 0 ? (
+                                                    <>
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-2' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
+
+                                                        {/* 🚀 CRISTAL LÁSER (Centrado exacto con mouseX/Y) */}
+                                                        {zoomData.show && (
+                                                            <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/30 backdrop-blur-[2px] shadow-sm z-20" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* TIRA DE PELÍCULA */}
                                         {currentGallery.length > 1 && (
-                                            <>
-                                                <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronLeft size={20} strokeWidth={1.5} /></button>
-                                                <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 backdrop-blur-md rounded-full text-[var(--store-text-main)] shadow-sm active:scale-90 z-30 hover:bg-white"><ChevronRight size={20} strokeWidth={1.5} /></button>
-                                            </>
+                                            <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/20 bg-[var(--store-bg)] flex gap-2.5 p-2.5 md:p-3.5 overflow-x-auto no-scrollbar snap-x shrink-0">
+                                                {currentGallery.map((img, idx) => (
+                                                    <button
+                                                        key={`thumb-${idx}`}
+                                                        onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
+                                                        className={`relative h-full aspect-[4/5] rounded-[var(--radius-btn)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border ${idx === galleryIndex ? 'border-[var(--store-text-main)] opacity-100 shadow-sm' : 'border-transparent opacity-40 hover:opacity-100 hover:border-[var(--store-border)]'}`}
+                                                    >
+                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
 
-                                   {/* 2. DETALLES TÉCNICOS (Jerarquía Escaneable & Alta Conversión) */}
+                                    {/* 2. DETALLES TÉCNICOS (Jerarquía Escaneable & Alta Conversión) */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
                                             <div>
@@ -1252,7 +1275,7 @@ Mi duda es la siguiente: `;
                                                     >
                                                         <div className="flex items-center justify-between mb-3">
                                                             <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                                COLOR: <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
+                                                                {isModelOption ? 'CONFIG:' : 'COLOR:'} <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
                                                             </span>
                                                             {!selectedColor && (
                                                                 <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
@@ -1385,18 +1408,18 @@ Mi duda es la siguiente: `;
                                     </div>
                                 </div>
 
-                                {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
+                                {/* 3. PROYECCIÓN DESKTOP & FOOTER */}
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/20"
+                                            initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.2 }}
+                                            className="hidden md:block absolute top-6 right-6 w-[280px] h-[380px] z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border border-[var(--store-border)]/40 shadow-[8px_8px_0px_rgba(0,0,0,0.1)] rounded-lg"
                                         >
-                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                               <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-[var(--radius-btn)] h-12 bg-transparent mt-1">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
@@ -1404,13 +1427,24 @@ Mi duda es la siguiente: `;
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
 
+                                  {/* 🚀 BOTÓN DINÁMICO BRUTALIST CON FEEDBACK DE ESTADO */}
                                     <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12  rounded-[var(--radius-btn)] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 ${isCompletelyOutOfStock ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'}`}
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 ${
+                                            isCompletelyOutOfStock 
+                                                ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' 
+                                                : (variants.length > 0 && (!selectedColor || !selectedSize))
+                                                    ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]'
+                                                    : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'
+                                        }`}
                                     >
-                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <>[ + LLEVAR ]</>}
+                                        {isAdding ? (
+                                            <Loader2 size={16} className="animate-spin" />
+                                        ) : (
+                                            <>[ {buttonText === 'Agregar' ? '+ LLEVAR' : buttonText.toUpperCase()} ]</>
+                                        )}
                                     </motion.button>
                                 </div>
                             </motion.div>
@@ -1463,25 +1497,50 @@ Mi duda es la siguiente: `;
                                     <X size={18} strokeWidth={2.5} />
                                 </button>
 
+
+
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. IMAGEN DE APETITO (Side-Zoom & Lightbox) */}
-                                    <div
-                                        className="w-full h-auto aspect-[4/3] md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center shrink-0 overflow-hidden group cursor-zoom-in"
-                                        onMouseMove={handleZoomMove}
-                                        onMouseEnter={handleZoomEnter}
-                                        onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                        onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                    >
-                                        {currentGallery.length > 0 ? (
-                                            <>
-                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Plato'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-500 ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                                {zoomData.show && (
-                                                    <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/30 rounded-full backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.2)] z-20" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
+                                    {/* 1. VISOR DE IMÁGENES (Beauty & Skincare Filmstrip) */}
+                                    <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-bg)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/30">
+
+                                        <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
+                                            {/* 🚀 EL TOPE MATEMÁTICO INVISIBLE (Tight Wrapper) */}
+                                            <div
+                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] border border-[var(--store-border)]/20"
+                                                style={{
+                                                    aspectRatio: aspectRatioValue, maxHeight: '100%',
+                                                    backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
+                                                }}
+                                                onMouseMove={handleZoomMove}
+                                                onMouseEnter={handleZoomEnter}
+                                                onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                                onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                            >
+                                                {currentGallery.length > 0 ? (
+                                                    <>
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Producto'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.03]' : ''}`} />
+
+                                                        {/* 🚀 CRISTAL LÁSER: Centrado exacto con translate(-50%, -50%) */}
+                                                        {zoomData.show && (
+                                                            <div className="hidden md:block absolute pointer-events-none bg-white/10 border border-white/40 rounded-full backdrop-blur-[1.5px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] z-20" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="text-4xl font-bold text-[var(--store-border)]">✨</span>
                                                 )}
-                                            </>
-                                        ) : (
-                                            <span className="text-4xl font-bold text-[var(--store-border)]">🍔</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Tira de Película... */}
+                                        {currentGallery.length > 1 && (
+                                            <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/30 bg-[var(--store-surface)]/50 flex gap-2.5 p-2.5 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0">
+                                                {currentGallery.map((img, idx) => (
+                                                    <button key={`thumb-${idx}`} onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }} className={`relative h-full aspect-square rounded-[16px] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-2 ${idx === galleryIndex ? 'border-[var(--store-primary)] shadow-sm opacity-100' : 'border-transparent opacity-50 hover:opacity-100 hover:border-[var(--store-border)]'}`}>
+                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
 
@@ -1659,27 +1718,26 @@ Mi duda es la siguiente: `;
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* 🚀 PANEL DE PROYECCIÓN (Side-Zoom Desktop) */}
+                                {/* 🚀 PANEL DE PROYECCIÓN FLOTANTE (Beauty) */}
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                            className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/40"
+                                            initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25, ease: "easeOut" }}
+                                            className="hidden md:block absolute top-6 right-6 w-[280px] h-[380px] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border border-[var(--store-border)]/50 rounded-[32px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.18)]"
                                         >
-                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                            {/* 🚀 LECTURA DEL MOTOR OVERDRIVE (bgX y bgY) */}
+                                            <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-
-                              <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
                                         <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
                                     </div>
-                                <motion.button
+                                    <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
@@ -1688,7 +1746,7 @@ Mi duda es la siguiente: `;
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
                                     </motion.button>
                                 </div>
-                              
+
                             </motion.div>
                         </div>
                     )}
@@ -1736,33 +1794,51 @@ Mi duda es la siguiente: `;
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[100px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. STUDIO GALLERY (Fondo neutral técnico) */}
-                                    <div
-                                        className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-[45%] bg-[var(--store-surface)]/30 relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/40 shrink-0 group overflow-hidden cursor-zoom-in"
-                                        onMouseMove={handleZoomMove} onMouseEnter={handleZoomEnter} onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))} onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                    >
-                                        {currentGallery.length > 0 ? (
-                                            <>
-                                                <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Device"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-8 md:p-14 transition-transform duration-500 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                                {zoomData.show && <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 shadow-sm z-20 rounded-xl" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />}
-                                            </>
-                                        ) : (
-                                            <span className="text-sm font-bold text-[var(--store-surface-text)]">Sin imagen</span>
-                                        )}
+                                    {/* 1. STUDIO GALLERY (Filmstrip Layout) */}
+                                    <div className="w-full md:w-[45%] h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-surface)]/30 border-b md:border-b-0 md:border-r border-[var(--store-border)]/40">
+
+                                        <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
+                                            {/* 🚀 WRAPPER ESTRICTO */}
+                                            <div
+                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-xl border border-[var(--store-border)]/20 shadow-xs"
+                                                style={{
+                                                    aspectRatio: aspectRatioValue, maxHeight: '100%',
+                                                    backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
+                                                }}
+                                                onMouseMove={handleZoomMove}
+                                                onMouseEnter={handleZoomEnter}
+                                                onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                                onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                            >
+                                                {currentGallery.length > 0 ? (
+                                                    <>
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Device"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+
+                                                        {/* 🚀 CRISTAL LÁSER */}
+                                                        {zoomData.show && (
+                                                            <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 shadow-sm z-20 rounded-xl" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="text-sm font-bold text-[var(--store-surface-text)]">Sin imagen</span>
+                                                )}
+                                            </div>
+                                        </div>
 
                                         {currentGallery.length > 1 && (
-                                            <div className="absolute bottom-6 w-full flex justify-center z-30">
-                                                <div className="flex items-center gap-1.5 bg-[var(--store-surface)] border border-[var(--store-border)]/60 px-3 py-2 rounded-full shadow-sm">
-                                                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronLeft size={16} strokeWidth={2.5} /></button>
-                                                    <div className="flex gap-1.5 px-2 border-x border-[var(--store-border)]/40">
-                                                        {currentGallery.map((_, idx) => (<div key={`tech-dot-${idx}`} className={`h-1.5 transition-all duration-300 rounded-full ${idx === galleryIndex ? 'bg-[var(--store-text-main)] w-3' : 'bg-[var(--store-border)] w-1.5'}`} />))}
-                                                    </div>
-                                                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="text-[var(--store-text-main)] hover:opacity-50"><ChevronRight size={16} strokeWidth={2.5} /></button>
-                                                </div>
+                                            <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/40 bg-[var(--store-bg)] flex gap-2.5 p-2.5 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0">
+                                                {currentGallery.map((img, idx) => (
+                                                    <button
+                                                        key={`thumb-${idx}`}
+                                                        onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
+                                                        className={`relative h-full aspect-square rounded-[var(--radius-card)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-2 ${idx === galleryIndex ? 'border-[var(--store-text-main)] shadow-sm opacity-100' : 'border-transparent opacity-50 hover:opacity-100 bg-white/50'}`}
+                                                    >
+                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-contain p-1.5" />
+                                                    </button>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
-
                                     {/* 2. SPEC SHEET PANEL */}
                                     <div className="w-full h-auto md:h-full md:w-[55%] flex flex-col relative bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-6 no-scrollbar pb-6 md:pb-[140px]">
@@ -1907,27 +1983,25 @@ Mi duda es la siguiente: `;
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* 3. PROYECCIÓN DESKTOP & FIXED CHECKOUT BAR */}
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                            className="hidden md:block absolute inset-y-0 right-0 w-[55%] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                            initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25, ease: "easeOut" }}
+                                            className="hidden md:block absolute top-6 right-6 w-[280px] h-[380px] z-[100] bg-[var(--store-surface)] pointer-events-none overflow-hidden border border-[var(--store-border)]/40 rounded-[var(--radius-card)] shadow-[0_20px_50px_rgba(0,0,0,0.1)]"
                                         >
-                                            <div className="w-full h-full bg-[var(--store-surface)]" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                            <div className="w-full h-full bg-[var(--store-surface)]" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-
-                              <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-surface)]">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Minus size={16} strokeWidth={2} /></button>
                                         <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Plus size={16} strokeWidth={2} /></button>
                                     </div>
-                                   <motion.button
+                                    <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
@@ -1955,7 +2029,7 @@ Mi duda es la siguiente: `;
     }
 
 
-     // =========================================================================
+    // =========================================================================
     // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO MODAL)
     // =========================================================================
     return (
@@ -2000,33 +2074,49 @@ Mi duda es la siguiente: `;
                             {/* SCROLL CONTAINER */}
                             <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[140px] md:pb-0 no-scrollbar">
 
-                                {/* 1. IMAGEN (Side-Zoom & Lightbox) */}
-                                <div
-                                    className="w-full h-auto aspect-square md:aspect-auto md:h-full md:w-1/2 bg-[var(--store-bg)] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-[var(--store-border)]/30 shrink-0 group overflow-hidden cursor-zoom-in"
-                                    onMouseMove={handleZoomMove}
-                                    onMouseEnter={handleZoomEnter}
-                                    onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
-                                    onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
-                                >
-                                    {currentGallery.length > 0 ? (
-                                        <>
-                                            <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-contain p-6 md:p-10 transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
-                                            {zoomData.show && (
-                                                <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-2xl" style={{ width: '40%', height: '40%', left: `calc(${zoomData.x}% - 20%)`, top: `calc(${zoomData.y}% - 20%)` }} />
+                                {/* 1. IMAGEN (Filmstrip Layout) */}
+                                <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-bg)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/30">
+
+                                    <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
+                                        {/* 🚀 WRAPPER ESTRICTO */}
+                                        <div
+                                            className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in  border border-[var(--store-border)]/20 rounded-[var(--radius-card)] shadow-[var(--shadow-ui)]"
+                                            style={{
+                                                aspectRatio: aspectRatioValue, maxHeight: '100%',
+                                                backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
+                                            }}
+                                            onMouseMove={handleZoomMove}
+                                            onMouseEnter={handleZoomEnter}
+                                            onMouseLeave={() => setZoomData(prev => ({ ...prev, show: false }))}
+                                            onClick={() => { setIsLightboxOpen(true); setLightboxIndex(galleryIndex); }}
+                                        >
+                                            {currentGallery.length > 0 ? (
+                                                <>
+                                                    <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+
+                                                    {/* 🚀 CRISTAL LÁSER */}
+                                                    {zoomData.show && (
+                                                        <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-xl" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
                                             )}
-                                        </>
-                                    ) : (
-                                        <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
-                                    )}
+                                        </div>
+                                    </div>
 
                                     {currentGallery.length > 1 && (
-                                        <>
-                                            <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronLeft size={20} strokeWidth={2} /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-[var(--store-surface)]/90 p-2 rounded-full border border-[var(--store-border)] active:scale-95 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 z-30 text-[var(--store-text-main)] hover:brightness-75 hover:text-white hover:border-[var(--store-primary)]"><ChevronRight size={20} strokeWidth={2} /></button>
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-30">
-                                                {currentGallery.map((_, idx) => (<div key={`universal-dot-${idx}`} className={`h-1.5 rounded-full transition-all duration-300 ${idx === galleryIndex ? 'bg-[var(--store-primary)] w-4' : 'bg-[var(--store-border)] w-1.5'}`} />))}
-                                            </div>
-                                        </>
+                                        <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/30 bg-[var(--store-surface)] flex gap-2 p-2 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0">
+                                            {currentGallery.map((img, idx) => (
+                                                <button
+                                                    key={`thumb-${idx}`}
+                                                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
+                                                    className={`relative h-full aspect-square rounded-[var(--radius-card)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-[length:var(--border-width-ui)] ${idx === galleryIndex ? 'border-[var(--store-primary)] shadow-[var(--shadow-ui)] opacity-100' : 'border-[var(--store-border)]/40 opacity-50 hover:opacity-100 hover:border-[var(--store-primary)]/50'}`}
+                                                >
+                                                    <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
 
@@ -2346,15 +2436,15 @@ Mi duda es la siguiente: `;
                             <AnimatePresence>
                                 {zoomData.show && currentGallery.length > 0 && (
                                     <motion.div
-                                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}
-                                        className="hidden md:block absolute inset-y-0 right-0 w-1/2 z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border-l border-[var(--store-border)]/30"
+                                        initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25, ease: "easeOut" }}
+                                        className="hidden md:block absolute top-6 right-6 w-[280px] h-[380px] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border border-[var(--store-border)]/50 rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
                                     >
-                                        <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.x}% ${zoomData.y}%`, backgroundSize: '250%', backgroundRepeat: 'no-repeat' }} />
+                                        <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                     </motion.div>
                                 )}
                             </AnimatePresence>
 
-                           <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                            <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/85 backdrop-blur-2xl border-t border-[var(--store-border)] z-20 flex flex-col gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                                 <StockNudge show={showStockNudge} max={currentMaxStock} />
                                 <div className="flex gap-3 md:gap-4">
                                     <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-bg)]/50">

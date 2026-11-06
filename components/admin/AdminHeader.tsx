@@ -24,17 +24,42 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
   const initials = store?.name ? store.name.substring(0, 2).toUpperCase() : 'PR'
   const isTrial = store?.subscription_status === 'trial'
 
-  // 🚀 DETECCIÓN INTELIGENTE DE MODALES ACTIVOS (Oculta el header para despejar la vista)
+// 🚀 DETECCIÓN INTELIGENTE DE MODALES ACTIVOS (Oculta el header para despejar la vista)
   useEffect(() => {
     const checkModalState = () => {
       if (typeof document === 'undefined') return;
+      
+      // 1. Verificación de scroll bloqueado en el body
       const isLocked = 
         document.body.style.overflow === 'hidden' || 
         document.body.classList.contains('overflow-hidden') ||
         document.body.style.getPropertyValue('overflow') === 'hidden';
       
-      const hasOverlay = !!document.querySelector('[class*="z-[999999]"], [class*="z-[99999]"], [class*="z-[80]"], [class*="z-[70]"]');
-      setIsModalActive(isLocked || hasOverlay);
+      // 2. Búsqueda de overlays (incluyendo sintaxis v4 de Tailwind)
+      const overlayElements = document.querySelectorAll(
+        '[class*="z-[999999]"], [class*="z-[99999]"], [class*="z-[80]"], [class*="z-[70]"], [class*="z-99999"]'
+      );
+      
+      let hasActiveOverlay = false;
+
+      // 💎 VISIÓN DEL GUARDIÁN: Evaluamos matemáticamente si el elemento es visible y bloqueante
+      for (let i = 0; i < overlayElements.length; i++) {
+        const el = overlayElements[i] as HTMLElement;
+        const style = window.getComputedStyle(el);
+        
+        // Si el elemento está en el DOM pero es invisible o no intercepta clics, es un "fantasma" (ej. contenedor de Toasts)
+        if (
+          style.display !== 'none' && 
+          style.opacity !== '0' && 
+          style.visibility !== 'hidden' &&
+          style.pointerEvents !== 'none'
+        ) {
+          hasActiveOverlay = true;
+          break;
+        }
+      }
+
+      setIsModalActive(isLocked || hasActiveOverlay);
     };
 
     checkModalState();
@@ -49,7 +74,6 @@ export default function AdminHeader({ store, title }: { store: any, title?: stri
 
     return () => observer.disconnect();
   }, []);
-
   // 🚀 MOTOR DE SCROLL ULTRA-FLUIDO (Cero re-renderizados innecesarios, cero jitter)
   useEffect(() => {
     let lastScrollY = window.scrollY
