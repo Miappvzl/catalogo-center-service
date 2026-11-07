@@ -724,24 +724,39 @@ export default function InventoryPage() {
                                                                 </div>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
-                                                                    {/* 🚀 FIX: Renderizado de gradiente a 135deg para bicolores */}
-                                                                    <span
-                                                                        className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0"
-                                                                        style={getVariantSwatchStyle(item.hex)}
-                                                                    />
-                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+                                                     <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+                                                            {!item.variantId ? (
+                                                                <span className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 text-[10px] font-mono font-medium text-neutral-400">
+                                                                    Producto Único
+                                                                </span>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {item.color && !['talla', 'tallas', 'medida', 'medidas'].includes(item.color.trim().toLowerCase()) && (
+                                                                        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
+                                                                            {item.hex && item.hex !== 'transparent' && item.hex !== '#transparent' && (
+                                                                                <span
+                                                                                    className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0"
+                                                                                    style={getVariantSwatchStyle(item.hex)}
+                                                                                />
+                                                                            )}
+                                                                            <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.size && (
+                                                                        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
+                                                                            <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">
+                                                                                {['única', 'unica', 'u'].includes(item.size.trim().toLowerCase()) ? item.size : `Talla: ${item.size}`}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                                <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
-                                                                    <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">Talla: {item.size}</span>
-                                                                </div>
-                                                            </div>
+                                                            )}
                                                         </td>
 
+                                                       
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             <div className="flex flex-col items-center justify-center gap-1.5">
+
                                                                 {/* STOCK INPUT (Telemetría) */}
                                                                 <div className="flex items-center gap-1.5">
                                                                     <input
