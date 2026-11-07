@@ -14,6 +14,7 @@ import { calculateCartEngine } from '@/utils/cartLogic'
 import NumberTicker from './NumberTicker'
 import { getSupabase } from '@/lib/supabase-client'
 import { feedback } from '@/app/store/useFeedBackStore'
+import { formatUSD, formatVES } from '@/utils/currency'
 
 interface CheckoutProps {
     rates: { usd: number, eur: number }
@@ -1085,18 +1086,18 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                                         {/* Pie: Precio del Combo y Stepper de Cantidad del Paquete */}
                                                                         <div className="flex items-center justify-between pt-1">
                                                                             <div className="flex flex-col">
-                                                                                <div className="flex items-baseline gap-1.5">
+                                                                              <div className="flex items-baseline gap-1.5">
                                                                                     {group.totalFinalPrice < group.totalListPrice && (
                                                                                         <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
-                                                                                            {currencySymbol}{group.totalListPrice.toFixed(2)}
+                                                                                            {formatUSD(group.totalListPrice)}
                                                                                         </span>
                                                                                     )}
                                                                                     <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
-                                                                                        {currencySymbol}{group.totalFinalPrice.toFixed(2)}
+                                                                                        {formatUSD(group.totalFinalPrice)}
                                                                                     </span>
                                                                                 </div>
                                                                                 <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
-                                                                                    Bs {(group.totalFinalPrice * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                                    {formatVES(group.totalFinalPrice * activeRate)}
                                                                                 </span>
                                                                             </div>
 
@@ -1200,22 +1201,22 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
                                                                         <div className="flex items-end justify-between gap-2 mt-2 pt-1.5 border-t border-[var(--store-border)]/20">
                                                                             <div className="flex flex-col min-w-0">
-                                                                                {item.finalListPrice < item.listPrice ? (
+                                                                               {item.finalListPrice < item.listPrice ? (
                                                                                     <div className="flex items-baseline gap-1.5 flex-wrap">
                                                                                         <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through">
-                                                                                            {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                            {formatUSD(item.listPrice * item.quantity)}
                                                                                         </span>
                                                                                         <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-red-500">
-                                                                                            {currencySymbol}{(item.finalListPrice * item.quantity).toFixed(2)}
+                                                                                            {formatUSD(item.finalListPrice * item.quantity)}
                                                                                         </span>
                                                                                     </div>
                                                                                 ) : (
                                                                                     <span className="text-sm md:text-base font-black font-mono leading-none tracking-tight text-[var(--store-text-main)]">
-                                                                                        {currencySymbol}{(item.listPrice * item.quantity).toFixed(2)}
+                                                                                        {formatUSD(item.listPrice * item.quantity)}
                                                                                     </span>
                                                                                 )}
                                                                                 <span className="text-[9px] font-mono font-medium text-[var(--store-surface-text)] mt-0.5 leading-none tabular-nums">
-                                                                                    Bs {(item.finalListPrice * item.quantity * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                                                    {formatVES(item.finalListPrice * item.quantity * activeRate)}
                                                                                 </span>
                                                                             </div>
 
@@ -1346,12 +1347,12 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                         )}
                                                     </div>
 
-                                                    <div className="flex flex-col items-end">
+                                                  <div className="flex flex-col items-end">
                                                         <span className="text-lg md:text-xl font-mono font-black text-[var(--store-text-main)] leading-none tracking-tight tabular-nums">
-                                                            {currencySymbol}{step1GrandTotalUSD.toFixed(2)}
+                                                            {formatUSD(step1GrandTotalUSD)}
                                                         </span>
                                                         <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] mt-1 leading-none tabular-nums">
-                                                            Bs. {step1GrandTotalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            {formatVES(step1GrandTotalBs)}
                                                         </span>
                                                     </div>
                                                 </div>

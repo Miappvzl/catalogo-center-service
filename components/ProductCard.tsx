@@ -6,9 +6,7 @@ import { getVariantSwatchStyle } from '@/utils/ColorUtils';
 import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import { useMemo, useState, memo, useCallback } from 'react'
-
-// 🚀 SINGLETON DE ALTO RENDIMIENTO (Cero garbage collection en render loops)
-const currencyFormatter = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 });
+import { formatUSD, formatVES } from '@/utils/currency'; // 🚀 FORMATO HISPANO UNIFICADO (COMA DECIMAL)
 
 interface ProductCardProps {
   product: any;
@@ -88,7 +86,7 @@ function ProductCardComponent({
 
   // Decisión de prioridad para LCP de alta velocidad
   const isPriorityImage = index < 4;
-  const formattedBs = currencyFormatter.format(pricing.priceInBs);
+
 
 
 // =========================================================================
@@ -163,27 +161,27 @@ function ProductCardComponent({
             <div className="px-3 py-1 flex flex-col justify-center min-w-0 border-r border-[var(--store-border)]">
               
               {/* Fila 1: Precio Dólar */}
-              <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
+             <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
                 {isPromo && (
                   <span className="text-[9px] font-mono text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
-                    ${activeCompareAt.toFixed(2)}
+                    {formatUSD(activeCompareAt)}
                   </span>
                 )}
                 <span className={`text-[14px] font-black font-mono tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
-                  ${listPrice.toFixed(2)}
+                  {formatUSD(listPrice)}
                 </span>
               </div>
               
               {/* Fila 2: Precio Bs */}
               <span className="text-[9.5px] font-mono font-medium text-[var(--store-surface-text)] tabular-nums truncate leading-none mt-1.5">
-                Bs {formattedBs}
+                {formatVES(pricing.priceInBs)}
               </span>
               
               {/* Fila 3: Divisa (Si aplica) */}
               {penalty > 0 && !isOutOfStock && (
                 <span className="text-[8.5px] font-mono font-bold text-[var(--store-incentive)] uppercase tracking-wider flex items-center gap-1.5 truncate mt-1.5 leading-none">
                   <span className="w-1 h-1 rounded-full bg-[var(--store-incentive)] shrink-0" />
-                  Divisas: ${cashPrice.toFixed(2)}
+                  Divisas: {formatUSD(cashPrice)}
                 </span>
               )}
             </div>
@@ -280,25 +278,24 @@ function ProductCardComponent({
           </h3>
 
           <div className="mt-auto flex flex-col items-center justify-end gap-0.5">
-            <div className="flex items-center justify-center gap-2.5">
+          <div className="flex items-center justify-center gap-2.5">
               {isPromo && (
                 <span className="text-[11px] text-[var(--store-surface-text)]/60 line-through decoration-[0.5px]">
-                  ${activeCompareAt.toFixed(2)}
+                  {formatUSD(activeCompareAt)}
                 </span>
               )}
               <span className={`text-sm font-medium tracking-widest ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
-                ${listPrice.toFixed(2)}
+                {formatUSD(listPrice)}
               </span>
             </div>
             <span className="text-[9px] text-[var(--store-surface-text)] font-medium tabular-nums tracking-widest uppercase mt-0.5 opacity-80">
-              Bs {formattedBs}
+              {formatVES(pricing.priceInBs)}
             </span>
 
-            {/* Ahorro en Divisas (Sin icono de fuego, puro texto editorial) */}
             {penalty > 0 && !isOutOfStock && (
               <div className="mt-1.5 flex items-center justify-center text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)] opacity-90">
                 <span className="mr-1.5 w-1 h-1 rounded-full bg-[var(--store-incentive)]" /> 
-                DIVISAS: ${cashPrice.toFixed(2)}
+                DIVISAS: {formatUSD(cashPrice)}
               </div>
             )}
           </div>
@@ -403,28 +400,28 @@ function ProductCardComponent({
 
           {/* Bloque Inferior: Datos Financieros Agrupados y Ordenados */}
           <div className="mt-2.5 pt-2 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
-            {/* Fila 1: Precio USD Principal y Descuento */}
+           {/* Fila 1: Precio USD Principal y Descuento */}
             <div className="flex items-baseline gap-1.5 flex-wrap">
               {isPromo && (
                 <span className="text-[10px] font-mono text-[var(--store-surface-text)] line-through">
-                  ${activeCompareAt.toFixed(2)}
+                  {formatUSD(activeCompareAt)}
                 </span>
               )}
               <span className={`text-sm md:text-base font-black leading-none tracking-tight font-mono ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
-                ${listPrice.toFixed(2)}
+                {formatUSD(listPrice)}
               </span>
             </div>
 
             {/* Fila 2: Conversión a Bolívares */}
             <span className="text-[10px] font-mono font-semibold text-[var(--store-surface-text)] leading-none tabular-nums">
-              Bs. {formattedBs}
+              {formatVES(pricing.priceInBs)}
             </span>
 
             {/* Fila 3: Ahorro en Divisas Ordenado */}
             {penalty > 0 && !isOutOfStock && (
               <div className="mt-0.5 inline-flex items-center gap-1.5 text-[9px] font-mono font-medium text-[var(--store-incentive)] leading-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
-                <span>EN DIVISAS: ${cashPrice.toFixed(2)}</span>
+                <span>EN DIVISAS: {formatUSD(cashPrice)}</span>
               </div>
             )}
 
@@ -516,28 +513,25 @@ function ProductCardComponent({
           <div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-2">
 
             {/* Línea 1: Precio anterior en $ y descuento (Limpio, sin Bs.) */}
-            {isPromo && (
+           {isPromo && (
               <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--store-surface-text)]">
-                <span className="line-through">${activeCompareAt.toFixed(2)}</span>
+                <span className="line-through">{formatUSD(activeCompareAt)}</span>
               </div>
             )}
 
-            {/* Línea 2: El precio Web en grande y sus Bolívares abajo organizados */}
             <div className="flex flex-col gap-0.5">
               <span className="text-sm md:text-base font-black font-price text-[var(--store-text-main)] leading-none">
-                ${listPrice.toFixed(2)}
+                {formatUSD(listPrice)}
               </span>
-              {/* El precio en Bs. ahora tiene su propio espacio exclusivo y no estorba */}
               <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
-                Bs. {formattedBs}
+                {formatVES(pricing.priceInBs)}
               </span>
             </div>
 
-            {/* Línea 3: Tu pastilla corta de Divisas */}
             {penalty > 0 && !isOutOfStock && (
               <div className="inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full text-[9px] font-medium w-fit mt-1">
                 <Flame size={10} className="fill-current shrink-0" />
-                <span>Divisas: <strong>${cashPrice.toFixed(2)} USD</strong></span>
+                <span>Divisas: <strong>{formatUSD(cashPrice)}</strong></span>
               </div>
             )}
           </div>
@@ -611,23 +605,24 @@ function ProductCardComponent({
           <span className="text-[10px] font-semibold text-[var(--store-surface-text)] uppercase tracking-wider mb-1 line-clamp-1">{product.category || 'Categoría'}</span>
           <h3 className="text-sm md:text-base font-bold text-[var(--store-text-main)] leading-snug line-clamp-2 group-hover:text-[var(--store-primary)] transition-colors">{product.name}</h3>
 
-          <div className="mt-auto pt-3 flex flex-col min-w-0 pr-12 relative z-10">
-            {isPromo && <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through mb-0.5">${activeCompareAt.toFixed(2)}</span>}
+       <div className="mt-auto pt-3 flex flex-col min-w-0 pr-12 relative z-10">
+            {isPromo && <span className="text-[10px] font-bold text-[var(--store-surface-text)] line-through mb-0.5">{formatUSD(activeCompareAt)}</span>}
             <div className="flex items-baseline gap-1">
-              <span className={`text-xl md:text-2xl font-black leading-none tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}> ${listPrice.toFixed(2)}</span>
+              <span className={`text-xl md:text-2xl font-black leading-none tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+                {formatUSD(listPrice)}
+              </span>
             </div>
-            <span className="text-[11px] font-medium text-[var(--store-surface-text)] mt-1 tabular-nums">Bs {formattedBs}</span>
+            <span className="text-[11px] font-medium text-[var(--store-surface-text)] mt-1 tabular-nums">{formatVES(pricing.priceInBs)}</span>
 
             {penalty > 0 && !isOutOfStock && (
               <div className="mt-1.5 text-[9px] font-bold text-[var(--store-incentive)]">
-                Paga ${cashPrice.toFixed(2)} en{' '}
+                Paga {formatUSD(cashPrice)} en{' '}
                 <span className="inline-flex items-center gap-1">
                   Divisa
                   <Flame size={10} className="fill-current shrink-0 align-middle -translate-y-[0.5px]" />
                 </span>
               </div>
             )}
-
           </div>
         </div>
 
@@ -741,20 +736,20 @@ function ProductCardComponent({
           <div className="flex items-end justify-between gap-2 min-h-[44px]">
             <div className="flex flex-col justify-end min-w-0">
               {/* Espacio reservado para precio tachado (evita que el precio salte si no hay oferta) */}
-              <div className="min-h-[14px] flex items-center">
+           <div className="min-h-[14px] flex items-center">
                 {isPromo && (
                   <span className="text-[10px] md:text-xs font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] leading-none">
-                    ${activeCompareAt.toFixed(2)}
+                    {formatUSD(activeCompareAt)}
                   </span>
                 )}
               </div>
 
               <span className={`text-sm md:text-base font-black leading-none tracking-tight ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
-                ${listPrice.toFixed(2)}
+                {formatUSD(listPrice)}
               </span>
 
               <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] leading-none mt-1.5 tabular-nums">
-                Bs {formattedBs}
+                {formatVES(pricing.priceInBs)}
               </span>
             </div>
             <button
@@ -769,16 +764,16 @@ function ProductCardComponent({
             </button>
           </div>
 
-          {/* RANURA 3: INCENTIVO EN DIVISAS / IMPUESTO (ALTURA RESERVADA DE 20PX) */}
+       {/* RANURA 3: INCENTIVO EN DIVISAS / IMPUESTO (ALTURA RESERVADA DE 20PX) */}
           <div className="min-h-[20px] flex items-center mt-1">
             {penalty > 0 && !isOutOfStock ? (
               <div className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-medium text-[var(--store-incentive)] leading-none truncate">
                 <Flame size={11} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
-                <span className="truncate">Paga ${cashPrice.toFixed(2)} en Divisas</span>
+                <span className="truncate">Paga {formatUSD(cashPrice)} en Divisas</span>
               </div>
             ) : showTaxIndicator && isTaxable ? (
               <div className="inline-flex items-center gap-1 text-[8px] md:text-[9px] font-mono text-[var(--store-surface-text)] leading-none truncate">
-                <Receipt size={10} /> +${taxAmountUsd.toFixed(2)} IVA
+                <Receipt size={10} /> +{formatUSD(taxAmountUsd)} IVA
               </div>
             ) : null}
           </div>

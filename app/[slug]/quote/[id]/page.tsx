@@ -25,6 +25,7 @@ import Swal from 'sweetalert2'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { Icon } from '@iconify/react'
+import { formatUSD, formatVES, formatCurrency, formatBankTransferAmount } from '@/utils/currency'
 
 const BrandLogos = {
     Transferencia: ({ className, size }: any) => <Icon icon="ph:bank-bold" className={className} width={size} height={size} />,
@@ -481,13 +482,19 @@ export default function QuotePublicPage() {
                                             <div className="col-span-2 text-center pt-0.5">
                                                 <span className="font-mono text-neutral-700 font-medium">{item.quantity}</span>
                                             </div>
-                                            <div className="col-span-2 text-right pt-0.5">
-                                                <span className="font-mono text-neutral-500 text-[11px]">${Number(item.price_at_purchase).toFixed(2)}</span>
-                                            </div>
-                                            <div className="col-span-2 text-right flex flex-col justify-start">
-                                                <p className="font-bold text-neutral-900 font-mono tabular-nums leading-snug">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
-                                                <p className="text-[9px] font-mono text-neutral-400 mt-0.5">Bs {((item.price_at_purchase * item.quantity) * activeRate).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-                                            </div>
+                                           <div className="col-span-2 text-right pt-0.5">
+                                            <span className="font-mono text-neutral-500 text-[11px]">
+                                                {formatUSD(item.price_at_purchase)}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-2 text-right flex flex-col justify-start">
+                                            <p className="font-bold text-neutral-900 font-mono tabular-nums leading-snug">
+                                                {formatUSD(item.price_at_purchase * item.quantity)}
+                                            </p>
+                                            <p className="text-[9px] font-mono text-neutral-400 mt-0.5">
+                                                {formatVES((item.price_at_purchase * item.quantity) * activeRate)}
+                                            </p>
+                                        </div>
                                         </div>
                                     ))
                                 )}
@@ -508,84 +515,84 @@ export default function QuotePublicPage() {
                                 )}
                             </div>
 
-                            {/* Columna de Cálculos y Totales */}
-                            <div className="w-full md:w-[290px] print:w-[290px] space-y-3">
-                                <div className="space-y-1.5 border-b border-neutral-100 pb-3 text-xs">
-                                    <div className="flex justify-between text-neutral-500 font-medium">
-                                        <span>Subtotal Base</span>
-                                        <span className="font-mono">${Number(order.subtotal_usd || order.total_usd).toFixed(2)}</span>
+                          {/* Columna de Cálculos y Totales Estandarizados (Formato Hispano Unificado) */}
+                        <div className="w-full md:w-[290px] print:w-[290px] space-y-3">
+                           <div className="space-y-1.5 border-b border-neutral-100 pb-3 text-xs">
+                                <div className="flex justify-between text-neutral-500 font-medium">
+                                    <span>Subtotal Base</span>
+                                    <span className="font-mono">{formatUSD(order.subtotal_usd || order.total_usd)}</span>
+                                </div>
+
+                                {/* 🚀 INYECCIÓN DE LA PROPINA */}
+                                {Number(order.tip_amount_usd) > 0 && (
+                                    <div className="flex justify-between text-emerald-600 font-medium pt-0.5">
+                                        <span>Propina de Servicio</span>
+                                        <span className="font-mono">+{formatUSD(order.tip_amount_usd)}</span>
                                     </div>
+                                )}
 
-                                    {/* 🚀 INYECCIÓN DE LA PROPINA */}
-                                    {Number(order.tip_amount_usd) > 0 && (
-                                        <div className="flex justify-between text-emerald-600 font-medium pt-0.5">
-                                            <span>Propina de Servicio</span>
-                                            <span className="font-mono">+${Number(order.tip_amount_usd).toFixed(2)}</span>
-                                        </div>
-                                    )}
-
-                                    {/* DESCUENTOS AUDITABLES */}
-                                    {(Number(order.promo_discount_usd) > 0 || Number(order.wholesale_discount_usd) > 0 || Number(order.affiliate_discount_usd) > 0 || Number(order.fx_savings_usd) > 0) && (
-                                        <div className="py-1.5 my-1 border-y border-neutral-100 space-y-1 font-mono text-[11px]">
-                                            {Number(order.promo_discount_usd) > 0 && (
-                                                <div className="flex justify-between items-center text-rose-600 font-semibold">
-                                                    <span>Desc. Campaña</span>
-                                                    <span>-${Number(order.promo_discount_usd).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                            {Number(order.wholesale_discount_usd) > 0 && (
-                                                <div className="flex justify-between items-center text-rose-600 font-semibold">
-                                                    <span>Desc. Mayorista</span>
-                                                    <span>-${Number(order.wholesale_discount_usd).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                            {Number(order.affiliate_discount_usd) > 0 && (
-                                                <div className="flex justify-between items-center text-rose-600 font-semibold">
-                                                    <span>Código Promocional</span>
-                                                    <span>-${Number(order.affiliate_discount_usd).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                            {Number(order.fx_savings_usd) > 0 && (
-                                                <div className="flex justify-between items-center text-emerald-600 font-semibold">
-                                                    <span>Incentivo Divisa</span>
-                                                    <span>-${Number(order.fx_savings_usd).toFixed(2)}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {order.is_tax_applied && (
-                                        <div className="flex justify-between text-neutral-900 font-bold pt-1">
-                                            <span>I.V.A. ({order.tax_percentage}%)</span>
-                                            <span className="font-mono">+${Number(order.tax_amount_usd || 0).toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                    {Number(order.delivery_cost) > 0 && (
-                                        <div className="flex justify-between text-neutral-500">
-                                            <span>Servicio de Envío</span>
-                                            <span className="font-mono">+${Number(order.delivery_cost).toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex justify-between items-baseline pt-1">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Total a Liquidar</span>
-                                    <span className="text-2xl font-bold font-mono tabular-nums text-neutral-900 tracking-tight">
-                                        ${Number(order.total_usd).toFixed(2)}
-                                    </span>
-                                </div>
-
-                                {/* TARJETA NEGRA DE DOBLE EXPRESIÓN BCV */}
-                                <div className="p-3 bg-neutral-950 text-white rounded-[.5rem] flex justify-between items-center shadow-xs border border-neutral-800">
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400">Equivalente Oficial</span>
-                                        <span className="text-[9px] text-neutral-500 font-mono">Tasa BCV: {activeRate.toFixed(2)}</span>
+                                {/* DESCUENTOS AUDITABLES */}
+                                {(Number(order.promo_discount_usd) > 0 || Number(order.wholesale_discount_usd) > 0 || Number(order.affiliate_discount_usd) > 0 || Number(order.fx_savings_usd) > 0) && (
+                                    <div className="py-1.5 my-1 border-y border-neutral-100 space-y-1 font-mono text-[11px]">
+                                        {Number(order.promo_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-rose-600 font-semibold">
+                                                <span>Desc. Campaña</span>
+                                                <span>-{formatUSD(order.promo_discount_usd)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.wholesale_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-rose-600 font-semibold">
+                                                <span>Desc. Mayorista</span>
+                                                <span>-{formatUSD(order.wholesale_discount_usd)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.affiliate_discount_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-rose-600 font-semibold">
+                                                <span>Código Promocional</span>
+                                                <span>-{formatUSD(order.affiliate_discount_usd)}</span>
+                                            </div>
+                                        )}
+                                        {Number(order.fx_savings_usd) > 0 && (
+                                            <div className="flex justify-between items-center text-emerald-600 font-semibold">
+                                                <span>Incentivo Divisa</span>
+                                                <span>-{formatUSD(order.fx_savings_usd)}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <span className="text-sm font-bold font-mono tabular-nums tracking-tight">
-                                        Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
+                                )}
+                                
+                                {order.is_tax_applied && (
+                                    <div className="flex justify-between text-neutral-900 font-bold pt-1">
+                                        <span>I.V.A. ({order.tax_percentage}%)</span>
+                                        <span className="font-mono">+{formatUSD(order.tax_amount_usd || 0)}</span>
+                                    </div>
+                                )}
+                                {Number(order.delivery_cost) > 0 && (
+                                    <div className="flex justify-between text-neutral-500">
+                                        <span>Servicio de Envío</span>
+                                        <span className="font-mono">+{formatUSD(order.delivery_cost)}</span>
+                                    </div>
+                                )}
                             </div>
+
+                            <div className="flex justify-between items-baseline pt-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Total a Liquidar</span>
+                                <span className="text-2xl font-bold font-mono tabular-nums text-neutral-900 tracking-tight">
+                                    {formatUSD(order.total_usd)}
+                                </span>
+                            </div>
+
+                            {/* TARJETA NEGRA DE DOBLE EXPRESIÓN BCV */}
+                            <div className="p-3 bg-neutral-950 text-white rounded-xl flex justify-between items-center shadow-xs border border-neutral-800">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400">Equivalente Oficial</span>
+                                    <span className="text-[9px] text-neutral-500 font-mono">Tasa BCV: {formatVES(activeRate, false)}</span>
+                                </div>
+                                <span className="text-sm font-bold font-mono tabular-nums tracking-tight">
+                                    {formatVES(totalBs)}
+                                </span>
+                            </div>
+                        </div>
                         </div>
 
                     </div>
@@ -626,13 +633,14 @@ export default function QuotePublicPage() {
                                     const hardCurrencyMethods = ['Zelle', 'Binance', 'Zinli', 'WallyTech', 'Efectivo'];
                                     const isHardCurrency = hardCurrencyMethods.includes(selectedMethod);
 
-                                    const formattedTotal = isHardCurrency
-                                        ? `$ ${Number(order.total_usd).toFixed(2)}`
-                                        : `Bs ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                 const formattedTotal = isHardCurrency
+                                        ? formatUSD(order.total_usd)
+                                        : formatVES(totalBs);
 
+                                    // Para copiar al banco: en Bolívares se copia "22372,19" con coma según estándar bancario nacional
                                     const rawNumericAmount = isHardCurrency
                                         ? Number(order.total_usd).toFixed(2)
-                                        : totalBs.toFixed(2);
+                                        : formatBankTransferAmount(totalBs);
 
                                     const rawText: string = store.payment_config[paymentKeysMap[selectedMethod]]?.details || '';
                                     const rawChunks: string[] = rawText.includes('\n')

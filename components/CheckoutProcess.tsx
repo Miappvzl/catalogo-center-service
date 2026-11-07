@@ -41,6 +41,7 @@ import { TealcaIcon } from "@/components/ui/icons/TealcaIcon";
 import { DeliveryMapPicker } from "./checkout/DeliveryMapPicker";
 import { useDeliveryStore } from "@/app/store/useDeliveryStore";
 import { DeliveryConfig } from "@/utils/geoUtils";
+import { formatUSD, formatVES } from "@/utils/currency";
 
 // --- TIPOS ESTRICTOS ---
 export interface CheckoutProcessProps {
@@ -2341,8 +2342,8 @@ switch (pm) {
                                             })}
                                         </span>
                                     </div>
-                                    <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4">
-                                        Ref: ${remainingListUSD.toFixed(2)}
+                                   <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4 font-mono">
+                                        Ref: {formatUSD(remainingListUSD)}
                                     </span>
 
                                     {/* Nudge sin caja */}
@@ -2352,8 +2353,8 @@ switch (pm) {
                                                 ? "Resta en Divisa"
                                                 : "Si pagas en divisa"}
                                             :{" "}
-                                            <span className="font-black">
-                                                ${remainingCashUSD.toFixed(2)}
+                                            <span className="font-black font-mono">
+                                                {formatUSD(remainingCashUSD)}
                                             </span>
                                         </span>
                                     )}
@@ -3094,11 +3095,11 @@ switch (pm) {
                     </h2>
 
                     <div className="flex flex-col gap-3">
-                        {/* 1. Subtotal Base (Precio de Lista Nominal) */}
+                     {/* 1. Subtotal Base (Precio de Lista Nominal) */}
                         <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
                             <span>Subtotal (Precio de Lista)</span>
-                            <span className={cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0 ? "line-through decoration-[var(--store-border)]" : ""}>
-                                {currencySymbol}{cartEngine.totalListNominal.toFixed(2)}
+                            <span className={`font-mono ${cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0 ? "line-through decoration-[var(--store-border)]" : ""}`}>
+                                {formatUSD(cartEngine.totalListNominal)}
                             </span>
                         </div>
 
@@ -3106,7 +3107,7 @@ switch (pm) {
                         {cartEngine.listPromoDiscounts > 0 && (
                             <div className="flex justify-between items-center text-sm font-black text-red-600 animate-in fade-in">
                                 <span>Descuento de Campaña</span>
-                                <span>-{currencySymbol}{cartEngine.listPromoDiscounts.toFixed(2)}</span>
+                                <span className="font-mono">-{formatUSD(cartEngine.listPromoDiscounts)}</span>
                             </div>
                         )}
 
@@ -3114,15 +3115,15 @@ switch (pm) {
                         {wholesaleDiscountList > 0 && (
                             <div className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)] animate-in fade-in">
                                 <span>Descuento Mayorista</span>
-                                <span>-{currencySymbol}{wholesaleDiscountList.toFixed(2)}</span>
+                                <span className="font-mono">-{formatUSD(wholesaleDiscountList)}</span>
                             </div>
                         )}
 
-                        {/* 4. Subtotal Neto Real (Base después de descuentos comerciales) */}
+                        {/* 4. Subtotal Neto Real */}
                         {(cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0) && (
                             <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/60">
                                 <span>Subtotal Neto</span>
-                                <span>{currencySymbol}{trueSubtotalNeto.toFixed(2)}</span>
+                                <span className="font-mono">{formatUSD(trueSubtotalNeto)}</span>
                             </div>
                         )}
 
@@ -3130,7 +3131,7 @@ switch (pm) {
                         {applyTax && taxAmountListUSD > 0 && (
                             <div className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-1">
                                 <span>I.V.A ({taxPercentage}%)</span>
-                                <span>+{currencySymbol}{taxAmountListUSD.toFixed(2)}</span>
+                                <span className="font-mono">+{formatUSD(taxAmountListUSD)}</span>
                             </div>
                         )}
 
@@ -3144,7 +3145,7 @@ switch (pm) {
                                     className="flex justify-between items-center text-sm font-black text-[var(--store-incentive)]"
                                 >
                                     <span>Beneficio Pago en Divisa</span>
-                                    <span>-{currencySymbol}{actualFxSavings.toFixed(2)}</span>
+                                    <span className="font-mono">-{formatUSD(actualFxSavings)}</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -3153,7 +3154,7 @@ switch (pm) {
                         {deliveryCost > 0 && (
                             <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
                                 <span>Delivery / Envío</span>
-                                <span>+{currencySymbol}{deliveryCost.toFixed(2)}</span>
+                                <span className="font-mono">+{formatUSD(deliveryCost)}</span>
                             </div>
                         )}
 
@@ -3161,7 +3162,7 @@ switch (pm) {
                         {isFoodTech && tipAmountUSD > 0 && (
                             <div className="flex justify-between items-center text-sm font-bold text-[var(--store-text-main)] mt-1">
                                 <span>Propina ({tipPercentage}%)</span>
-                                <span className="font-mono">+{currencySymbol}{tipAmountUSD.toFixed(2)}</span>
+                                <span className="font-mono">+{formatUSD(tipAmountUSD)}</span>
                             </div>
                         )}
 
@@ -3170,7 +3171,7 @@ switch (pm) {
                             {appliedCreditUSD > 0 && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex justify-between items-center text-sm font-black text-[var(--store-text-main)] pt-2 border-t border-[var(--store-border)]/50 overflow-hidden">
                                     <span>Crédito de Tienda Aplicado</span>
-                                    <span>-{currencySymbol}{appliedCreditUSD.toFixed(2)}</span>
+                                    <span className="font-mono">-{formatUSD(appliedCreditUSD)}</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -3202,7 +3203,7 @@ switch (pm) {
             <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
                     {/* Total a la izquierda con jerarquía de moneda adaptativa */}
-                    <div
+                   <div
                         className="flex flex-col shrink-0"
                         style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                     >
@@ -3210,17 +3211,16 @@ switch (pm) {
                             Total Final
                         </span>
                         <div className="flex items-end gap-2">
-                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight">
-                                {currencySymbol}{grandTotalUSD.toFixed(2)}
+                            <span className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-none tracking-tight font-mono">
+                                {formatUSD(grandTotalUSD)}
                             </span>
                         </div>
-                        {/* Si paga en divisa física, atenuamos el renglón de bolívares para no confundir al pagador */}
                         <span
                             style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
-                            className={`text-[11px] font-bold mt-1.5 leading-none tabular-nums !normal-case transition-opacity ${isHardCurrencyPayment ? 'text-[var(--store-surface-text)]/50 text-[10px]' : 'text-[var(--store-surface-text)]'
+                            className={`text-[11px] font-bold mt-1.5 leading-none tabular-nums !normal-case transition-opacity font-mono ${isHardCurrencyPayment ? 'text-[var(--store-surface-text)]/50 text-[10px]' : 'text-[var(--store-surface-text)]'
                                 }`}
                         >
-                            Bs. {grandTotalBs.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatVES(grandTotalBs)}
                         </span>
                     </div>
 

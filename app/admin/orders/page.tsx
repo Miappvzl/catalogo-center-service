@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import IssueVirtualChangeModal from '@/components/admin/IssueVirtualChangeModal'
 import WhatsAppIcon from '@/components/icons/WhatsAppIcon'
+import { formatUSD, formatVES } from '@/utils/currency' // 🚀 MOTOR FINANCIERO UNIFICADO
 
 interface SelectedModifier {
     optionId?: string
@@ -449,10 +450,14 @@ interface EnrichedOrderItem extends OrderItem {
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Pendientes</p>
                             <span className="text-2xl md:text-3xl font-bold text-amber-600 font-mono tabular-nums truncate">{kpiStats.pending}</span>
                         </div>
-                        <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+<div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Ventas Hoy</p>
-                            <p className="text-2xl md:text-3xl font-bold text-neutral-900 leading-none font-mono tabular-nums truncate">${kpiStats.salesTodayUSD.toFixed(2)}</p>
-                            <p className="text-[10px] font-mono font-semibold text-neutral-400 mt-1.5 truncate">Bs {kpiStats.salesTodayBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="text-2xl md:text-3xl font-bold text-neutral-900 leading-none font-mono tabular-nums truncate">
+                                {formatUSD(kpiStats.salesTodayUSD)}
+                            </p>
+                            <p className="text-[10px] font-mono font-semibold text-neutral-400 mt-1.5 truncate">
+                                {formatVES(kpiStats.salesTodayBs)}
+                            </p>
                         </div>
                         <div className="bg-white p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between col-span-2 md:col-span-1">
                             <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">Total Histórico</p>
@@ -572,20 +577,20 @@ interface EnrichedOrderItem extends OrderItem {
                                             <p className="font-semibold text-xs text-neutral-900 truncate pr-4">{order.customer_name}</p>
                                         </div>
 
-                                        <div className="flex justify-between items-end mt-3 border-t border-neutral-100/60 pt-3">
+                                      <div className="flex justify-between items-end mt-3 border-t border-neutral-100/60 pt-3">
                                             <div className="text-right shrink-0 ml-auto">
                                                 <p className="font-bold text-base flex items-center justify-end gap-1.5 leading-none font-mono tabular-nums">
                                                     {Number(order.iva_retention_usd || 0) > 0 ? (
-                                                        <span className="text-emerald-700">${Number(order.liquid_amount_usd).toFixed(2)}</span>
+                                                        <span className="text-emerald-700">{formatUSD(order.liquid_amount_usd)}</span>
                                                     ) : (
-                                                        <span className="text-neutral-900">${Number(order.total_usd).toFixed(2)}</span>
+                                                        <span className="text-neutral-900">{formatUSD(order.total_usd)}</span>
                                                     )}
                                                     <span className="text-[8px] text-neutral-400 px-1 py-0.5 font-sans font-semibold">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
                                                 </p>
                                                 {Number(order.iva_retention_usd || 0) > 0 && (
-                                                    <p className="text-[9px] text-rose-600 font-semibold mt-1 text-right font-mono">Retenido: -${Number(order.iva_retention_usd).toFixed(2)}</p>
+                                                    <p className="text-[9px] text-rose-600 font-semibold mt-1 text-right font-mono">Retenido: -{formatUSD(order.iva_retention_usd)}</p>
                                                 )}
-                                                <p className="text-[10px] text-neutral-400 font-mono mt-1 text-right">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                                <p className="text-[10px] text-neutral-400 font-mono mt-1 text-right">{formatVES(getBsAmount(order))}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -653,22 +658,22 @@ interface EnrichedOrderItem extends OrderItem {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <StatusBadge status={order.status} />
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                   <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <p className="font-bold text-sm font-mono tabular-nums flex items-center justify-end gap-1.5">
                                                             {Number(order.iva_retention_usd || 0) > 0 ? (
                                                                 <>
-                                                                    <span className="text-neutral-300 line-through text-[10px]">${Number(order.total_usd).toFixed(2)}</span>
-                                                                    <span className="text-emerald-700">${Number(order.liquid_amount_usd).toFixed(2)}</span>
+                                                                    <span className="text-neutral-300 line-through text-[10px]">{formatUSD(order.total_usd)}</span>
+                                                                    <span className="text-emerald-700">{formatUSD(order.liquid_amount_usd)}</span>
                                                                 </>
                                                             ) : (
-                                                                <span className="text-neutral-900">${Number(order.total_usd).toFixed(2)}</span>
+                                                                <span className="text-neutral-900">{formatUSD(order.total_usd)}</span>
                                                             )}
                                                             <span className="text-[8px] text-neutral-400 px-1 py-0.5 rounded font-sans font-semibold">{order.currency_type === 'eur' ? 'EUR' : 'USD'}</span>
                                                         </p>
                                                         {Number(order.iva_retention_usd || 0) > 0 && (
-                                                            <p className="text-[9px] text-rose-600 font-semibold mt-0.5 text-right font-mono">Retenido: -${Number(order.iva_retention_usd).toFixed(2)}</p>
+                                                            <p className="text-[9px] text-rose-600 font-semibold mt-0.5 text-right font-mono">Retenido: -{formatUSD(order.iva_retention_usd)}</p>
                                                         )}
-                                                        <p className="text-[10px] font-mono text-neutral-400 mt-1">Bs {getBsAmount(order).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                                        <p className="text-[10px] font-mono text-neutral-400 mt-1">{formatVES(getBsAmount(order))}</p>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -789,7 +794,9 @@ interface EnrichedOrderItem extends OrderItem {
                                                             </div>
                                                             <div className="flex flex-col min-w-0 space-y-0.5">
                                                                 <p className="font-semibold text-xs text-neutral-900 truncate tracking-tight">{payment.method}</p>
-                                                                <p className="text-[10px] font-mono text-neutral-500 uppercase">{payment.currency === 'usd' ? `$${Number(payment.amount_usd).toFixed(2)}` : `Bs ${Number(payment.amount_bs).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}</p>
+                                                                <p className="text-[10px] font-mono text-neutral-500 uppercase">
+    {payment.currency === 'usd' ? formatUSD(payment.amount_usd) : formatVES(payment.amount_bs)}
+</p>
                                                             </div>
                                                         </div>
                                                         {payment.receipt_url && payment.receipt_url.startsWith('http') ? (
@@ -841,10 +848,10 @@ interface EnrichedOrderItem extends OrderItem {
                                         )}
                                     </div>
 
-                                    <div className="text-right shrink-0">
+                                  <div className="text-right shrink-0">
                                         <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">Total Facturado</p>
                                         <p className={`font-bold text-xl leading-none font-mono tabular-nums ${Number(selectedOrder?.iva_retention_usd || 0) > 0 ? 'text-neutral-400 line-through' : 'text-neutral-900'}`}>
-                                            ${Number(selectedOrder?.total_usd || 0).toFixed(2)}
+                                            {formatUSD(selectedOrder?.total_usd)}
                                         </p>
 
                                         {/* 🚀 DESGLOSE DE PROPINA AISLADO Y LIMPIO */}
@@ -856,10 +863,10 @@ interface EnrichedOrderItem extends OrderItem {
                                                     </span>
                                                     <div className="flex items-baseline gap-1">
                                                         <span className="font-mono font-bold text-emerald-600">
-                                                            +${Number(selectedOrder?.tip_amount_usd).toFixed(2)}
+                                                            +{formatUSD(selectedOrder?.tip_amount_usd)}
                                                         </span>
                                                         <span className="text-[9px] font-mono font-medium text-emerald-600/70">
-                                                            (Bs. {(Number(selectedOrder?.tip_amount_usd) * Number(selectedOrder?.exchange_rate || 0)).toLocaleString('es-VE', { maximumFractionDigits: 2 })})
+                                                            ({formatVES(Number(selectedOrder?.tip_amount_usd) * Number(selectedOrder?.exchange_rate || 0))})
                                                         </span>
                                                     </div>
                                                 </div>
@@ -870,14 +877,14 @@ interface EnrichedOrderItem extends OrderItem {
                                         {Number(selectedOrder?.iva_retention_usd || 0) > 0 && (
                                             <div className="mt-2 text-right animate-in fade-in slide-in-from-top-2">
                                                 <p className="text-[9px] font-semibold text-rose-500 uppercase tracking-wider mb-0.5">Retenido ({selectedOrder?.iva_retention_pct}%)</p>
-                                                <p className="font-bold text-xs text-rose-600 leading-none font-mono">-${Number(selectedOrder?.iva_retention_usd || 0).toFixed(2)}</p>
+                                                <p className="font-bold text-xs text-rose-600 leading-none font-mono">-{formatUSD(selectedOrder?.iva_retention_usd)}</p>
 
                                                 <p className="text-[9px] font-semibold text-emerald-600 uppercase tracking-wider mt-2 mb-0.5">Líquido a cobrar</p>
-                                                <p className="font-bold text-xl text-emerald-700 leading-none font-mono tabular-nums">${Number(selectedOrder?.liquid_amount_usd || 0).toFixed(2)}</p>
+                                                <p className="font-bold text-xl text-emerald-700 leading-none font-mono tabular-nums">{formatUSD(selectedOrder?.liquid_amount_usd)}</p>
                                             </div>
                                         )}
 
-                                        <p className="text-[10px] font-mono font-medium text-neutral-400 mt-1.5 text-right">Bs {getBsAmount(selectedOrder || {}).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                                        <p className="text-[10px] font-mono font-medium text-neutral-400 mt-1.5 text-right">{formatVES(getBsAmount(selectedOrder || {}))}</p>
                                     </div>
                                 </div>
 
@@ -1229,19 +1236,19 @@ interface EnrichedOrderItem extends OrderItem {
                                             </div>
 
                                             <div className="bg-neutral-50/50 p-3.5 rounded-lg border border-neutral-200/50 space-y-1.5">
-                                                <div className="flex justify-between text-[10px] font-semibold text-neutral-500">
+                                              <div className="flex justify-between text-[10px] font-semibold text-neutral-500">
                                                     <span>Total Facturado:</span>
-                                                    <span className="font-mono">${Number(targetOrder.total_usd).toFixed(2)}</span>
+                                                    <span className="font-mono">{formatUSD(targetOrder.total_usd)}</span>
                                                 </div>
                                                 {reconcileModal.retentionPct > 0 && (
                                                     <div className="flex justify-between text-[10px] font-semibold text-rose-500">
                                                         <span>Retenido (Crédito Fiscal):</span>
-                                                        <span className="font-mono">-${retentionUsd.toFixed(2)}</span>
+                                                        <span className="font-mono">-{formatUSD(retentionUsd)}</span>
                                                     </div>
                                                 )}
                                                 <div className="flex justify-between text-xs font-bold text-neutral-900 pt-1.5 border-t border-neutral-200/50 mt-1.5">
                                                     <span>A depositar en Banco:</span>
-                                                    <span className="font-mono">${liquidUsd.toFixed(2)}</span>
+                                                    <span className="font-mono">{formatUSD(liquidUsd)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1429,28 +1436,28 @@ interface EnrichedOrderItem extends OrderItem {
                         </div>
                     </div>
 
-                    {/* Liquidacion Financiera */}
+                {/* Liquidacion Financiera */}
                     <div className="py-2 border-b-2 border-dashed border-black text-right text-[10px] space-y-1">
                         <div className="flex justify-between">
                             <span>SUBTOTAL:</span>
-                            <span className="font-bold">${Number(selectedOrder.total_usd - (selectedOrder.tip_amount_usd || 0)).toFixed(2)}</span>
+                            <span className="font-bold">{formatUSD(selectedOrder.total_usd - (selectedOrder.tip_amount_usd || 0))}</span>
                         </div>
 
                         {Number(selectedOrder.tip_amount_usd || 0) > 0 && (
                             <div className="flex justify-between font-bold">
                                 <span>PROPINA:</span>
-                                <span>+${Number(selectedOrder.tip_amount_usd).toFixed(2)}</span>
+                                <span>+{formatUSD(selectedOrder.tip_amount_usd)}</span>
                             </div>
                         )}
 
                         <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
                             <span>TOTAL USD:</span>
-                            <span>${Number(selectedOrder.total_usd).toFixed(2)}</span>
+                            <span>{formatUSD(selectedOrder.total_usd)}</span>
                         </div>
 
                         <div className="flex justify-between text-[10px] pt-0.5">
-                            <span>TOTAL BS ({selectedOrder.exchange_rate?.toFixed(2)}):</span>
-                            <span className="font-bold">Bs {Number(selectedOrder.total_bs || (selectedOrder.total_usd * (selectedOrder.exchange_rate || 0))).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                            <span>TOTAL BS ({formatVES(selectedOrder.exchange_rate, false)}):</span>
+                            <span className="font-bold">{formatVES(selectedOrder.total_bs || (selectedOrder.total_usd * (selectedOrder.exchange_rate || 0)))}</span>
                         </div>
 
                         <div className="flex justify-between pt-1 border-t border-black/40">

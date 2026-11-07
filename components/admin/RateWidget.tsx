@@ -4,6 +4,7 @@ import { useOptimistic, useActionState, startTransition, useState } from 'react'
 import { updateStoreCurrency, type ActionState } from '@/app/admin/actions'
 import { RefreshCw, DollarSign, Euro, Wallet, TrendingUp, TrendingDown, Minus, X, Activity, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { formatVES, formatNumberVE } from '@/utils/currency' // 🚀 FORMATEO OFICIAL BCV (COMA DECIMAL)
 
 interface RateWidgetProps {
   storeCurrency?: 'usd' | 'eur'
@@ -68,12 +69,12 @@ export default function RateWidget({
                   </div>
               </header>
               
-              <div className="my-2 flex items-end justify-between gap-2">
+             <div className="my-2 flex items-end justify-between gap-2">
                   <div>
                       <div className="flex items-baseline gap-1">
                           <span className="text-xs font-mono font-bold text-neutral-400">Bs</span>
                           <span className={`text-3xl md:text-4xl font-mono font-bold tracking-tight tabular-nums transition-colors duration-300 ${isPending ? 'text-neutral-300' : 'text-neutral-900'}`}>
-                              {activeRate.toFixed(2)}
+                              {formatNumberVE(activeRate)}
                           </span>
                       </div>
                       
@@ -93,7 +94,7 @@ export default function RateWidget({
                   >
                       <div className={`flex items-center gap-1 text-[10px] font-mono font-bold mb-1 group-hover/sparkline:translate-x-0.5 transition-transform ${isUp ? 'text-rose-600' : isDown ? 'text-emerald-600' : 'text-neutral-400'}`}>
                           {isUp ? <TrendingUp size={11} strokeWidth={2.5} /> : isDown ? <TrendingDown size={11} strokeWidth={2.5} /> : <Minus size={11} strokeWidth={2.5} />}
-                          <span>{isStable ? 'Estable' : `${isUp ? '+' : ''}${deltaBs.toFixed(2)} Bs`}</span>
+                          <span>{isStable ? 'Estable' : `${isUp ? '+' : ''}${formatNumberVE(deltaBs)} Bs`}</span>
                       </div>
                       
                       <svg className="w-20 h-7 text-[#0C0D0E] overflow-visible" viewBox="0 0 80 28" fill="none">
@@ -159,14 +160,14 @@ export default function RateWidget({
                 <button onClick={() => setIsModalOpen(false)} className="p-1.5 text-neutral-400 hover:text-neutral-900 rounded-md transition-colors"><X size={14} /></button>
               </div>
               <div className="p-5 space-y-4">
-                <div className="bg-neutral-50 border border-neutral-200/50 rounded-lg p-3 flex justify-between items-center">
+               <div className="bg-neutral-50 border border-neutral-200/50 rounded-lg p-3 flex justify-between items-center">
                     <div>
                         <p className="text-[9px] font-mono font-semibold text-neutral-400 uppercase tracking-wider">Anterior</p>
-                        <p className="font-mono font-bold text-neutral-600 text-xs">Bs {activePrevRate.toFixed(2)}</p>
+                        <p className="font-mono font-bold text-neutral-600 text-xs">{formatVES(activePrevRate)}</p>
                     </div>
                     <div className="text-right">
                         <p className="text-[9px] font-mono font-semibold text-neutral-900 uppercase tracking-wider">Hoy</p>
-                        <p className="font-mono font-bold text-neutral-900 text-sm">Bs {activeRate.toFixed(2)}</p>
+                        <p className="font-mono font-bold text-neutral-900 text-sm">{formatVES(activeRate)}</p>
                     </div>
                 </div>
                 <p className="text-xs text-neutral-600 leading-relaxed font-normal">

@@ -31,6 +31,7 @@ import TodaySalesWidget from "@/components/admin/TodaySalesWidget";
 import FeatureCollectionModal from "@/components/admin/FeatureCollectionModal";
 import { BentoGridWrapper, FadeInBlock } from "@/components/admin/DashboardAnimations";
 import { DeliveryRadarFeatureModal } from "@/components/admin/DeliveryRadarFeatureModal";
+import { formatUSD } from "@/utils/currency";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -765,8 +766,10 @@ export default async function AdminDashboard() {
                                                         <span className="text-[10px] font-mono text-neutral-400 font-medium">#{order.order_number}</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-right flex flex-col items-end shrink-0 pl-2">
-                                                    <p className="font-mono font-bold text-sm text-[#0a0a0a] tabular-nums">${Number(order.total_usd).toFixed(2)}</p>
+                                              <div className="text-right flex flex-col items-end shrink-0 pl-2">
+                                                    <p className="font-mono font-bold text-sm text-[#0a0a0a] tabular-nums">
+                                                        {formatUSD(order.total_usd)}
+                                                    </p>
                                                     <div className="flex items-center gap-1.5 mt-1">
                                                         <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
                                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${theme.label}`}>{theme.text}</span>

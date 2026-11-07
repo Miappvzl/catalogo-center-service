@@ -8,6 +8,7 @@ import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animat
 import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { getVariantSwatchStyle } from '@/utils/ColorUtils'
+import { formatUSD, formatVES } from '@/utils/currency'
 
 // 🚀 VISOR INMERSIVO HÍBRIDO (Drag Nativo en Desktop, Multi-Touch Pinch en Móvil & Doble Tap)
 interface LightboxViewerProps {
@@ -914,15 +915,15 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
 
-                                                <div className="flex items-baseline justify-center md:justify-start gap-3 mt-2">
-                                                    {pricing.isPromo && <span className="text-sm md:text-base text-[var(--store-surface-text)] line-through decoration-[0.5px]">${pricing.compareAt.toFixed(2)}</span>}
-                                                    <span className={`text-2xl md:text-3xl font-medium tracking-wide ${pricing.isPromo ? 'text-red-800' : 'text-[var(--store-text-main)]'}`}>${pricing.listPrice.toFixed(2)}</span>
-                                                    <span className="text-xs text-[var(--store-surface-text)] font-medium">Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}</span>
+                                               <div className="flex items-baseline justify-center md:justify-start gap-3 mt-2">
+                                                    {pricing.isPromo && <span className="text-sm md:text-base text-[var(--store-surface-text)] line-through decoration-[0.5px]">{formatUSD(pricing.compareAt)}</span>}
+                                                    <span className={`text-2xl md:text-3xl font-medium tracking-wide ${pricing.isPromo ? 'text-red-800' : 'text-[var(--store-text-main)]'}`}>{formatUSD(pricing.listPrice)}</span>
+                                                    <span className="text-xs text-[var(--store-surface-text)] font-medium">{formatVES(pricing.priceInBs)}</span>
                                                 </div>
 
                                                 {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
                                                     <div className="mt-3 text-[10px] font-bold tracking-widest uppercase text-[var(--store-text-main)]/70 flex items-center justify-center md:justify-start gap-1.5">
-                                                        <Flame size={12} /> Ahorra ${pricing.exactSavings.toFixed(2)} en USD
+                                                        <Flame size={12} /> Ahorra {formatUSD(pricing.exactSavings)} en USD
                                                     </div>
                                                 )}
                                                 {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
@@ -1234,24 +1235,24 @@ Mi duda es la siguiente: `;
 
                                                 {/* Bloque Financiero Compacto */}
                                                 <div className="mt-3 pt-3 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
-                                                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                                                  <div className="flex items-baseline gap-2.5 flex-wrap">
                                                         <span className="text-3xl md:text-4xl font-black font-mono text-[var(--store-text-main)] leading-none tracking-tight">
-                                                            ${pricing.listPrice.toFixed(2)}
+                                                            {formatUSD(pricing.listPrice)}
                                                         </span>
                                                         {pricing.isPromo && (
                                                             <span className="text-sm font-mono font-semibold text-[var(--store-surface-text)] line-through">
-                                                                ${pricing.compareAt.toFixed(2)}
+                                                                {formatUSD(pricing.compareAt)}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <span className="text-xs font-mono font-bold text-[var(--store-surface-text)] leading-none tabular-nums mt-0.5">
-                                                        Bs. {new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                                        {formatVES(pricing.priceInBs)}
                                                     </span>
 
                                                     {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
                                                         <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--store-incentive)]/10 text-[var(--store-incentive)] text-[10px] font-mono font-bold uppercase tracking-wider w-fit">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
-                                                            <span>USD Cash: ${pricing.cashPrice.toFixed(2)}</span>
+                                                            <span>USD Cash: {formatUSD(pricing.cashPrice)}</span>
                                                         </div>
                                                     )}
 
@@ -1555,27 +1556,26 @@ Mi duda es la siguiente: `;
                                                     {product?.name}
                                                 </h2>
 
-                                                <div className="flex items-baseline gap-3 mt-3">
+                                             <div className="flex items-baseline gap-3 mt-3">
                                                     {pricing.isPromo && (
                                                         <span className="text-sm font-bold text-[var(--store-surface-text)] line-through">
-                                                            ${pricing.compareAt.toFixed(2)}
+                                                            {formatUSD(pricing.compareAt)}
                                                         </span>
                                                     )}
                                                     <span className="text-3xl font-black font-price text-[var(--store-text-main)] leading-none">
-                                                        ${pricing.listPrice.toFixed(2)}
+                                                        {formatUSD(pricing.listPrice)}
                                                     </span>
                                                     <span className="text-xs font-mono font-bold text-[var(--store-surface-text)]">
-                                                        Bs {new Intl.NumberFormat('es-VE', { maximumFractionDigits: 2 }).format(pricing.priceInBs)}
+                                                        {formatVES(pricing.priceInBs)}
                                                     </span>
                                                 </div>
 
-                                                {/* 🚀 INYECCIÓN: Ahorro en Divisas (Estilo App) */}
                                                 {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
                                                     <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-[var(--store-incentive)]">
                                                         <div className="bg-[var(--store-incentive)]/10 p-1 rounded-full">
                                                             <Flame size={12} className="fill-current shrink-0" />
                                                         </div>
-                                                        Paga en USD y ahorra ${pricing.exactSavings.toFixed(2)}
+                                                        Paga en USD y ahorra {formatUSD(pricing.exactSavings)}
                                                     </div>
                                                 )}
                                             </div>
@@ -2154,26 +2154,26 @@ Mi duda es la siguiente: `;
                                                 )}
                                             </div>
 
-                                            <div className="flex items-end gap-3 md:gap-4 mt-6">
+                                         <div className="flex items-end gap-3 md:gap-4 mt-6">
                                                 <div className="flex flex-col">
                                                     {pricing.isPromo && (
                                                         <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] mb-0.5">
-                                                            ${pricing.compareAt.toFixed(2)}
+                                                            {formatUSD(pricing.compareAt)}
                                                         </span>
                                                     )}
                                                     <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
-                                                        ${pricing.listPrice.toFixed(2)}
+                                                        {formatUSD(pricing.listPrice)}
                                                     </span>
                                                 </div>
                                                 <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1">
-                                                    Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
+                                                    {formatVES(pricing.priceInBs)}
                                                 </span>
                                             </div>
 
                                             {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
                                                 <div className="mt-3">
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--store-surface-text)]/10 text-[var(--store-surface-text)] text-[10px] font-black uppercase tracking-widest">
-                                                        <Receipt size={12} /> + ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA ({(storeConfig?.default_tax_percentage || 16)}%)
+                                                        <Receipt size={12} /> + {formatUSD(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100))} IVA ({(storeConfig?.default_tax_percentage || 16)}%)
                                                     </span>
                                                 </div>
                                             )}
