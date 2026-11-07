@@ -289,32 +289,48 @@ export default function QuotePublicPage() {
             `
         }} />
 
-        <div className="min-h-screen bg-[#FAFAFC] font-sans text-neutral-900 py-6 md:py-12 px-4 flex justify-center selection:bg-neutral-950 selection:text-white antialiased">
+        <div className="min-h-screen bg-[#FAFAFC] font-sans text-neutral-900 py-6 md:py-12 px-3 flex justify-center selection:bg-neutral-950 selection:text-white antialiased">
             <div className="w-full max-w-[840px] flex flex-col gap-6">
                 
-                {/* ACTION BAR (Solo en pantalla) */}
-                <div className="flex justify-between items-center print-hidden">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${
-                        order.status === 'quote' ? 'bg-neutral-100 text-neutral-700 border-neutral-200/60' : 
-                        !isPaymentVerified ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 
-                        'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+          {/* ACTION BAR MINIMALISTA EDITORIAL (Solo en pantalla) */}
+                <div className="flex items-center justify-between gap-3 print-hidden px-0.5">
+                    {/* 💎 ETIQUETA CON DESVANECIDO DE IZQUIERDA A DERECHA (Sin bordes, sin sombras, sin rounded-full) */}
+                    <div className={`inline-flex items-center gap-2 pl-2.5 pr-8 py-1.5 rounded-[.4rem] text-[10px] font-mono font-bold uppercase tracking-widest border-0 shadow-none select-none ${
+                        order.status === 'quote' 
+                            ? 'bg-gradient-to-r from-neutral-200/80 via-neutral-100/40 to-transparent text-neutral-800' 
+                            : !isPaymentVerified 
+                                ? 'bg-gradient-to-r from-amber-200/80 via-amber-100/40 to-transparent text-amber-900' 
+                                : 'bg-gradient-to-r from-emerald-200/80 via-emerald-100/40 to-transparent text-emerald-900'
                     }`}>
-                        {order.status === 'quote' ? <><FileText size={12} /> Proforma Activa</> : 
-                         !isPaymentVerified ? <><Clock size={12} /> Pago en Verificación</> : 
-                         <><CheckCircle2 size={12} /> Pedido Procesado</>}
-                    </span>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            order.status === 'quote' 
+                                ? 'bg-neutral-500' 
+                                : !isPaymentVerified 
+                                    ? 'bg-amber-600 animate-pulse' 
+                                    : 'bg-emerald-600'
+                        }`} />
+                        <span>
+                            {order.status === 'quote' ? 'Proforma Activa' : 
+                             !isPaymentVerified ? 'Pago en Verificación' : 
+                             'Pedido Procesado'}
+                        </span>
+                    </div>
 
+                    {/* BOTÓN DE PASTILLA MINIMALISTA (Borde Negro, Fondo Transparente, Cero Sombras) */}
                     <button 
+                        type="button"
                         onClick={() => window.print()} 
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-neutral-200/60 hover:bg-neutral-50 rounded-lg text-xs font-semibold text-neutral-700 transition-all shadow-xs active:scale-95"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-transparent hover:bg-neutral-950 text-neutral-900 hover:text-white border border-neutral-900 rounded-full text-xs font-bold tracking-tight uppercase transition-all duration-200 active:scale-95 cursor-pointer shadow-none"
+                        title="Descargar PDF o imprimir documento"
                     >
-                        <Download size={13} /> 
-                        <span>Descargar PDF / Imprimir</span>
+                        <Download size={13} strokeWidth={2.2} />
+                        <span className="hidden sm:inline">Descargar PDF / Imprimir</span>
+                        <span className="sm:hidden">Descargar PDF</span>
                     </button>
                 </div>
 
                 {/* DOCUMENTO A4 (Estructura Cleanlook de Alta Densidad) */}
-                <div id="invoice-container" className="bg-white rounded-2xl p-6 md:p-10 shadow-[0_1px_3px_rgba(0,0,0,0.015)] border border-neutral-200/50">
+                <div id="invoice-container" className="bg-white rounded-[.5rem] p-[.97rem] md:p-10  border border-neutral-200/50">
                     
                     {/* ENCABEZADO FISCAL */}
                     <div className="flex flex-col md:flex-row print:flex-row justify-between items-start border-b border-neutral-200/50 pb-5 mb-6 gap-4">
@@ -545,7 +561,7 @@ export default function QuotePublicPage() {
                             </div>
 
                             {/* TARJETA NEGRA DE DOBLE EXPRESIÓN BCV */}
-                            <div className="p-3 bg-neutral-950 text-white rounded-xl flex justify-between items-center shadow-xs border border-neutral-800">
+                            <div className="p-3 bg-neutral-950 text-white rounded-[.5rem] flex justify-between items-center shadow-xs border border-neutral-800">
                                 <div className="flex flex-col">
                                     <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400">Equivalente Oficial</span>
                                     <span className="text-[9px] text-neutral-500 font-mono">Tasa BCV: {activeRate.toFixed(2)}</span>
@@ -647,11 +663,19 @@ export default function QuotePublicPage() {
                     </div>
                 )}
                 
-                {/* Pie de Marca Discreto */}
-                <div className="mt-4 text-center opacity-40 hover:opacity-100 transition-opacity print-hidden">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 flex items-center justify-center gap-1">
-                        Generado por <span className="font-bold text-neutral-800 tracking-tight">PREZISO SaaS</span>
-                    </p>
+           {/* 🚀 PIE DE MARCA EDITORIAL Y ORDENADO (ZERO SOMBRAS, PREZISO.SHOP) */}
+                <div className="mt-8 mb-4 text-center print-hidden flex justify-center select-none">
+                    <a 
+                        href="https://preziso.shop?utm_source=proforma&utm_medium=document_view&utm_campaign=viral_loop" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="group inline-flex items-center gap-2 pb-1 border-b border-neutral-200 hover:border-neutral-950 transition-colors duration-200 text-neutral-400 hover:text-neutral-950 cursor-pointer shadow-none"
+                    >
+                        <span className="font-mono text-[9px] uppercase tracking-widest">Tecnología de factura por</span>
+                        <span className="font-black text-xs text-neutral-900 tracking-tight">PREZISO</span>
+                        <span className="font-mono text-[10px] text-neutral-400 group-hover:text-neutral-950 transition-colors">preziso.shop</span>
+                        <ArrowUpRight size={11} strokeWidth={2.5} className="text-neutral-400 group-hover:text-neutral-950 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </a>
                 </div>
 
             </div>
