@@ -513,17 +513,33 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
             setGalleryIndex(0);
             setQuantity(1);
 
-            // 2. Cedemos el paso al Main Thread (El navegador anima el modal a 60-120fps sin tirones)
+      // 2. Cedemos el paso al Main Thread (El navegador anima el modal a 60-120fps sin tirones)
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     const vars = product.product_variants || [];
                     if (vars.length > 0) {
                         setVariants(vars);
+                        // 🚀 AUTO-SELECCIÓN 1D: Si todas las variantes pertenecen a un mismo grupo (ej: 'Talla' o un único color),
+                        // lo seleccionamos de inmediato para mostrar las tallas al instante sin obligar a un clic extra.
+                        const uniqueColorNames = Array.from(new Set(vars.map((v: any) => v.color_name)));
+                        if (uniqueColorNames.length === 1) {
+                            const singleGroup = uniqueColorNames[0] as string;
+                            setSelectedColor(singleGroup);
+                            const availableInGroup = vars.filter((v: any) => v.color_name === singleGroup && (v.stock || 0) > 0);
+                            if (availableInGroup.length === 1) {
+                                setSelectedSize(availableInGroup[0].size);
+                            } else {
+                                setSelectedSize(null);
+                            }
+                        } else {
+                            setSelectedColor(null);
+                            setSelectedSize(null);
+                        }
                     } else {
                         setVariants([]);
+                        setSelectedColor(null);
+                        setSelectedSize(null);
                     }
-                    setSelectedColor(null);
-                    setSelectedSize(null);
                     setLoading(false);
                 });
             });
@@ -771,8 +787,10 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         const baseUrl = typeof window !== 'undefined' ? window.location.origin : `https://${storeConfig?.slug}.preziso.shop`;
         const productUrl = `${baseUrl}?p=${product?.id || ''}`;
 
-        // 2. LAS VARIANTES
-        const variantText = [selectedColor, selectedSize].filter(Boolean).join(' - ');
+       // 2. LAS VARIANTES (Saneado para no enviar "Talla - 32" redundante)
+        const cleanColorWa = selectedColor && !['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(selectedColor.trim().toLowerCase()) ? selectedColor.trim() : null;
+        const cleanSizeWa = selectedSize && !['única', 'unica'].includes(selectedSize.trim().toLowerCase()) ? selectedSize.trim() : null;
+        const variantText = [cleanColorWa, cleanSizeWa ? (cleanColorWa ? cleanSizeWa : `Talla ${cleanSizeWa}`) : null].filter(Boolean).join(' - ');
 
         // 3. EMOJIS BLINDADOS (Unicode Escapes ES6)
         // El navegador los compilará directamente, evadiendo cualquier error de codificación de VS Code.
@@ -827,11 +845,22 @@ Mi duda es la siguiente: `;
         ? variants.every(v => (v.stock || 0) <= 0)
         : (product?.stock || 0) <= 0;
 
-    // 🚀 NUEVO: Evaluación arquitectónica temprana del tipo de variante
+// 🚀 NUEVO: Evaluación arquitectónica temprana del tipo de variante
     const isModelOption = availableColors.length > 0 &&
-        (availableColors[0].hex === 'transparent' || availableColors[0].hex === '#transparent');
+        (!availableColors[0].hex || availableColors[0].hex === 'transparent' || availableColors[0].hex === '#transparent');
 
-    // 🚀 NUEVO: Variable reactiva para el texto del botón (Corregido para Modelos/Opciones)
+    // 💎 DETECTOR 1D (SOLO TALLAS): True si solo existe 1 grupo sin color visual llamado "Talla", "Estándar", "Único" o vacío
+    const isSingleSizeOnlyGroup = availableColors.length === 1 && isModelOption &&
+        ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar', ''].includes((availableColors[0].name || '').trim().toLowerCase());
+
+    // 💎 VISIBILIDAD DE TALLAS: Se muestra si hay múltiples tallas, o si es modo "Solo Tallas" (incluso si queda 1 sola talla como "30")
+    const shouldShowSizeSelector = availableSizes.length > 1 || (
+        isSingleSizeOnlyGroup &&
+        availableSizes.length === 1 &&
+        !['única', 'unica'].includes((availableSizes[0]?.size || '').trim().toLowerCase())
+    );
+
+    // 🚀 NUEVO: Variable reactiva para el texto del botón (Corregido para Modelos/Opciones y Solo Tallas)
     const buttonText = isCompletelyOutOfStock ? 'Agotado'
         : (variants.length > 0 && !selectedColor) ? (isModelOption ? 'Escoge modelo/opción' : 'Elige un Color')
             : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
@@ -954,51 +983,52 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                            {/* Variantes */}
+                                          {/* Variantes */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-6">
-                                                    {/* Colores (Anillos finos) */}
-                                                    <motion.div
-                                                        ref={colorSectionRef}
-                                                        animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
-                                                        transition={{ duration: 0.4 }}
-                                                        className="scroll-mt-24"
-                                                    >
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                                {isModelOption ? 'Modelo' : 'Color'} <strong className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor || ''}</strong>
-                                                            </span>
-                                                            {!selectedColor && (
-                                                                <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 2 }} className="font-heading italic text-[11px] text-[var(--store-text-main)] tracking-wider">
-                                                                    * Requerido
-                                                                </motion.span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-4">
-                                                            {availableColors.map((c: any, idx: number) => (
-                                                                <button
-                                                                    key={c.name || `luxury-col-${idx}`}
-                                                                    onClick={() => {
-                                                                        if (c.isAvailable) {
-                                                                            setSelectedColor(c.name);
-                                                                            const sizesForColor = variants.filter(v => v.color_name === c.name);
-                                                                            if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
-                                                                            else setSelectedSize(null);
-                                                                            setErrorShake(null);
-                                                                        }
-                                                                    }}
-                                                                    disabled={!c.isAvailable}
-                                                                    className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
-                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
-                                                                >
-                                                                    {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
-                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </motion.div>
+                                                    {!isSingleSizeOnlyGroup && (
+                                                        <motion.div
+                                                            ref={colorSectionRef}
+                                                            animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                                            transition={{ duration: 0.4 }}
+                                                            className="scroll-mt-24"
+                                                        >
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
+                                                                    {isModelOption ? 'Modelo' : 'Color'} <strong className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor || ''}</strong>
+                                                                </span>
+                                                                {!selectedColor && (
+                                                                    <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 2 }} className="font-heading italic text-[11px] text-[var(--store-text-main)] tracking-wider">
+                                                                        * Requerido
+                                                                    </motion.span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-4">
+                                                                {availableColors.map((c: any, idx: number) => (
+                                                                    <button
+                                                                        key={c.name || `luxury-col-${idx}`}
+                                                                        onClick={() => {
+                                                                            if (c.isAvailable) {
+                                                                                setSelectedColor(c.name);
+                                                                                const sizesForColor = variants.filter(v => v.color_name === c.name);
+                                                                                if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
+                                                                                else setSelectedSize(null);
+                                                                                setErrorShake(null);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!c.isAvailable}
+                                                                        className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
+                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
+                                                                    >
+                                                                        {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
+                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
 
-                                                    {availableSizes.length > 1 && (
+                                                    {shouldShowSizeSelector && (
                                                         <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className="scroll-mt-24">
                                                             <div className="flex justify-between items-end mb-3">
                                                                 <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Talla</span>
@@ -1264,64 +1294,64 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             </div>
 
-                                            {/* Selector de Variantes Minimalista/Técnico */}
+                                        {/* Selector de Variantes Minimalista/Técnico */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-6 pt-6 border-t border-[var(--store-border)]/20">
-                                                    {/* Colores */}
-                                                    <motion.div
-                                                        ref={colorSectionRef}
-                                                        animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
-                                                        transition={{ duration: 0.4 }}
-                                                        className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
-                                                    >
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                                {isModelOption ? 'CONFIG:' : 'COLOR:'} <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
-                                                            </span>
-                                                            {!selectedColor && (
-                                                                <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
-                                                                    [ SELECT ]_
-                                                                </motion.span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {availableColors.map((c: any) => (
-                                                                <button
-                                                                    key={c.name}
-                                                                    onClick={() => {
-                                                                        if (c.isAvailable) {
-                                                                            setSelectedColor(c.name);
-                                                                            const sizes = variants.filter(v => v.color_name === c.name);
-                                                                            if (sizes.length === 1) setSelectedSize(sizes[0].size);
-                                                                            else setSelectedSize(null);
-                                                                        }
-                                                                    }}
-                                                                    disabled={!c.isAvailable}
-                                                                    className={`relative flex items-center justify-center transition-all overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                        ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
-                                                                        : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
-                                                                        } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                                                                    style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
-                                                                    title={c.name}
-                                                                >
-                                                                    {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
-                                                                        <>
-                                                                            {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
-                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <span>{c.name}</span>
-                                                                            {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </motion.div>
+                                                    {!isSingleSizeOnlyGroup && (
+                                                        <motion.div
+                                                            ref={colorSectionRef}
+                                                            animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                                            transition={{ duration: 0.4 }}
+                                                            className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
+                                                        >
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
+                                                                    {isModelOption ? 'CONFIG:' : 'COLOR:'} <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
+                                                                </span>
+                                                                {!selectedColor && (
+                                                                    <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
+                                                                        [ SELECT ]_
+                                                                    </motion.span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {availableColors.map((c: any) => (
+                                                                    <button
+                                                                        key={c.name}
+                                                                        onClick={() => {
+                                                                            if (c.isAvailable) {
+                                                                                setSelectedColor(c.name);
+                                                                                const sizes = variants.filter(v => v.color_name === c.name);
+                                                                                if (sizes.length === 1) setSelectedSize(sizes[0].size);
+                                                                                else setSelectedSize(null);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!c.isAvailable}
+                                                                        className={`relative flex items-center justify-center transition-all overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
+                                                                            ? `w-8 h-8 border ${selectedColor === c.name ? 'border-[var(--store-text-main)] border-2 scale-110 z-10' : 'border-[var(--store-border)]/50 hover:border-[var(--store-text-main)]'}`
+                                                                            : `px-4 py-2 border text-[10px] font-mono uppercase tracking-widest ${selectedColor === c.name ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'}`
+                                                                            } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
+                                                                        title={c.name}
+                                                                    >
+                                                                        {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
+                                                                            <>
+                                                                                {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <span>{c.name}</span>
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
 
-                                                    {/* Tallas */}
-                                                    {availableSizes.length > 1 && (
+                                                    {shouldShowSizeSelector && (
                                                         <motion.div
                                                             ref={sizeSectionRef}
                                                             animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}}
@@ -1347,7 +1377,6 @@ Mi duda es la siguiente: `;
                                                     )}
                                                 </div>
                                             )}
-
                                             {/* 🚀 ACORDEÓN / DESPLEGADO TÉCNICO */}
                                             <div className="mt-8 space-y-2">
                                                 {/* Descripción */}
@@ -1668,13 +1697,13 @@ Mi duda es la siguiente: `;
                                                     <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
                                                             <div className="p-4">
-                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] block mb-2">Ingredientes y Detalle</span>
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] block mb-2">Descripción</span>
                                                                 <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">{product.description}</p>
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
-                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Ingredientes y Detalle</span>
+                                                                    <span className="text-[11px] font-black uppercase tracking-wider">Descripción</span>
                                                                     <motion.div animate={{ rotate: isDescriptionOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
                                                                 </button>
                                                                 <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
@@ -1876,34 +1905,36 @@ Mi duda es la siguiente: `;
                                                 )}
                                             </div>
 
-                                            {/* Selector de Variantes (Botones Capacitivos Sólidos) */}
+                                         {/* Selector de Variantes (Botones Capacitivos Sólidos) */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-5">
-                                                    <motion.div ref={colorSectionRef} animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
-                                                        <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-xs font-bold text-[var(--store-text-main)]">
-                                                                {isModelOption ? 'Configuración' : 'Color'} <span className="text-[var(--store-surface-text)] font-medium ml-1">{selectedColor}</span>
-                                                            </span>
-                                                            {!selectedColor && <span className="text-[10px] font-bold text-[var(--store-primary)] animate-pulse">Requerido</span>}
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2.5">
-                                                            {availableColors.map((c: any) => (
-                                                                <button
-                                                                    key={c.name}
-                                                                    onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); const s = variants.filter(v => v.color_name === c.name); setSelectedSize(s.length === 1 ? s[0].size : null); setErrorShake(null); } }}
-                                                                    disabled={!c.isAvailable}
-                                                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${selectedColor === c.name ? 'bg-[var(--store-surface)] border-[var(--store-primary)] shadow-[0_0_0_1px_var(--store-primary)] text-[var(--store-text-main)]' : 'bg-[var(--store-surface)] border-[var(--store-border)]/60 text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/40 hover:text-[var(--store-text-main)]'} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                                >
-                                                                    {c.name}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </motion.div>
+                                                    {!isSingleSizeOnlyGroup && (
+                                                        <motion.div ref={colorSectionRef} animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">
+                                                                    {isModelOption ? 'Configuración' : 'Color'} <span className="text-[var(--store-surface-text)] font-medium ml-1">{selectedColor}</span>
+                                                                </span>
+                                                                {!selectedColor && <span className="text-[10px] font-bold text-[var(--store-primary)] animate-pulse">Requerido</span>}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2.5">
+                                                                {availableColors.map((c: any) => (
+                                                                    <button
+                                                                        key={c.name}
+                                                                        onClick={() => { if (c.isAvailable) { setSelectedColor(c.name); const s = variants.filter(v => v.color_name === c.name); setSelectedSize(s.length === 1 ? s[0].size : null); setErrorShake(null); } }}
+                                                                        disabled={!c.isAvailable}
+                                                                        className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${selectedColor === c.name ? 'bg-[var(--store-surface)] border-[var(--store-primary)] shadow-[0_0_0_1px_var(--store-primary)] text-[var(--store-text-main)]' : 'bg-[var(--store-surface)] border-[var(--store-border)]/60 text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/40 hover:text-[var(--store-text-main)]'} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        {c.name}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
 
-                                                    {availableSizes.length > 1 && (
+                                                    {shouldShowSizeSelector && (
                                                         <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
                                                             <div className="flex justify-between items-center mb-3">
-                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">Especificación</span>
+                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{isSingleSizeOnlyGroup ? 'Talla / Medida' : 'Especificación'}</span>
                                                                 {selectedSize && currentMaxStock > 0 && <span className="text-[10px] font-medium text-[var(--store-surface-text)]">Stock: {currentMaxStock}</span>}
                                                             </div>
                                                             {!selectedColor ? (
@@ -2208,72 +2239,76 @@ Mi duda es la siguiente: `;
                                             </div>
                                         ) : (
                                             <div className="space-y-6 pb-4">
-                                                {variants.length > 0 && !isCompletelyOutOfStock && (
+                                               {variants.length > 0 && !isCompletelyOutOfStock && (
                                                     <>
-                                                        <motion.div
-                                                            ref={colorSectionRef}
-                                                            animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                            className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
-                                                        >
-                                                            <div className="flex justify-between items-center">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                                        1. {isModelOption ? 'Modelo / Opción' : 'Color'}
-                                                                    </span>
-                                                                    {!selectedColor && (
-                                                                        <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] bg-[var(--store-primary)]/10 px-2 py-0.5 rounded-full border border-[var(--store-primary)]/20">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" />
-                                                                            Seleccionar
+                                                        {!isSingleSizeOnlyGroup && (
+                                                            <motion.div
+                                                                ref={colorSectionRef}
+                                                                animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
+                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
+                                                            >
+                                                                <div className="flex justify-between items-center">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                                            1. {isModelOption ? 'Modelo / Opción' : 'Color'}
                                                                         </span>
-                                                                    )}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-3">
-                                                                {availableColors.map((c: any, idx: number) => (
-                                                                    <button
-                                                                        key={c.name || `universal-col-${idx}`}
-                                                                        onClick={() => {
-                                                                            if (c.isAvailable) {
-                                                                                setSelectedColor(c.name);
-                                                                                const sizesForColor = variants.filter(v => v.color_name === c.name);
-                                                                                if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
-                                                                                else setSelectedSize(null);
-                                                                                setErrorShake(null);
-                                                                            }
-                                                                        }}
-                                                                        disabled={!c.isAvailable}
-                                                                        className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
-                                                                            ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
-                                                                            : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
-                                                                            } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
-                                                                        style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
-                                                                        title={!c.isAvailable ? 'Agotado' : c.name}
-                                                                    >
-                                                                        {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
-                                                                            <>
-                                                                                {selectedColor === c.name && <Check size={16} className="text-white/80 mix-blend-difference" strokeWidth={3} />}
-                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-45" />}
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                <span>{c.name}</span>
-                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-20" />}
-                                                                            </>
+                                                                        {!selectedColor && (
+                                                                            <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] bg-[var(--store-primary)]/10 px-2 py-0.5 rounded-full border border-[var(--store-primary)]/20">
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" />
+                                                                                Seleccionar
+                                                                            </span>
                                                                         )}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        </motion.div>
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-[var(--store-text-main)]">{selectedColor}</span>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-3">
+                                                                    {availableColors.map((c: any, idx: number) => (
+                                                                        <button
+                                                                            key={c.name || `universal-col-${idx}`}
+                                                                            onClick={() => {
+                                                                                if (c.isAvailable) {
+                                                                                    setSelectedColor(c.name);
+                                                                                    const sizesForColor = variants.filter(v => v.color_name === c.name);
+                                                                                    if (sizesForColor.length === 1) setSelectedSize(sizesForColor[0].size);
+                                                                                    else setSelectedSize(null);
+                                                                                    setErrorShake(null);
+                                                                                }
+                                                                            }}
+                                                                            disabled={!c.isAvailable}
+                                                                            className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
+                                                                                ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
+                                                                                : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
+                                                                                } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
+                                                                            style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
+                                                                            title={!c.isAvailable ? 'Agotado' : c.name}
+                                                                        >
+                                                                            {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
+                                                                                <>
+                                                                                    {selectedColor === c.name && <Check size={16} className="text-white/80 mix-blend-difference" strokeWidth={3} />}
+                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-45" />}
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <span>{c.name}</span>
+                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-20" />}
+                                                                                </>
+                                                                            )}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
 
-                                                        {availableSizes.length > 1 && (
+                                                        {shouldShowSizeSelector && (
                                                             <motion.div
                                                                 ref={sizeSectionRef}
                                                                 animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
                                                                 className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : (!selectedSize && selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
                                                             >
                                                                 <div className="flex justify-between items-end">
-                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">2. Talla</span>
+                                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">
+                                                                        {isSingleSizeOnlyGroup ? 'Selecciona tu Talla' : '2. Talla'}
+                                                                    </span>
                                                                     {selectedSize && currentMaxStock > 0 && (
                                                                         <span className="text-[10px] font-bold text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2 py-0.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] border-[var(--store-incentive)]/20">
                                                                             Quedan {currentMaxStock} und.

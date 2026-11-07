@@ -128,12 +128,22 @@ export const useCart = create<CartState>()(
             const extraCosts = foodModifiers ? foodModifiers.reduce((sum, mod) => sum + mod.priceAdjustment, 0) : 0;
             const finalPrice = basePrice + extraCosts;
 
-            // 🚀 CONSTRUCTOR DEL STRING DE VARIANTES (Para que se vea bonito en el ticket de WhatsApp actual)
-            let displayVariantInfo = variant ? `${variant.color_name} / ${variant.size}` : null;
+        // 🚀 CONSTRUCTOR DEL STRING DE VARIANTES (Para que se vea bonito en el ticket de WhatsApp actual)
+            let displayVariantInfo: string | null = null;
+            if (variant) {
+              const rawColor = (variant.color_name || '').trim();
+              const rawSize = (variant.size || '').trim();
+              const isGenericColor = !rawColor || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(rawColor.toLowerCase());
+              const isGenericSize = !rawSize || ['única', 'unica', 'u'].includes(rawSize.toLowerCase());
+
+              if (isGenericColor && !isGenericSize) displayVariantInfo = `Talla: ${rawSize}`;
+              else if (!isGenericColor && isGenericSize) displayVariantInfo = rawColor;
+              else if (isGenericColor && isGenericSize) displayVariantInfo = rawSize || rawColor || null;
+              else displayVariantInfo = `${rawColor} / ${rawSize}`;
+            }
             if (foodModifiers && foodModifiers.length > 0) {
               displayVariantInfo = foodModifiers.map(m => m.name).join(', ');
             }
-
             const newItem: CartItem = {
               id: uniqueId,
               productId: productId,
@@ -218,7 +228,18 @@ export const useCart = create<CartState>()(
             // Esto asegura que el total del combo sea exactamente los $56.00 configurados sin distorsiones
             const comboItemPenalty = 0;
 
-            let displayVariantInfo = entry.variant ? `${entry.variant.color_name} / ${entry.variant.size}` : null;
+        let displayVariantInfo: string | null = null;
+            if (entry.variant) {
+              const rawColor = (entry.variant.color_name || '').trim();
+              const rawSize = (entry.variant.size || '').trim();
+              const isGenericColor = !rawColor || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(rawColor.toLowerCase());
+              const isGenericSize = !rawSize || ['única', 'unica', 'u'].includes(rawSize.toLowerCase());
+
+              if (isGenericColor && !isGenericSize) displayVariantInfo = `Talla: ${rawSize}`;
+              else if (!isGenericColor && isGenericSize) displayVariantInfo = rawColor;
+              else if (isGenericColor && isGenericSize) displayVariantInfo = rawSize || rawColor || null;
+              else displayVariantInfo = `${rawColor} / ${rawSize}`;
+            }
             if (entry.foodModifiers && entry.foodModifiers.length > 0) {
               const modsText = entry.foodModifiers.map(m => m.name).join(', ');
               displayVariantInfo = displayVariantInfo ? `${displayVariantInfo} • ${modsText}` : modsText;

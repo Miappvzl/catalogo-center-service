@@ -102,9 +102,20 @@ export default function SkuMatrixPage() {
                         stock: p.stock || 0
                         
                     })
-                } else {
+          
+                  } else {
                     p.product_variants.forEach((v: any) => {
-                        const labelParts = [v.color_name, v.size].filter(Boolean)
+                        const rawColor = (v.color_name || '').trim()
+                        const rawSize = (v.size || '').trim()
+                        const isGenericColor = !rawColor || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(rawColor.toLowerCase())
+                        const isGenericSize = !rawSize || ['única', 'unica', 'u'].includes(rawSize.toLowerCase())
+
+                        let cleanLabel = 'Variante'
+                        if (isGenericColor && !isGenericSize) cleanLabel = `Talla: ${rawSize}`
+                        else if (!isGenericColor && isGenericSize) cleanLabel = rawColor
+                        else if (isGenericColor && isGenericSize) cleanLabel = rawSize || rawColor || 'Variante'
+                        else cleanLabel = `${rawColor} / ${rawSize}`
+
                         flattened.push({
                             key: `var-${v.id}`,
                             type: 'variant',
@@ -112,10 +123,10 @@ export default function SkuMatrixPage() {
                             name: p.name,
                             category: p.category || 'General',
                             image: v.variant_image || p.image_url || '',
-                            variantLabel: labelParts.length > 0 ? labelParts.join(' / ') : 'Variante',
+                            variantLabel: cleanLabel,
                             sku: v.sku || '',
                             stock: v.stock || 0,
-                            colorHex: v.color_hex || null // 👈 INYECCIÓN AQUÍ
+                            colorHex: v.color_hex || null
                         })
                     })
                 }
@@ -485,9 +496,10 @@ export default function SkuMatrixPage() {
                                         </div>
 
                                         {!row.sku && (
-                                            <button 
+                                           <button 
                                                 onClick={() => {
-                                                    const auto = generateSmartSKU(row.category, `${row.name} ${row.variantLabel || ''}`)
+                                                    const cleanAttr = (row.variantLabel || '').replace(/^Talla:\s*/i, '')
+                                                    const auto = generateSmartSKU(row.category, `${row.name} ${cleanAttr}`)
                                                     handleSkuChange(row.key, auto)
                                                     saveSkuToDatabase({ ...row, sku: auto })
                                                 }}
@@ -565,23 +577,23 @@ export default function SkuMatrixPage() {
                                                     </div>
                                                 </td>
 
-                                               <td className="py-3 px-4">
-    {row.variantLabel ? (
-        <span className="inline-flex items-center gap-1.5 bg-neutral-50 border border-neutral-200/60 text-neutral-700 text-[10px] font-mono font-bold px-2 py-1 rounded leading-none">
-            {row.colorHex && row.colorHex !== 'transparent' && (
-                <span 
-                    className="w-2.5 h-2.5 rounded-full border border-neutral-300 shrink-0" 
-                    style={getVariantSwatchStyle(row.colorHex)} 
-                />
-            )}
-            <span>{row.variantLabel}</span>
-        </span>
-    ) : (
-        <span className="text-[10px] text-neutral-400 font-medium font-mono">
-            Base
-        </span>
-    )}
-</td>
+                                           <td className="py-3 px-4">
+                                                    {row.variantLabel ? (
+                                                        <span className="inline-flex items-center gap-1.5 bg-neutral-50 border border-neutral-200/60 text-neutral-700 text-[10px] font-mono font-bold px-2 py-1 rounded leading-none">
+                                                            {row.colorHex && row.colorHex !== 'transparent' && row.colorHex !== '#transparent' && (
+                                                                <span 
+                                                                    className="w-2.5 h-2.5 rounded-full border border-neutral-300 shrink-0" 
+                                                                    style={getVariantSwatchStyle(row.colorHex)} 
+                                                                />
+                                                            )}
+                                                            <span>{row.variantLabel}</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-neutral-400 font-medium font-mono">
+                                                            Base
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="py-3 px-4 text-center font-mono font-bold text-xs text-neutral-800 tabular-nums">
                                                     {row.stock}
                                                 </td>
@@ -608,7 +620,8 @@ export default function SkuMatrixPage() {
                                                         {!row.sku && (
                                                             <button 
                                                                 onClick={() => {
-                                                                    const auto = generateSmartSKU(row.category, `${row.name} ${row.variantLabel || ''}`)
+                                                                    const cleanAttr = (row.variantLabel || '').replace(/^Talla:\s*/i, '')
+                                                                    const auto = generateSmartSKU(row.category, `${row.name} ${cleanAttr}`)
                                                                     handleSkuChange(row.key, auto)
                                                                     saveSkuToDatabase({ ...row, sku: auto })
                                                                 }}

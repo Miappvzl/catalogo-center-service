@@ -139,36 +139,52 @@ export function QuickVariantPickerModal({
         }
     };
 
+  
+
+   // Formateador semántico 1D / 2D para POS y Cobro Rápido
+    const formatPosVariantLabel = (v: any) => {
+        const rawColor = (v?.color_name || '').trim();
+        const rawSize = (v?.size || '').trim();
+        const isGenericColor = !rawColor || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(rawColor.toLowerCase());
+        const isGenericSize = !rawSize || ['única', 'unica', 'u'].includes(rawSize.toLowerCase());
+
+        if (isGenericColor && !isGenericSize) return `Talla: ${rawSize}`;
+        if (!isGenericColor && isGenericSize) return rawColor;
+        if (isGenericColor && isGenericSize) return rawSize || rawColor || 'Variante';
+        return `${rawColor} / Talla ${rawSize}`;
+    };
+
     // Confirmar y entregar el producto configurado al Bottom Sheet principal
     const handleConfirm = () => {
-    if (!product) return;
+        if (!product) return;
 
-    let variantLabel: string | undefined = undefined;
-    let resolvedStock = Number(product.stock || 9999);
+        let variantLabel: string | undefined = undefined;
+        let resolvedStock = Number(product.stock || 9999);
 
-    if (hasVariants && selectedVariantId) {
-      const variant = product.product_variants.find((v: any) => v.id === selectedVariantId);
-      if (variant) {
-        const parts = [variant.size, variant.color_name].filter(Boolean);
-        variantLabel = parts.join(' / ');
-        resolvedStock = Number(variant.stock || 0);
-      }
-    }
+        if (hasVariants && selectedVariantId) {
+            const variant = product.product_variants.find((v: any) => v.id === selectedVariantId);
+            if (variant) {
+                variantLabel = formatPosVariantLabel(variant);
+                resolvedStock = Number(variant.stock || 0);
+            }
+        }
 
-    const flatModifiers = Object.values(selectedModifiers).flat();
+        const flatModifiers = Object.values(selectedModifiers).flat();
 
-    onConfirm({
-      variantId: selectedVariantId || undefined,
-      variantLabel,
-      unitPrice: calculatedUnitPrice,
-      foodModifiers: flatModifiers.length > 0 ? flatModifiers : undefined,
-      maxStock: resolvedStock,
-    });
+        onConfirm({
+            variantId: selectedVariantId || undefined,
+            variantLabel,
+            unitPrice: calculatedUnitPrice,
+            foodModifiers: flatModifiers.length > 0 ? flatModifiers : undefined,
+            maxStock: resolvedStock,
+        });
 
-    onClose();
-  };
+        onClose();
+    };
 
     if (!isOpen || !product) return null;
+
+  
 
     return (
         <AnimatePresence>
@@ -222,7 +238,8 @@ export function QuickVariantPickerModal({
                                         const isSelected = selectedVariantId === v.id;
                                         const stock = Number(v.stock || 0);
                                         const isOutOfStock = stock <= 0;
-                                        const label = [v.size, v.color_name].filter(Boolean).join(' - ') || 'Variante';
+                                        const label = formatPosVariantLabel(v);
+                                        const hasColorDot = v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent';
 
                                         return (
                                             <button
@@ -231,14 +248,21 @@ export function QuickVariantPickerModal({
                                                 disabled={isOutOfStock}
                                                 onClick={() => setSelectedVariantId(v.id)}
                                                 className={`flex items-center justify-between p-3 rounded-xl border text-xs text-left transition-all ${isSelected
-                                                        ? 'bg-neutral-950 text-white font-medium border-neutral-950 shadow-xs'
-                                                        : isOutOfStock
-                                                            ? 'bg-neutral-50 text-neutral-300 border-neutral-200/50 cursor-not-allowed'
-                                                            : 'bg-white text-neutral-700 hover:text-neutral-950 font-normal border-neutral-200 hover:border-neutral-300'
+                                                    ? 'bg-neutral-950 text-white font-medium border-neutral-950 shadow-xs'
+                                                    : isOutOfStock
+                                                        ? 'bg-neutral-50 text-neutral-300 border-neutral-200/50 cursor-not-allowed'
+                                                        : 'bg-white text-neutral-700 hover:text-neutral-950 font-normal border-neutral-200 hover:border-neutral-300'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[2] shrink-0" />}
+                                                    {isSelected ? (
+                                                        <Check className="w-3.5 h-3.5 stroke-[2] shrink-0" />
+                                                    ) : hasColorDot ? (
+                                                        <span
+                                                            className="w-3 h-3 rounded-full border border-neutral-300 shrink-0"
+                                                            style={{ backgroundColor: v.color_hex.split(',')[0] }}
+                                                        />
+                                                    ) : null}
                                                     <span className="truncate">{label}</span>
                                                 </div>
                                                 <span
@@ -282,15 +306,15 @@ export function QuickVariantPickerModal({
                                                             type="button"
                                                             onClick={() => handleToggleModifierOption(group, opt)}
                                                             className={`flex items-center justify-between p-2.5 rounded-lg border text-xs text-left transition-all ${isSelected
-                                                                    ? 'bg-neutral-950 text-white font-medium border-neutral-950'
-                                                                    : 'bg-white text-neutral-700 hover:text-neutral-950 font-normal border-neutral-200'
+                                                                ? 'bg-neutral-950 text-white font-medium border-neutral-950'
+                                                                : 'bg-white text-neutral-700 hover:text-neutral-950 font-normal border-neutral-200'
                                                                 }`}
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0">
                                                                 <div
                                                                     className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${isSelected
-                                                                            ? 'border-white bg-white text-neutral-950'
-                                                                            : 'border-neutral-300 bg-transparent'
+                                                                        ? 'border-white bg-white text-neutral-950'
+                                                                        : 'border-neutral-300 bg-transparent'
                                                                         }`}
                                                                 >
                                                                     {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}

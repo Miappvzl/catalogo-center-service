@@ -306,13 +306,20 @@ export default function InventoryPage() {
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
             await revalidateStoreCache()
 
-            if (newStock <= 3 && storeId) {
+          if (newStock <= 3 && storeId) {
+                const isGenericColor = !row.color || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(row.color.trim().toLowerCase());
+                const isGenericSize = !row.size || ['única', 'unica', 'u'].includes(row.size.trim().toLowerCase());
+                const cleanVariantName = !row.variantId ? null
+                    : (isGenericColor && !isGenericSize) ? `Talla ${row.size}`
+                    : (!isGenericColor && isGenericSize) ? row.color
+                    : `${row.color} / Talla ${row.size}`;
+
                 checkAndTriggerStockAlert({
                     storeId,
                     productId: Number(row.productId),
                     productName: row.name,
                     newStock,
-                    variantName: row.variantId ? `${row.color} / Talla ${row.size}` : null
+                    variantName: cleanVariantName
                 }).catch(err => console.error("Error al disparar alerta de stock:", err));
             }
 
@@ -635,20 +642,33 @@ export default function InventoryPage() {
                                                                     </div>
 
 
-                                                                    {/* Variantes & SKU en Móvil */}
+                                                                  {/* Variantes & SKU en Móvil */}
                                                                     {!isRestaurant ? (
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
-                                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-                                                                                {/* 🚀 FIX: Soporte Bicolor y Sólido con validación CSS */}
-                                                                                <span
-                                                                                    className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50"
-                                                                                    style={getVariantSwatchStyle(item.hex)}
-                                                                                />
-                                                                                <span className="truncate max-w-[80px]">{item.color}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
-                                                                                <span>{item.size}</span>
-                                                                            </div>
+                                                                            {!item.variantId ? (
+                                                                                <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-500">
+                                                                                    <span>Único</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {item.color && !['talla', 'tallas', 'medida', 'medidas'].includes(item.color.trim().toLowerCase()) && (
+                                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                                            {item.hex && item.hex !== 'transparent' && item.hex !== '#transparent' && (
+                                                                                                <span
+                                                                                                    className="w-2 h-2 rounded-full shrink-0 border border-neutral-200/50"
+                                                                                                    style={getVariantSwatchStyle(item.hex)}
+                                                                                                />
+                                                                                            )}
+                                                                                            <span className="truncate max-w-[80px]">{item.color}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.size && !['única', 'unica', 'u'].includes(item.size.trim().toLowerCase()) && (
+                                                                                        <div className="flex items-center px-1.5 py-0.5 bg-neutral-50 border border-neutral-200/50 rounded text-[9px] font-mono text-neutral-600 transition-colors">
+                                                                                            <span>Talla: {item.size}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </>
+                                                                            )}
                                                                             {item.sku ? (
                                                                                 <span className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200/60 rounded text-[8px] font-mono font-bold uppercase tracking-widest text-neutral-600">
                                                                                     {item.sku}
@@ -676,6 +696,34 @@ export default function InventoryPage() {
                                                             </Link>
                                                         </td>
 
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+                                                            {!item.variantId ? (
+                                                                <span className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 text-[10px] font-mono font-medium text-neutral-400">
+                                                                    Producto Único
+                                                                </span>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {item.color && !['talla', 'tallas', 'medida', 'medidas'].includes(item.color.trim().toLowerCase()) && (
+                                                                        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">
+                                                                            {item.hex && item.hex !== 'transparent' && item.hex !== '#transparent' && (
+                                                                                <span
+                                                                                    className="w-2.5 h-2.5 rounded-full border border-neutral-200/50 shrink-0"
+                                                                                    style={getVariantSwatchStyle(item.hex)}
+                                                                                />
+                                                                            )}
+                                                                            <span className="text-[10px] font-mono font-semibold text-neutral-600 truncate">{item.color}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.size && (
+                                                                        <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center">
+                                                                            <span className="text-[10px] font-mono font-semibold text-neutral-600 leading-none">
+                                                                                {['única', 'unica', 'u'].includes(item.size.trim().toLowerCase()) ? item.size : `Talla: ${item.size}`}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
                                                         <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 flex items-center gap-1.5 max-w-[130px]">

@@ -269,6 +269,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([])
 
     const [useColor, setUseColor] = useState(true)
+    const [variantMode, setVariantMode] = useState<'sizes_only' | 'color' | 'model'>('color')
     const [variantInput, setVariantInput] = useState({
         colorName: '',
         colorHex: '#000000',
@@ -800,26 +801,38 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         updateVariantInput('images', newImages)
     }
 
-    const addVariantGroup = () => {
+   const addVariantGroup = () => {
         if (sizeInputValue.trim() !== '') addSizeFromInput()
 
-        if (!variantInput.colorName) return Swal.fire({ title: 'Faltan datos', text: 'Escriba un nombre para este color u opción', icon: 'warning', confirmButtonColor: '#171717' })
-        if (sizeTags.length === 0 && sizeInputValue.trim() === '') return Swal.fire({ title: 'Atributo Secundario', text: 'Agregue al menos una medida (S, M, talla).', icon: 'warning', confirmButtonColor: '#171717' })
-
-        const tagsToUse = sizeInputValue.trim() !== '' && !sizeTags.includes(sizeInputValue.trim().toUpperCase())
+        const rawTags = sizeInputValue.trim() !== '' && !sizeTags.includes(sizeInputValue.trim().toUpperCase())
             ? [...sizeTags, sizeInputValue.trim().toUpperCase().replace(/,/g, '')]
             : sizeTags;
+
+        const cleanColorName = variantInput.colorName.trim();
+
+        // Validación inteligente 1D / 2D
+        if (useColor && !cleanColorName) {
+            return Swal.fire({ title: 'Falta el Color', text: 'Escriba un nombre para el color o desactive la casilla "Con color" si el producto solo tiene tallas.', icon: 'warning', confirmButtonColor: '#171717' })
+        }
+        if (!useColor && !cleanColorName && rawTags.length === 0) {
+            return Swal.fire({ title: 'Faltan Datos', text: 'Agregue al menos una talla (ej: 28, 30, M) o escriba un nombre de opción.', icon: 'warning', confirmButtonColor: '#171717' })
+        }
+
+        // Si desactivó el color y dejó el nombre vacío, es un producto de "Solo Tallas" -> asignamos 'Talla'
+        const resolvedColorName = cleanColorName || 'Talla';
+        // Si puso un Color u Opción pero no puso tallas, es un producto de "Solo Color/Opción" -> asignamos 'ÚNICA'
+        const tagsToUse = rawTags.length > 0 ? rawTags : ['ÚNICA'];
 
         const stockToApply = Number(variantInput.defaultStock) || 0
         const finalHex = useColor ? variantInput.colorHex : 'transparent'
 
         const newVariants = tagsToUse.map(s => ({
             id: `temp-${crypto.randomUUID()}`,
-            color_name: variantInput.colorName,
+            color_name: resolvedColorName,
             color_hex: finalHex,
             size: s,
             stock: stockToApply,
-            sku: generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${variantInput.colorName} ${s}`),
+            sku: generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${resolvedColorName === 'Talla' ? '' : resolvedColorName} ${s}`),
             gallery: variantInput.images,
             variant_image: variantInput.images[0] || '',
             override_usd_price: variantInput.priceOverride !== '' ? Number(variantInput.priceOverride) : null,
@@ -1816,86 +1829,143 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             ) : (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
 
-                                    {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
+                              {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
                                     <div className="bg-neutral-50/60 rounded-2xl p-[0.4rem] md:p-6 border border-neutral-200/70 space-y-5 w-full">
                                         <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')} />
 
-                                        {/* FILA 1: COLORWAY Y FOTOGRAFÍAS (MISMA ALTURA EXACTA 1:1) */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch w-full">
-                                            {/* LADO IZQUIERDO: COLORWAY */}
-                                            <div id="tour-step-2-color" className={`lg:col-span-7 w-full min-w-0 ${getUniversalSpotlightClass('tour-step-2-color')}`}>
-                                                <EliteVariantColorPicker
-                                                    useColor={useColor}
-                                                    onToggleColor={(val: boolean) => { setUseColor(val); setIsDirty(true); }}
-                                                    colorName={variantInput.colorName}
-                                                    colorHex={variantInput.colorHex}
-                                                    onChange={(name: string, hex: string) => {
-                                                        updateVariantInput('colorName', name);
-                                                        updateVariantInput('colorHex', hex);
+                                      {/* 🚀 SELECTOR DE ARQUITECTURA DE VARIANTE (3 MODOS EXPLÍCITOS SIN COLISIÓN) */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-2xs">
+                                            <span className="text-[11px] font-bold text-neutral-700 px-1">
+                                                ¿Cómo varía este producto?
+                                            </span>
+                                            <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/60 overflow-x-auto no-scrollbar">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setVariantMode('sizes_only');
+                                                        setUseColor(false);
+                                                        updateVariantInput('colorName', '');
+                                                        updateVariantInput('images', []);
                                                     }}
-                                                />
-                                            </div>
-
-                                            {/* 🚀 LADO DERECHO: FOTOS CON ALTURA PARITARIA EXACTA (~96px) */}
-                                            <div className="lg:col-span-5 bg-white p-3 rounded-2xl border border-neutral-200/70 shadow-xs flex flex-col justify-between w-full min-w-0">
-                                                {/* Cabecera idéntica a la izquierda */}
-                                                <div className="flex items-center justify-between pb-2 border-b border-neutral-100 min-h-[28px]">
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                        <ImageIcon size={13} className="text-neutral-800 shrink-0" />
-                                                        <span className="text-[11px] font-bold text-neutral-900 leading-none">
-                                                            Fotos del Color
-                                                        </span>
-                                                    </div>
-                                                    <span className="font-mono text-[10px] text-neutral-400 font-bold leading-none">
-                                                        {variantInput.images.length}/3
-                                                    </span>
-                                                </div>
-
-                                                {/* Fila única de fotos (Misma altura que el input de color: h-8.5) */}
-                                                <div className="flex items-center gap-2 h-8.5 w-full">
-                                                    {/* Miniaturas de fotos cargadas */}
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                        {variantInput.images.map((imgUrl, slotIdx) => (
-                                                            <div key={slotIdx} className="relative w-8.5 h-8.5 rounded-lg border border-neutral-200/80 bg-neutral-50 overflow-hidden shrink-0 group shadow-2xs">
-                                                                <Image src={getOptimizedUrl(imgUrl)} alt="" fill sizes="34px" className="object-cover" />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeImageFromVariantInput(slotIdx)}
-                                                                    className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
-                                                                    title="Eliminar"
-                                                                >
-                                                                    <X size={11} strokeWidth={2.5} />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* Botón de subida compacto que llena el espacio restante */}
-                                                    {variantInput.images.length < 3 ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => variantImageInputRef.current?.click()}
-                                                            disabled={uploading}
-                                                            className="flex-1 h-full rounded-xl border border-dashed border-neutral-300 hover:border-neutral-900 hover:bg-neutral-50/50 bg-neutral-50/30 flex items-center justify-center gap-1.5 text-neutral-600 hover:text-neutral-950 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
-                                                            title="Subir fotos para este color"
-                                                        >
-                                                            {uploading ? (
-                                                                <Loader2 size={12} className="animate-spin text-neutral-400" />
-                                                            ) : (
-                                                                <Plus size={13} strokeWidth={2.5} className="text-neutral-500" />
-                                                            )}
-                                                            <span className="truncate">
-                                                                {variantInput.images.length === 0 ? '+ Subir fotos (hasta 3)' : '+ Añadir foto'}
-                                                            </span>
-                                                        </button>
-                                                    ) : (
-                                                        <div className="flex-1 h-full rounded-xl bg-neutral-50 border border-neutral-200/50 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-medium">
-                                                            Límite alcanzado
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                                        variantMode === 'sizes_only'
+                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                    }`}
+                                                >
+                                                    Solo Tallas
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setVariantMode('color');
+                                                        setUseColor(true);
+                                                        if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
+                                                    }}
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                                        variantMode === 'color'
+                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                    }`}
+                                                >
+                                                    Color + Tallas
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setVariantMode('model');
+                                                        setUseColor(false);
+                                                        if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
+                                                    }}
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                                        variantMode === 'model'
+                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                    }`}
+                                                >
+                                                    Modelo / Estilo
+                                                </button>
                                             </div>
                                         </div>
+
+                                        {/* FILA 1: COLOR O MODELO + FOTOGRAFÍAS (SE MUESTRA EN MODO "COLOR" O "MODELO", SE OCULTA EN "SOLO TALLAS") */}
+                                        {(variantMode !== 'sizes_only' || isMission2) && (
+                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-stretch w-full animate-in fade-in duration-200">
+                                                {/* LADO IZQUIERDO: SELECTOR DE COLOR O INPUT DE MODELO */}
+                                                <div id="tour-step-2-color" className={`lg:col-span-7 w-full min-w-0 ${getUniversalSpotlightClass('tour-step-2-color')}`}>
+                                                    <EliteVariantColorPicker
+                                                        useColor={variantMode === 'color'}
+                                                        onToggleColor={(val: boolean) => {
+                                                            setUseColor(val);
+                                                            setVariantMode(val ? 'color' : 'model');
+                                                            setIsDirty(true);
+                                                        }}
+                                                        colorName={variantInput.colorName}
+                                                        colorHex={variantInput.colorHex}
+                                                        onChange={(name: string, hex: string) => {
+                                                            updateVariantInput('colorName', name);
+                                                            updateVariantInput('colorHex', hex);
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* 🚀 LADO DERECHO: FOTOS CON ALTURA PARITARIA EXACTA (~96px) */}
+                                                <div className="lg:col-span-5 bg-white p-3 rounded-2xl border border-neutral-200/70 shadow-xs flex flex-col justify-between w-full min-w-0">
+                                                    <div className="flex items-center justify-between pb-2 border-b border-neutral-100 min-h-[28px]">
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <ImageIcon size={13} className="text-neutral-800 shrink-0" />
+                                                            <span className="text-[11px] font-bold text-neutral-900 leading-none">
+                                                                {variantMode === 'color' ? 'Fotos del Color' : 'Fotos del Modelo'}
+                                                            </span>
+                                                        </div>
+                                                        <span className="font-mono text-[10px] text-neutral-400 font-bold leading-none">
+                                                            {variantInput.images.length}/3
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 h-8.5 w-full">
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            {variantInput.images.map((imgUrl, slotIdx) => (
+                                                                <div key={slotIdx} className="relative w-8.5 h-8.5 rounded-lg border border-neutral-200/80 bg-neutral-50 overflow-hidden shrink-0 group shadow-2xs">
+                                                                    <Image src={getOptimizedUrl(imgUrl)} alt="" fill sizes="34px" className="object-cover" />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeImageFromVariantInput(slotIdx)}
+                                                                        className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                                                                        title="Eliminar"
+                                                                    >
+                                                                        <X size={11} strokeWidth={2.5} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {variantInput.images.length < 3 ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => variantImageInputRef.current?.click()}
+                                                                disabled={uploading}
+                                                                className="flex-1 h-full rounded-xl border border-dashed border-neutral-300 hover:border-neutral-900 hover:bg-neutral-50/50 bg-neutral-50/30 flex items-center justify-center gap-1.5 text-neutral-600 hover:text-neutral-950 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                                title="Subir fotos"
+                                                            >
+                                                                {uploading ? (
+                                                                    <Loader2 size={12} className="animate-spin text-neutral-400" />
+                                                                ) : (
+                                                                    <Plus size={13} strokeWidth={2.5} className="text-neutral-500" />
+                                                                )}
+                                                                <span className="truncate">
+                                                                    {variantInput.images.length === 0 ? '+ Subir fotos (hasta 3)' : '+ Añadir foto'}
+                                                                </span>
+                                                            </button>
+                                                        ) : (
+                                                            <div className="flex-1 h-full rounded-xl bg-neutral-50 border border-neutral-200/50 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-medium">
+                                                                Límite alcanzado
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* FILA 2: TALLAS Y STOCK (INTACTA) */}
                                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
@@ -1937,9 +2007,10 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                 </div>
 
                                                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                                                    {[
+                                                  {[
                                                         { label: 'D: S - H: XL', sizes: ['S', 'M', 'L', 'XL'] },
                                                         { label: 'D: XS - H: 2XL', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
+                                                        { label: 'Pantalón: 28 - 38', sizes: ['28', '30', '32', '34', '36', '38'] },
                                                         { label: 'D: 36 - H: 39', sizes: ['36', '37', '38', '39'] },
                                                         { label: 'D: 40 - H: 44', sizes: ['40', '41', '42', '43', '44'] },
                                                         { label: 'D: 35 - H: 45', sizes: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
@@ -2079,7 +2150,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                         {/* Cabecera SKU */}
                                                         <div className="flex items-center justify-between p-3.5 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
                                                             <div className="flex items-center gap-3.5 min-w-0">
-                                                                <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
+                                                               <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
                                                                     {v.variant_image ? (
                                                                         <Image
                                                                             src={getOptimizedUrl(v.variant_image)}
@@ -2088,18 +2159,28 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                             sizes="40px"
                                                                             className="object-cover"
                                                                         />
+                                                                    ) : (!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') ? (
+                                                                        <span className="text-[11px] font-mono font-bold text-neutral-700 uppercase">
+                                                                            {v.size}
+                                                                        </span>
                                                                     ) : (
-                                                                        <div className="w-full h-full" style={{ backgroundColor: v.color_hex === 'transparent' ? '#f5f5f7' : v.color_hex }} />
+                                                                        <div className="w-full h-full" style={{ backgroundColor: v.color_hex }} />
                                                                     )}
                                                                 </div>
-                                                                <div className="min-w-0 space-y-0.5">
+                                                         <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2">
                                                                         {/* 🚀 ELITE: Renderizado inteligente uni/bi-color */}
                                                                         {renderVariantColor(v.color_hex)}
-                                                                        <p className="font-bold text-xs text-neutral-900 truncate">{v.color_name}</p>
+                                                                        <p className="font-bold text-xs text-neutral-900 truncate">
+                                                                            {(!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla'
+                                                                                ? `Talla ${v.size}`
+                                                                                : v.color_name}
+                                                                        </p>
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-1.5">
-                                                                        <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
+                                                                        {!((!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla') && (
+                                                                            <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
+                                                                        )}
                                                                       {v.sku && (
                                                                             <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
                                                                                 {v.sku}
@@ -2204,30 +2285,31 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                                         className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300"
                                                                                     />
                                                                                 </div>
-                                                                                {/* 🚀 ELITE: Edición con alerta protectora de integridad */}
-                                                                                <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
-                                                                                    <div className="flex items-center justify-between">
-                                                                                        <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider font-mono">
-                                                                                            Ajustar Colorway del SKU
-                                                                                        </span>
-                                                                                        {variants.filter(item => item.color_name === v.color_name).length > 1 && (
-                                                                                            <span className="text-[9px] font-mono font-bold text-neutral-400">
-                                                                                                Grupo: {v.color_name} ({variants.filter(item => item.color_name === v.color_name).length} tallas)
+                                                                            {/* 🚀 ELITE: Solo muestra el editor de Color si la variante NO es de "Solo Tallas" */}
+                                                                                {(v.color_name !== 'Talla' || (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent')) && (
+                                                                                    <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
+                                                                                        <div className="flex items-center justify-between">
+                                                                                            <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider font-mono">
+                                                                                                Ajustar Color del SKU
                                                                                             </span>
-                                                                                        )}
-                                                                                    </div>
+                                                                                            {variants.filter(item => item.color_name === v.color_name).length > 1 && (
+                                                                                                <span className="text-[9px] font-mono font-bold text-neutral-400">
+                                                                                                    Grupo: {v.color_name} ({variants.filter(item => item.color_name === v.color_name).length} tallas)
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
 
-                                                                                    <EliteVariantColorPicker
-                                                                                        useColor={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'}
-                                                                                        onToggleColor={(checked: boolean) => updateVariantOverride(v.id, 'color_hex', checked ? '#000000' : 'transparent')}
-                                                                                        colorName={v.color_name}
-                                                                                        colorHex={v.color_hex === 'transparent' || v.color_hex === '#transparent' ? '#000000' : v.color_hex}
-                                                                                        onChange={(name: string, hex: string) => {
-                                                                                            // 🚀 LLAMADA AL INTERCEPTOR PROTEGIDO
-                                                                                            handleVariantColorChangeWithGuard(v, name, hex);
-                                                                                        }}
-                                                                                    />
-                                                                                </div>
+                                                                                        <EliteVariantColorPicker
+                                                                                            useColor={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'}
+                                                                                            onToggleColor={(checked: boolean) => updateVariantOverride(v.id, 'color_hex', checked ? '#000000' : 'transparent')}
+                                                                                            colorName={v.color_name}
+                                                                                            colorHex={v.color_hex === 'transparent' || v.color_hex === '#transparent' ? '#000000' : v.color_hex}
+                                                                                            onChange={(name: string, hex: string) => {
+                                                                                                handleVariantColorChangeWithGuard(v, name, hex);
+                                                                                            }}
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         </div>
 

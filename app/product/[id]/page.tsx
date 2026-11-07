@@ -47,10 +47,14 @@ export default function ProductPage() {
                 .eq('product_id', id)
                 .gt('stock', 0)
 
-            if (vars && vars.length > 0) {
+       if (vars && vars.length > 0) {
                 setVariants(vars)
                 const firstColor = vars[0].color_name
                 setSelectedColor(firstColor)
+                const sizesForFirst = vars.filter((v: any) => v.color_name === firstColor)
+                if (sizesForFirst.length === 1) {
+                    setSelectedSize(sizesForFirst[0].size)
+                }
             }
 
             setLoading(false)
@@ -75,6 +79,14 @@ export default function ProductPage() {
             .filter(v => v.color_name === selectedColor)
             .sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }))
     }, [variants, selectedColor])
+
+    const isSingleSizeOnlyGroup = useMemo(() => {
+        if (availableColors.length !== 1) return false
+        const c = availableColors[0]
+        const isTransparent = !c.hex || c.hex === 'transparent' || c.hex === '#transparent'
+        const isGenericName = ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar', ''].includes((c.name || '').trim().toLowerCase())
+        return isTransparent && isGenericName
+    }, [availableColors])
 
     // 3. Manejadores
     const handleColorSelect = (colorName: string, imageOverride: string | null) => {
@@ -182,70 +194,91 @@ export default function ProductPage() {
                             )}
                         </div>
 
-                        {/* Selectores */}
+                     {/* Selectores */}
                         {variants.length > 0 && (
                             <div className="space-y-6 bg-gray-50/50 md:bg-transparent p-5 md:p-0 rounded-3xl border border-gray-100 md:border-transparent">
 
-                                {/* Selector de Color */}
-                                <div>
-                                    <div className="flex items-end justify-between mb-3">
-                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Seleccionar Color</span>
-                                        <span className="text-sm font-black text-black">{selectedColor || '-'}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2.5">
-                                        {availableColors.map((c: any) => (
-                                            <button
-                                                key={c.name}
-                                                onClick={() => handleColorSelect(c.name, c.image)}
-                                                className={`w-11 h-11 md:w-14 md:h-14 rounded-full shadow-sm transition-all duration-300 relative transform-gpu flex-shrink-0 ${selectedColor === c.name
-                                                        ? 'scale-110 ring-2 ring-black ring-offset-2 border-none'
-                                                        : 'border border-gray-200 hover:scale-105 hover:shadow-md'
-                                                    }`}
-                                                style={{ backgroundColor: c.hex }}
-                                                title={c.name}
-                                                aria-label={`Seleccionar color ${c.name}`}
-                                            >
-                                                {selectedColor === c.name && c.hex.toLowerCase() === '#ffffff' && (
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <div className="w-2.5 h-2.5 bg-black rounded-full"></div>
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="h-px w-full bg-gray-200/60 md:hidden"></div>
-
-                                {/* Selector de Talla (SOLUCIÓN FLEX-WRAP PARA EVITAR DESBORDAMIENTO) */}
-                                <div>
-                                    <div className="flex items-end justify-between mb-3">
-                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Talla (EU)</span>
-                                        {selectedSize && <span className="text-sm font-black text-black animate-in fade-in slide-in-from-bottom-1">Sel: {selectedSize}</span>}
-                                    </div>
-
-                                    {!selectedColor ? (
-                                        <div className="flex items-center gap-3 text-xs md:text-sm font-medium text-orange-600 bg-orange-50/50 p-4 rounded-xl border border-orange-100/50">
-                                            <AlertCircle size={16} className="text-orange-500" /> Selecciona un color para ver tallas
+                                {/* Selector de Color / Opción (Se oculta si es un producto 1D de Solo Tallas) */}
+                                {!isSingleSizeOnlyGroup && (
+                                    <div>
+                                        <div className="flex items-end justify-between mb-3">
+                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                                {availableColors.every((c: any) => !c.hex || c.hex === 'transparent' || c.hex === '#transparent') ? 'Seleccionar Opción' : 'Seleccionar Color'}
+                                            </span>
+                                            <span className="text-sm font-black text-black">{selectedColor || '-'}</span>
                                         </div>
-                                    ) : (
-                                        /* Usamos flex-wrap en lugar de grid estricto para que se adapte al contenido de la talla */
-                                        <div className="flex flex-wrap gap-2 md:gap-3">
-                                            {availableSizes.map((v) => (
-                                                <button
-                                                    key={v.id}
-                                                    onClick={() => setSelectedSize(v.size)}
-                                                    className={`py-3 px-5 min-w-[3.5rem] md:min-w-[4.5rem] rounded-xl text-sm font-black border transition-all duration-200 transform-gpu active:scale-95 ${selectedSize === v.size
-                                                            ? 'bg-black text-white border-black shadow-lg shadow-black/20 -translate-y-1'
-                                                            : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black shadow-sm'
-                                                        }`}
-                                                >
-                                                    {v.size}
-                                                </button>
-                                            ))}
+                                        <div className="flex flex-wrap gap-2.5">
+                                            {availableColors.map((c: any) => {
+                                                const hasVisualHex = c.hex && c.hex !== 'transparent' && c.hex !== '#transparent';
+                                                return hasVisualHex ? (
+                                                    <button
+                                                        key={c.name}
+                                                        onClick={() => handleColorSelect(c.name, c.image)}
+                                                        className={`w-11 h-11 md:w-14 md:h-14 rounded-full shadow-sm transition-all duration-300 relative transform-gpu flex-shrink-0 ${selectedColor === c.name
+                                                                ? 'scale-110 ring-2 ring-black ring-offset-2 border-none'
+                                                                : 'border border-gray-200 hover:scale-105 hover:shadow-md'
+                                                            }`}
+                                                        style={{ backgroundColor: c.hex }}
+                                                        title={c.name}
+                                                        aria-label={`Seleccionar color ${c.name}`}
+                                                    >
+                                                        {selectedColor === c.name && c.hex.toLowerCase() === '#ffffff' && (
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <div className="w-2.5 h-2.5 bg-black rounded-full"></div>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        key={c.name}
+                                                        onClick={() => handleColorSelect(c.name, c.image)}
+                                                        className={`py-2.5 px-4 rounded-xl text-xs font-black border transition-all duration-200 ${selectedColor === c.name
+                                                                ? 'bg-black text-white border-black shadow-md'
+                                                                : 'bg-white text-gray-700 border-gray-200 hover:border-black'
+                                                            }`}
+                                                    >
+                                                        {c.name}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+
+                                {!isSingleSizeOnlyGroup && (availableSizes.length > 1 || isSingleSizeOnlyGroup) && (
+                                    <div className="h-px w-full bg-gray-200/60 md:hidden"></div>
+                                )}
+
+                                {/* Selector de Talla */}
+                                {(availableSizes.length > 1 || isSingleSizeOnlyGroup) && (
+                                    <div>
+                                        <div className="flex items-end justify-between mb-3">
+                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Selecciona tu Talla</span>
+                                            {selectedSize && <span className="text-sm font-black text-black animate-in fade-in slide-in-from-bottom-1">Sel: {selectedSize}</span>}
+                                        </div>
+
+                                        {!selectedColor ? (
+                                            <div className="flex items-center gap-3 text-xs md:text-sm font-medium text-orange-600 bg-orange-50/50 p-4 rounded-xl border border-orange-100/50">
+                                                <AlertCircle size={16} className="text-orange-500" /> Selecciona una opción para ver tallas
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2 md:gap-3">
+                                                {availableSizes.map((v) => (
+                                                    <button
+                                                        key={v.id}
+                                                        onClick={() => setSelectedSize(v.size)}
+                                                        className={`py-3 px-5 min-w-[3.5rem] md:min-w-[4.5rem] rounded-xl text-sm font-black border transition-all duration-200 transform-gpu active:scale-95 ${selectedSize === v.size
+                                                                ? 'bg-black text-white border-black shadow-lg shadow-black/20 -translate-y-1'
+                                                                : 'bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black shadow-sm'
+                                                            }`}
+                                                    >
+                                                        {v.size}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 

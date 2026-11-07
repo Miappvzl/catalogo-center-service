@@ -277,18 +277,18 @@ export default function EliteVariantColorPicker({
                         </AnimatePresence>
                     </div>
                 </div>
-            ) : (
-                /* 🚀 FIX: ESTADO LIMPIO PARA "SIN COLOR" (EL PLACEHOLDER SE VE DIRECTO) */
+       ) : (
+                /* 🚀 FIX: ESTADO LIMPIO PARA "SIN COLOR" (SOPORTA 1D SOLO TALLAS U OPCIÓN TEXTUAL) */
                 <div className="space-y-1 animate-in fade-in duration-150">
                     <input
                         type="text"
                         value={colorName}
                         onChange={e => onChange(e.target.value, colorHex)}
-                        placeholder="Ej: Licencia Estándar, Pack x3, Tapa Dura..."
+                        placeholder="Opcional si solo usas tallas (o ej: Pack x3, Corte...)"
                         className="w-full h-8.5 bg-neutral-50/70 border border-neutral-200/80 focus:border-neutral-900 focus:bg-white rounded-xl px-3 text-[11px] sm:text-xs font-bold text-neutral-900 outline-none transition-all placeholder:text-neutral-400 placeholder:font-normal leading-none"
                     />
                     <p className="text-[9px] text-neutral-400 font-medium px-1 leading-snug">
-                        Asigna un nombre a la variante sin vincularle muestras de color visual.
+                        Déjalo vacío si el artículo solo varía por talla, o escribe un nombre de opción.
                     </p>
                 </div>
             )}
