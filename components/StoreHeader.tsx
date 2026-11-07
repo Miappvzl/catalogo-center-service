@@ -444,10 +444,19 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
                     {/* Contenedor Auto-Centrado en Desktop & Scrollable en Mobile */}
                     <div ref={props.categoryScrollRef} onScroll={props.handleCategoryScroll} className="w-full overflow-x-auto no-scrollbar py-1" style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}>
-                        <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
-                            {props.categories.map((category) => (
-                                <CategoryPill key={category} label={category} active={props.selectedCategory === category} onClick={() => props.setSelectedCategory(category)} isMinimal={isMinimal} />
-                            ))}
+                    <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
+                            {props.categories.map((category) => {
+                                const isActivePill = props.selectedCategory === category && !(category === 'Todos' && props.search.trim().length > 0);
+                                return (
+                                    <CategoryPill
+                                        key={category}
+                                        label={category}
+                                        active={isActivePill}
+                                        onClick={() => props.setSelectedCategory(category)}
+                                        isMinimal={isMinimal}
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
 

@@ -1105,8 +1105,10 @@ useEffect(() => {
     return computed;
   }, [categories, selectedCategory, products, store?.category_images]);
 
-  // Manejador de transición ultra-rápida al elegir una nueva categoría
+// Manejador de transición ultra-rápida al elegir una nueva categoría (Limpia búsquedas activas)
   const handleExploreCategory = (catName: string) => {
+    setSearch('');
+    setDebouncedSearch('');
     setSelectedCategory(catName);
     setCurrentPage(1);
     if (catalogTopRef.current) {
@@ -1114,7 +1116,6 @@ useEffect(() => {
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
-
   // 💎 BÓVEDA DE MEMOIZACIÓN DEL CATÁLOGO: Hook en nivel superior para blindar la lista enlazada de React (Zero Error #300)
   const renderedProductGrid = useMemo(() => {
     return paginatedProducts.map((product: any, index: number) => {
@@ -1308,9 +1309,14 @@ useEffect(() => {
         isEur={isEur}
         search={search}
         setSearch={setSearch}
-        categories={categories}
+       categories={categories}
         selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        setSelectedCategory={(cat: string) => {
+          setSearch('');
+          setDebouncedSearch('');
+          setSelectedCategory(cat);
+          setCurrentPage(1);
+        }}
         isBoutiqueMode={isBoutiqueMode}
         exitBoutiqueMode={exitBoutiqueMode}
         currentUser={currentUser}
@@ -1532,8 +1538,42 @@ useEffect(() => {
             </section>
           )}
 
-      {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
+     {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
           <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
+
+          {/* 🚀 BARRA CONTEXTUAL DE BÚSQUEDA ACTIVA CON CTA DE RETORNO */}
+          {debouncedSearch.trim() !== '' && standardProducts.length > 0 && (
+            <div className="mb-6 p-3.5 sm:px-5 sm:py-4 rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--store-bg)] border border-[var(--store-border)]/60 flex items-center justify-center shrink-0 text-[var(--store-text-main)]">
+                  <Search size={14} strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-[var(--store-text-main)] truncate">
+                    Resultados para &quot;{debouncedSearch}&quot;
+                  </p>
+                  <p className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]">
+                    {standardProducts.length} {standardProducts.length === 1 ? 'artículo encontrado' : 'artículos encontrados'}
+                    {selectedCategory !== 'Todos' ? ` en ${selectedCategory}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                  setSelectedCategory('Todos');
+                  setCurrentPage(1);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-[var(--radius-btn)] bg-[var(--store-primary)] text-[var(--store-primary-text)] text-[11px] font-bold uppercase tracking-wider hover:opacity-90 transition-all shrink-0 active:scale-95 shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <X size={14} strokeWidth={2.5} />
+                <span>Ver todo el catálogo</span>
+              </button>
+            </div>
+          )}
 
           {/* 🚀 ENRUTADOR DE ESTADO (VACÍO VS CATÁLOGO) */}
           {standardProducts.length === 0 ? (
@@ -1544,7 +1584,7 @@ useEffect(() => {
                           <SearchX size={48} strokeWidth={1.5} className="mb-4 text-[var(--store-text-main)]" />
                           <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">0 RESULTADOS</h3>
                           <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO HAY COINCIDENCIAS PARA "{debouncedSearch}"</p>
-                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
                               RESETEAR FILTROS
                           </button>
                       </div>
@@ -1554,7 +1594,7 @@ useEffect(() => {
                           <SearchX size={32} strokeWidth={1} className="mb-6 text-[var(--store-surface-text)] opacity-50" />
                           <h3 className="font-heading text-2xl md:text-3xl mb-3 text-[var(--store-text-main)]">Sin resultados</h3>
                           <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No pudimos encontrar piezas que coincidan con tu búsqueda actual.</p>
-                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
                               Explorar Colección
                           </button>
                       </div>
@@ -1566,7 +1606,7 @@ useEffect(() => {
                           </div>
                           <h3 className="font-black text-xl text-[var(--store-text-main)] mb-2">No encontramos lo que buscas</h3>
                           <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otras palabras o revisa nuestras categorías principales.</p>
-                          <button onClick={() => { setSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
+                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
                               Ver todo el catálogo
                           </button>
                       </div>
