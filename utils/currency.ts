@@ -29,16 +29,39 @@ interface FormatOptions {
  */
 export function sanitizeNumericValue(val: number | string | null | undefined): number {
   if (val === null || val === undefined || val === '') return 0
-  if (typeof val === 'number') return isNaN(val) ? 0 : val
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0
 
-  // Si viene con formato hispano "1.250,50", lo traduce a "1250.50"
-  const cleaned = String(val)
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
+  let str = String(val).trim().replace(/[^\d.,-]/g, '')
+  if (!str) return 0
 
-  const parsed = parseFloat(cleaned)
-  return isNaN(parsed) ? 0 : parsed
+  const hasComma = str.includes(',')
+  const hasDot = str.includes('.')
+
+  if (hasComma && hasDot) {
+    const lastComma = str.lastIndexOf(',')
+    const lastDot = str.lastIndexOf('.')
+    if (lastComma > lastDot) {
+      // Formato Hispano/BCV: "1.006,60" -> quitar puntos de mil, coma pasa a punto
+      str = str.replace(/\./g, '').replace(',', '.')
+    } else {
+      // Formato Anglosajón: "1,006.60" -> quitar comas de mil
+      str = str.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    // Solo coma decimal: "899,27" -> "899.27"
+    const parts = str.split(',')
+    str = parts.length === 2 ? `${parts[0]}.${parts[1]}` : str.replace(/,/g, '')
+  } else if (hasDot) {
+    // Solo puntos: proteger tanto floats estándar ("1006.60") como miles sin decimales ("1.006.60")
+    const parts = str.split('.')
+    if (parts.length > 2) {
+      const dec = parts.pop()
+      str = `${parts.join('')}.${dec}`
+    }
+  }
+
+  const parsed = parseFloat(str)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 /**

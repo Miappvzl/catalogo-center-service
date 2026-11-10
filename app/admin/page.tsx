@@ -164,8 +164,12 @@ export default async function AdminDashboard() {
         }
     });
 
-    // 🚀 PARIDAD MATEMÁTICA CON LA TASA EN PANTALLA ($30.00 * 842.20 = Bs 25.266,00)
-    const salesTodayBs = salesTodayUSD * usdRate;
+  const storeCurrency = store?.currency_type === "eur" ? "eur" : "usd";
+    const currencySymbol = store?.currency_symbol || "$";
+
+    // 🚀 PARIDAD MATEMÁTICA CON LA TASA ACTIVA EN PANTALLA (USD o EUR según configuración de la tienda)
+    const activeReferenceRate = storeCurrency === "eur" ? eurRate : usdRate;
+    const salesTodayBs = salesTodayUSD * activeReferenceRate;
 
     const digitalTotalUSD = salesTodayUSD - cashTotalUSD;
     const cashPct = salesTodayUSD > 0 ? Math.round((cashTotalUSD / salesTodayUSD) * 100) : 0;
@@ -176,30 +180,19 @@ export default async function AdminDashboard() {
         .sort((a, b) => b[1] - a[1])
         .map(([name, amount]) => ({ name, amount }));
 
-
-
-
-
-
     // --- PARCHE ARCHITECTURE: Server-Side Time Formatting ---
-
     let formattedLastUpdated = null;
 
     if (configRes.data?.updated_at) {
         formattedLastUpdated = new Intl.DateTimeFormat("es-VE", {
             timeZone: "America/Caracas",
-
             hour: "numeric",
-
             minute: "numeric",
-
             hour12: true,
         }).format(new Date(configRes.data.updated_at));
     }
 
-    const storeCurrency = store?.currency_type === "eur" ? "eur" : "usd";
 
-    const currencySymbol = store?.currency_symbol || "$";
 
     const recentOrders = recentOrdersRes.data || [];
 
@@ -550,7 +543,7 @@ export default async function AdminDashboard() {
 
                         {/* FILA 1: POR DESPACHAR */}
                         <FadeInBlock className="col-span-1 min-h-[140px] w-full">
-                            <Link href="/admin/orders" className="bg-[#0a0a0a] text-white p-5 md:p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col justify-between h-full group relative overflow-hidden transition-transform hover:-translate-y-1 active:scale-[0.99]">
+                            <Link href="/admin/orders" className="bg-[#0a0a0a] text-white p-5 md:p-6 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col justify-between h-full group relative overflow-hidden transition-transform hover:-translate-y-1 active:scale-[0.99]">
                                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/15 rounded-full blur-2xl pointer-events-none transform-gpu" />
                                 <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-amber-600/10 rounded-full blur-xl pointer-events-none transform-gpu" />
                                 <div className="flex justify-between items-start relative z-10">

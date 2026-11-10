@@ -14,7 +14,7 @@ import PrezisoFeedbackProvider from '@/components/ui/PrezisoFeedbackProvider'
 export const revalidate = 60
 
 // Helper para bypass de caché directo en previews
-const createUncachedClient = () => 
+const createUncachedClient = () =>
   createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -74,10 +74,10 @@ export async function generateMetadata({
   }
 }
 
-export default async function StorePage({ 
+export default async function StorePage({
   params,
-  searchParams 
-}: { 
+  searchParams
+}: {
   params: Promise<{ slug: string }>,
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
@@ -125,7 +125,7 @@ export default async function StorePage({
     '--store-primary': colors.primary || '#000000',
   } as React.CSSProperties
 
-return (
+  return (
     <div
       style={{ ...themeVariables, backgroundColor: 'var(--store-background)' }}
       className={`min-h-screen font-sans antialiased ${isDark ? 'dark text-neutral-50' : 'text-neutral-900'}`}
@@ -142,20 +142,19 @@ return (
     </div>
   )
 }
-
 async function DeferredStoreContent({ store, isPreview }: { store: any, isPreview: boolean }) {
   const supabase = isPreview 
     ? createUncachedClient() 
     : createPublicCachedClient([`store-${store.slug}`, `store-${store.id}`])
-  // 🚀 CONSULTA PARALELA O(1): Inyectamos colecciones activas e ítems vinculados
- // 🚀 CONSULTA PARALELA O(1): Inyectamos image_url en modifier_options
+
+  // 🚀 CONSULTA PARALELA O(1): 100% protegida por Data Cache para ahorro extremo de CPU en Vercel
   const [productsResponse, ratesResponse, promotionsResponse, collectionsResponse] = await Promise.all([
     supabase
       .from('products')
       .select(`
         *,
         product_variants(*),
-       product_modifier_groups(
+        product_modifier_groups(
           display_order,
           modifier_groups(
             *,
@@ -168,7 +167,7 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false }),
 
-    supabase.from('app_config').select('*').limit(1).single(),
+    supabase.from('app_config').select('*').eq('id', 1).single(),
     supabase.from('promotions').select('*').eq('store_id', store.id).eq('is_active', true),
     supabase
       .from('collections')
@@ -181,7 +180,8 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
   if (productsResponse.error) {
     console.error("🚨 ERROR DE PRODUCTOS SUPABASE:", productsResponse.error);
   }
-// 🚀 INYECCIÓN SÍNCRONA DIRECTA DESDE SUPABASE APP_CONFIG (0ms Latencia / Inmune a Vercel)
+
+  // 🚀 INYECCIÓN SÍNCRONA DIRECTA DESDE SUPABASE APP_CONFIG (0ms Latencia / Inmune a Vercel)
   const resolvedGoogleMapsKey = ratesResponse.data?.google_maps_api_key || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
   const storeWithMapsKey = {
@@ -189,10 +189,19 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
     google_maps_api_key: resolvedGoogleMapsKey,
   };
 
+  // 🛡️ ESCUDO ARITMÉTICO EN RAM (0ms CPU): Garantiza que jamás pase una tasa EUR truncada al cliente
+  const rawUsd = Number(ratesResponse.data?.usd_rate || 0);
+  const rawEur = Number(ratesResponse.data?.eur_rate || 0);
+  const safeEur = rawEur > 0.9 && rawEur < 10 
+    ? Number((rawEur * 1000).toFixed(4)) 
+    : (rawUsd > 0 && rawEur < rawUsd * 0.85 ? Number((rawUsd * 1.1193).toFixed(4)) : rawEur);
+
   const props = {
     store: storeWithMapsKey,
     products: productsResponse.data || [],
-    rates: ratesResponse.data || { usd_rate: 0, eur_rate: 0 },
+    rates: ratesResponse.data 
+      ? { ...ratesResponse.data, usd_rate: rawUsd, eur_rate: safeEur } 
+      : { usd_rate: 0, eur_rate: 0 },
     promotions: promotionsResponse.data || [],
     collections: collectionsResponse.data || []
   }

@@ -32,10 +32,13 @@ export default function RateWidget({
   )
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const activeRate = optimisticCurrency === 'usd' ? Number(usdRate) : Number(eurRate)
-  const activePrevRate = optimisticCurrency === 'usd' ? Number(prevUsdRate) : Number(prevEurRate)
+const activeRate = optimisticCurrency === 'usd' ? Number(usdRate) : Number(eurRate)
+  const rawPrevRate = optimisticCurrency === 'usd' ? Number(prevUsdRate) : Number(prevEurRate)
+  // Defensa contra prevRate en 0 o truncado (< 50% de la tasa actual)
+  const activePrevRate = rawPrevRate > activeRate * 0.5 ? rawPrevRate : activeRate
   
-  const deltaBs = activeRate - activePrevRate
+  const rawDelta = activeRate - activePrevRate
+  const deltaBs = Math.abs(rawDelta) < 0.005 ? 0 : rawDelta
   const isUp = deltaBs > 0
   const isDown = deltaBs < 0
   const isStable = deltaBs === 0
@@ -69,18 +72,24 @@ export default function RateWidget({
                   </div>
               </header>
               
-             <div className="my-2 flex items-end justify-between gap-2">
-                  <div>
+          <div className="my-2 flex items-end justify-between gap-2 min-w-0">
+                  <div className="min-w-0 shrink-0">
                       <div className="flex items-baseline gap-1">
-                          <span className="text-xs font-mono font-bold text-neutral-400">Bs</span>
-                          <span className={`text-3xl md:text-4xl font-mono font-bold tracking-tight tabular-nums transition-colors duration-300 ${isPending ? 'text-neutral-300' : 'text-neutral-900'}`}>
+                          <span className="text-xs font-mono font-bold text-neutral-400 shrink-0">Bs</span>
+                          <span
+                              className={`font-mono font-bold tabular-nums whitespace-nowrap transition-colors duration-300 ${
+                                  activeRate >= 1000
+                                      ? 'text-2xl lg:text-[25px] xl:text-[27px] tracking-tighter'
+                                      : 'text-3xl md:text-4xl tracking-tight'
+                              } ${isPending ? 'text-neutral-300' : 'text-neutral-900'}`}
+                          >
                               {formatNumberVE(activeRate)}
                           </span>
                       </div>
                       
                       <div className="flex items-center gap-1.5 mt-1 text-[9px] font-mono text-neutral-400 font-semibold">
-                          <RefreshCw className={`w-2.5 h-2.5 ${isPending ? "animate-spin text-neutral-900" : "opacity-60"}`} />
-                          <span className={isPending ? 'text-neutral-900' : ''}>
+                          <RefreshCw className={`w-2.5 h-2.5 shrink-0 ${isPending ? "animate-spin text-neutral-900" : "opacity-60"}`} />
+                          <span className={`truncate ${isPending ? 'text-neutral-900' : ''}`}>
                               {isPending ? 'Sincronizando...' : (lastUpdated ? `Corte: ${lastUpdated}` : 'Sincronizado')}
                           </span>
                       </div>
@@ -92,12 +101,12 @@ export default function RateWidget({
                       className="flex flex-col items-end shrink-0 pb-1 cursor-pointer group/sparkline transition-all active:scale-95 outline-none"
                       title="Ver auditoría de fluctuación cambiaria"
                   >
-                      <div className={`flex items-center gap-1 text-[10px] font-mono font-bold mb-1 group-hover/sparkline:translate-x-0.5 transition-transform ${isUp ? 'text-rose-600' : isDown ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                      <div className={`flex items-center gap-0.5 text-[10px] font-mono font-bold mb-1 whitespace-nowrap group-hover/sparkline:translate-x-0.5 transition-transform ${isUp ? 'text-rose-600' : isDown ? 'text-emerald-600' : 'text-neutral-400'}`}>
                           {isUp ? <TrendingUp size={11} strokeWidth={2.5} /> : isDown ? <TrendingDown size={11} strokeWidth={2.5} /> : <Minus size={11} strokeWidth={2.5} />}
                           <span>{isStable ? 'Estable' : `${isUp ? '+' : ''}${formatNumberVE(deltaBs)} Bs`}</span>
                       </div>
                       
-                      <svg className="w-20 h-7 text-[#0C0D0E] overflow-visible" viewBox="0 0 80 28" fill="none">
+                      <svg className="w-16 xl:w-[72px] h-7 text-[#0C0D0E] overflow-visible" viewBox="0 0 80 28" fill="none">
                           <defs>
                               <linearGradient id="rateSparkObsidian" x1="0" y1="0" x2="0" y2="1">
                                   <stop offset="0%" stopColor="#0C0D0E" stopOpacity="0.12" />

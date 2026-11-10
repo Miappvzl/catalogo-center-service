@@ -50,16 +50,19 @@ export async function updateStoreCurrency(prevState: ActionState, formData: Form
     return { success: false, message: 'Moneda no válida' }
   }
 
-  try {
-    // 3. Actualizar la preferencia de la tienda (Tabla 'stores')
-    const { error } = await supabase
+ try {
+    // 3. Actualizar la preferencia de la tienda y obtener slug/id para invalidar el caché del subdominio
+    const { data: updatedStore, error } = await supabase
       .from('stores')
       .update({ currency_type: validated.data.currency })
       .eq('user_id', user.id)
+      .select('id, slug')
+      .single()
 
     if (error) throw error
 
-    revalidatePath('/', 'layout')
+    // 🚀 PURGADO PROFUNDO DE CACHÉ (Admin + Subdominio Público)
+    await revalidateStoreCache(updatedStore?.slug, updatedStore?.id)
 
     return {
       success: true,
