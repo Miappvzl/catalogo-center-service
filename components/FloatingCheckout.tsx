@@ -597,7 +597,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             <div className="relative shrink-0" data-cart-target="true">
                                                 <motion.div
                                                     animate={cartControls}
-                                                    className="w-10 h-10 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] flex items-center justify-center border border-[var(--store-border)]/40 shadow-sm"
+                                                    className="gh"
                                                 >
                                                     <ShoppingBag size={18} strokeWidth={2} />
                                                 </motion.div>

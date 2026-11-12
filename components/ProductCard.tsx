@@ -368,7 +368,7 @@ function ProductCardComponent({
                 e.stopPropagation();
                 handleOpenCard();
               }}
-              className="absolute bottom-2.5 right-2.5 z-20 w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] bg-[var(--store-text-main)] text-[var(--store-bg)] border border-[var(--store-border)]/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform duration-150 md:hidden"
+              className="absolute bottom-2.5 right-2.5 z-20 w-8 h-8 md:w-9 md:h-9 rounded-[var(--radius-btn)] bg-[var(--store-primary)] text-[var(--store-primary-text)] border border-[var(--store-border)]/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform duration-150 md:hidden"
               aria-label="Ver y añadir a la bolsa"
               title="Añadir a la bolsa"
             >

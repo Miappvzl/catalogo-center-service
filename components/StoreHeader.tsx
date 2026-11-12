@@ -998,7 +998,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
         return (
             <>
                 {/* 1. MARQUEE TICKER (High-Fashion Editorial Style) */}
-                <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] py-2 overflow-hidden flex items-center select-none border-b border-[var(--store-bg)]/10">
+                <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] py-2 overflow-hidden flex items-center select-none border-b border-[var(--store-bg)]/10">
                     <motion.div
                         animate={{ x: ["0%", "-50%"] }}
                         transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
