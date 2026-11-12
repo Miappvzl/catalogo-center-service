@@ -90,7 +90,7 @@ export default function AffiliateLaunchModal() {
                   1
                 </div>
                 <div className="text-left">
-                  <p className="text-xs font-bold text-gray-900">Copia tu enlace personal</p>
+                  <p className="text-xs font-bold text-gray-900">Activa tu código único de socio</p>
                   <p className="text-[11px] text-gray-400 font-medium">Te lo entregamos listo en tu panel.</p>
                 </div>
               </div>
@@ -121,7 +121,7 @@ export default function AffiliateLaunchModal() {
                 onClick={handleGoToAffiliates}
                 className="w-full h-14 bg-black text-white text-xs font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 hover:bg-gray-900 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(0,0,0,0.12)] group"
               >
-                Activar mi enlace ahora
+                Activar mi código ahora
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
 

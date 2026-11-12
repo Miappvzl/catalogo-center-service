@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Coins, ArrowRight, Check, Globe, Smartphone, Store, Utensils, Loader2 } from 'lucide-react'
+import { Coins, ArrowRight, Check, Globe, Smartphone, Store, Utensils, Loader2, Tag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { processReferral } from '@/app/actions/affiliates'
+import { processReferral, verifyPartnerCodeAction } from '@/app/actions/affiliates'
 import confetti from 'canvas-confetti'
 import { toast } from 'sonner'
 import { TEMPLATES_REGISTRY } from '@/lib/templates-registry' // 🚀 FUENTE ÚNICA DE VERDAD
@@ -34,6 +34,26 @@ export default function OnboardingWizard() {
   const [storeName, setStoreName] = useState('')
   const [slug, setSlug] = useState('')
   const [phone, setPhone] = useState('')
+
+  const [partnerCode, setPartnerCode] = useState('')
+  const [checkingCode, setCheckingCode] = useState(false)
+  const [partnerFeedback, setPartnerFeedback] = useState<{
+    valid: boolean
+    message: string
+  } | null>(null)
+
+  const handleValidatePartnerCode = async () => {
+    if (!partnerCode.trim()) return
+    setCheckingCode(true)
+    try {
+      const res = await verifyPartnerCodeAction(partnerCode)
+      setPartnerFeedback({ valid: res.valid, message: res.message })
+    } catch {
+      setPartnerFeedback({ valid: false, message: 'No se pudo verificar el código' })
+    } finally {
+      setCheckingCode(false)
+    }
+  }
   
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -102,7 +122,7 @@ export default function OnboardingWizard() {
         throw storeErr
       }
 
-      await processReferral(user.id).catch(console.error)
+      await processReferral(user.id, partnerCode).catch(console.error)
 
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#000', '#22c55e'] })
       
@@ -291,6 +311,53 @@ export default function OnboardingWizard() {
                   onChange={(v: any) => setPhone(v.replace(/[^0-9]/g, ''))} 
                   prefix={<Smartphone size={16} />} 
                 />
+                {/* CÓDIGO DE PARTNER / INVITACIÓN (OPCIONAL) */}
+                <div className="space-y-2 w-full pt-1">
+                  <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider ml-1">
+                    Código de Partner / Invitación (Opcional)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-white border border-neutral-200 rounded-xl px-4 py-2.5 focus-within:border-neutral-900 transition-colors">
+                      <Tag size={15} className="text-neutral-400 mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        maxLength={20}
+                        value={partnerCode}
+                        onChange={(e) => {
+                          setPartnerCode(
+                            e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+                          )
+                          if (partnerFeedback) setPartnerFeedback(null)
+                        }}
+                        placeholder="EJ: SUPLESHOP"
+                        className="w-full bg-transparent outline-none text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 placeholder:text-neutral-300"
+                      />
+                    </div>
+                    {partnerCode.trim().length >= 3 && (
+                      <button
+                        type="button"
+                        onClick={handleValidatePartnerCode}
+                        disabled={checkingCode}
+                        className="px-4 py-2.5 rounded-xl border border-neutral-900 bg-transparent hover:bg-neutral-900 text-neutral-900 hover:text-white text-xs font-semibold transition-colors shrink-0 cursor-pointer"
+                      >
+                        {checkingCode ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          'Validar'
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {partnerFeedback && (
+                    <p
+                      className={`text-[11px] font-medium ml-1 ${
+                        partnerFeedback.valid ? 'text-emerald-600' : 'text-rose-600'
+                      }`}
+                    >
+                      {partnerFeedback.message}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3">

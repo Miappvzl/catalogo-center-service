@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getSupabase } from '@/lib/supabase-client'
 import { PREZISO_BILLING } from '@/lib/config/billing'
 import Link from 'next/link'
+import { redeemPartnerCodeAction } from '@/app/actions/affiliates'
+import { toast } from 'sonner'
 
 // ============================================================================
 // ISOTIPO OFICIAL VECTORIAL DE WHATSAPP (OBSIDIAN EDITION)
@@ -49,13 +51,54 @@ function SubscriptionContent() {
     const [showSuccessModal, setShowSuccessModal] = useState(false)
     const [activePaymentTab, setActivePaymentTab] = useState<'pago_movil' | 'wallets'>('pago_movil')
 
-    // Estado Financiero Pre-computado
+// Estado Financiero Pre-computado
     const [billingData, setBillingData] = useState({
         basePrice: PREZISO_BILLING.priceUSD,
         finalPrice: PREZISO_BILLING.priceUSD,
         hasDiscount: false,
         discountReason: ''
     })
+
+    // Estados para canje directo de Código Único de Partner
+    const [showPartnerInput, setShowPartnerInput] = useState(false)
+    const [partnerCodeInput, setPartnerCodeInput] = useState('')
+    const [redeemingCode, setRedeemingCode] = useState(false)
+
+    const handleRedeemPartnerCode = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!partnerCodeInput.trim() || redeemingCode) return
+        setRedeemingCode(true)
+        try {
+            const res = await redeemPartnerCodeAction(partnerCodeInput)
+            if (!res.success) {
+                toast.error(res.message || 'Código no válido')
+                return
+            }
+
+            const pct = Number(res.discountPct || 0)
+            if (pct > 0) {
+                setBillingData({
+                    basePrice: PREZISO_BILLING.priceUSD,
+                    finalPrice: Number((PREZISO_BILLING.priceUSD * (1 - pct / 100)).toFixed(2)),
+                    hasDiscount: true,
+                    discountReason: `Partner #${res.code} (-${pct}%)`
+                })
+            } else {
+                setBillingData((prev) => ({
+                    ...prev,
+                    hasDiscount: true,
+                    discountReason: `Partner #${res.code} Vinculado`
+                }))
+            }
+
+            setShowPartnerInput(false)
+            toast.success(res.message || 'Código de partner vinculado con éxito')
+        } catch {
+            toast.error('Error al verificar el código de partner')
+        } finally {
+            setRedeemingCode(false)
+        }
+    }
 
     useEffect(() => {
         const initializeBilling = async () => {
@@ -326,6 +369,55 @@ function SubscriptionContent() {
                                                     Tasa: {rate.toFixed(2)} Bs/$
                                                 </span>
                                             </>
+                                        )}
+                                    </div>
+                                {/* Canje Directo de Código Único de Partner (Siempre accesible) */}
+                                    <div className="mt-3.5 w-full max-w-[290px] flex flex-col items-center">
+                                        {!showPartnerInput ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPartnerInput(true)}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-neutral-200/90 hover:border-neutral-900 bg-white text-[11px] font-medium text-neutral-600 hover:text-neutral-950 transition-colors cursor-pointer"
+                                            >
+                                                <Tag size={11} />
+                                                <span>
+                                                    {billingData.discountReason.startsWith('Partner')
+                                                        ? `${billingData.discountReason} (Cambiar código)`
+                                                        : '¿Tienes un código de Partner?'}
+                                                </span>
+                                            </button>
+                                        ) : (
+                                            <form
+                                                onSubmit={handleRedeemPartnerCode}
+                                                className="w-full flex items-center gap-1.5 mt-1 animate-in fade-in duration-200"
+                                            >
+                                                <input
+                                                    type="text"
+                                                    maxLength={20}
+                                                    autoFocus
+                                                    value={partnerCodeInput}
+                                                    onChange={(e) =>
+                                                        setPartnerCodeInput(
+                                                            e.target.value
+                                                                .toUpperCase()
+                                                                .replace(/[^A-Z0-9_-]/g, '')
+                                                        )
+                                                    }
+                                                    placeholder="INGRESA EL CÓDIGO"
+                                                    className="flex-1 px-3.5 py-1.5 rounded-full border border-neutral-300 focus:border-neutral-950 text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-950 outline-none text-center bg-white"
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    disabled={redeemingCode || partnerCodeInput.length < 3}
+                                                    className="px-3.5 py-1.5 rounded-full bg-neutral-950 text-white text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-40 shrink-0 cursor-pointer"
+                                                >
+                                                    {redeemingCode ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : (
+                                                        'Aplicar'
+                                                    )}
+                                                </button>
+                                            </form>
                                         )}
                                     </div>
                                 </div>
