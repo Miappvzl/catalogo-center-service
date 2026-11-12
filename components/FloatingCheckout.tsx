@@ -594,17 +594,18 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                             className="flex items-center gap-3 cursor-pointer select-none group flex-1 min-w-0"
                                             onClick={() => setIsOpen(true)}
                                         >
-                                            <div className="relative shrink-0" data-cart-target="true">
-                                                <motion.div
-                                                    animate={cartControls}
-                                                    className="gh"
-                                                >
-                                                    <ShoppingBag size={18} strokeWidth={2} />
-                                                </motion.div>
-                                                <span className="absolute -top-1.5 -right-1.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono text-[9px] font-black min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border border-[var(--store-surface)] shadow-sm">
-                                                    {totalItemsCount}
-                                                </span>
-                                            </div>
+                                         <div className="relative shrink-0" data-cart-target="true">
+  <motion.div
+    animate={cartControls}
+    className="w-10 h-10 text-[var(--store-text-main)] flex items-center justify-center"
+  >
+    <ShoppingBag size={20} strokeWidth={2} />
+  </motion.div>
+
+  <span className="absolute -top-0.5 -right-0.5 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono text-[9px] font-black min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border border-[var(--store-surface)] shadow-sm">
+    {totalItemsCount}
+  </span>
+</div>
 
                                             <div className="flex flex-col min-w-0">
                                                 <span className="text-xl font-bold font-sans text-[var(--store-text-main)] leading-none tracking-tight truncate">
