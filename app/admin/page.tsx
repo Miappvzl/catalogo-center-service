@@ -32,6 +32,7 @@ import FeatureCollectionModal from "@/components/admin/FeatureCollectionModal";
 import { BentoGridWrapper, FadeInBlock } from "@/components/admin/DashboardAnimations";
 import { DeliveryRadarFeatureModal } from "@/components/admin/DeliveryRadarFeatureModal";
 import { formatUSD } from "@/utils/currency";
+import QuickActionsBar from "@/components/admin/QuickActionsBar";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -291,8 +292,11 @@ export default async function AdminDashboard() {
         <div className="min-h-screen w-full bg-[#F6F6F6] pb-32 font-sans text-gray-900 selection:bg-black selection:text-white relative overflow-x-clip">
             <AdminHeader store={store} />
 
-            <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 relative z-10">
+           <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 relative z-10">
                 <PushNotificationManager storeId={store.id} />
+
+                {/* 🚀 BARRA DE ACCESOS DIRECTOS Y ACCIONES RÁPIDAS (Siempre visible con o sin misiones) */}
+                <QuickActionsBar store={store} isCompact={showMissionControl} />
 
                 {/* =======================================================
                     MODO ENFOQUE: BENTO GRID COMPACTO DE ALTA DENSIDAD

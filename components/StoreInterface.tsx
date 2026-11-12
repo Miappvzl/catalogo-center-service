@@ -239,40 +239,45 @@ export default function StoreInterface({ store: initialStore, products: initialP
   // 🚀 2. CEREBRO DE TOKENS (Con Inyección Dinámica de Banners Duales)
   const [liveConfig, setLiveConfig] = useState<any>(() => normalizeThemeConfig(initialStore?.theme_config))
   
- const activeTheme = useMemo(() => {
+const activeTheme = useMemo(() => {
       const baseTheme = normalizeThemeConfig(liveConfig || initialStore?.theme_config);
       
-      // 🚀 JERARQUÍA ESTRICTA: El logo que se está editando en vivo manda sobre todo
-      const resolvedLogoUrl = baseTheme.layout?.logo_url || initialStore?.theme_config?.layout?.logo_url || initialStore?.logo_url;
-      const resolvedHeroDesktop = baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
-      const resolvedHeroMobile = baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
+      // 🚀 PRIORIDAD EN VIVO (0ms vía postMessage): Lo que se edita en el Customizador manda sobre todo
+      const resolvedLogoUrl = liveConfig?.layout?.logo_url || baseTheme.layout?.logo_url || initialStore?.theme_config?.layout?.logo_url || initialStore?.logo_url;
+      const resolvedLogoType = liveConfig?.layout?.logo_type || baseTheme.layout?.logo_type || initialStore?.theme_config?.layout?.logo_type || 'png_transparent';
+      const resolvedHeroDesktop = liveConfig?.layout?.hero_desktop_url || baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
+      const resolvedHeroMobile = liveConfig?.layout?.hero_mobile_url || baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
+      const resolvedHeroCta = liveConfig?.layout?.hero_cta || baseTheme.layout?.hero_cta || initialStore?.theme_config?.layout?.hero_cta;
+      const resolvedCardMedia = liveConfig?.layout?.card_media || baseTheme.layout?.card_media || initialStore?.theme_config?.layout?.card_media;
 
-if (isMockMode) {
+      if (isMockMode) {
             const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
             const niche = template ? template.niche : 'general';
             const mockData = MOCK_DATA[niche];
             
             if (mockData) {
-                // 🚀 Detección autónoma de fondo oscuro (evita dependencias circulares con hooks inferiores)
                 const bg = (baseTheme.colors?.background || '#ffffff').toLowerCase();
                 const isDarkTheme = bg === '#000000' || bg === '#0d0d0d' || bg === '#1f1f1f' || bg === '#171717' || baseTheme.template_id === 'hardware_dense' || baseTheme.template_id === 'streetwear_bold';
 
-                // 🚀 EN LAS PLANTILLAS DE EJEMPLO (MOCK HYDRATION):
-                // Mostramos el ejemplo con logo PNG transparente flotante (sin cápsula circular y sin el nombre al lado)
                 baseTheme.layout = {
                     ...baseTheme.layout,
-                    logo_type: 'png_transparent',
-                    logo_url: mockData.logo || (isDarkTheme ? '/tu-logo-transparente-claro.webp' : '/tu-logo-transparente-oscuro.webp'),
+                    logo_type: resolvedLogoType,
+                    logo_url: resolvedLogoUrl || mockData.logo || (isDarkTheme ? '/tu-logo-transparente-claro.webp' : '/tu-logo-transparente-oscuro.webp'),
                     hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
                     hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
+                    hero_cta: resolvedHeroCta,
+                    card_media: resolvedCardMedia || baseTheme.layout.card_media,
                 };
             }
-        } else {
+      } else {
           baseTheme.layout = {
               ...baseTheme.layout,
+              logo_type: resolvedLogoType,
               logo_url: resolvedLogoUrl || '',
               hero_desktop_url: resolvedHeroDesktop || '',
               hero_mobile_url: resolvedHeroMobile || '',
+              hero_cta: resolvedHeroCta,
+              card_media: resolvedCardMedia || baseTheme.layout.card_media,
           };
       }
       return baseTheme;
@@ -286,36 +291,35 @@ if (isMockMode) {
   }, [activeTheme.template_id]);
 
   const products = isMockMode && MOCK_DATA[currentNiche] ? MOCK_DATA[currentNiche].products : initialProducts;
-// 🚀 3. INTERCEPTOR DE PROMOCIONES VIGENTES (AUTO-OCULTA VENCIDAS)
+
+  // 🚀 3. INTERCEPTOR DE PROMOCIONES VIGENTES (AUTO-OCULTA VENCIDAS)
   const displayPromotions = useMemo(() => {
       if (isMockMode && MOCK_DATA[currentNiche]?.promotion) {
           return [{
               ...MOCK_DATA[currentNiche].promotion,
               id: 'mock-promo-1',
               is_active: true,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toString(),
           }];
       }
       const now = Date.now();
       return (promotions || []).filter((p: any) => {
           if (!p.is_active) return false;
-          // 🛡️ Filtro temporal: Oculta automáticamente las campañas expiradas
           if (p.expires_at && new Date(p.expires_at).getTime() <= now) return false;
           return true;
       });
   }, [isMockMode, currentNiche, promotions]);
 
+  // 🚀 CONEXIÓN EN TIEMPO REAL UNIVERSAL CON STOREHEADER (Con o sin MockMode)
   const store = useMemo(() => {
-      if (!isMockMode || !MOCK_DATA[currentNiche]) return initialStore;
+      if (!initialStore) return initialStore;
       return {
           ...initialStore,
-          // Mantenemos esto por retrocompatibilidad con componentes legacy
-          logo_url: activeTheme.layout.logo_url,
-          hero_url: activeTheme.layout.hero_desktop_url,
-          // 🚀 INYECCIÓN CRÍTICA: Pasamos el holograma a la cabecera
+          logo_url: activeTheme.layout.logo_url || initialStore.logo_url,
+          hero_url: activeTheme.layout.hero_desktop_url || initialStore.hero_url,
           theme_config: activeTheme,
-      }
-  }, [initialStore, isMockMode, currentNiche, activeTheme]);
+      };
+  }, [initialStore, activeTheme]);
 
  
 
@@ -1538,8 +1542,8 @@ useEffect(() => {
             </section>
           )}
 
-     {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
-          <div ref={catalogTopRef} className="w-full h-px mt-2"></div>
+    {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
+          <div id="catalog-grid-start" ref={catalogTopRef} className="w-full h-px mt-2"></div>
 
           {/* 🚀 BARRA CONTEXTUAL DE BÚSQUEDA ACTIVA CON CTA DE RETORNO */}
           {debouncedSearch.trim() !== '' && standardProducts.length > 0 && (
@@ -1613,7 +1617,7 @@ useEffect(() => {
                   )}
               </div>
     ) : (
-            <div className={`grid min-h-[40vh] ${
+         <div className={`grid grid-flow-dense min-h-[40vh] ${
                 activeTheme.layout?.card_style === 'dense_hardware'
                   ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
                   : activeTheme.layout?.card_style === 'modular_tech'

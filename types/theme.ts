@@ -51,7 +51,6 @@ export interface CardMediaConfig {
     fit: ObjectFitOption;
     bg_color: string;
 }
-
 export interface TrustBadge {
     id: string;
     title: string;
@@ -59,8 +58,47 @@ export interface TrustBadge {
     icon: string;
 }
 
+export type HeroCtaActionType = 'catalog' | 'product';
+export type HeroCtaAlignment = 'left' | 'center' | 'right';
+export type HeroButtonFillStyle = 'outline_pill' | 'solid' | 'glass' | 'minimal_underline';
+export type HeroButtonRadius = 'pill' | 'rounded' | 'sharp';
+export type HeroShadowLevel = 'none' | 'subtle' | 'crisp';
+export type HeroBorderWidth = '0px' | '1px' | '1.5px' | '2px';
+export interface HeroButtonItemConfig {
+    text: string;
+    action_type: HeroCtaActionType;
+    target_product_id?: string | number | null;
+    fill_style: HeroButtonFillStyle;
+    bg_color: string;
+    text_color: string;
+    border_color: string;
+    border_width: HeroBorderWidth;
+    radius: HeroButtonRadius;
+    font_family: string;
+    shadow: HeroShadowLevel;
+    shadow_color?: string;
+}
+
+export interface HeroCtaConfig {
+    enabled: boolean;
+    // Descripción Editorial (Sin etiquetas que estorben)
+    description_text?: string;
+    description_font?: string;
+    description_color?: string;
+    description_size?: 'sm' | 'md' | 'lg';
+    description_shadow?: HeroShadowLevel;
+    description_shadow_color?: string;
+    // Posición en el Hero
+    alignment: HeroCtaAlignment;
+    vertical_alignment?: 'bottom' | 'center';
+    // Botón 1 ("Comprar Ahora")
+    primary_button: HeroButtonItemConfig;
+    // Botón 2 Opcional
+    secondary_button_enabled?: boolean;
+    secondary_button?: HeroButtonItemConfig;
+}
+
 export interface ThemeLayout {
-    // Se agregan los estilos 'restaurant_flow' y 'restaurant_horizontal'
     header_style: 'classic' | 'dense_search' | 'minimal' | 'brutalist' | 'pill_nav' | 'modular_tech' | 'restaurant_flow';
     card_style: 'standard' | 'dense_hardware' | 'editorial' | 'brutalist' | 'food_menu' | 'modular_tech' | 'restaurant_horizontal';
     logo_type?: 'standard' | 'png_transparent';
@@ -70,10 +108,11 @@ export interface ThemeLayout {
     logo_url?: string;
     hero_subtitle?: string;
     trust_badges?: TrustBadge[];
-     greeting_text?: string;
+    greeting_text?: string;
     slogan_text?: string;
-   hero_button_text?: string;
-    card_media?: CardMediaConfig; // 🚀 MOTOR DE ENCUADRE DE PRODUCTOS
+    hero_button_text?: string;
+    card_media?: CardMediaConfig;
+    hero_cta?: HeroCtaConfig;
 }
 
 export interface ThemeConfig {

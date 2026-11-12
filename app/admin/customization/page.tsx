@@ -9,13 +9,14 @@ import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import { DEFAULT_THEME_CONFIG, normalizeThemeConfig, AVAILABLE_FONTS } from '@/utils/themeAdapter'
-import { ThemeConfig } from '@/types/theme'
+import { HeroCtaConfig, ThemeConfig } from '@/types/theme'
 import { TEMPLATES_REGISTRY, TemplateDefinition } from '@/lib/templates-registry'
-import { compressImage } from '@/utils/imageOptimizer'
+import { compressImage, resizeImageToExactDimensions } from '@/utils/imageOptimizer'
 import { revalidateStoreCache } from '@/app/admin/actions'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
 import EliteColorPicker from '@/components/admin/EliteColorPicker'
+import AiBannerStudioModal from '@/components/admin/AiBannerStudio'
 // 🚀 AÑADIR ESTE COMPONENTE (Solución al error TS2304)
 const AnimatedSwitch = ({ active, activeColor = 'bg-neutral-900' }: { active: boolean, activeColor?: string }) => (
     <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 cursor-pointer ${active ? `${activeColor} border-transparent justify-end` : 'bg-neutral-100 border-neutral-200 justify-start'}`}>
@@ -96,10 +97,11 @@ export default function CustomizationPage() {
     // 🚀 IDs de plantillas completamente auditadas y listas para producción (100% Desbloqueadas)
     const ACTIVE_TEMPLATE_IDS = ['classic', 'universal', 'minimal_luxury', 'hardware_dense', 'streetwear_bold', 'bistro_fast', 'modular_tech']
 
-    // Estados para subidas del Studio
+    // Estados para subidas del Studio y Generador IA
     const [uploadingLogo, setUploadingLogo] = useState(false)
     const [uploadingHeroD, setUploadingHeroDesktop] = useState(false)
     const [uploadingHeroM, setUploadingHeroMobile] = useState(false)
+    const [isAiBannerStudioOpen, setIsAiBannerStudioOpen] = useState(false)
 
     const logoInputRef = useRef<HTMLInputElement>(null)
     const heroDInputRef = useRef<HTMLInputElement>(null)
@@ -114,12 +116,15 @@ export default function CustomizationPage() {
                     setStoreData(store)
                     const loadedConfig = normalizeThemeConfig(store.theme_config)
 
-                    // 🚀 SINCRONIZACIÓN DE SEGURIDAD: Inyectar datos legacy si el JSONB no los tenía
+                    // 🚀 SINCRONIZACIÓN DE SEGURIDAD: Inyectar datos legacy y preservar hero_cta
                     if (!loadedConfig.layout.logo_url && store.logo_url) {
                         loadedConfig.layout.logo_url = store.logo_url;
                     }
                     if (!loadedConfig.layout.hero_desktop_url && store.hero_url) {
                         loadedConfig.layout.hero_desktop_url = store.hero_url;
+                    }
+                    if (store.theme_config?.layout?.hero_cta) {
+                        loadedConfig.layout.hero_cta = store.theme_config.layout.hero_cta;
                     }
 
                     setConfig(loadedConfig)
@@ -130,6 +135,62 @@ export default function CustomizationPage() {
         }
         initData()
     }, [supabase])
+
+    // 🚀 PUBLICADOR ATÓMICO: Soporta actualizar solo botones CTA, solo 1 banner o ambos banners
+    const handlePublishAiBanners = async ({
+        desktopFile,
+        mobileFile,
+        updatedCtaConfig
+    }: {
+        desktopFile?: File | null
+        mobileFile?: File | null
+        updatedCtaConfig: HeroCtaConfig
+    }) => {
+        if (!storeData?.id) return
+        if (desktopFile) setUploadingHeroDesktop(true)
+        if (mobileFile) setUploadingHeroMobile(true)
+
+        try {
+            const ts = Date.now()
+            let nextDesktopUrl = config.layout.hero_desktop_url || storeData?.hero_url || ''
+            let nextMobileUrl = config.layout.hero_mobile_url || ''
+
+            if (desktopFile) {
+                const desktopFileName = `hero-d-${storeData.id}-${ts}.jpg`
+                const { error: upDErr } = await supabase.storage.from('variants').upload(desktopFileName, desktopFile)
+                if (upDErr) throw upDErr
+                const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(desktopFileName)
+                nextDesktopUrl = publicUrl
+                await supabase.from('stores').update({ hero_url: publicUrl }).eq('id', storeData.id)
+                setStoreData((prev: any) => ({ ...prev, hero_url: publicUrl }))
+            }
+
+            if (mobileFile) {
+                const mobileFileName = `hero-m-${storeData.id}-${ts}.jpg`
+                const { error: upMErr } = await supabase.storage.from('variants').upload(mobileFileName, mobileFile)
+                if (upMErr) throw upMErr
+                const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(mobileFileName)
+                nextMobileUrl = publicUrl
+            }
+
+            setConfig((prev: ThemeConfig) => ({
+                ...prev,
+                layout: {
+                    ...prev.layout,
+                    hero_desktop_url: nextDesktopUrl,
+                    hero_mobile_url: nextMobileUrl,
+                    hero_cta: updatedCtaConfig
+                }
+            }))
+
+            toast.success('Portada y botones de acción actualizados en la vista previa')
+        } catch (err) {
+            Swal.fire('Error', 'No se pudieron aplicar los cambios de portada', 'error')
+        } finally {
+            setUploadingHeroDesktop(false)
+            setUploadingHeroMobile(false)
+        }
+    }
 
     useEffect(() => {
         if (iframeRef.current && iframeRef.current.contentWindow && !loading) {
@@ -318,30 +379,23 @@ export default function CustomizationPage() {
     const handleHeroDesktopUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
         const file = e.target.files[0]
-
-        // Validación física estricta
-        const isValid = await validateImageDimensions(file, 1920, 600)
-        if (!isValid) {
-            if (heroDInputRef.current) heroDInputRef.current.value = ''
-            return Swal.fire({
-                title: 'Dimensiones incorrectas',
-                html: `El banner de escritorio debe medir exactamente <b>1920x600 px</b> para mantener el estándar de diseño.`,
-                icon: 'warning',
-                confirmButtonColor: '#171717'
-            })
-        }
+        if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo se permiten archivos de imagen', 'error')
 
         setUploadingHeroDesktop(true)
         try {
-            const compressed = await compressImage(file, 1920, 0.8)
+            // 🚀 AUTO-REDIMENSIONAMIENTO DIRECTO EN NAVEGADOR A 1920x600 PX EXACTOS
+            const exactDesktopFile = await resizeImageToExactDimensions(file, 1920, 600, {
+                mode: 'cover',
+                quality: 0.88,
+                fileName: 'hero-desktop'
+            })
             const fileName = `hero-d-${storeData.id}-${Date.now()}.jpg`
 
-            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressed)
+            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, exactDesktopFile)
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
 
-            // Sincronizamos legacy y layout dual en cascada
             await supabase.from('stores').update({ hero_url: publicUrl }).eq('id', storeData.id)
             setStoreData((prev: any) => ({ ...prev, hero_url: publicUrl }))
 
@@ -349,39 +403,35 @@ export default function CustomizationPage() {
                 ...prev,
                 layout: { ...prev.layout, hero_desktop_url: publicUrl }
             }))
+            toast.success('Banner adaptado automáticamente a 1920x600 px')
         } catch (error) {
             Swal.fire('Error', 'Fallo de red al procesar el banner', 'error')
         } finally {
             setUploadingHeroDesktop(false)
+            if (heroDInputRef.current) heroDInputRef.current.value = ''
         }
     }
 
     const handleHeroMobileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
         const file = e.target.files[0]
+        if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo se permiten archivos de imagen', 'error')
 
-        const isRestaurantStore = currentStoreType === 'restaurant';
-        const expectedW = 1080;
-        const expectedH = isRestaurantStore ? 720 : 1350;
+        const isRestaurantStore = currentStoreType === 'restaurant'
+        const expectedW = 1080
+        const expectedH = isRestaurantStore ? 720 : 1350
 
-        const isValid = await validateImageDimensions(file, expectedW, expectedH);
-        if (!isValid) {
-            if (heroMInputRef.current) heroMInputRef.current.value = '';
-            return Swal.fire({
-                title: 'Dimensiones incorrectas',
-                html: isRestaurantStore
-                    ? `La portada móvil gastronómica debe medir exactamente <b>1080x720 px</b> (Proporción 3:2 panorámica).`
-                    : `La portada móvil de comercio debe medir exactamente <b>1080x1350 px</b> (Proporción vertical 4:5).`,
-                icon: 'warning',
-                confirmButtonColor: '#171717'
-            });
-        }
         setUploadingHeroMobile(true)
         try {
-            const compressed = await compressImage(file, 1080, 0.8)
+            // 🚀 AUTO-REDIMENSIONAMIENTO DIRECTO EN NAVEGADOR A 1080x1350 (o 1080x720) PX EXACTOS
+            const exactMobileFile = await resizeImageToExactDimensions(file, expectedW, expectedH, {
+                mode: 'cover',
+                quality: 0.88,
+                fileName: 'hero-mobile'
+            })
             const fileName = `hero-m-${storeData.id}-${Date.now()}.jpg`
 
-            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, compressed)
+            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, exactMobileFile)
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
@@ -390,13 +440,15 @@ export default function CustomizationPage() {
                 ...prev,
                 layout: { ...prev.layout, hero_mobile_url: publicUrl }
             }))
+            toast.success(`Portada móvil adaptada automáticamente a ${expectedW}x${expectedH} px`)
         } catch (error) {
             Swal.fire('Error', 'Fallo de red al procesar la portada', 'error')
         } finally {
             setUploadingHeroMobile(false)
+            if (heroMInputRef.current) heroMInputRef.current.value = ''
         }
     }
-    const handleApplyTemplate = (template: TemplateDefinition) => {
+const handleApplyTemplate = (template: TemplateDefinition) => {
         // 🚀 HERENCIA INTELIGENTE: Si el usuario desea preservar su marca, clonamos colores y tipografías.
         const newConfig = normalizeThemeConfig({
             ...template.default_config,
@@ -404,7 +456,7 @@ export default function CustomizationPage() {
             typography: preserveBrand ? config.typography : template.default_config.typography,
             layout: {
                 ...template.default_config.layout,
-                // Preservación incondicional de multimedia y textos propios
+                // Preservación incondicional de multimedia, encuadre, CTA y textos propios
                 logo_url: config.layout?.logo_url || storeData?.logo_url || '',
                 logo_type: config.layout?.logo_type || 'png_transparent',
                 hero_desktop_url: config.layout?.hero_desktop_url || storeData?.hero_url || '',
@@ -413,8 +465,13 @@ export default function CustomizationPage() {
                 greeting_text: config.layout?.greeting_text || template.default_config.layout?.greeting_text,
                 slogan_text: config.layout?.slogan_text || template.default_config.layout?.slogan_text,
                 hero_button_text: config.layout?.hero_button_text || template.default_config.layout?.hero_button_text,
+                card_media: config.layout?.card_media || template.default_config.layout?.card_media,
+                hero_cta: config.layout?.hero_cta,
             }
         });
+        if (config.layout?.hero_cta) {
+            newConfig.layout.hero_cta = config.layout.hero_cta;
+        }
         setConfig(newConfig);
 
         toast.success(`Arquetipo estructural ${template.name} aplicado`, {
@@ -687,49 +744,47 @@ export default function CustomizationPage() {
                                     <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Aplica un diseño preconfigurado con un clic.</p>
                                 </div>
 
-                              {/* 🚀 UI ULTRA-LEGBILE: CANDADO DE IDENTIDAD (Pura jerarquía Stripe/Linear) */}
-<div
-  onClick={() => setPreserveBrand(!preserveBrand)}
-  className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between select-none ${
-    preserveBrand
-      ? 'bg-zinc-50/80 border-zinc-900/80 shadow-2xs'
-      : 'bg-white border-zinc-200/80 hover:border-zinc-300 shadow-2xs'
-  }`}
->
-  <div className="flex items-start gap-3.5 pr-4">
-    {/* Icono con badge dinámico integrado */}
-    <div
-      className={`p-2.5 rounded-xl shrink-0 transition-colors mt-0.5 ${
-        preserveBrand
-          ? 'bg-zinc-900 text-white'
-          : 'bg-zinc-100 text-zinc-400'
-      }`}
-    >
-      <ShieldCheck size={18} strokeWidth={2} />
-    </div>
+                                {/* 🚀 UI ULTRA-LEGBILE: CANDADO DE IDENTIDAD (Pura jerarquía Stripe/Linear) */}
+                                <div
+                                    onClick={() => setPreserveBrand(!preserveBrand)}
+                                    className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between select-none ${preserveBrand
+                                        ? 'bg-zinc-50/80 border-zinc-900/80 shadow-2xs'
+                                        : 'bg-white border-zinc-200/80 hover:border-zinc-300 shadow-2xs'
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3.5 pr-4">
+                                        {/* Icono con badge dinámico integrado */}
+                                        <div
+                                            className={`p-2.5 rounded-xl shrink-0 transition-colors mt-0.5 ${preserveBrand
+                                                ? 'bg-zinc-900 text-white'
+                                                : 'bg-zinc-100 text-zinc-400'
+                                                }`}
+                                        >
+                                            <ShieldCheck size={18} strokeWidth={2} />
+                                        </div>
 
-    {/* Textos ordenados con lectura fluida */}
-    <div className="flex flex-col gap-0.5">
-      <h4 className="text-xs font-bold text-zinc-900 tracking-tight leading-snug">
-        Preservar mis colores y fuentes
-      </h4>
-      <p className="text-[11px] font-normal leading-normal text-zinc-500 max-w-[340px]">
-        Al cambiar de arquetipo, adoptaremos su estructura pero{' '}
-        <strong className="font-semibold text-zinc-800">
-          mantendremos tu paleta de colores intacta
-        </strong>.
-      </p>
-    </div>
-  </div>
+                                        {/* Textos ordenados con lectura fluida */}
+                                        <div className="flex flex-col gap-0.5">
+                                            <h4 className="text-xs font-bold text-zinc-900 tracking-tight leading-snug">
+                                                Preservar mis colores y fuentes
+                                            </h4>
+                                            <p className="text-[11px] font-normal leading-normal text-zinc-500 max-w-[340px]">
+                                                Al cambiar de arquetipo, adoptaremos su estructura pero{' '}
+                                                <strong className="font-semibold text-zinc-800">
+                                                    mantendremos tu paleta de colores intacta
+                                                </strong>.
+                                            </p>
+                                        </div>
+                                    </div>
 
-  {/* Control de cambio (Único punto focal de acción a la derecha) */}
-  <div className="shrink-0 pl-2">
-    <AnimatedSwitch 
-      active={preserveBrand} 
-      activeColor="bg-zinc-900" 
-    />
-  </div>
-</div>
+                                    {/* Control de cambio (Único punto focal de acción a la derecha) */}
+                                    <div className="shrink-0 pl-2">
+                                        <AnimatedSwitch
+                                            active={preserveBrand}
+                                            activeColor="bg-zinc-900"
+                                        />
+                                    </div>
+                                </div>
 
                                 {/* Filtros por Nicho Contextuales */}
                                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 w-full max-w-full min-w-0 shrink-0 pt-2">
@@ -739,8 +794,8 @@ export default function CustomizationPage() {
                                             type="button"
                                             onClick={() => setSelectedNicheFilter(chip.id)}
                                             className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border active:scale-95 ${selectedNicheFilter === chip.id
-                                                    ? 'bg-neutral-950 border-neutral-950 text-white shadow-xs'
-                                                    : 'bg-white border-neutral-200/60 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
+                                                ? 'bg-neutral-950 border-neutral-950 text-white shadow-xs'
+                                                : 'bg-white border-neutral-200/60 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
                                                 }`}
                                         >
                                             {chip.label}
@@ -757,8 +812,8 @@ export default function CustomizationPage() {
                                             <div
                                                 key={template.id}
                                                 className={`relative p-4.5 rounded-2xl border transition-all flex flex-col gap-2.5 overflow-hidden ${isCurrent
-                                                        ? 'bg-white border-neutral-950 ring-1 ring-neutral-950/10 shadow-xs'
-                                                        : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
+                                                    ? 'bg-white border-neutral-950 ring-1 ring-neutral-950/10 shadow-xs'
+                                                    : 'bg-white border-neutral-200/60 hover:border-neutral-300 shadow-2xs'
                                                     }`}
                                             >
                                                 {/* FILA PRINCIPAL: BADGE ARRIBA EN MÓVIL / AL LADO EN DESKTOP */}
@@ -798,8 +853,8 @@ export default function CustomizationPage() {
                                                             onClick={() => handleApplyTemplate(template)}
                                                             disabled={isCurrent}
                                                             className={`px-3.5 py-1.5 rounded-[4.3px] text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5 ${isCurrent
-                                                                    ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-default'
-                                                                    : 'bg-white hover:bg-neutral-100/80 text-neutral-700 hover:text-neutral-950 border-neutral-200/80 active:scale-95 shadow-2xs'
+                                                                ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs cursor-default'
+                                                                : 'bg-white hover:bg-neutral-100/80 text-neutral-700 hover:text-neutral-950 border-neutral-200/80 active:scale-95 shadow-2xs'
                                                                 }`}
                                                         >
                                                             {isCurrent ? (
@@ -911,12 +966,56 @@ export default function CustomizationPage() {
                                         )}
                                     </div>
                                 </div>
-
-                                {/* SECCIÓN HERO BANNERS (DUAL RESPONSIVE PARA TODOS LOS TEMAS) */}
+                             {/* SECCIÓN HERO BANNERS (DUAL RESPONSIVE PARA TODOS LOS TEMAS) */}
                                 <div className="space-y-4 pt-4 border-t border-neutral-100">
                                     <div>
                                         <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Heros y Portadas</h3>
-                                        <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Gestione los banners publicitarios de su comercio.</p>
+                                        <p className="text-[11px] text-neutral-500 font-medium mt-0.5">
+                                            Suba cualquier imagen y se adaptará sola a las medidas exactas, o configure botones de acción sobre la portada.
+                                        </p>
+                                    </div>
+
+                                    {/* PANEL MINIMALISTA PLANO (CERO SOMBRAS, BOTONES PASTILLA SIN FONDO) */}
+                                    <div className="p-4 rounded-xl bg-white border border-neutral-200/80 space-y-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-0.5">
+                                                <h4 className="text-xs font-semibold text-neutral-900">
+                                                    Botones de Llamada a la Acción (CTA) & Encuadre
+                                                </h4>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    Personaliza botones interactivos (&quot;Comprar Ahora&quot;), descripción con fuentes múltiples y ajuste de encuadre.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsAiBannerStudioOpen(true)}
+                                                className="px-4 py-2 rounded-full border border-neutral-900 bg-transparent hover:bg-neutral-900 text-neutral-900 hover:text-white text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                                            >
+                                                Configurar Botones CTA y Encuadre
+                                            </button>
+
+                                            {config.layout.hero_cta && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleLayoutChange('hero_cta', {
+                                                            ...config.layout.hero_cta,
+                                                            enabled: !config.layout.hero_cta?.enabled
+                                                        })
+                                                    }
+                                                    className={`px-3.5 py-2 rounded-full text-[10px] font-mono font-medium uppercase border transition-colors cursor-pointer ${
+                                                        config.layout.hero_cta.enabled
+                                                            ? 'border-neutral-900 bg-neutral-900 text-white'
+                                                            : 'border-neutral-200 bg-transparent text-neutral-500 hover:border-neutral-400'
+                                                    }`}
+                                                >
+                                                    CTA: {config.layout.hero_cta.enabled ? 'Visible' : 'Oculto'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-4">
@@ -990,57 +1089,111 @@ export default function CustomizationPage() {
                                     )}
                                 </div>
 
-                                {/* 🚀 IMAGE ENGINE CUSTOMIZER (Encuadre Élite) */}
+                              {/* 🚀 IMAGE ENGINE CUSTOMIZER (Encuadre Élite con Muestras Visuales) */}
                                 <div className="space-y-5 pt-5 border-t border-neutral-200/60 animate-in fade-in duration-300">
                                     <div>
-                                        <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5"><LayoutGrid size={14} className="text-neutral-500"/> Encuadre de Productos</h3>
+                                        <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5"><LayoutGrid size={14} className="text-neutral-500" /> Encuadre de Productos</h3>
                                         <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Adapte la geometría de las tarjetas según el tipo de fotografía de su catálogo.</p>
                                     </div>
 
                                     <div className="space-y-4">
-                                        {/* Selector de Relación de Aspecto */}
+                                        {/* Selector Visual de Relación de Aspecto */}
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block">
                                                 Proporción de la Imagen
                                             </label>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {[
-                                                    { id: 'aspect-square', label: '1:1 Cuadrado', desc: 'Hardware / Comida' },
-                                                    { id: 'aspect-[4/5]', label: '4:5 Retrato', desc: 'Moda / Lujo' },
-                                                    { id: 'aspect-[4/3]', label: '4:3 Apaisado', desc: 'Tech / Inmuebles' },
-                                                ].map(item => (
-                                                    <button
-                                                        key={item.id}
-                                                        onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, ratio: item.id })}
-                                                        className={`p-2.5 text-center rounded-xl border transition-all flex flex-col items-center justify-center gap-1 h-16 ${config.layout.card_media?.ratio === item.id ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs' : 'border-neutral-200/50 bg-white hover:border-neutral-300 text-neutral-700'}`}
-                                                    >
-                                                        <span className="text-[11px] font-bold leading-none">{item.label}</span>
-                                                        <span className={`text-[9px] font-medium leading-none ${config.layout.card_media?.ratio === item.id ? 'text-neutral-400' : 'text-neutral-400'}`}>{item.desc}</span>
-                                                    </button>
-                                                ))}
+                                                    { id: 'aspect-square', label: '1:1 Cuadrado', desc: 'Comida / General', boxClass: 'w-6 h-6' },
+                                                    { id: 'aspect-[4/5]', label: '4:5 Vertical', desc: 'Moda / Catálogo', boxClass: 'w-5 h-6.5' },
+                                                    { id: 'aspect-[4/3]', label: '4:3 Horizontal', desc: 'Tech / Detalle', boxClass: 'w-7 h-5' },
+                                                ].map(item => {
+                                                    const isSel = config.layout.card_media?.ratio === item.id;
+                                                    return (
+                                                        <button
+                                                            key={item.id}
+                                                            type="button"
+                                                            onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, ratio: item.id })}
+                                                            className={`p-3 rounded-xl border transition-colors flex flex-col items-center justify-between gap-2 cursor-pointer ${
+                                                                isSel
+                                                                    ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
+                                                                    : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-700'
+                                                            }`}
+                                                        >
+                                                            <div className="h-8 flex items-center justify-center">
+                                                                <div
+                                                                    className={`${item.boxClass} rounded-[4px] border transition-colors ${
+                                                                        isSel
+                                                                            ? 'border-neutral-900 bg-neutral-900/15'
+                                                                            : 'border-neutral-400 bg-neutral-100'
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <span className="text-[11px] font-semibold block leading-none">{item.label}</span>
+                                                                <span className="text-[9px] text-neutral-400 font-medium block mt-1 leading-none">{item.desc}</span>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
-                                        {/* Selector de Llenado */}
+                                        {/* Selector Visual de Llenado (Cover vs Contain) */}
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                                                Comportamiento de la Fotografía
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block">
+                                                Ajuste de la Fotografía
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
-                                                <div
+                                                {/* Muestra Cover */}
+                                                <button
+                                                    type="button"
                                                     onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'cover' })}
-                                                    className={`cursor-pointer p-3 rounded-xl border flex flex-col gap-1 transition-all ${config.layout.card_media?.fit === 'cover' ? 'border-neutral-900 bg-neutral-900 text-white' : 'bg-white border-neutral-200/50 hover:border-neutral-300 text-neutral-700'}`}
+                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${
+                                                        config.layout.card_media?.fit === 'cover'
+                                                            ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
+                                                            : 'bg-white border-neutral-200/80 hover:border-neutral-400 text-neutral-700'
+                                                    }`}
                                                 >
-                                                    <span className="text-[11px] font-bold uppercase">Inmersivo (Cover)</span>
-                                                    <span className="text-[9px] opacity-80 leading-snug">Llena el 100%. Ideal para fotos Lifestyle con fondo de paisaje.</span>
-                                                </div>
-                                                <div
+                                                    <div className="w-full h-11 rounded-lg border border-neutral-300 overflow-hidden bg-neutral-200 flex items-center justify-center relative">
+                                                        <div className="w-full h-full bg-[linear-gradient(135deg,#27272a_0%,#52525b_100%)] flex items-center justify-center">
+                                                            <span className="text-[9px] font-mono uppercase tracking-wider text-white/90">
+                                                                100% Lleno
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[11px] font-semibold block">Inmersivo (Cover)</span>
+                                                        <span className="text-[9px] text-neutral-500 leading-snug block mt-0.5">
+                                                            La foto cubre toda la tarjeta sin márgenes.
+                                                        </span>
+                                                    </div>
+                                                </button>
+
+                                                {/* Muestra Contain */}
+                                                <button
+                                                    type="button"
                                                     onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'contain' })}
-                                                    className={`cursor-pointer p-3 rounded-xl border flex flex-col gap-1 transition-all ${config.layout.card_media?.fit === 'contain' ? 'border-neutral-900 bg-neutral-900 text-white' : 'bg-white border-neutral-200/50 hover:border-neutral-300 text-neutral-700'}`}
+                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${
+                                                        config.layout.card_media?.fit === 'contain'
+                                                            ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
+                                                            : 'bg-white border-neutral-200/80 hover:border-neutral-400 text-neutral-700'
+                                                    }`}
                                                 >
-                                                    <span className="text-[11px] font-bold uppercase">Encapsulado (Contain)</span>
-                                                    <span className="text-[9px] opacity-80 leading-snug">Protege los bordes con padding. Ideal para PNGs o fondo blanco.</span>
-                                                </div>
+                                                    <div className="w-full h-11 rounded-lg border border-neutral-300 bg-neutral-100 p-1.5 flex items-center justify-center">
+                                                        <div className="w-12 h-full rounded-[4px] bg-white border border-neutral-300 flex items-center justify-center">
+                                                            <span className="text-[8px] font-mono uppercase text-neutral-600">
+                                                                Foto
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[11px] font-semibold block">Encapsulado (Contain)</span>
+                                                        <span className="text-[9px] text-neutral-500 leading-snug block mt-0.5">
+                                                            Respeta bordes con margen interno limpio.
+                                                        </span>
+                                                    </div>
+                                                </button>
                                             </div>
                                         </div>
 
@@ -1269,11 +1422,11 @@ export default function CustomizationPage() {
                                 </div>
                             </div>
                         )}
-                        {/* TAB 4: PASO 1 & 2 (LÍNEAS, BOTONES Y SOMBRAS CON GUARDRAILS) */}
+                      {/* TAB 4: GEOMETRÍA (MUESTRAS VISUALES EN VIVO DE BOTONES, BORDES, SOMBRAS Y MODAL) */}
                         {activeTab === 'shapes' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
 
-                                {/* 1. FORMA DE BOTONES */}
+                                {/* 1. FORMA DE LOS BOTONES (Muestra visual del botón en cada tarjeta) */}
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
@@ -1286,53 +1439,104 @@ export default function CustomizationPage() {
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-2.5">
                                         {[
-                                            ...(!['bistro_fast', 'classic', 'modular_tech'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrado (0px)', radius: '0px' }] : []),
+                                            ...(!['bistro_fast', 'classic', 'modular_tech'].includes(config.template_id) ? [{ id: 'sharp', label: 'Recto (0px)', radius: '0px' }] : []),
                                             { id: 'rounded', label: 'Suave (10px)', radius: '10px' },
-                                            ...(!['hardware_dense', 'minimal_luxury', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'pill', label: 'Píldora (999px)', radius: '999px' }] : [])
+                                            ...(!['hardware_dense', 'minimal_luxury', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'pill', label: 'Pastilla (999px)', radius: '9999px' }] : [])
                                         ].map(item => {
                                             const isActive = config.shapes.button_shape === item.id;
                                             return (
-                                                <motion.button
+                                                <button
                                                     key={item.id}
-                                                    whileHover={{ scale: 1.03 }}
-                                                    whileTap={{ scale: 0.97 }}
+                                                    type="button"
                                                     onClick={() => handleShapeChange('button_shape', item.id)}
-                                                    className={`relative h-14 flex items-center justify-center border transition-all overflow-hidden ${isActive ? 'border-neutral-900 bg-neutral-900 shadow-md' : 'border-neutral-200/60 bg-white hover:border-neutral-300 shadow-sm'}`}
-                                                    style={{ borderRadius: item.radius }}
+                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
+                                                        isActive
+                                                            ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                    }`}
                                                 >
-                                                    <span className={`relative z-10 text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>{item.label}</span>
-                                                </motion.button>
+                                                    <div className="w-full py-2 px-3 rounded-lg bg-neutral-100/80 flex items-center justify-center">
+                                                        <span
+                                                            style={{ borderRadius: item.radius }}
+                                                            className={`px-4 py-1.5 text-[10px] font-semibold border transition-colors ${
+                                                                isActive
+                                                                    ? 'bg-neutral-900 text-white border-neutral-900'
+                                                                    : 'bg-white text-neutral-800 border-neutral-400'
+                                                            }`}
+                                                        >
+                                                            Comprar
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[11px] font-semibold text-neutral-800">
+                                                        {item.label}
+                                                    </span>
+                                                </button>
                                             )
                                         })}
                                     </div>
                                 </div>
-                                {/* 2. GROSOR DE LÍNEAS */}
+
+                                {/* 2. GROSOR DE LÍNEAS Y BORDES (Muestra física del grosor real en cada tarjeta) */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
                                         2. Grosor de Líneas y Bordes
                                     </label>
-                                    <div className="grid grid-cols-3 gap-1.5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {[
-                                            ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id) ? [{ id: 'none', label: 'Sin Borde' }, { id: 'hairline', label: '0.5px' }] : []),
-                                            { id: 'thin', label: '1px Fino' },
-                                            ...(!['minimal_luxury', 'bistro_fast', 'modular_tech'].includes(config.template_id) ? [{ id: 'bold', label: '2px Bold' }] : []),
-                                        ].map(item => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => handleShapeChange('line_weight', item.id)}
-                                                className={`py-2.5 px-1 text-center rounded-lg border text-[11px] font-semibold transition-all ${config.shapes.line_weight === item.id ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs' : 'border-neutral-200/50 bg-white hover:border-neutral-300 text-neutral-700'}`}
-                                            >
-                                                {item.label}
-                                            </button>
-                                        ))}
+                                            ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id)
+                                                ? [
+                                                    { id: 'none', label: 'Sin Borde', widthPx: 0 },
+                                                    { id: 'hairline', label: '0.5px Sutil', widthPx: 1 }
+                                                ]
+                                                : []),
+                                            { id: 'thin', label: '1px Fino', widthPx: 1.5 },
+                                            ...(!['minimal_luxury', 'bistro_fast', 'modular_tech'].includes(config.template_id)
+                                                ? [{ id: 'bold', label: '2px Fuerte', widthPx: 2.5 }]
+                                                : []),
+                                        ].map(item => {
+                                            const isActive = config.shapes.line_weight === item.id;
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => handleShapeChange('line_weight', item.id)}
+                                                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-between gap-2 h-20 transition-colors cursor-pointer ${
+                                                        isActive
+                                                            ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                    }`}
+                                                >
+                                                    <div className="w-full my-auto flex items-center justify-center px-1">
+                                                        {item.id === 'none' ? (
+                                                            <div className="w-full h-6 rounded-md bg-neutral-100 border border-dashed border-neutral-300 flex items-center justify-center">
+                                                                <span className="text-[8px] font-mono text-neutral-400 uppercase">0px</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                style={{ borderWidth: `${item.widthPx}px` }}
+                                                                className={`w-full h-6 rounded-md bg-white ${
+                                                                    item.id === 'hairline'
+                                                                        ? 'border-neutral-300'
+                                                                        : 'border-neutral-900'
+                                                                }`}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-neutral-800 whitespace-nowrap">
+                                                        {item.label}
+                                                    </span>
+                                                </button>
+                                            )
+                                        })}
                                     </div>
                                 </div>
-                                {/* 3. SOMBRAS CON GUARDRAIL */}
+
+                                {/* 3. SOMBRAS DE CAJAS E INPUTS (Escenario interno con proyección real) */}
                                 <div>
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
-                                        3. Sombras de Cajas e Inputs
+                                        3. Sombras de Tarjetas e Inputs
                                     </label>
 
                                     {config.template_id === 'classic' ? (
@@ -1352,56 +1556,93 @@ export default function CustomizationPage() {
                                             <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500 shrink-0">Fijo</span>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-2 gap-3 pt-1">
+                                        <div className="grid grid-cols-2 gap-2.5 pt-1">
                                             {[
-                                                { id: 'none', label: 'Plano', shadow: 'none' },
+                                                { id: 'none', label: 'Plano (Sin Sombra)', shadow: 'none' },
                                                 ...(config.template_id === 'hardware_dense' || config.template_id === 'streetwear_bold'
                                                     ? [{ id: 'hard_brutalist', label: 'Sólida (Brutal)', shadow: '4px 4px 0px 0px rgba(0,0,0,0.9)' }]
                                                     : config.template_id === 'gourmet_flow'
-                                                        ? [{ id: 'crisp_app', label: 'App Nativa (Crisp)', shadow: '0px 6px 10px -2px rgba(0,0,0,0.08)' }]
-                                                        : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }]
+                                                        ? [{ id: 'crisp_app', label: 'App Nativa (Crisp)', shadow: '0px 6px 12px -2px rgba(0,0,0,0.14)' }]
+                                                        : [{ id: 'soft', label: 'Sutil (Elevada)', shadow: '0 8px 20px -4px rgba(0,0,0,0.12)' }]
                                                 )
                                             ].map(item => {
                                                 const isActive = config.shapes.ui_shadows === item.id;
                                                 return (
-                                                    <motion.button
+                                                    <button
                                                         key={item.id}
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
+                                                        type="button"
                                                         onClick={() => handleShapeChange('ui_shadows', item.id)}
-                                                        className={`h-20 flex items-center justify-center rounded-2xl border transition-all bg-white ${isActive ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-neutral-200/60'}`}
-                                                        style={{ boxShadow: item.shadow }}
+                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
+                                                            isActive
+                                                                ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                                : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                        }`}
                                                     >
-                                                        <span className={`text-xs font-bold ${isActive ? 'text-neutral-900' : 'text-neutral-600'}`}>{item.label}</span>
-                                                    </motion.button>
+                                                        <div className="w-full py-3 px-4 rounded-lg bg-neutral-100/90 flex items-center justify-center">
+                                                            <div
+                                                                style={{ boxShadow: item.shadow }}
+                                                                className="w-full py-1.5 rounded-md bg-white border border-neutral-300 text-[10px] font-medium text-neutral-800 text-center"
+                                                            >
+                                                                Tarjeta
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[11px] font-semibold text-neutral-800">
+                                                            {item.label}
+                                                        </span>
+                                                    </button>
                                                 )
                                             })}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* 🚀 4. DENSIDAD DE INFORMACIÓN (ACORDEÓN VS DESPLEGADO) */}
+                                {/* 4. DENSIDAD DE INFORMACIÓN (Con mini-diagrama visual de Acordeón vs Desplegado) */}
                                 <div className="pt-2">
                                     <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2">
-                                        4. Densidad de Información (Modal de Producto)
+                                        4. Presentación de Detalles (Modal de Producto)
                                     </label>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-2.5">
                                         {[
-                                            { id: 'accordion', label: 'Acordeón', desc: 'Compacto & Limpio' },
-                                            { id: 'expanded', label: 'Desplegado', desc: 'Lectura Rápida' }
+                                            { id: 'accordion', label: 'Acordeón', desc: 'Secciones plegables' },
+                                            { id: 'expanded', label: 'Desplegado', desc: 'Todo visible al abrir' }
                                         ].map(item => {
                                             const isActive = config.shapes.info_layout === item.id;
                                             return (
-                                                <motion.button
+                                                <button
                                                     key={item.id}
-                                                    whileHover={{ scale: 1.03 }}
-                                                    whileTap={{ scale: 0.97 }}
+                                                    type="button"
                                                     onClick={() => handleShapeChange('info_layout', item.id)}
-                                                    className={`relative h-16 flex flex-col items-center justify-center rounded-2xl border transition-all overflow-hidden ${isActive ? 'border-neutral-900 bg-neutral-900 shadow-md' : 'border-neutral-200/60 bg-white hover:border-neutral-300 shadow-sm'}`}
+                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
+                                                        isActive
+                                                            ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                    }`}
                                                 >
-                                                    <span className={`relative z-10 text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>{item.label}</span>
-                                                    <span className={`relative z-10 text-[9px] font-medium mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-500'}`}>{item.desc}</span>
-                                                </motion.button>
+                                                    <div className="w-full p-2 rounded-lg bg-neutral-100/80 flex flex-col gap-1">
+                                                        {item.id === 'accordion' ? (
+                                                            <>
+                                                                <div className="w-full px-2 py-1 rounded bg-white border border-neutral-200 flex items-center justify-between">
+                                                                    <span className="w-10 h-1.5 rounded-full bg-neutral-400" />
+                                                                    <ChevronDown size={10} className="text-neutral-500" />
+                                                                </div>
+                                                                <div className="w-full px-2 py-1 rounded bg-white border border-neutral-200 flex items-center justify-between">
+                                                                    <span className="w-8 h-1.5 rounded-full bg-neutral-400" />
+                                                                    <ChevronDown size={10} className="text-neutral-500" />
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="w-full p-2 rounded bg-white border border-neutral-200 flex flex-col gap-1.5">
+                                                                <span className="w-12 h-1.5 rounded-full bg-neutral-700" />
+                                                                <span className="w-full h-1 rounded-full bg-neutral-300" />
+                                                                <span className="w-4/5 h-1 rounded-full bg-neutral-300" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <span className="text-[11px] font-semibold text-neutral-900 block leading-none">{item.label}</span>
+                                                        <span className="text-[9px] text-neutral-500 font-medium block mt-1">{item.desc}</span>
+                                                    </div>
+                                                </button>
                                             )
                                         })}
                                     </div>
@@ -1409,9 +1650,9 @@ export default function CustomizationPage() {
                             </div>
                         )}
 
-                        {/* TAB 5: BUSCADOR Y NAVEGACIÓN */}
+                        {/* TAB 5: BUSCADOR Y NAVEGACIÓN (CON MINI BARRAS DE BÚSQUEDA REALES) */}
                         {activeTab === 'search' && (
-                            <div className="space-y-8 animate-in fade-in pb-10">
+                            <div className="space-y-6 animate-in fade-in pb-10">
 
                                 {/* Estilo de Directorio de Categorías */}
                                 <div>
@@ -1421,23 +1662,42 @@ export default function CustomizationPage() {
                                     <p className="text-[11px] text-neutral-500 font-medium mb-3">Presentación de las familias de productos en la tienda.</p>
 
                                     {config.template_id === 'modular_tech' ? (
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-2.5">
                                             {[
-                                                { id: 'thumbnails', label: 'Tarjetas con Foto', desc: 'Cuadrícula Bento' },
-                                                { id: 'pills', label: 'Píldoras de Texto', desc: 'Línea Compacta' },
+                                                { id: 'thumbnails', label: 'Tarjetas con Foto', desc: 'Cuadrícula visual' },
+                                                { id: 'pills', label: 'Píldoras de Texto', desc: 'Barra compacta' },
                                             ].map(item => {
                                                 const isActive = config.layout.category_style === item.id || (!config.layout.category_style && item.id === 'thumbnails');
                                                 return (
-                                                    <motion.button
+                                                    <button
                                                         key={item.id}
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
+                                                        type="button"
                                                         onClick={() => handleLayoutChange('category_style', item.id)}
-                                                        className={`relative h-16 flex flex-col items-center justify-center rounded-2xl border transition-all overflow-hidden ${isActive ? 'border-neutral-900 bg-neutral-900 shadow-sm' : 'border-neutral-200/60 bg-white hover:border-neutral-300'}`}
+                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
+                                                            isActive
+                                                                ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                                : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                        }`}
                                                     >
-                                                        <span className={`relative z-10 text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>{item.label}</span>
-                                                        <span className={`relative z-10 text-[9px] font-medium mt-0.5 ${isActive ? 'text-neutral-400' : 'text-neutral-500'}`}>{item.desc}</span>
-                                                    </motion.button>
+                                                        <div className="w-full py-2 px-2 rounded-lg bg-neutral-100/80 flex items-center justify-center gap-1.5">
+                                                            {item.id === 'thumbnails' ? (
+                                                                <>
+                                                                    <span className="w-5 h-5 rounded bg-white border border-neutral-300" />
+                                                                    <span className="w-5 h-5 rounded bg-white border border-neutral-300" />
+                                                                    <span className="w-5 h-5 rounded bg-white border border-neutral-300" />
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-white text-[8px] font-medium">Todo</span>
+                                                                    <span className="px-2 py-0.5 rounded-full bg-white border border-neutral-300 text-neutral-600 text-[8px]">Ropa</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <span className="text-[11px] font-semibold text-neutral-900 block leading-none">{item.label}</span>
+                                                            <span className="text-[9px] font-medium text-neutral-500 mt-1 block">{item.desc}</span>
+                                                        </div>
+                                                    </button>
                                                 )
                                             })}
                                         </div>
@@ -1452,102 +1712,203 @@ export default function CustomizationPage() {
                                     )}
                                 </div>
 
-                                {/* Forma de Barra de Búsqueda */}
-                                <div className="pt-2 border-t border-neutral-100">
-                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1 mt-4">
+                                {/* Forma de Barra de Búsqueda con Mini-Buscadores Reales */}
+                                <div className="pt-4 border-t border-neutral-100">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-2.5">
                                         Forma de la Barra de Búsqueda
                                     </label>
-                                </div>
 
-                                {config.template_id === 'minimal_luxury' ? (
-                                    <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-neutral-800">Línea Inferior (Boutique)</span>
-                                            <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Minimal Luxury utiliza un buscador editorial fijo.</span>
+                                    {config.template_id === 'minimal_luxury' ? (
+                                        <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-neutral-800">Línea Inferior (Boutique)</span>
+                                                <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Minimal Luxury utiliza un buscador editorial fijo.</span>
+                                            </div>
+                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
                                         </div>
-                                        <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
-                                    </div>
-                                ) : config.template_id === 'aero_glass' ? (
-                                    <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-neutral-800">Píldora Flotante (Tech)</span>
-                                            <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Aero Tech utiliza un buscador integrado en el Command Center.</span>
+                                    ) : config.template_id === 'aero_glass' ? (
+                                        <div className="p-3.5 rounded-2xl border border-neutral-200/60 bg-neutral-50 flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-neutral-800">Píldora Flotante (Tech)</span>
+                                                <span className="text-[10px] text-neutral-400 font-medium mt-0.5">El tema Aero Tech utiliza un buscador integrado en el Command Center.</span>
+                                            </div>
+                                            <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
                                         </div>
-                                        <span className="px-2 py-1 bg-white border border-neutral-200 rounded text-[9px] font-mono font-bold uppercase text-neutral-500">Bloqueado</span>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[
-                                            ...(!['bistro_fast'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrada (0px)', desc: 'Industrial / Drop' }] : []),
-                                            { id: 'rounded', label: 'Redondeada (8px)', desc: 'Moderna' },
-                                            ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id)
-                                                ? [
-                                                    { id: 'pill', label: 'Píldora Completa', desc: 'Comercial' },
-                                                    { id: 'minimal_underlined', label: 'Línea Inferior', desc: 'Boutique' }
-                                                ]
-                                                : []
-                                            ),
-                                        ].map(item => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => handleShapeChange('search_bar_shape', item.id)}
-                                                className={`p-3.5 text-left rounded-xl border transition-all ${config.shapes.search_bar_shape === item.id ? 'border-neutral-900 bg-neutral-900 text-white shadow-xs' : 'border-neutral-200/50 bg-white hover:border-neutral-300 text-neutral-700'}`}
-                                            >
-                                                <p className="text-xs font-bold">{item.label}</p>
-                                                <p className={`text-[9px] mt-0.5 font-medium ${config.shapes.search_bar_shape === item.id ? 'text-neutral-400' : 'text-neutral-400'}`}>{item.desc}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2.5">
+                                            {[
+                                                ...(!['bistro_fast'].includes(config.template_id) ? [{ id: 'sharp', label: 'Cuadrada (0px)', desc: 'Industrial / Recta' }] : []),
+                                                { id: 'rounded', label: 'Suave (8px)', desc: 'Moderna' },
+                                                ...(!['hardware_dense', 'streetwear_bold'].includes(config.template_id)
+                                                    ? [
+                                                        { id: 'pill', label: 'Píldora', desc: 'Redondeada' },
+                                                        { id: 'minimal_underlined', label: 'Línea Inferior', desc: 'Editorial' }
+                                                    ]
+                                                    : []
+                                                ),
+                                            ].map(item => {
+                                                const isSel = config.shapes.search_bar_shape === item.id;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => handleShapeChange('search_bar_shape', item.id)}
+                                                        className={`p-3 rounded-xl border text-left transition-colors flex flex-col justify-between gap-2.5 cursor-pointer ${
+                                                            isSel
+                                                                ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
+                                                                : 'border-neutral-200/80 bg-white hover:border-neutral-400'
+                                                        }`}
+                                                    >
+                                                        {/* Muestra visual de la barra de búsqueda */}
+                                                        <div className="w-full py-2 px-2 rounded-lg bg-neutral-100/80 flex items-center justify-center">
+                                                            <div
+                                                                className={`w-full px-2.5 py-1.5 flex items-center gap-1.5 text-[9px] ${
+                                                                    item.id === 'minimal_underlined'
+                                                                        ? 'bg-transparent border-b-2 border-neutral-800 rounded-none'
+                                                                        : item.id === 'pill'
+                                                                        ? 'bg-white border border-neutral-400 rounded-full'
+                                                                        : item.id === 'rounded'
+                                                                        ? 'bg-white border border-neutral-400 rounded-md'
+                                                                        : 'bg-white border border-neutral-400 rounded-none'
+                                                                }`}
+                                                            >
+                                                                <SearchIcon size={10} className="text-neutral-500 shrink-0" />
+                                                                <span className="text-neutral-400 truncate">Buscar...</span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-semibold text-neutral-900 leading-none">{item.label}</p>
+                                                            <p className="text-[9px] mt-1 font-medium text-neutral-500 leading-none">{item.desc}</p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
-                        {/* TAB 5: PASO 4 (TIPOGRAFÍA GRANULAR) */}
+                        {/* TAB 6: TIPOGRAFÍA GRANULAR (CON MUESTRAS DE LAS FUENTES EN VIVO, SIN SELECTS CIEGOS) */}
                         {activeTab === 'typography' && (
-                            <div className="space-y-5 animate-in fade-in pb-10">
-                                <div>
-                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                                        Tipografía para Títulos (H1, Nombres de Producto)
+                            <div className="space-y-6 animate-in fade-in pb-10">
+                                {/* 1. TÍTULOS */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block">
+                                        1. Tipografía para Títulos y Nombres de Producto
                                     </label>
-                                    <select
-                                        value={config.typography.heading_font}
-                                        onChange={(e) => handleTypographyChange('heading_font', e.target.value)}
-                                        className="w-full p-3 rounded-xl border border-neutral-200/50 bg-white text-xs font-bold text-neutral-900 outline-none focus:border-neutral-900"
-                                    >
-                                        {AVAILABLE_FONTS.headings.map(f => (
-                                            <option key={f.value} value={f.value}>{f.label}</option>
-                                        ))}
-                                    </select>
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        {AVAILABLE_FONTS.headings.map(f => {
+                                            const isSel = config.typography.heading_font === f.value;
+                                            return (
+                                                <button
+                                                    key={f.value}
+                                                    type="button"
+                                                    onClick={() => handleTypographyChange('heading_font', f.value)}
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                                                        isSel
+                                                            ? 'border-neutral-900 bg-neutral-900 text-white'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
+                                                    }`}
+                                                >
+                                                    <div className="min-w-0">
+                                                        <span
+                                                            style={{ fontFamily: f.value }}
+                                                            className="text-xs font-semibold block truncate"
+                                                        >
+                                                            {f.label}
+                                                        </span>
+                                                    </div>
+                                                    <span
+                                                        style={{ fontFamily: f.value }}
+                                                        className={`text-sm font-bold shrink-0 ${
+                                                            isSel ? 'text-neutral-200' : 'text-neutral-500'
+                                                        }`}
+                                                    >
+                                                        Aa Título
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                                        Tipografía para Textos y Descripciones
+                                {/* 2. CUERPO Y DESCRIPCIONES */}
+                                <div className="space-y-2 pt-3 border-t border-neutral-100">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block">
+                                        2. Tipografía para Textos y Descripciones
                                     </label>
-                                    <select
-                                        value={config.typography.body_font}
-                                        onChange={(e) => handleTypographyChange('body_font', e.target.value)}
-                                        className="w-full p-3 rounded-xl border border-neutral-200/50 bg-white text-xs font-bold text-neutral-900 outline-none focus:border-neutral-900"
-                                    >
-                                        {AVAILABLE_FONTS.body.map(f => (
-                                            <option key={f.value} value={f.value}>{f.label}</option>
-                                        ))}
-                                    </select>
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        {AVAILABLE_FONTS.body.map(f => {
+                                            const isSel = config.typography.body_font === f.value;
+                                            return (
+                                                <button
+                                                    key={f.value}
+                                                    type="button"
+                                                    onClick={() => handleTypographyChange('body_font', f.value)}
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                                                        isSel
+                                                            ? 'border-neutral-900 bg-neutral-900 text-white'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        style={{ fontFamily: f.value }}
+                                                        className="text-xs font-medium truncate"
+                                                    >
+                                                        {f.label}
+                                                    </span>
+                                                    <span
+                                                        style={{ fontFamily: f.value }}
+                                                        className={`text-xs shrink-0 ${
+                                                            isSel ? 'text-neutral-300' : 'text-neutral-500'
+                                                        }`}
+                                                    >
+                                                        Lectura fluida
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                                        Tipografía para Precios y Números
+                                {/* 3. PRECIOS Y NÚMEROS */}
+                                <div className="space-y-2 pt-3 border-t border-neutral-100">
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 block">
+                                        3. Tipografía para Precios y Números
                                     </label>
-                                    <select
-                                        value={config.typography.price_font}
-                                        onChange={(e) => handleTypographyChange('price_font', e.target.value)}
-                                        className="w-full p-3 rounded-xl border border-neutral-200/50 bg-white text-xs font-bold text-neutral-900 outline-none focus:border-neutral-900 font-mono"
-                                    >
-                                        {AVAILABLE_FONTS.prices.map(f => (
-                                            <option key={f.value} value={f.value}>{f.label}</option>
-                                        ))}
-                                    </select>
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        {AVAILABLE_FONTS.prices.map(f => {
+                                            const isSel = config.typography.price_font === f.value;
+                                            return (
+                                                <button
+                                                    key={f.value}
+                                                    type="button"
+                                                    onClick={() => handleTypographyChange('price_font', f.value)}
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                                                        isSel
+                                                            ? 'border-neutral-900 bg-neutral-900 text-white'
+                                                            : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        style={{ fontFamily: f.value }}
+                                                        className="text-xs font-medium truncate"
+                                                    >
+                                                        {f.label}
+                                                    </span>
+                                                    <span
+                                                        style={{ fontFamily: f.value }}
+                                                        className={`text-xs font-bold tabular-nums shrink-0 ${
+                                                            isSel ? 'text-emerald-300' : 'text-neutral-700'
+                                                        }`}
+                                                    >
+                                                        $1.250,00
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1620,8 +1981,8 @@ export default function CustomizationPage() {
                                                                                     setOpenIconPickerIdx(null);
                                                                                 }}
                                                                                 className={`p-2.5 rounded-xl flex flex-col items-center justify-center transition-all ${isSelected
-                                                                                        ? 'bg-neutral-900 text-white shadow-xs scale-95'
-                                                                                        : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 active:scale-90'
+                                                                                    ? 'bg-neutral-900 text-white shadow-xs scale-95'
+                                                                                    : 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 active:scale-90'
                                                                                     }`}
                                                                                 title={item.label}
                                                                             >
@@ -1749,6 +2110,20 @@ export default function CustomizationPage() {
                     )}
                 </div>
             </div>
+          {storeData && (
+                <AiBannerStudioModal
+                    isOpen={isAiBannerStudioOpen}
+                    onClose={() => setIsAiBannerStudioOpen(false)}
+                    storeId={storeData.id}
+                    storeName={storeData.name}
+                    storeType={currentStoreType}
+                    primaryColor={config.colors.primary}
+                    currentDesktopUrl={config.layout.hero_desktop_url || storeData?.hero_url}
+                    currentMobileUrl={config.layout.hero_mobile_url}
+                    currentCtaConfig={config.layout.hero_cta}
+                    onPublishBanners={handlePublishAiBanners}
+                />
+            )}
         </div>
     )
 }

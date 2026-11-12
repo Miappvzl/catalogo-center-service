@@ -254,6 +254,177 @@ export default function StoreHeader(props: StoreHeaderProps) {
     // 🚀 DEFINICIÓN GLOBAL
     const liveTheme = normalizeThemeConfig(props.store.theme_config);
 
+
+ const heroCta = props.store?.theme_config?.layout?.hero_cta || liveTheme.layout?.hero_cta;
+
+    // 🎯 EJECUTOR DE ACCIÓN DE CADA BOTÓN CTA (Cuadrícula de Productos o Producto Específico)
+    const executeHeroButtonAction = (btn?: {
+        action_type?: 'catalog' | 'product';
+        target_product_id?: string | number | null;
+    }) => {
+        if (!btn) return;
+
+        if (btn.action_type === 'product' && btn.target_product_id) {
+            const targetProd = (props.products || []).find(
+                (p: any) => String(p.id) === String(btn.target_product_id)
+            );
+            if (targetProd) {
+                document.dispatchEvent(new CustomEvent('openProductModal', { detail: targetProd }));
+                return;
+            }
+        }
+
+        // Acción por defecto ('catalog'): Lleva exactamente al inicio de la cuadrícula principal de productos
+        const catalogAnchor = document.getElementById('catalog-grid-start');
+        if (catalogAnchor) {
+            const y = catalogAnchor.getBoundingClientRect().top + window.scrollY - 130;
+            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 520, behavior: 'smooth' });
+        }
+    };
+
+// 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Color de Sombra y Cristal vs Sólido)
+    const renderHeroCtaButton = (btn: any, key: string) => {
+        if (!btn) return null;
+
+        const radiusClass =
+            btn.radius === 'pill'
+                ? 'rounded-full'
+                : btn.radius === 'rounded'
+                ? 'rounded-[10px]'
+                : 'rounded-none';
+
+        const shadowColor = btn.shadow_color || 'rgba(0, 0, 0, 0.35)';
+        const boxShadow =
+            btn.shadow === 'crisp'
+                ? `0 6px 20px -2px ${shadowColor}, 0 2px 6px -1px ${shadowColor}`
+                : btn.shadow === 'subtle'
+                ? `0 3px 10px -1px ${shadowColor}`
+                : 'none';
+
+        if (btn.fill_style === 'minimal_underline') {
+            return (
+                <button
+                    key={key}
+                    type="button"
+                    onClick={() => executeHeroButtonAction(btn)}
+                    style={{
+                        color: btn.text_color || '#FFFFFF',
+                        borderColor: btn.border_color || '#FFFFFF',
+                        fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
+                        textShadow: btn.shadow !== 'none' ? `0 2px 8px ${shadowColor}` : 'none'
+                    }}
+                    className="pointer-events-auto inline-flex items-center gap-2 pb-1 border-b text-xs md:text-sm font-medium tracking-wider uppercase transition-opacity hover:opacity-75 active:scale-95 cursor-pointer"
+                >
+                    <span>{btn.text || 'Comprar Ahora'}</span>
+                    <ArrowRight size={14} strokeWidth={1.75} />
+                </button>
+            );
+        }
+
+        let backgroundColor = 'transparent';
+        if (btn.fill_style === 'glass') {
+            const raw = (btn.bg_color || '').trim();
+            if (!raw || raw === 'transparent' || (raw.startsWith('#') && raw.length <= 7)) {
+                backgroundColor = 'rgba(255, 255, 255, 0.22)';
+            } else {
+                backgroundColor = raw;
+            }
+        } else if (btn.fill_style === 'solid') {
+            const raw = (btn.bg_color || '#171717').trim();
+            backgroundColor = raw === 'transparent' ? '#171717' : raw;
+        }
+
+        return (
+            <button
+                key={key}
+                type="button"
+                onClick={() => executeHeroButtonAction(btn)}
+                style={{
+                    backgroundColor,
+                    color: btn.text_color || '#FFFFFF',
+                    borderColor: btn.border_color || '#FFFFFF',
+                    borderWidth: btn.border_width || '1px',
+                    borderStyle: btn.border_width === '0px' ? 'none' : 'solid',
+                    fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
+                    boxShadow,
+                    backdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined,
+                    WebkitBackdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined
+                }}
+                className={`pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 md:px-6 md:py-3 text-xs md:text-[13px] font-medium tracking-wide transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer ${radiusClass}`}
+            >
+                <span>{btn.text || 'Comprar Ahora'}</span>
+            </button>
+        );
+    };
+
+    // 💎 CAPA EDITORIAL LIMPIA SOBRE EL HERO (Sin etiquetas estorbosas, soporte Centro/Abajo y Sombra con Color)
+    const HeroInteractiveCtaOverlay = () => {
+        if (!heroCta || !heroCta.enabled || !heroCta.primary_button) return null;
+
+        const alignHorizontal =
+            heroCta.alignment === 'right'
+                ? 'items-end text-right'
+                : heroCta.alignment === 'center'
+                ? 'items-center text-center'
+                : 'items-start text-left';
+
+        const alignVertical =
+            heroCta.vertical_alignment === 'center'
+                ? 'justify-center'
+                : 'justify-end';
+
+        const alignButtons =
+            heroCta.alignment === 'right'
+                ? 'justify-end'
+                : heroCta.alignment === 'center'
+                ? 'justify-center'
+                : 'justify-start';
+
+        const descShadowColor = heroCta.description_shadow_color || 'rgba(0, 0, 0, 0.55)';
+        const textShadow =
+            heroCta.description_shadow === 'crisp'
+                ? `0 2px 12px ${descShadowColor}, 0 1px 3px ${descShadowColor}`
+                : heroCta.description_shadow === 'subtle'
+                ? `0 1px 6px ${descShadowColor}`
+                : 'none';
+
+        const descSizeClass =
+            heroCta.description_size === 'lg'
+                ? 'text-sm sm:text-base md:text-xl'
+                : heroCta.description_size === 'sm'
+                ? 'text-[11px] sm:text-xs md:text-sm'
+                : 'text-xs sm:text-sm md:text-base';
+
+        return (
+            <div
+                className={`absolute inset-0 z-20 pointer-events-none flex flex-col ${alignVertical} ${alignHorizontal} p-5 sm:p-7 md:p-12 lg:p-14`}
+            >
+                <div className="max-w-xl space-y-3 md:space-y-4">
+                    {heroCta.description_text && heroCta.description_text.trim().length > 0 && (
+                        <p
+                            style={{
+                                fontFamily: heroCta.description_font || 'var(--font-inter), sans-serif',
+                                color: heroCta.description_color || '#FFFFFF',
+                                textShadow
+                            }}
+                            className={`font-normal leading-relaxed ${descSizeClass}`}
+                        >
+                            {heroCta.description_text}
+                        </p>
+                    )}
+
+                    <div className={`flex items-center gap-2.5 md:gap-3 flex-wrap ${alignButtons}`}>
+                        {renderHeroCtaButton(heroCta.primary_button, 'hero-btn-primary')}
+                        {heroCta.secondary_button_enabled &&
+                            heroCta.secondary_button &&
+                            renderHeroCtaButton(heroCta.secondary_button, 'hero-btn-secondary')}
+                    </div>
+                </div>
+            </div>
+        );
+    };
     // 🚀 RESOLUCIÓN DETERMINISTA DE IMÁGENES DE CATEGORÍA (Admin custom > 1er Producto)
     const categoryImages = useMemo(() => {
         const customImages = props.store?.category_images || {};
@@ -444,7 +615,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
                     {/* Contenedor Auto-Centrado en Desktop & Scrollable en Mobile */}
                     <div ref={props.categoryScrollRef} onScroll={props.handleCategoryScroll} className="w-full overflow-x-auto no-scrollbar py-1" style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}>
-                    <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
+                        <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
                             {props.categories.map((category) => {
                                 const isActivePill = props.selectedCategory === category && !(category === 'Todos' && props.search.trim().length > 0);
                                 return (
@@ -527,7 +698,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
             );
         }
 
-    // 🛠️ VARIANTE: MENÚ DESPLEGABLE ESTÁNDAR (TEMA INDUSTRIAL / CLASSIC)
+        // 🛠️ VARIANTE: MENÚ DESPLEGABLE ESTÁNDAR (TEMA INDUSTRIAL / CLASSIC)
         return (
             <AnimatePresence>
                 {isMobileMenuOpen && (
@@ -577,11 +748,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                                 props.setSelectedCategory(cat);
                                                 setIsMobileMenuOpen(false);
                                             }}
-                                            className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${
-                                                isActive
-                                                    ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
-                                                    : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
-                                            }`}
+                                            className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${isActive
+                                                ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
+                                                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
+                                                }`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <span className="font-mono text-[9px] text-[var(--store-surface-text)] opacity-40 shrink-0">
@@ -648,17 +818,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                     <MobileMenu />
                 </div>
 
-                {/* 2. HERO BANNER INDUSTRIAL (Segregación Estricta y Desvanecido Suave) */}
+              {/* 2. HERO BANNER INDUSTRIAL (Sin degradado ni recortes) */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden -mt-[1px]">
-                        <div
-                            className="relative w-full"
-                            style={{
-                                WebkitMaskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)',
-                                maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)'
-                            }}
-                        >
-                            {/* Desktop (Solo se muestra si hay banner desktop) */}
+                    <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden -mt-[1px]">
+                        <div className="relative w-full">
                             {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
                                 <div className="hidden md:block w-full">
                                     <Image
@@ -672,10 +835,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                 </div>
                             )}
 
-                            {/* Móvil (Solo se muestra si hay portada móvil explícita) */}
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className="relative w-full aspect-[4/5] max-h-[320px] overflow-hidden">
+                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
                                         <Image
                                             src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                             alt="Portada móvil"
@@ -687,6 +849,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                 </div>
                             )}
                         </div>
+                        <HeroInteractiveCtaOverlay />
                     </div>
                 )}
             </>
@@ -779,36 +942,27 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 {/* 🚀 EL MENÚ EDITORIAL A PANTALLA COMPLETA */}
                 <MobileMenu />
 
-                {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Segregación Estricta) */}
-                {/* Renderizado fuera del fixed con padding superior para el efecto de cristal líquido */}
+               {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Sin degradado ni recortes) */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) ? (
                     <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden pt-[90px] md:pt-[130px]">
                         <div className="w-full max-w-[1500px] px-4 md:px-12 py-4 md:py-6">
-                            <div
-                                className="relative w-full"
-                                style={{
-                                    WebkitMaskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)',
-                                    maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)'
-                                }}
-                            >
-                                {/* Desktop (Solo si hay banner desktop) */}
+                            <div className="relative w-full overflow-hidden rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 bg-[var(--store-surface)]">
                                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
-                                    <div className="hidden md:block w-full relative aspect-[21/9] max-h-[420px] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 overflow-hidden bg-[var(--store-surface)] rounded-[var(--radius-card)]">
+                                    <div className="hidden md:block w-full">
                                         <Image
                                             src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
                                             alt="Banner de escritorio"
-                                            fill
-                                            sizes="(max-width: 1500px) 100vw, 1500px"
-                                            className="object-cover"
+                                            width={1920}
+                                            height={600}
+                                            className="w-full h-auto block"
                                             priority
                                         />
                                     </div>
                                 )}
 
-                                {/* Móvil (Solo si hay portada móvil explícita) */}
                                 {liveTheme.layout?.hero_mobile_url && (
                                     <div className="block md:hidden w-full">
-                                        <div className="relative w-full aspect-[4/5] max-h-[350px] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 overflow-hidden bg-[var(--store-surface)] rounded-[var(--radius-card)]">
+                                        <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
                                             <Image
                                                 src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                                 alt="Portada móvil"
@@ -819,6 +973,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                         </div>
                                     </div>
                                 )}
+                                <HeroInteractiveCtaOverlay />
                             </div>
 
                             {/* 🚀 EL SUB-TICKER EDITORIAL DINÁMICO */}
@@ -830,7 +985,6 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         </div>
                     </div>
                 ) : (
-                    /* 🚀 ESCUDO GEOMÉTRICO: Spacer fantasma para compensar el header fixed cuando NO hay banner */
                     <div className="w-full pt-[90px] md:pt-[120px] pointer-events-none shrink-0" />
                 )}
             </>
@@ -925,7 +1079,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
                 <MobileMenu />
 
-                {/* 3. HERO BANNER TÉCNICO (Sin máscara difusa, corte limpio de revista) */}
+             {/* 3. HERO BANNER TÉCNICO (Corte limpio completo 4:5 y 16:5) */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
                     <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden border-b border-[var(--store-border)]/20">
                         <div className="relative w-full max-w-[1500px]">
@@ -936,11 +1090,12 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             )}
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className="relative w-full aspect-[4/5] max-h-[400px] overflow-hidden">
+                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
                                         <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Archive Portada" fill className="object-cover object-center" priority />
                                     </div>
                                 </div>
                             )}
+                            <HeroInteractiveCtaOverlay />
                         </div>
                     </div>
                 )}
@@ -1024,16 +1179,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                     </div>
                 </div>
 
-                {/* 3. HERO BANNER GASTRONÓMICO (Esquinas Redondeadas & Apetito) */}
+             {/* 3. HERO BANNER GASTRONÓMICO (Sin degradado ni recortes) */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
-                        <div
-                            className="relative w-full max-w-[1500px]"
-                            style={{
-                                WebkitMaskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.9) 65%, rgba(0,0,0,0.5) 80%, transparent 100%)',
-                                maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.9) 65%, rgba(0,0,0,0.5) 80%, transparent 100%)'
-                            }}
-                        >
+                    <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
+                        <div className="relative w-full max-w-[1500px]">
                             {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
                                 <div className="hidden md:block w-full">
                                     <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Bistro Hero" width={1920} height={600} className="w-full h-auto block" priority />
@@ -1041,11 +1190,12 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             )}
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className="relative w-full aspect-[4/5] max-h-[300px] overflow-hidden">
+                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
                                         <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Bistro Portada" fill className="object-cover object-center" priority />
                                     </div>
                                 </div>
                             )}
+                            <HeroInteractiveCtaOverlay />
                         </div>
                     </div>
                 )}
@@ -1128,6 +1278,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                 style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
                             >
                                 <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Hero" fill className="object-cover object-center" priority />
+                                <HeroInteractiveCtaOverlay />
                             </div>
 
 
@@ -1236,9 +1387,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             )}
                         </div>
 
-                        {/* Mobile Hero (Fallback simple) */}
-                        <div className="block md:hidden w-full relative aspect-[4/5] max-h-[420px] overflow-hidden bg-[var(--store-surface)]" style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
-                            <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover" priority />
+                     {/* Mobile Hero (Proporción completa sin max-h que recorte) */}
+                        <div className={`block md:hidden w-full relative ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden bg-[var(--store-surface)]`} style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
+                            <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover object-center" priority />
+                            <HeroInteractiveCtaOverlay />
                         </div>
                     </div>
                 </div>
@@ -1378,16 +1530,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 </div>
             </div>
 
-            {/* 4. HERO BANNER (Ubicado debajo del Header en Desktop y en medio en Móvil) */}
+           {/* 4. HERO BANNER (100% Nítido, Sin Degradado Inferior y Sin Recorte Superior) */}
             {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
                 <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden relative z-20">
-                    <div
-                        className="relative w-full"
-                        style={{
-                            WebkitMaskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)',
-                            maskImage: 'linear-gradient(to bottom, black 50%, rgba(0,0,0,0.92) 65%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.2) 92%, transparent 100%)'
-                        }}
-                    >
+                    <div className="relative w-full">
                         {/* Versión Desktop */}
                         {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
                             <div className="hidden md:block w-full">
@@ -1402,10 +1548,10 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             </div>
                         )}
 
-                        {/* Versión Móvil */}
+                        {/* Versión Móvil (Proporción 4:5 o 3:2 íntegra de arriba a abajo) */}
                         <div className="block md:hidden w-full">
                             {liveTheme.layout?.hero_mobile_url ? (
-                                <div className="relative w-full aspect-[4/5] max-h-[320px] overflow-hidden">
+                                <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
                                     <Image
                                         src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                         alt="Portada móvil"
@@ -1425,6 +1571,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                                 />
                             ) : null}
                         </div>
+                        <HeroInteractiveCtaOverlay />
                     </div>
                 </div>
             )}

@@ -792,7 +792,7 @@ function areProductCardPropsEqual(prev: ProductCardProps, next: ProductCardProps
       prev.product.updated_at === next.product.updated_at &&
       prev.product.stock === next.product.stock);
 
-  // 2. Si el producto no cambió, validamos únicamente los estados externos de UI
+  // 2. Si el producto no cambió, validamos únicamente los estados externos de UI y el Encuadre (mediaConfig)
   if (!isProductIdentical) return false;
   return (
     prev.isFavorite === next.isFavorite &&
@@ -801,7 +801,10 @@ function areProductCardPropsEqual(prev: ProductCardProps, next: ProductCardProps
     prev.showTaxIndicator === next.showTaxIndicator &&
     prev.taxPercentage === next.taxPercentage &&
     prev.cardStyle === next.cardStyle &&
-    prev.isFeatured === next.isFeatured && // 🚀 Optimizador actualizado
+    prev.isFeatured === next.isFeatured &&
+    prev.mediaConfig?.ratio === next.mediaConfig?.ratio &&
+    prev.mediaConfig?.fit === next.mediaConfig?.fit &&
+    prev.mediaConfig?.bg_color === next.mediaConfig?.bg_color &&
     // Validamos pricing porque los padres suelen pasarlo como objeto literal
     prev.pricing.priceInBs === next.pricing.priceInBs &&
     prev.pricing.cashPrice === next.pricing.cashPrice &&

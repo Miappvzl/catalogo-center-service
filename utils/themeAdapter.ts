@@ -179,7 +179,7 @@ export function normalizeThemeConfig(raw: any): ThemeConfig {
         price_font: rawTypography.price_font || DEFAULT_THEME_CONFIG.typography.price_font,
     };
 
-    const layout: ThemeConfig['layout'] = {
+ const layout: ThemeConfig['layout'] = {
         header_style: rawLayout.header_style || DEFAULT_THEME_CONFIG.layout.header_style,
         card_style: rawLayout.card_style || DEFAULT_THEME_CONFIG.layout.card_style,
         logo_type: rawLayout.logo_type || 'standard',
@@ -191,12 +191,13 @@ export function normalizeThemeConfig(raw: any): ThemeConfig {
         trust_badges: rawLayout.trust_badges || DEFAULT_THEME_CONFIG.layout.trust_badges,
         greeting_text: rawLayout.greeting_text || DEFAULT_THEME_CONFIG.layout.greeting_text,
         slogan_text: rawLayout.slogan_text || DEFAULT_THEME_CONFIG.layout.slogan_text,
-       hero_button_text: rawLayout.hero_button_text || DEFAULT_THEME_CONFIG.layout.hero_button_text,
+        hero_button_text: rawLayout.hero_button_text || DEFAULT_THEME_CONFIG.layout.hero_button_text,
         card_media: {
             ratio: rawLayout.card_media?.ratio || (['hardware_dense', 'modular_tech', 'gourmet_flow', 'bistro_fast'].includes(raw.template_id) ? 'aspect-square' : 'aspect-[4/5]'),
             fit: rawLayout.card_media?.fit || 'cover',
             bg_color: rawLayout.card_media?.bg_color || 'transparent',
         },
+        hero_cta: rawLayout.hero_cta,
     };
 
     return {
