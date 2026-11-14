@@ -535,8 +535,8 @@ export default function AiBannerStudioModal({
         if (Math.abs(nextX - 50) < 3) nextX = 50
         if (Math.abs(nextY - 50) < 3) nextY = 50
 
-        const clampedX = Math.max(8, Math.min(92, Math.round(nextX)))
-        const clampedY = Math.max(10, Math.min(90, Math.round(nextY)))
+       const clampedX = Math.max(0, Math.min(100, Math.round(nextX)))
+        const clampedY = Math.max(0, Math.min(100, Math.round(nextY)))
 
         const autoAlign: HeroCtaAlignment =
           clampedX > 66 ? 'right' : clampedX >= 34 ? 'center' : 'left'
@@ -954,6 +954,7 @@ export default function AiBannerStudioModal({
       setIsSaving(false)
     }
   }
+ // Renderizador con unidades proporcionales al contenedor (cqw): 100% idéntico a StoreHeader.tsx
   const renderPreviewButton = (
     btn: HeroButtonItemConfig,
     vpCfg: HeroViewportCtaConfig,
@@ -964,24 +965,24 @@ export default function AiBannerStudioModal({
     const hasTwoInRow =
       vpCfg.secondary_button_enabled && (vpCfg.buttons_layout || 'row') === 'row'
 
-    const basePadX = isMob && hasTwoInRow ? 13 : isMob ? 18 : 22
-    const basePadY = isMob && hasTwoInRow ? 7.5 : isMob ? 9.5 : 10.5
-    const baseFont = isMob && hasTwoInRow ? 10.5 : 12
+    const padXCqw = isMob ? (hasTwoInRow ? 3.8 : 5.2) * scale : 3.4 * scale
+    const padYCqw = isMob ? (hasTwoInRow ? 2.2 : 2.75) * scale : 1.55 * scale
+    const fontCqw = isMob ? (hasTwoInRow ? 3.1 : 3.5) * scale : 1.95 * scale
 
     const radiusClass =
       btn.radius === 'pill'
         ? 'rounded-full'
         : btn.radius === 'rounded'
-          ? 'rounded-[10px]'
-          : 'rounded-none'
+        ? 'rounded-[10px]'
+        : 'rounded-none'
 
     const sColor = btn.shadow_color || 'rgba(0, 0, 0, 0.35)'
     const shadowStyle =
       btn.shadow === 'crisp'
         ? `0 6px 20px -2px ${sColor}, 0 2px 6px -1px ${sColor}`
         : btn.shadow === 'subtle'
-          ? `0 3px 10px -1px ${sColor}`
-          : 'none'
+        ? `0 3px 10px -1px ${sColor}`
+        : 'none'
 
     if (btn.fill_style === 'minimal_underline') {
       return (
@@ -991,12 +992,11 @@ export default function AiBannerStudioModal({
             borderColor: btn.border_color || '#FFFFFF',
             fontFamily: btn.font_family,
             textShadow: btn.shadow !== 'none' ? `0 2px 8px ${sColor}` : 'none',
-            fontSize: `${Number((baseFont * scale).toFixed(1))}px`
+            fontSize: `${fontCqw.toFixed(2)}cqw`
           }}
-          className="inline-flex items-center gap-1.5 pb-1 border-b font-medium tracking-wider uppercase select-none whitespace-nowrap"
+          className="inline-flex items-center gap-[0.8cqw] pb-[0.3cqw] border-b font-medium tracking-wider uppercase select-none whitespace-nowrap"
         >
           <span>{btn.text || 'Comprar Ahora'}</span>
-          <ArrowRight size={Math.round(13 * scale)} strokeWidth={1.75} />
         </span>
       )
     }
@@ -1013,23 +1013,24 @@ export default function AiBannerStudioModal({
           borderStyle: btn.border_width === '0px' ? 'none' : 'solid',
           fontFamily: btn.font_family,
           boxShadow: shadowStyle,
-          paddingLeft: `${Math.round(basePadX * scale)}px`,
-          paddingRight: `${Math.round(basePadX * scale)}px`,
-          paddingTop: `${Math.round(basePadY * scale)}px`,
-          paddingBottom: `${Math.round(basePadY * scale)}px`,
-          fontSize: `${Number((baseFont * scale).toFixed(1))}px`,
+          paddingLeft: `${padXCqw.toFixed(2)}cqw`,
+          paddingRight: `${padXCqw.toFixed(2)}cqw`,
+          paddingTop: `${padYCqw.toFixed(2)}cqw`,
+          paddingBottom: `${padYCqw.toFixed(2)}cqw`,
+          fontSize: `${fontCqw.toFixed(2)}cqw`,
           backdropFilter:
             btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined,
           WebkitBackdropFilter:
             btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined
         }}
-        className={`inline-flex items-center justify-center gap-1.5 font-medium tracking-wide leading-none transition-all select-none whitespace-nowrap ${radiusClass}`}
+        className={`inline-flex items-center justify-center font-medium tracking-wide leading-none transition-all select-none whitespace-nowrap ${radiusClass}`}
       >
         <span>{btn.text || 'Comprar Ahora'}</span>
       </span>
     )
   }
 
+  // Espejo geométrico 1:1 con StoreHeader.tsx (inset-[3%] + translate(-posX%, -posY%) + cqw)
   const renderDraggableStageOverlay = (
     vpCfg: HeroViewportCtaConfig,
     showDesc: boolean,
@@ -1037,8 +1038,8 @@ export default function AiBannerStudioModal({
   ) => {
     if (!vpCfg.enabled) return null
 
-    const posX = Math.max(8, Math.min(92, typeof vpCfg.pos_x === 'number' ? vpCfg.pos_x : 50))
-    const posY = Math.max(10, Math.min(90, typeof vpCfg.pos_y === 'number' ? vpCfg.pos_y : 78))
+    const posX = Math.max(0, Math.min(100, typeof vpCfg.pos_x === 'number' ? vpCfg.pos_x : 50))
+    const posY = Math.max(0, Math.min(100, typeof vpCfg.pos_y === 'number' ? vpCfg.pos_y : 82))
     const isStacked = vpCfg.buttons_layout === 'column'
 
     const textAlignClass =
@@ -1048,27 +1049,38 @@ export default function AiBannerStudioModal({
       ? posX > 64
         ? 'flex-col items-end'
         : posX >= 36
-          ? 'flex-col items-center'
-          : 'flex-col items-start'
+        ? 'flex-col items-center'
+        : 'flex-col items-start'
       : posX > 64
-        ? 'flex-row flex-nowrap items-center justify-end'
-        : posX >= 36
-          ? 'flex-row flex-nowrap items-center justify-center'
-          : 'flex-row flex-nowrap items-center justify-start'
+      ? 'flex-row flex-nowrap items-center justify-end'
+      : posX >= 36
+      ? 'flex-row flex-nowrap items-center justify-center'
+      : 'flex-row flex-nowrap items-center justify-start'
 
     const sColor = vpCfg.description_shadow_color || 'rgba(0,0,0,0.55)'
     const textShadow =
       vpCfg.description_shadow === 'crisp'
         ? `0 2px 12px ${sColor}, 0 1px 3px ${sColor}`
         : vpCfg.description_shadow === 'subtle'
-          ? `0 1px 6px ${sColor}`
-          : 'none'
+        ? `0 1px 6px ${sColor}`
+        : 'none'
+
+    const descFontCqw = isMobileStage
+      ? vpCfg.description_size === 'lg'
+        ? '4.4cqw'
+        : vpCfg.description_size === 'sm'
+        ? '3.1cqw'
+        : '3.6cqw'
+      : vpCfg.description_size === 'lg'
+      ? '2.5cqw'
+      : vpCfg.description_size === 'sm'
+      ? '1.5cqw'
+      : '1.95cqw'
 
     const hudPositionClass = posY < 22 ? '-bottom-9' : '-top-9'
 
     return (
       <div className="@container absolute inset-0 z-20 pointer-events-none overflow-hidden">
-        {/* Guías magnéticas al pasar por el centro */}
         {interactionMode === 'move' && posX === 50 && (
           <div className="absolute inset-y-0 left-1/2 w-px border-l border-dashed border-white/80 pointer-events-none" />
         )}
@@ -1076,150 +1088,145 @@ export default function AiBannerStudioModal({
           <div className="absolute inset-x-0 top-1/2 h-px border-t border-dashed border-white/80 pointer-events-none" />
         )}
 
-        {/* CAJA CON COORDENADAS IDÉNTICAS A STOREHEADER (inset-0 + translate(-50%, -50%) + 0px padding) */}
-        <div
-          onPointerDown={(e) => startBoxInteraction(e, 'move')}
-          onPointerUp={(e) => {
-            e.stopPropagation()
-            setInteractionMode(null)
-          }}
-          style={{
-            left: `${posX}%`,
-            top: `${posY}%`,
-            transform: 'translate(-50%, -50%)',
-            touchAction: 'none'
-          }}
-          className={`pointer-events-auto absolute w-max max-w-[94cqw] flex flex-col ${textAlignClass} gap-2 cursor-grab active:cursor-grabbing`}
-        >
-          {/* MARCO PUNTEADO FLOTANTE (No altera en 0px el tamaño ni el margen inferior real) */}
+        <div className="absolute inset-[3%] pointer-events-none">
           <div
-            className={`absolute -inset-2 rounded-2xl border border-dashed pointer-events-none transition-colors ${interactionMode
-                ? 'border-white bg-black/15'
-                : 'border-white/85'
-              }`}
-          />
-
-          {/* BARRA FLOTANTE EXTERNA */}
-          <div
-            className={`absolute ${hudPositionClass} left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap z-30`}
+            onPointerDown={(e) => startBoxInteraction(e, 'move')}
+            onPointerUp={(e) => {
+              e.stopPropagation()
+              setInteractionMode(null)
+            }}
+            style={{
+              left: `${posX}%`,
+              top: `${posY}%`,
+              transform: `translate(-${posX}%, -${posY}%)`,
+              touchAction: 'none'
+            }}
+            className={`pointer-events-auto absolute w-max max-w-full flex flex-col ${textAlignClass} gap-[1.2cqw] cursor-grab active:cursor-grabbing`}
           >
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-950/90 text-white text-[8px] font-mono uppercase tracking-wider border border-white/20 pointer-events-none">
-              <Move size={9} /> Arrastrar
-            </span>
+            {/* Marco punteado flotante con 0px de impacto en el layout */}
+            <div
+              className={`absolute -inset-2 rounded-2xl border border-dashed pointer-events-none transition-colors ${
+                interactionMode
+                  ? 'border-white bg-black/15'
+                  : 'border-white/85'
+              }`}
+            />
 
+            {/* Barra de acciones flotante */}
+            <div
+              className={`absolute ${hudPositionClass} left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap z-30`}
+            >
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-950/90 text-white text-[8px] font-mono uppercase tracking-wider border border-white/20 pointer-events-none">
+                <Move size={9} /> Arrastrar
+              </span>
+
+              {vpCfg.secondary_button_enabled && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    updateActiveViewportCta({
+                      buttons_layout: isStacked ? 'row' : 'column'
+                    })
+                  }}
+                  className="px-2 py-0.5 rounded-full bg-white text-neutral-950 text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors cursor-pointer border border-neutral-300"
+                >
+                  {isStacked ? '↕ Apilados (Pasar a ↔)' : '↔ En Fila (Pasar a ↕)'}
+                </button>
+              )}
+            </div>
+
+            {showDesc &&
+              vpCfg.description_text &&
+              vpCfg.description_text.trim().length > 0 && (
+                <p
+                  style={{
+                    fontFamily: vpCfg.description_font,
+                    color: vpCfg.description_color || '#FFFFFF',
+                    textShadow,
+                    fontSize: descFontCqw
+                  }}
+                  className="relative z-10 font-normal leading-relaxed select-none max-w-[86cqw] whitespace-normal"
+                >
+                  {vpCfg.description_text}
+                </p>
+              )}
+
+            <div
+              style={{ gap: isMobileStage ? '2.2cqw' : '1.2cqw' }}
+              className={`relative z-10 flex items-center justify-center ${buttonsAlignClass}`}
+            >
+              {renderPreviewButton(vpCfg.primary_button, vpCfg, isMobileStage)}
+              {vpCfg.secondary_button_enabled &&
+                vpCfg.secondary_button &&
+                renderPreviewButton(vpCfg.secondary_button, vpCfg, isMobileStage)}
+            </div>
+
+            {/* 4 NODOS DE ESQUINA */}
+            <div
+              onPointerDown={(e) => startBoxInteraction(e, 'scale_nw')}
+              onPointerUp={(e) => {
+                e.stopPropagation()
+                setInteractionMode(null)
+              }}
+              className="absolute -top-3.5 -left-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nwse-resize hover:scale-125 transition-transform z-30"
+            />
+            <div
+              onPointerDown={(e) => startBoxInteraction(e, 'scale_ne')}
+              onPointerUp={(e) => {
+                e.stopPropagation()
+                setInteractionMode(null)
+              }}
+              className="absolute -top-3.5 -right-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nesw-resize hover:scale-125 transition-transform z-30"
+            />
+            <div
+              onPointerDown={(e) => startBoxInteraction(e, 'scale_sw')}
+              onPointerUp={(e) => {
+                e.stopPropagation()
+                setInteractionMode(null)
+              }}
+              className="absolute -bottom-3.5 -left-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nesw-resize hover:scale-125 transition-transform z-30"
+            />
+            <div
+              onPointerDown={(e) => startBoxInteraction(e, 'scale_se')}
+              onPointerUp={(e) => {
+                e.stopPropagation()
+                setInteractionMode(null)
+              }}
+              className="absolute -bottom-3.5 -right-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nwse-resize hover:scale-125 transition-transform z-30"
+            />
+
+            {/* TIRADORES LATERALES E INFERIOR */}
             {vpCfg.secondary_button_enabled && (
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  updateActiveViewportCta({
-                    buttons_layout: isStacked ? 'row' : 'column'
-                  })
-                }}
-                className="px-2 py-0.5 rounded-full bg-white text-neutral-950 text-[8px] font-mono font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors cursor-pointer border border-neutral-300"
-              >
-                {isStacked ? '↕ Apilados (Pasar a ↔)' : '↔ En Fila (Pasar a ↕)'}
-              </button>
+              <>
+                <div
+                  onPointerDown={(e) => startBoxInteraction(e, 'stretch_x_left')}
+                  onPointerUp={(e) => {
+                    e.stopPropagation()
+                    setInteractionMode(null)
+                  }}
+                  className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-2 h-6 rounded-full bg-white border border-neutral-900 cursor-ew-resize hover:scale-110 transition-transform z-20"
+                />
+                <div
+                  onPointerDown={(e) => startBoxInteraction(e, 'stretch_x_right')}
+                  onPointerUp={(e) => {
+                    e.stopPropagation()
+                    setInteractionMode(null)
+                  }}
+                  className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-2 h-6 rounded-full bg-white border border-neutral-900 cursor-ew-resize hover:scale-110 transition-transform z-20"
+                />
+                <div
+                  onPointerDown={(e) => startBoxInteraction(e, 'stretch_y')}
+                  onPointerUp={(e) => {
+                    e.stopPropagation()
+                    setInteractionMode(null)
+                  }}
+                  className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 h-2 w-6 rounded-full bg-white border border-neutral-900 cursor-ns-resize hover:scale-110 transition-transform z-20"
+                />
+              </>
             )}
           </div>
-
-          {showDesc &&
-            vpCfg.description_text &&
-            vpCfg.description_text.trim().length > 0 && (
-              <p
-                style={{
-                  fontFamily: vpCfg.description_font,
-                  color: vpCfg.description_color || '#FFFFFF',
-                  textShadow
-                }}
-                className={`relative z-10 font-normal leading-relaxed select-none max-w-[86cqw] sm:max-w-md whitespace-normal ${isMobileStage
-                    ? vpCfg.description_size === 'lg'
-                      ? 'text-base'
-                      : vpCfg.description_size === 'sm'
-                        ? 'text-[11px]'
-                        : 'text-xs'
-                    : vpCfg.description_size === 'lg'
-                      ? 'text-base sm:text-xl'
-                      : vpCfg.description_size === 'sm'
-                        ? 'text-xs'
-                        : 'text-sm sm:text-base'
-                  }`}
-              >
-                {vpCfg.description_text}
-              </p>
-            )}
-
-          <div className={`relative z-10 flex gap-2 sm:gap-2.5 items-center justify-center ${buttonsAlignClass}`}>
-            {renderPreviewButton(vpCfg.primary_button, vpCfg, isMobileStage)}
-            {vpCfg.secondary_button_enabled &&
-              vpCfg.secondary_button &&
-              renderPreviewButton(vpCfg.secondary_button, vpCfg, isMobileStage)}
-          </div>
-
-          {/* 4 NODOS DE ESQUINA */}
-          <div
-            onPointerDown={(e) => startBoxInteraction(e, 'scale_nw')}
-            onPointerUp={(e) => {
-              e.stopPropagation()
-              setInteractionMode(null)
-            }}
-            className="absolute -top-3.5 -left-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nwse-resize hover:scale-125 transition-transform z-30"
-          />
-          <div
-            onPointerDown={(e) => startBoxInteraction(e, 'scale_ne')}
-            onPointerUp={(e) => {
-              e.stopPropagation()
-              setInteractionMode(null)
-            }}
-            className="absolute -top-3.5 -right-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nesw-resize hover:scale-125 transition-transform z-30"
-          />
-          <div
-            onPointerDown={(e) => startBoxInteraction(e, 'scale_sw')}
-            onPointerUp={(e) => {
-              e.stopPropagation()
-              setInteractionMode(null)
-            }}
-            className="absolute -bottom-3.5 -left-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nesw-resize hover:scale-125 transition-transform z-30"
-          />
-          <div
-            onPointerDown={(e) => startBoxInteraction(e, 'scale_se')}
-            onPointerUp={(e) => {
-              e.stopPropagation()
-              setInteractionMode(null)
-            }}
-            className="absolute -bottom-3.5 -right-3.5 w-3.5 h-3.5 rounded-full bg-white border-2 border-neutral-950 cursor-nwse-resize hover:scale-125 transition-transform z-30"
-          />
-
-          {/* TIRADORES LATERALES E INFERIOR */}
-          {vpCfg.secondary_button_enabled && (
-            <>
-              <div
-                onPointerDown={(e) => startBoxInteraction(e, 'stretch_x_left')}
-                onPointerUp={(e) => {
-                  e.stopPropagation()
-                  setInteractionMode(null)
-                }}
-                className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-2 h-6 rounded-full bg-white border border-neutral-900 cursor-ew-resize hover:scale-110 transition-transform z-20"
-              />
-              <div
-                onPointerDown={(e) => startBoxInteraction(e, 'stretch_x_right')}
-                onPointerUp={(e) => {
-                  e.stopPropagation()
-                  setInteractionMode(null)
-                }}
-                className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-2 h-6 rounded-full bg-white border border-neutral-900 cursor-ew-resize hover:scale-110 transition-transform z-20"
-              />
-              <div
-                onPointerDown={(e) => startBoxInteraction(e, 'stretch_y')}
-                onPointerUp={(e) => {
-                  e.stopPropagation()
-                  setInteractionMode(null)
-                }}
-                className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 h-2 w-6 rounded-full bg-white border border-neutral-900 cursor-ns-resize hover:scale-110 transition-transform z-20"
-              />
-            </>
-          )}
         </div>
       </div>
     )
@@ -1593,12 +1600,13 @@ export default function AiBannerStudioModal({
                                   value={activeVpConfig.primary_button.action_type}
                                   onChange={(e) =>
                                     updateSpecificButton('primary', {
-                                      action_type: e.target.value as 'catalog' | 'product'
+                                      action_type: e.target.value as 'catalog' | 'product' | 'bestsellers'
                                     })
                                   }
                                   className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-900 outline-none focus:border-neutral-900"
                                 >
                                   <option value="catalog">Ir a los productos</option>
+                                  <option value="bestsellers">Al carrusel de Lo Más Vendido</option>
                                   <option value="product">Abrir un producto</option>
                                 </select>
                               </div>
@@ -1648,12 +1656,13 @@ export default function AiBannerStudioModal({
                                   }
                                   onChange={(e) =>
                                     updateSpecificButton('secondary', {
-                                      action_type: e.target.value as 'catalog' | 'product'
+                                      action_type: e.target.value as 'catalog' | 'product' | 'bestsellers'
                                     })
                                   }
                                   className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-900 outline-none focus:border-neutral-900"
                                 >
                                   <option value="catalog">Ir a los productos</option>
+                                  <option value="bestsellers">Al carrusel de Lo Más Vendido</option>
                                   <option value="product">Abrir un producto</option>
                                 </select>
                               </div>
@@ -1706,12 +1715,13 @@ export default function AiBannerStudioModal({
                                   value={activeBtnConfig.action_type}
                                   onChange={(e) =>
                                     updateActiveButton({
-                                      action_type: e.target.value as 'catalog' | 'product'
+                                      action_type: e.target.value as 'catalog' | 'product' | 'bestsellers'
                                     })
                                   }
                                   className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-900 outline-none focus:border-neutral-900"
                                 >
                                   <option value="catalog">Al inicio de los productos</option>
+                                  <option value="bestsellers">Al carrusel de Lo Más Vendido</option>
                                   <option value="product">A un producto en específico</option>
                                 </select>
                               </div>

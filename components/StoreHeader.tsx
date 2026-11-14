@@ -257,9 +257,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
  const heroCta = props.store?.theme_config?.layout?.hero_cta || liveTheme.layout?.hero_cta;
 
-    // 🎯 EJECUTOR DE ACCIÓN DE CADA BOTÓN CTA (Cuadrícula de Productos o Producto Específico)
+   // 🎯 EJECUTOR DE ACCIÓN DE CADA BOTÓN CTA (Catálogo, Lo Más Vendido o Producto Específico)
     const executeHeroButtonAction = (btn?: {
-        action_type?: 'catalog' | 'product';
+        action_type?: 'catalog' | 'product' | 'bestsellers';
         target_product_id?: string | number | null;
     }) => {
         if (!btn) return;
@@ -274,7 +274,17 @@ export default function StoreHeader(props: StoreHeaderProps) {
             }
         }
 
-        // Acción por defecto ('catalog'): Lleva exactamente al inicio de la cuadrícula principal de productos
+        if (btn.action_type === 'bestsellers') {
+            const bestsellersEl =
+                document.getElementById('bestsellers-section') ||
+                document.getElementById('catalog-grid-start');
+            if (bestsellersEl) {
+                const y = bestsellersEl.getBoundingClientRect().top + window.scrollY - 125;
+                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                return;
+            }
+        }
+
         const catalogAnchor = document.getElementById('catalog-grid-start');
         if (catalogAnchor) {
             const y = catalogAnchor.getBoundingClientRect().top + window.scrollY - 130;
@@ -284,11 +294,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
         }
     };
 
-// Proporción compacta móvil para que siempre se vea "Lo más vendido" debajo del banner
     const mobileAspectClass = heroCta?.mobile_banner_ratio || 'aspect-[9/10]';
 
-
-    // Convierte cualquier HEX (#EF4444) o RGBA a color de cristal con su tinte real (ej. cristal rojizo)
     const resolveCtaButtonBg = (fillStyle: string, rawColor?: string) => {
         if (fillStyle === 'outline_pill' || fillStyle === 'minimal_underline') {
             return 'transparent';
@@ -324,17 +331,15 @@ export default function StoreHeader(props: StoreHeaderProps) {
         }
 
         if (fillStyle === 'glass') {
-            // Si el color guardado tenía opacidad 1 (ej. #EF4444), le aplicamos 0.32 de cristal conservando su tono rojo
             const glassAlpha = a >= 0.88 || a <= 0.02 ? 0.32 : Number(a.toFixed(2));
             return `rgba(${r}, ${g}, ${b}, ${glassAlpha})`;
         }
 
-        // En modo sólido
         return a < 0.1 ? `rgb(${r}, ${g}, ${b})` : clean;
     };
 
-    // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Escala de Tamaño y Tinte Cristal Real)
- // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Escala Proporcional Contenida)
+    // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA CON UNIDADES PROPORCIONALES (cqw)
+    // Garantiza que el botón mida exactamente la misma proporción respecto a la imagen en el Modal y en la Tienda Real
     const renderHeroCtaButton = (
         btn: any,
         key: string,
@@ -346,13 +351,21 @@ export default function StoreHeader(props: StoreHeaderProps) {
         const hasTwoInRow =
             vpConfig?.secondary_button_enabled &&
             (vpConfig?.buttons_layout || 'row') === 'row';
-     const maxAllowed =
+        const maxAllowed =
             isMobileViewport && hasTwoInRow ? 1.32 : isMobileViewport ? 1.5 : 1.65;
         const scale = Math.min(maxAllowed, Math.max(0.65, Number(btn.scale || 1)));
 
-        const basePadX = isMobileViewport && hasTwoInRow ? 13 : isMobileViewport ? 18 : 22;
-        const basePadY = isMobileViewport && hasTwoInRow ? 7.5 : isMobileViewport ? 9.5 : 10.5;
-        const baseFont = isMobileViewport && hasTwoInRow ? 10.5 : 12.5;
+        // Dimensiones en % del ancho del banner (cqw): 100% idénticas en un modal de 600px y en un monitor de 1500px
+        const padXCqw = isMobileViewport
+            ? (hasTwoInRow ? 3.8 : 5.2) * scale
+            : 3.4 * scale;
+        const padYCqw = isMobileViewport
+            ? (hasTwoInRow ? 2.2 : 2.75) * scale
+            : 1.55 * scale;
+        const fontCqw = isMobileViewport
+            ? (hasTwoInRow ? 3.1 : 3.5) * scale
+            : 1.95 * scale;
+
         const radiusClass =
             btn.radius === 'pill'
                 ? 'rounded-full'
@@ -379,12 +392,11 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         borderColor: btn.border_color || '#FFFFFF',
                         fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
                         textShadow: btn.shadow !== 'none' ? `0 2px 8px ${shadowColor}` : 'none',
-                        fontSize: `${Math.round(12 * scale)}px`
+                        fontSize: `${fontCqw.toFixed(2)}cqw`
                     }}
-                    className="pointer-events-auto inline-flex items-center gap-2 pb-1 border-b font-medium tracking-wider uppercase transition-opacity hover:opacity-75 active:scale-95 cursor-pointer"
+                    className="pointer-events-auto inline-flex items-center gap-[0.8cqw] pb-[0.3cqw] border-b font-medium tracking-wider uppercase transition-opacity hover:opacity-75 active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                     <span>{btn.text || 'Comprar Ahora'}</span>
-                    <ArrowRight size={Math.round(14 * scale)} strokeWidth={1.75} />
                 </button>
             );
         }
@@ -404,27 +416,27 @@ export default function StoreHeader(props: StoreHeaderProps) {
                     borderStyle: btn.border_width === '0px' ? 'none' : 'solid',
                     fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
                     boxShadow,
-                paddingLeft: `${Math.round(basePadX * scale)}px`,
-                    paddingRight: `${Math.round(basePadX * scale)}px`,
-                    paddingTop: `${Math.round(basePadY * scale)}px`,
-                    paddingBottom: `${Math.round(basePadY * scale)}px`,
-                    fontSize: `${Number((baseFont * scale).toFixed(1))}px`,
+                    paddingLeft: `${padXCqw.toFixed(2)}cqw`,
+                    paddingRight: `${padXCqw.toFixed(2)}cqw`,
+                    paddingTop: `${padYCqw.toFixed(2)}cqw`,
+                    paddingBottom: `${padYCqw.toFixed(2)}cqw`,
+                    fontSize: `${fontCqw.toFixed(2)}cqw`,
                     backdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined,
                     WebkitBackdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined
                 }}
-                className={`pointer-events-auto inline-flex items-center justify-center gap-2 font-medium tracking-wide leading-none transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer whitespace-nowrap ${radiusClass}`}
+                className={`pointer-events-auto inline-flex items-center justify-center font-medium tracking-wide leading-none transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer whitespace-nowrap ${radiusClass}`}
             >
                 <span>{btn.text || 'Comprar Ahora'}</span>
             </button>
         );
     };
 
-// Renderiza la capa con paridad geométrica 1:1 respecto al Editor (Mismo margen inferior exacto)
+    // Renderiza la capa con paridad geométrica 1:1 exacta respecto al Editor Modal
     const renderViewportOverlayContent = (vpConfig: any, isMobileViewport: boolean) => {
         if (!vpConfig || !vpConfig.enabled || !vpConfig.primary_button) return null;
 
-        const posX = Math.max(8, Math.min(92, typeof vpConfig.pos_x === 'number' ? vpConfig.pos_x : 50));
-        const posY = Math.max(10, Math.min(90, typeof vpConfig.pos_y === 'number' ? vpConfig.pos_y : 78));
+        const posX = Math.max(0, Math.min(100, typeof vpConfig.pos_x === 'number' ? vpConfig.pos_x : 50));
+        const posY = Math.max(0, Math.min(100, typeof vpConfig.pos_y === 'number' ? vpConfig.pos_y : 82));
 
         const isStacked = vpConfig.buttons_layout === 'column';
 
@@ -451,56 +463,62 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 ? `0 1px 6px ${descShadowColor}`
                 : 'none';
 
-        const descSizeClass = isMobileViewport
+        const descFontCqw = isMobileViewport
             ? vpConfig.description_size === 'lg'
-                ? 'text-base'
+                ? '4.4cqw'
                 : vpConfig.description_size === 'sm'
-                ? 'text-[11px]'
-                : 'text-xs'
+                ? '3.1cqw'
+                : '3.6cqw'
             : vpConfig.description_size === 'lg'
-            ? 'text-xl'
+            ? '2.5cqw'
             : vpConfig.description_size === 'sm'
-            ? 'text-xs'
-            : 'text-sm md:text-base';
+            ? '1.5cqw'
+            : '1.95cqw';
 
         return (
             <div className="@container absolute inset-0 pointer-events-none overflow-hidden">
-                <div
-                    style={{
-                        left: `${posX}%`,
-                        top: `${posY}%`,
-                        transform: 'translate(-50%, -50%)'
-                    }}
-                    className={`absolute w-max max-w-[94cqw] flex flex-col ${textAlignClass} gap-2`}
-                >
-                    {vpConfig.description_text && vpConfig.description_text.trim().length > 0 && (
-                        <p
-                            style={{
-                                fontFamily: vpConfig.description_font || 'var(--font-inter), sans-serif',
-                                color: vpConfig.description_color || '#FFFFFF',
-                                textShadow
-                            }}
-                            className={`font-normal leading-relaxed max-w-[86cqw] sm:max-w-lg whitespace-normal ${descSizeClass}`}
-                        >
-                            {vpConfig.description_text}
-                        </p>
-                    )}
-
-                    <div className={`flex gap-2 sm:gap-2.5 items-center justify-center ${buttonsAlignClass}`}>
-                        {renderHeroCtaButton(
-                            vpConfig.primary_button,
-                            `hero-btn-1-${isMobileViewport ? 'm' : 'd'}`,
-                            vpConfig,
-                            isMobileViewport
+                <div className="absolute inset-[3%] pointer-events-none">
+                    <div
+                        style={{
+                            left: `${posX}%`,
+                            top: `${posY}%`,
+                            transform: `translate(-${posX}%, -${posY}%)`
+                        }}
+                        className={`absolute w-max max-w-full flex flex-col ${textAlignClass} gap-[1.2cqw]`}
+                    >
+                        {vpConfig.description_text && vpConfig.description_text.trim().length > 0 && (
+                            <p
+                                style={{
+                                    fontFamily: vpConfig.description_font || 'var(--font-inter), sans-serif',
+                                    color: vpConfig.description_color || '#FFFFFF',
+                                    textShadow,
+                                    fontSize: descFontCqw
+                                }}
+                                className="font-normal leading-relaxed max-w-[86cqw] whitespace-normal"
+                            >
+                                {vpConfig.description_text}
+                            </p>
                         )}
-                        {vpConfig.secondary_button_enabled &&
-                            vpConfig.secondary_button &&
-                            renderHeroCtaButton(
-                                vpConfig.secondary_button,
-                                `hero-btn-2-${isMobileViewport ? 'm' : 'd'}`,
+
+                        <div
+                            style={{ gap: isMobileViewport ? '2.2cqw' : '1.2cqw' }}
+                            className={`flex items-center justify-center ${buttonsAlignClass}`}
+                        >
+                            {renderHeroCtaButton(
+                                vpConfig.primary_button,
+                                `hero-btn-1-${isMobileViewport ? 'm' : 'd'}`,
                                 vpConfig,
                                 isMobileViewport
                             )}
+                            {vpConfig.secondary_button_enabled &&
+                                vpConfig.secondary_button &&
+                                renderHeroCtaButton(
+                                    vpConfig.secondary_button,
+                                    `hero-btn-2-${isMobileViewport ? 'm' : 'd'}`,
+                                    vpConfig,
+                                    isMobileViewport
+                                )}
+                        </div>
                     </div>
                 </div>
             </div>

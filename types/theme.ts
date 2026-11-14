@@ -58,7 +58,7 @@ export interface TrustBadge {
     icon: string;
 }
 
-export type HeroCtaActionType = 'catalog' | 'product';
+export type HeroCtaActionType = 'catalog' | 'product' | 'bestsellers';
 export type HeroCtaAlignment = 'left' | 'center' | 'right';
 export type HeroButtonFillStyle = 'outline_pill' | 'solid' | 'glass' | 'minimal_underline';
 export type HeroButtonRadius = 'pill' | 'rounded' | 'sharp';

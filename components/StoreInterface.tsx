@@ -1468,9 +1468,9 @@ useEffect(() => {
       )}
           
 
-          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+       {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
-            <section className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <section id="bestsellers-section" className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className={`flex items-end justify-between mb-6 px-1 ${activeTheme.layout?.card_style === 'dense_hardware' ? ' pb-2' : ''}`}>
                 {activeTheme.layout?.card_style === 'dense_hardware' ? (
                   <div className="flex flex-col">
