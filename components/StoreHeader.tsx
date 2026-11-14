@@ -284,10 +284,75 @@ export default function StoreHeader(props: StoreHeaderProps) {
         }
     };
 
-// 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Color de Sombra y Cristal vs Sólido)
-    const renderHeroCtaButton = (btn: any, key: string) => {
+// Proporción compacta móvil para que siempre se vea "Lo más vendido" debajo del banner
+    const mobileAspectClass = heroCta?.mobile_banner_ratio || 'aspect-[9/10]';
+
+
+    // Convierte cualquier HEX (#EF4444) o RGBA a color de cristal con su tinte real (ej. cristal rojizo)
+    const resolveCtaButtonBg = (fillStyle: string, rawColor?: string) => {
+        if (fillStyle === 'outline_pill' || fillStyle === 'minimal_underline') {
+            return 'transparent';
+        }
+        const clean = (rawColor || '').trim();
+        if (!clean || clean === 'transparent') {
+            return fillStyle === 'glass' ? 'rgba(255, 255, 255, 0.28)' : '#171717';
+        }
+
+        let r = 255, g = 255, b = 255, a = 1;
+        if (clean.startsWith('#')) {
+            const hex = clean.slice(1);
+            if (hex.length === 3) {
+                r = parseInt(hex[0] + hex[0], 16);
+                g = parseInt(hex[1] + hex[1], 16);
+                b = parseInt(hex[2] + hex[2], 16);
+            } else if (hex.length >= 6) {
+                r = parseInt(hex.slice(0, 2), 16);
+                g = parseInt(hex.slice(2, 4), 16);
+                b = parseInt(hex.slice(4, 6), 16);
+                if (hex.length === 8) {
+                    a = parseInt(hex.slice(6, 8), 16) / 255;
+                }
+            }
+        } else if (clean.startsWith('rgb')) {
+            const nums = clean.match(/\d+(\.\d+)?/g);
+            if (nums && nums.length >= 3) {
+                r = Number(nums[0]);
+                g = Number(nums[1]);
+                b = Number(nums[2]);
+                a = nums.length >= 4 ? Number(nums[3]) : 1;
+            }
+        }
+
+        if (fillStyle === 'glass') {
+            // Si el color guardado tenía opacidad 1 (ej. #EF4444), le aplicamos 0.32 de cristal conservando su tono rojo
+            const glassAlpha = a >= 0.88 || a <= 0.02 ? 0.32 : Number(a.toFixed(2));
+            return `rgba(${r}, ${g}, ${b}, ${glassAlpha})`;
+        }
+
+        // En modo sólido
+        return a < 0.1 ? `rgb(${r}, ${g}, ${b})` : clean;
+    };
+
+    // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Escala de Tamaño y Tinte Cristal Real)
+ // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA PERSONALIZABLE (Con Escala Proporcional Contenida)
+    const renderHeroCtaButton = (
+        btn: any,
+        key: string,
+        vpConfig?: any,
+        isMobileViewport?: boolean
+    ) => {
         if (!btn) return null;
 
+        const hasTwoInRow =
+            vpConfig?.secondary_button_enabled &&
+            (vpConfig?.buttons_layout || 'row') === 'row';
+     const maxAllowed =
+            isMobileViewport && hasTwoInRow ? 1.32 : isMobileViewport ? 1.5 : 1.65;
+        const scale = Math.min(maxAllowed, Math.max(0.65, Number(btn.scale || 1)));
+
+        const basePadX = isMobileViewport && hasTwoInRow ? 13 : isMobileViewport ? 18 : 22;
+        const basePadY = isMobileViewport && hasTwoInRow ? 7.5 : isMobileViewport ? 9.5 : 10.5;
+        const baseFont = isMobileViewport && hasTwoInRow ? 10.5 : 12.5;
         const radiusClass =
             btn.radius === 'pill'
                 ? 'rounded-full'
@@ -313,28 +378,18 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         color: btn.text_color || '#FFFFFF',
                         borderColor: btn.border_color || '#FFFFFF',
                         fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
-                        textShadow: btn.shadow !== 'none' ? `0 2px 8px ${shadowColor}` : 'none'
+                        textShadow: btn.shadow !== 'none' ? `0 2px 8px ${shadowColor}` : 'none',
+                        fontSize: `${Math.round(12 * scale)}px`
                     }}
-                    className="pointer-events-auto inline-flex items-center gap-2 pb-1 border-b text-xs md:text-sm font-medium tracking-wider uppercase transition-opacity hover:opacity-75 active:scale-95 cursor-pointer"
+                    className="pointer-events-auto inline-flex items-center gap-2 pb-1 border-b font-medium tracking-wider uppercase transition-opacity hover:opacity-75 active:scale-95 cursor-pointer"
                 >
                     <span>{btn.text || 'Comprar Ahora'}</span>
-                    <ArrowRight size={14} strokeWidth={1.75} />
+                    <ArrowRight size={Math.round(14 * scale)} strokeWidth={1.75} />
                 </button>
             );
         }
 
-        let backgroundColor = 'transparent';
-        if (btn.fill_style === 'glass') {
-            const raw = (btn.bg_color || '').trim();
-            if (!raw || raw === 'transparent' || (raw.startsWith('#') && raw.length <= 7)) {
-                backgroundColor = 'rgba(255, 255, 255, 0.22)';
-            } else {
-                backgroundColor = raw;
-            }
-        } else if (btn.fill_style === 'solid') {
-            const raw = (btn.bg_color || '#171717').trim();
-            backgroundColor = raw === 'transparent' ? '#171717' : raw;
-        }
+        const backgroundColor = resolveCtaButtonBg(btn.fill_style, btn.bg_color);
 
         return (
             <button
@@ -349,78 +404,122 @@ export default function StoreHeader(props: StoreHeaderProps) {
                     borderStyle: btn.border_width === '0px' ? 'none' : 'solid',
                     fontFamily: btn.font_family || 'var(--font-inter), sans-serif',
                     boxShadow,
+                paddingLeft: `${Math.round(basePadX * scale)}px`,
+                    paddingRight: `${Math.round(basePadX * scale)}px`,
+                    paddingTop: `${Math.round(basePadY * scale)}px`,
+                    paddingBottom: `${Math.round(basePadY * scale)}px`,
+                    fontSize: `${Number((baseFont * scale).toFixed(1))}px`,
                     backdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined,
                     WebkitBackdropFilter: btn.fill_style === 'glass' ? 'blur(14px) saturate(160%)' : undefined
                 }}
-                className={`pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 md:px-6 md:py-3 text-xs md:text-[13px] font-medium tracking-wide transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer ${radiusClass}`}
+                className={`pointer-events-auto inline-flex items-center justify-center gap-2 font-medium tracking-wide leading-none transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer whitespace-nowrap ${radiusClass}`}
             >
                 <span>{btn.text || 'Comprar Ahora'}</span>
             </button>
         );
     };
 
-    // 💎 CAPA EDITORIAL LIMPIA SOBRE EL HERO (Sin etiquetas estorbosas, soporte Centro/Abajo y Sombra con Color)
-    const HeroInteractiveCtaOverlay = () => {
-        if (!heroCta || !heroCta.enabled || !heroCta.primary_button) return null;
+// Renderiza la capa con paridad geométrica 1:1 respecto al Editor (Mismo margen inferior exacto)
+    const renderViewportOverlayContent = (vpConfig: any, isMobileViewport: boolean) => {
+        if (!vpConfig || !vpConfig.enabled || !vpConfig.primary_button) return null;
 
-        const alignHorizontal =
-            heroCta.alignment === 'right'
-                ? 'items-end text-right'
-                : heroCta.alignment === 'center'
-                ? 'items-center text-center'
-                : 'items-start text-left';
+        const posX = Math.max(8, Math.min(92, typeof vpConfig.pos_x === 'number' ? vpConfig.pos_x : 50));
+        const posY = Math.max(10, Math.min(90, typeof vpConfig.pos_y === 'number' ? vpConfig.pos_y : 78));
 
-        const alignVertical =
-            heroCta.vertical_alignment === 'center'
-                ? 'justify-center'
-                : 'justify-end';
+        const isStacked = vpConfig.buttons_layout === 'column';
 
-        const alignButtons =
-            heroCta.alignment === 'right'
-                ? 'justify-end'
-                : heroCta.alignment === 'center'
-                ? 'justify-center'
-                : 'justify-start';
+        const textAlignClass =
+            posX > 64 ? 'items-end text-right' : posX >= 36 ? 'items-center text-center' : 'items-start text-left';
 
-        const descShadowColor = heroCta.description_shadow_color || 'rgba(0, 0, 0, 0.55)';
+        const buttonsAlignClass = isStacked
+            ? posX > 64
+                ? 'flex-col items-end'
+                : posX >= 36
+                ? 'flex-col items-center'
+                : 'flex-col items-start'
+            : posX > 64
+            ? 'flex-row flex-nowrap items-center justify-end'
+            : posX >= 36
+            ? 'flex-row flex-nowrap items-center justify-center'
+            : 'flex-row flex-nowrap items-center justify-start';
+
+        const descShadowColor = vpConfig.description_shadow_color || 'rgba(0, 0, 0, 0.55)';
         const textShadow =
-            heroCta.description_shadow === 'crisp'
+            vpConfig.description_shadow === 'crisp'
                 ? `0 2px 12px ${descShadowColor}, 0 1px 3px ${descShadowColor}`
-                : heroCta.description_shadow === 'subtle'
+                : vpConfig.description_shadow === 'subtle'
                 ? `0 1px 6px ${descShadowColor}`
                 : 'none';
 
-        const descSizeClass =
-            heroCta.description_size === 'lg'
-                ? 'text-sm sm:text-base md:text-xl'
-                : heroCta.description_size === 'sm'
-                ? 'text-[11px] sm:text-xs md:text-sm'
-                : 'text-xs sm:text-sm md:text-base';
+        const descSizeClass = isMobileViewport
+            ? vpConfig.description_size === 'lg'
+                ? 'text-base'
+                : vpConfig.description_size === 'sm'
+                ? 'text-[11px]'
+                : 'text-xs'
+            : vpConfig.description_size === 'lg'
+            ? 'text-xl'
+            : vpConfig.description_size === 'sm'
+            ? 'text-xs'
+            : 'text-sm md:text-base';
 
         return (
-            <div
-                className={`absolute inset-0 z-20 pointer-events-none flex flex-col ${alignVertical} ${alignHorizontal} p-5 sm:p-7 md:p-12 lg:p-14`}
-            >
-                <div className="max-w-xl space-y-3 md:space-y-4">
-                    {heroCta.description_text && heroCta.description_text.trim().length > 0 && (
+            <div className="@container absolute inset-0 pointer-events-none overflow-hidden">
+                <div
+                    style={{
+                        left: `${posX}%`,
+                        top: `${posY}%`,
+                        transform: 'translate(-50%, -50%)'
+                    }}
+                    className={`absolute w-max max-w-[94cqw] flex flex-col ${textAlignClass} gap-2`}
+                >
+                    {vpConfig.description_text && vpConfig.description_text.trim().length > 0 && (
                         <p
                             style={{
-                                fontFamily: heroCta.description_font || 'var(--font-inter), sans-serif',
-                                color: heroCta.description_color || '#FFFFFF',
+                                fontFamily: vpConfig.description_font || 'var(--font-inter), sans-serif',
+                                color: vpConfig.description_color || '#FFFFFF',
                                 textShadow
                             }}
-                            className={`font-normal leading-relaxed ${descSizeClass}`}
+                            className={`font-normal leading-relaxed max-w-[86cqw] sm:max-w-lg whitespace-normal ${descSizeClass}`}
                         >
-                            {heroCta.description_text}
+                            {vpConfig.description_text}
                         </p>
                     )}
 
-                    <div className={`flex items-center gap-2.5 md:gap-3 flex-wrap ${alignButtons}`}>
-                        {renderHeroCtaButton(heroCta.primary_button, 'hero-btn-primary')}
-                        {heroCta.secondary_button_enabled &&
-                            heroCta.secondary_button &&
-                            renderHeroCtaButton(heroCta.secondary_button, 'hero-btn-secondary')}
+                    <div className={`flex gap-2 sm:gap-2.5 items-center justify-center ${buttonsAlignClass}`}>
+                        {renderHeroCtaButton(
+                            vpConfig.primary_button,
+                            `hero-btn-1-${isMobileViewport ? 'm' : 'd'}`,
+                            vpConfig,
+                            isMobileViewport
+                        )}
+                        {vpConfig.secondary_button_enabled &&
+                            vpConfig.secondary_button &&
+                            renderHeroCtaButton(
+                                vpConfig.secondary_button,
+                                `hero-btn-2-${isMobileViewport ? 'm' : 'd'}`,
+                                vpConfig,
+                                isMobileViewport
+                            )}
                     </div>
+                </div>
+            </div>
+        );
+    };
+
+    // 💎 CAPA DUAL INDEPENDIENTE: MÓVIL Y DESKTOP NO SE INTERFIEREN ENTRE SÍ
+    const HeroInteractiveCtaOverlay = () => {
+        if (!heroCta) return null;
+        const desktopCfg = heroCta.desktop || heroCta;
+        const mobileCfg = heroCta.mobile || heroCta;
+
+        return (
+            <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                <div className="hidden md:block relative w-full h-full">
+                    {renderViewportOverlayContent(desktopCfg, false)}
+                </div>
+                <div className="block md:hidden relative w-full h-full">
+                    {renderViewportOverlayContent(mobileCfg, true)}
                 </div>
             </div>
         );
@@ -837,7 +936,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
+                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
                                         <Image
                                             src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                             alt="Portada móvil"
@@ -962,7 +1061,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
 
                                 {liveTheme.layout?.hero_mobile_url && (
                                     <div className="block md:hidden w-full">
-                                        <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
+                                        <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
                                             <Image
                                                 src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                                 alt="Portada móvil"
@@ -1090,7 +1189,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             )}
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
+                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
                                         <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Archive Portada" fill className="object-cover object-center" priority />
                                     </div>
                                 </div>
@@ -1190,7 +1289,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             )}
                             {liveTheme.layout?.hero_mobile_url && (
                                 <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
+                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
                                         <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Bistro Portada" fill className="object-cover object-center" priority />
                                     </div>
                                 </div>
@@ -1388,7 +1487,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         </div>
 
                      {/* Mobile Hero (Proporción completa sin max-h que recorte) */}
-                        <div className={`block md:hidden w-full relative ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden bg-[var(--store-surface)]`} style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
+                        <div className={`block md:hidden w-full relative ${mobileAspectClass} overflow-hidden bg-[var(--store-surface)]`} style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
                             <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover object-center" priority />
                             <HeroInteractiveCtaOverlay />
                         </div>
@@ -1551,7 +1650,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         {/* Versión Móvil (Proporción 4:5 o 3:2 íntegra de arriba a abajo) */}
                         <div className="block md:hidden w-full">
                             {liveTheme.layout?.hero_mobile_url ? (
-                                <div className={`relative w-full ${props.store?.store_type === 'restaurant' ? 'aspect-[3/2]' : 'aspect-[4/5]'} overflow-hidden`}>
+                                <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
                                     <Image
                                         src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                         alt="Portada móvil"

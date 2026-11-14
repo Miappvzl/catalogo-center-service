@@ -64,6 +64,8 @@ export type HeroButtonFillStyle = 'outline_pill' | 'solid' | 'glass' | 'minimal_
 export type HeroButtonRadius = 'pill' | 'rounded' | 'sharp';
 export type HeroShadowLevel = 'none' | 'subtle' | 'crisp';
 export type HeroBorderWidth = '0px' | '1px' | '1.5px' | '2px';
+ export type MobileHeroAspectOption = 'aspect-[9/10]' | 'aspect-[4/5]' | 'aspect-square' | 'aspect-[3/2]';
+
 export interface HeroButtonItemConfig {
     text: string;
     action_type: HeroCtaActionType;
@@ -77,25 +79,35 @@ export interface HeroButtonItemConfig {
     font_family: string;
     shadow: HeroShadowLevel;
     shadow_color?: string;
+    scale?: number; // 🚀 Escala de tamaño del botón (0.75 a 1.65, por defecto 1)
 }
 
-export interface HeroCtaConfig {
+export interface HeroViewportCtaConfig {
     enabled: boolean;
-    // Descripción Editorial (Sin etiquetas que estorben)
+    pos_x?: number; // 🚀 Coordenada horizontal libre (0 a 100% dentro del margen seguro)
+    pos_y?: number; // 🚀 Coordenada vertical libre (0 a 100% dentro del margen seguro)
+    alignment: HeroCtaAlignment;
+    vertical_alignment?: 'bottom' | 'center';
+    buttons_layout?: 'row' | 'column'; // 🚀 'row' = Uno al lado del otro | 'column' = Uno encima del otro
     description_text?: string;
     description_font?: string;
     description_color?: string;
     description_size?: 'sm' | 'md' | 'lg';
     description_shadow?: HeroShadowLevel;
     description_shadow_color?: string;
-    // Posición en el Hero
-    alignment: HeroCtaAlignment;
-    vertical_alignment?: 'bottom' | 'center';
-    // Botón 1 ("Comprar Ahora")
     primary_button: HeroButtonItemConfig;
-    // Botón 2 Opcional
     secondary_button_enabled?: boolean;
     secondary_button?: HeroButtonItemConfig;
+}
+
+export interface HeroCtaConfig extends HeroViewportCtaConfig {
+    mobile_banner_ratio?: MobileHeroAspectOption;
+    mobile_focal_x?: number;
+    mobile_focal_y?: number;
+    desktop_focal_x?: number;
+    desktop_focal_y?: number;
+    desktop?: HeroViewportCtaConfig;
+    mobile?: HeroViewportCtaConfig;
 }
 
 export interface ThemeLayout {

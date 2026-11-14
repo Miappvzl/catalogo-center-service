@@ -412,26 +412,18 @@ export default function CustomizationPage() {
         }
     }
 
-    const handleHeroMobileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleHeroMobileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
         const file = e.target.files[0]
         if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo se permiten archivos de imagen', 'error')
 
-        const isRestaurantStore = currentStoreType === 'restaurant'
-        const expectedW = 1080
-        const expectedH = isRestaurantStore ? 720 : 1350
-
         setUploadingHeroMobile(true)
         try {
-            // 🚀 AUTO-REDIMENSIONAMIENTO DIRECTO EN NAVEGADOR A 1080x1350 (o 1080x720) PX EXACTOS
-            const exactMobileFile = await resizeImageToExactDimensions(file, expectedW, expectedH, {
-                mode: 'cover',
-                quality: 0.88,
-                fileName: 'hero-mobile'
-            })
+            // 🚀 COMPRESIÓN NO DESTRUCTIVA: Conserva el 100% de la imagen original para poder cambiar proporciones sin perder partes
+            const preservedMobileFile = await compressImage(file, 1080, 0.88)
             const fileName = `hero-m-${storeData.id}-${Date.now()}.jpg`
 
-            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, exactMobileFile)
+            const { error: uploadError } = await supabase.storage.from('variants').upload(fileName, preservedMobileFile)
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage.from('variants').getPublicUrl(fileName)
@@ -440,7 +432,7 @@ export default function CustomizationPage() {
                 ...prev,
                 layout: { ...prev.layout, hero_mobile_url: publicUrl }
             }))
-            toast.success(`Portada móvil adaptada automáticamente a ${expectedW}x${expectedH} px`)
+            toast.success('Portada móvil cargada íntegramente sin recortes destructivos')
         } catch (error) {
             Swal.fire('Error', 'Fallo de red al procesar la portada', 'error')
         } finally {
@@ -448,7 +440,7 @@ export default function CustomizationPage() {
             if (heroMInputRef.current) heroMInputRef.current.value = ''
         }
     }
-const handleApplyTemplate = (template: TemplateDefinition) => {
+    const handleApplyTemplate = (template: TemplateDefinition) => {
         // 🚀 HERENCIA INTELIGENTE: Si el usuario desea preservar su marca, clonamos colores y tipografías.
         const newConfig = normalizeThemeConfig({
             ...template.default_config,
@@ -966,7 +958,7 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                         )}
                                     </div>
                                 </div>
-                             {/* SECCIÓN HERO BANNERS (DUAL RESPONSIVE PARA TODOS LOS TEMAS) */}
+                                {/* SECCIÓN HERO BANNERS (DUAL RESPONSIVE PARA TODOS LOS TEMAS) */}
                                 <div className="space-y-4 pt-4 border-t border-neutral-100">
                                     <div>
                                         <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Heros y Portadas</h3>
@@ -1006,11 +998,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                             enabled: !config.layout.hero_cta?.enabled
                                                         })
                                                     }
-                                                    className={`px-3.5 py-2 rounded-full text-[10px] font-mono font-medium uppercase border transition-colors cursor-pointer ${
-                                                        config.layout.hero_cta.enabled
+                                                    className={`px-3.5 py-2 rounded-full text-[10px] font-mono font-medium uppercase border transition-colors cursor-pointer ${config.layout.hero_cta.enabled
                                                             ? 'border-neutral-900 bg-neutral-900 text-white'
                                                             : 'border-neutral-200 bg-transparent text-neutral-500 hover:border-neutral-400'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     CTA: {config.layout.hero_cta.enabled ? 'Visible' : 'Oculto'}
                                                 </button>
@@ -1089,7 +1080,7 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                     )}
                                 </div>
 
-                              {/* 🚀 IMAGE ENGINE CUSTOMIZER (Encuadre Élite con Muestras Visuales) */}
+                                {/* 🚀 IMAGE ENGINE CUSTOMIZER (Encuadre Élite con Muestras Visuales) */}
                                 <div className="space-y-5 pt-5 border-t border-neutral-200/60 animate-in fade-in duration-300">
                                     <div>
                                         <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-1.5"><LayoutGrid size={14} className="text-neutral-500" /> Encuadre de Productos</h3>
@@ -1114,19 +1105,17 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                             key={item.id}
                                                             type="button"
                                                             onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, ratio: item.id })}
-                                                            className={`p-3 rounded-xl border transition-colors flex flex-col items-center justify-between gap-2 cursor-pointer ${
-                                                                isSel
+                                                            className={`p-3 rounded-xl border transition-colors flex flex-col items-center justify-between gap-2 cursor-pointer ${isSel
                                                                     ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
                                                                     : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-700'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <div className="h-8 flex items-center justify-center">
                                                                 <div
-                                                                    className={`${item.boxClass} rounded-[4px] border transition-colors ${
-                                                                        isSel
+                                                                    className={`${item.boxClass} rounded-[4px] border transition-colors ${isSel
                                                                             ? 'border-neutral-900 bg-neutral-900/15'
                                                                             : 'border-neutral-400 bg-neutral-100'
-                                                                    }`}
+                                                                        }`}
                                                                 />
                                                             </div>
                                                             <div className="text-center">
@@ -1149,11 +1138,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'cover' })}
-                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${
-                                                        config.layout.card_media?.fit === 'cover'
+                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${config.layout.card_media?.fit === 'cover'
                                                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
                                                             : 'bg-white border-neutral-200/80 hover:border-neutral-400 text-neutral-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="w-full h-11 rounded-lg border border-neutral-300 overflow-hidden bg-neutral-200 flex items-center justify-center relative">
                                                         <div className="w-full h-full bg-[linear-gradient(135deg,#27272a_0%,#52525b_100%)] flex items-center justify-center">
@@ -1174,11 +1162,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleLayoutChange('card_media', { ...config.layout.card_media, fit: 'contain' })}
-                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${
-                                                        config.layout.card_media?.fit === 'contain'
+                                                    className={`cursor-pointer p-3 rounded-xl border text-left flex flex-col gap-2.5 transition-colors ${config.layout.card_media?.fit === 'contain'
                                                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900 text-neutral-900'
                                                             : 'bg-white border-neutral-200/80 hover:border-neutral-400 text-neutral-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="w-full h-11 rounded-lg border border-neutral-300 bg-neutral-100 p-1.5 flex items-center justify-center">
                                                         <div className="w-12 h-full rounded-[4px] bg-white border border-neutral-300 flex items-center justify-center">
@@ -1422,7 +1409,7 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                 </div>
                             </div>
                         )}
-                      {/* TAB 4: GEOMETRÍA (MUESTRAS VISUALES EN VIVO DE BOTONES, BORDES, SOMBRAS Y MODAL) */}
+                        {/* TAB 4: GEOMETRÍA (MUESTRAS VISUALES EN VIVO DE BOTONES, BORDES, SOMBRAS Y MODAL) */}
                         {activeTab === 'shapes' && (
                             <div className="space-y-6 animate-in fade-in pb-10">
 
@@ -1451,20 +1438,18 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={item.id}
                                                     type="button"
                                                     onClick={() => handleShapeChange('button_shape', item.id)}
-                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
-                                                        isActive
+                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${isActive
                                                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="w-full py-2 px-3 rounded-lg bg-neutral-100/80 flex items-center justify-center">
                                                         <span
                                                             style={{ borderRadius: item.radius }}
-                                                            className={`px-4 py-1.5 text-[10px] font-semibold border transition-colors ${
-                                                                isActive
+                                                            className={`px-4 py-1.5 text-[10px] font-semibold border transition-colors ${isActive
                                                                     ? 'bg-neutral-900 text-white border-neutral-900'
                                                                     : 'bg-white text-neutral-800 border-neutral-400'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             Comprar
                                                         </span>
@@ -1502,11 +1487,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={item.id}
                                                     type="button"
                                                     onClick={() => handleShapeChange('line_weight', item.id)}
-                                                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-between gap-2 h-20 transition-colors cursor-pointer ${
-                                                        isActive
+                                                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-between gap-2 h-20 transition-colors cursor-pointer ${isActive
                                                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="w-full my-auto flex items-center justify-center px-1">
                                                         {item.id === 'none' ? (
@@ -1516,11 +1500,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                         ) : (
                                                             <div
                                                                 style={{ borderWidth: `${item.widthPx}px` }}
-                                                                className={`w-full h-6 rounded-md bg-white ${
-                                                                    item.id === 'hairline'
+                                                                className={`w-full h-6 rounded-md bg-white ${item.id === 'hairline'
                                                                         ? 'border-neutral-300'
                                                                         : 'border-neutral-900'
-                                                                }`}
+                                                                    }`}
                                                             />
                                                         )}
                                                     </div>
@@ -1572,11 +1555,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => handleShapeChange('ui_shadows', item.id)}
-                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
-                                                            isActive
+                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${isActive
                                                                 ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                                 : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <div className="w-full py-3 px-4 rounded-lg bg-neutral-100/90 flex items-center justify-center">
                                                             <div
@@ -1612,11 +1594,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={item.id}
                                                     type="button"
                                                     onClick={() => handleShapeChange('info_layout', item.id)}
-                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
-                                                        isActive
+                                                    className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${isActive
                                                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="w-full p-2 rounded-lg bg-neutral-100/80 flex flex-col gap-1">
                                                         {item.id === 'accordion' ? (
@@ -1673,11 +1654,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => handleLayoutChange('category_style', item.id)}
-                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${
-                                                            isActive
+                                                        className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-colors cursor-pointer ${isActive
                                                                 ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                                 : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <div className="w-full py-2 px-2 rounded-lg bg-neutral-100/80 flex items-center justify-center gap-1.5">
                                                             {item.id === 'thumbnails' ? (
@@ -1753,24 +1733,22 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                         key={item.id}
                                                         type="button"
                                                         onClick={() => handleShapeChange('search_bar_shape', item.id)}
-                                                        className={`p-3 rounded-xl border text-left transition-colors flex flex-col justify-between gap-2.5 cursor-pointer ${
-                                                            isSel
+                                                        className={`p-3 rounded-xl border text-left transition-colors flex flex-col justify-between gap-2.5 cursor-pointer ${isSel
                                                                 ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                                                                 : 'border-neutral-200/80 bg-white hover:border-neutral-400'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {/* Muestra visual de la barra de búsqueda */}
                                                         <div className="w-full py-2 px-2 rounded-lg bg-neutral-100/80 flex items-center justify-center">
                                                             <div
-                                                                className={`w-full px-2.5 py-1.5 flex items-center gap-1.5 text-[9px] ${
-                                                                    item.id === 'minimal_underlined'
+                                                                className={`w-full px-2.5 py-1.5 flex items-center gap-1.5 text-[9px] ${item.id === 'minimal_underlined'
                                                                         ? 'bg-transparent border-b-2 border-neutral-800 rounded-none'
                                                                         : item.id === 'pill'
-                                                                        ? 'bg-white border border-neutral-400 rounded-full'
-                                                                        : item.id === 'rounded'
-                                                                        ? 'bg-white border border-neutral-400 rounded-md'
-                                                                        : 'bg-white border border-neutral-400 rounded-none'
-                                                                }`}
+                                                                            ? 'bg-white border border-neutral-400 rounded-full'
+                                                                            : item.id === 'rounded'
+                                                                                ? 'bg-white border border-neutral-400 rounded-md'
+                                                                                : 'bg-white border border-neutral-400 rounded-none'
+                                                                    }`}
                                                             >
                                                                 <SearchIcon size={10} className="text-neutral-500 shrink-0" />
                                                                 <span className="text-neutral-400 truncate">Buscar...</span>
@@ -1805,11 +1783,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={f.value}
                                                     type="button"
                                                     onClick={() => handleTypographyChange('heading_font', f.value)}
-                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
-                                                        isSel
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${isSel
                                                             ? 'border-neutral-900 bg-neutral-900 text-white'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="min-w-0">
                                                         <span
@@ -1821,9 +1798,8 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     </div>
                                                     <span
                                                         style={{ fontFamily: f.value }}
-                                                        className={`text-sm font-bold shrink-0 ${
-                                                            isSel ? 'text-neutral-200' : 'text-neutral-500'
-                                                        }`}
+                                                        className={`text-sm font-bold shrink-0 ${isSel ? 'text-neutral-200' : 'text-neutral-500'
+                                                            }`}
                                                     >
                                                         Aa Título
                                                     </span>
@@ -1846,11 +1822,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={f.value}
                                                     type="button"
                                                     onClick={() => handleTypographyChange('body_font', f.value)}
-                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
-                                                        isSel
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${isSel
                                                             ? 'border-neutral-900 bg-neutral-900 text-white'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <span
                                                         style={{ fontFamily: f.value }}
@@ -1860,9 +1835,8 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     </span>
                                                     <span
                                                         style={{ fontFamily: f.value }}
-                                                        className={`text-xs shrink-0 ${
-                                                            isSel ? 'text-neutral-300' : 'text-neutral-500'
-                                                        }`}
+                                                        className={`text-xs shrink-0 ${isSel ? 'text-neutral-300' : 'text-neutral-500'
+                                                            }`}
                                                     >
                                                         Lectura fluida
                                                     </span>
@@ -1885,11 +1859,10 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     key={f.value}
                                                     type="button"
                                                     onClick={() => handleTypographyChange('price_font', f.value)}
-                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${
-                                                        isSel
+                                                    className={`px-3.5 py-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 cursor-pointer ${isSel
                                                             ? 'border-neutral-900 bg-neutral-900 text-white'
                                                             : 'border-neutral-200/80 bg-white hover:border-neutral-400 text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <span
                                                         style={{ fontFamily: f.value }}
@@ -1899,9 +1872,8 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                                                     </span>
                                                     <span
                                                         style={{ fontFamily: f.value }}
-                                                        className={`text-xs font-bold tabular-nums shrink-0 ${
-                                                            isSel ? 'text-emerald-300' : 'text-neutral-700'
-                                                        }`}
+                                                        className={`text-xs font-bold tabular-nums shrink-0 ${isSel ? 'text-emerald-300' : 'text-neutral-700'
+                                                            }`}
                                                     >
                                                         $1.250,00
                                                     </span>
@@ -2110,7 +2082,7 @@ const handleApplyTemplate = (template: TemplateDefinition) => {
                     )}
                 </div>
             </div>
-          {storeData && (
+            {storeData && (
                 <AiBannerStudioModal
                     isOpen={isAiBannerStudioOpen}
                     onClose={() => setIsAiBannerStudioOpen(false)}
