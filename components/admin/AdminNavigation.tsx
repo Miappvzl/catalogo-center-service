@@ -827,10 +827,11 @@ const MobileBottomBar = ({ pathname, store, seenPulses }: { pathname: string, st
     normalLinks[2],
     normalLinks[3]
   ].filter(Boolean)
-// 🚀 MEJORA DE INMERSIÓN: Ocultamos la barra en personalización y en el gestor de colecciones
+// 🚀 MEJORA DE INMERSIÓN: Ocultamos la barra en personalización, colecciones y terminal POS
   const isCustomizerRoute = pathname === '/admin/customization';
   const isCollectionsRoute = pathname === '/admin/collections';
-  const shouldRenderBar = isVisible && !isTourActive && !isModalActive && !isCustomizerRoute && !isCollectionsRoute;
+  const isPosRoute = pathname === '/admin/pos';
+  const shouldRenderBar = isVisible && !isTourActive && !isModalActive && !isCustomizerRoute && !isCollectionsRoute && !isPosRoute;
 
   return (
     <div

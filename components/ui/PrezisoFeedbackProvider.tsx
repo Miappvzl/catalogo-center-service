@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFeedbackStore, FeedbackToastType, DialogVariant } from '@/app/store/useFeedBackStore'
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, Trash2, X, Clock, DollarSign } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, Trash2, X, Clock, DollarSign, ArrowUpRight } from 'lucide-react'
 
 // Iconografía Semántica para Toasts
 const ToastIcon = ({ type }: { type: FeedbackToastType }) => {
@@ -65,10 +65,11 @@ export default function PrezisoFeedbackProvider() {
       {/* ========================================================================= */}
       {/* 1. CONTENEDOR DE TOASTS DINÁMICOS (TOP-CENTER EN MÓVIL / TOP-RIGHT DESKTOP) */}
       {/* ========================================================================= */}
-      <div 
+      <div
         aria-live="polite"
-        className="fixed top-4 inset-x-0 mx-auto max-w-[92vw] sm:max-w-sm sm:inset-x-auto sm:right-6 sm:left-auto z-99999 pointer-events-none flex flex-col gap-2.5"
+        className="fixed top-4 inset-x-0 mx-auto max-w-[92vw] sm:max-w-sm sm:inset-x-auto sm:right-6 sm:left-auto z-[99999] pointer-events-none flex flex-col gap-2.5"
       >
+
         <AnimatePresence mode="popLayout">
           {toasts.map((t) => (
             <motion.div
@@ -94,7 +95,7 @@ export default function PrezisoFeedbackProvider() {
                     {t.title}
                   </p>
                   {t.message && (
-                    <p 
+                    <p
                       className="text-[11px] leading-snug line-clamp-2"
                       style={{ color: 'var(--store-surface-text, #71717a)' }}
                     >
@@ -122,7 +123,7 @@ export default function PrezisoFeedbackProvider() {
       {/* ========================================================================= */}
       <AnimatePresence>
         {dialog?.isOpen && (
-          <div className="fixed inset-0 z-99999 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="fixed inset-0 z-[99999] flex items-end md:items-center justify-center p-0 md:p-4">
             {/* Backdrop Cinemático */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -156,7 +157,7 @@ export default function PrezisoFeedbackProvider() {
 
               {/* Cabecera con Micro-Etiqueta Editorial */}
               <div className="flex items-start gap-4">
-                <div 
+                <div
                   className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border"
                   style={{
                     backgroundColor: 'color-mix(in srgb, var(--store-bg, #fafafa) 60%, var(--store-surface, #ffffff))',
@@ -167,7 +168,7 @@ export default function PrezisoFeedbackProvider() {
                 </div>
 
                 <div className="space-y-1 min-w-0 flex-1">
-                  <span 
+                  <span
                     className="text-[9px] font-mono font-bold uppercase tracking-widest block"
                     style={{ color: 'var(--store-surface-text, #71717a)' }}
                   >
@@ -179,14 +180,53 @@ export default function PrezisoFeedbackProvider() {
                 </div>
               </div>
 
-              {/* Cuerpo del Mensaje */}
-              <p 
-                className="text-xs sm:text-[13px] leading-relaxed font-normal"
-                style={{ color: 'var(--store-surface-text, #71717a)' }}
-              >
-                {dialog.description}
-              </p>
+             {/* Cuerpo del Mensaje + Enlace Clicable Automático */}
+              {(() => {
+                const urlRegex = /(https?:\/\/[^\s]+)/g
+                const urls = dialog.description.match(urlRegex)
+                const cleanText = dialog.description.replace(urlRegex, '').trim()
 
+                return (
+                  <div className="space-y-3 min-w-0">
+                    {cleanText && (
+                      <p
+                        className="text-xs sm:text-[13px] leading-relaxed font-normal"
+                        style={{ color: 'var(--store-surface-text, #71717a)' }}
+                      >
+                        {cleanText}
+                      </p>
+                    )}
+
+                    {urls &&
+                      urls.map((url, idx) => (
+                        <a
+                          key={idx}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all active:scale-[0.99] cursor-pointer"
+                          style={{
+                            backgroundColor:
+                              'color-mix(in srgb, var(--store-bg, #f4f4f5) 75%, var(--store-surface, #ffffff))',
+                            borderColor:
+                              'color-mix(in srgb, var(--store-border, #e4e4e7) 85%, transparent)',
+                            color: 'var(--store-text-main, #09090b)',
+                          }}
+                          title="Abrir documento en una nueva pestaña"
+                        >
+                          <span className="font-mono text-[11px] font-medium truncate underline decoration-neutral-300 underline-offset-4 group-hover:decoration-current">
+                            {url}
+                          </span>
+                          <ArrowUpRight
+                            size={14}
+                            strokeWidth={2}
+                            className="shrink-0 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all"
+                          />
+                        </a>
+                      ))}
+                  </div>
+                )
+              })()}
               {/* Acciones Asimétricas (Ley de Fitts) */}
               <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2">
                 {dialog.cancelText && (
@@ -208,11 +248,11 @@ export default function PrezisoFeedbackProvider() {
                   onClick={() => closeDialog(true)}
                   className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider transition-all shadow-sm active:scale-[0.98] text-center flex items-center justify-center cursor-pointer"
                   style={{
-                    backgroundColor: dialog.variant === 'danger' 
-                      ? '#dc2626' 
+                    backgroundColor: dialog.variant === 'danger'
+                      ? '#dc2626'
                       : 'var(--store-primary, #000000)',
-                    color: dialog.variant === 'danger' 
-                      ? '#ffffff' 
+                    color: dialog.variant === 'danger'
+                      ? '#ffffff'
                       : 'var(--store-primary-text, #ffffff)',
                     borderRadius: 'var(--radius-btn, 12px)',
                   }}
