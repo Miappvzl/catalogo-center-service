@@ -794,46 +794,49 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
   const [usdValue, setUsdValue] = useState(150)
   const bsValue = (usdValue * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "center center"]
-  })
-
-  const scaleUp = useTransform(scrollYProgress, [0, 1], [0.8, 1])
-  const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
-
   return (
-    <section id="funciones" ref={containerRef} className="relative min-h-screen w-full bg-slate-50/50 flex items-center justify-center py-32 border-t border-slate-200 overflow-hidden">
+    <section id="funciones" className="relative min-h-screen w-full bg-slate-50/50 flex items-center justify-center py-28 md:py-32 border-t border-slate-200 overflow-hidden">
 
-      {/* Luz de Fondo del Núcleo */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-black/10 rounded-full blur-[150px] pointer-events-none" />
+      {/* Luz de Fondo de Costo Cero en GPU (Sustituye blur-[150px]) */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.05)_0%,transparent_60%)] pointer-events-none"
+      />
 
-      <motion.div
-        style={{ scale: scaleUp, opacity: opacityIn }}
-        className="w-full max-w-6xl px-6 relative z-10 flex flex-col items-center"
-      >
-        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-4">Prueba Empírica Interactiva</span>
-        <h2 className="text-4xl md:text-6xl  text-center  ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
-          El fin del cálculo manual.
-        </h2>
+      <div className="w-full max-w-6xl px-6 relative z-10 flex flex-col items-center">
+        {/* ENCABEZADO CON ESCULTURA 1: Protagonista en Mobile / Fondo con Opacidad en Desktop */}
+        <div className="relative flex flex-col items-center text-center mb-10 md:mb-14 md:py-10">
+          <div className="relative w-36 h-36 mb-4 opacity-100 md:mb-0 md:w-[340px] md:h-[340px] lg:w-[390px] lg:h-[390px] md:opacity-[0.16] md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:-z-10 select-none pointer-events-none">
+            <img
+              src="/Emblema-giroscópico-futurista-resplandeciente.webp"
+              alt="Sincronizador Giroscópico BCV en Tiempo Real"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain pz-float-3d"
+            />
+          </div>
+
+          <span className="relative z-10 text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-4 block">
+            Prueba Empírica Interactiva
+          </span>
+          <h2 className="relative z-10 text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1]">
+            El fin del cálculo manual.
+          </h2>
+        </div>
 
         {/* El Motor de Conversión */}
-        <div className="w-full bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl p-8 md:p-16 shadow-[0_0_50px_rgba(0,0,0,0.03)] relative overflow-hidden group">
-
-          {/* Grid de Fondo de la UI */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] bg-[size:20px_20px]" />
+        <div className="w-full bg-white border border-slate-200 rounded-2xl p-8 md:p-16 shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative overflow-hidden group">
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
 
             {/* Lado USD (Input) */}
             <div className="w-full md:w-5/12 flex flex-col items-center md:items-start">
               <span className="text-slate-500 font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse" /> Valor de tu producto (USD)
+                Valor de tu producto (USD)
               </span>
-              <div className="text-6xl md:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2">
-                <span className="text-zinc-600">$</span>
-                <motion.span>{usdValue}</motion.span>
+              <div className="text-6xl md:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2 font-mono tabular-nums">
+                <span className="text-zinc-400">$</span>
+                <span>{usdValue}</span>
               </div>
 
               {/* Slider Táctico */}
@@ -853,65 +856,32 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
               </div>
             </div>
 
-         {/* Conector Central: Escultura 1 (Sincronizador Giroscópico BCV) */}
-            <div className="flex flex-col items-center justify-center relative my-2 md:my-0 shrink-0">
-              <div className="hidden md:block h-12 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
-
-              <motion.div
-                initial={{ opacity: 0, y: 14, scale: 0.92 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="my-2 transform-gpu will-change-transform select-none pointer-events-none"
-              >
-                <motion.div
-                  animate={{ y: [0, -8] }}
-                  transition={{
-                    duration: 3.2,
-                    repeat: Infinity,
-                    repeatType: "mirror",
-                    ease: "easeInOut",
-                  }}
-                  className="relative w-32 h-32 md:w-44 md:h-44 flex items-center justify-center transform-gpu will-change-transform"
-                >
-                  <img
-                    src="/Emblema-giroscópico-futurista-resplandeciente.webp"
-                    alt="Sincronizador Giroscópico BCV en Tiempo Real"
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-contain pointer-events-none"
-                  />
-                </motion.div>
-              </motion.div>
-
-              <div className="hidden md:block h-12 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
+            {/* Conector Central Ligero */}
+            <div className="hidden md:flex flex-col items-center justify-center relative">
+              <div className="h-20 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
+              <div className="w-10 h-10 border border-slate-300 bg-white flex items-center justify-center my-4 rotate-45 group-hover:rotate-0 transition-transform duration-500">
+                <ArrowRightLeft size={16} className="text-black -rotate-45 group-hover:rotate-0 transition-transform duration-500" />
+              </div>
+              <div className="h-20 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
             </div>
 
             {/* Lado Bs (Output Automatizado) */}
             <div className="w-full md:w-5/12 flex flex-col items-center md:items-end">
               <span className="text-black font-mono text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                Lo que ve tu cliente (Bs) <div className="w-2 h-2 rounded-full bg-black animate-ping" />
+                Lo que ve tu cliente (Bs) <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               </span>
-              <div className="text-5xl md:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2">
+              <div className="text-5xl md:text-7xl lg:text-8xl font-light text-zinc-900 tracking-tighter flex items-center gap-2 font-mono tabular-nums">
                 <span className="text-black">Bs</span>
-                {/* Re-renderización instantánea para simular velocidad de DB */}
-                <motion.span
-                  key={bsValue}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {bsValue}
-                </motion.span>
+                <span>{bsValue}</span>
               </div>
-              <p className="mt-10 text-xs text-slate-500 font-mono text-right max-w-[250px]">
-                Preziso intercepta la variación del BCV y reescribe tu base de datos global en &lt; 400ms. Cero intervención humana requerida.
+              <p className="mt-10 text-xs text-slate-500 font-mono text-center md:text-right max-w-[250px]">
+                Preziso intercepta la variación del BCV y actualiza tu catálogo global en &lt; 400ms. Cero intervención manual.
               </p>
             </div>
 
           </div>
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 }
@@ -1366,131 +1336,100 @@ const NodeFourNeural = ({ bcvRate }: { bcvRate: number }) => {
 // =========================================
 
 const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
-  const remainingUsd = 10;
-  // Si bcvRate llega como undefined, esto genera el NaN
+  const remainingUsd = 10
   const remainingBs = (remainingUsd * bcvRate).toLocaleString('es-VE', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  });
-  const targetRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start end", "center center"]
   })
 
-
-
-
- return (
-    <section ref={targetRef} className="relative min-h-screen w-full bg-slate-50 py-32 md:py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
+  return (
+    <section className="relative min-h-screen w-full bg-slate-50 py-32 md:py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
+      {/* ENCABEZADO CON ESCULTURA 2: Protagonista en Mobile / Fondo con Opacidad en Desktop */}
       <div className="max-w-7xl px-6 relative z-10 w-full flex flex-col items-center text-center mb-16 md:mb-20">
-        {/* Escultura 2: Prisma Cúbico de Fusión Multimoneda */}
-        <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.92 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-6 transform-gpu will-change-transform select-none pointer-events-none"
-        >
-          <motion.div
-            animate={{ y: [0, -9] }}
-            transition={{
-              duration: 3.6,
-              repeat: Infinity,
-              repeatType: "mirror",
-              ease: "easeInOut",
-            }}
-            className="relative w-40 h-40 md:w-52 md:h-52 mx-auto transform-gpu will-change-transform"
-          >
+        <div className="relative flex flex-col items-center justify-center md:py-10">
+          <div className="relative w-40 h-40 mb-5 opacity-100 md:mb-0 md:w-[360px] md:h-[360px] lg:w-[420px] lg:h-[420px] md:opacity-[0.16] md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:-z-10 select-none pointer-events-none">
             <img
               src="/Emblema-cúbico-futurista-de-cristal-y-metal.webp"
               alt="Motor de Pagos Mixtos Multimoneda"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-contain pointer-events-none"
+              className="w-full h-full object-contain pz-float-3d"
             />
-          </motion.div>
-        </motion.div>
+          </div>
 
-        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-5 block">
-          Fricción Cero en el Mostrador
-        </span>
-        <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
-          Pagos Mixtos <br />
-          <span className="text-zinc-600">Sin Calculadora.</span>
-        </h2>
-        <p className="mt-4 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
+          <span className="relative z-10 text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-5 block">
+            Fricción Cero en el Mostrador
+          </span>
+          <h2 className="relative z-10 text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1]">
+            Pagos Mixtos <br />
+            <span className="text-zinc-600">Sin Calculadora.</span>
+          </h2>
+        </div>
+
+        <p className="relative z-10 mt-6 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
           ¿Tu cliente quiere pagar una parte en un billete de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
         </p>
       </div>
-      <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-12 px-6">
+
+      <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-12 px-6 z-10">
 
         {/* Simulación del Split Payment de Preziso */}
-        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-[2rem] p-8 shadow-[0_0_50px_rgba(0,0,0,0.03)] relative z-20">
+        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative z-20">
           <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
             <span className="text-sm font-bold uppercase text-zinc-900">Total a Pagar</span>
-            <span className="text-4xl font-light text-zinc-900">$45.00</span>
+            <span className="text-4xl font-light text-zinc-900 font-mono tabular-nums">$45.00</span>
           </div>
 
           <div className="space-y-4">
-            {/* Input Efectivo */}
-            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200 group">
+            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3">
                 <Wallet size={18} className="text-emerald-500" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Efectivo USD</span>
               </div>
-              <span className="text-lg text-zinc-900 font-mono">$20.00</span>
+              <span className="text-lg text-zinc-900 font-mono tabular-nums">$20.00</span>
             </div>
 
-            {/* Input Zelle */}
-            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200 group">
+            <div className="flex items-center justify-between bg-slate-100/50 p-4 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3">
                 <ArrowRightLeft size={18} className="text-purple-500" />
                 <span className="text-xs font-bold text-slate-600 uppercase">Zelle</span>
               </div>
-              <span className="text-lg text-zinc-900 font-mono">$15.00</span>
+              <span className="text-lg text-zinc-900 font-mono tabular-nums">$15.00</span>
             </div>
 
-            {/* Restante Automático Pago Móvil */}
-            <div className="flex items-center justify-between bg-black/10 p-4 rounded-xl border border-slate-300 relative overflow-hidden">
-              <motion.div
-                animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute inset-0 bg-black/10 blur-xl"
-              />
+            {/* Restante Automático Pago Móvil (Sin blur animado pesado) */}
+            <div className="flex items-center justify-between bg-neutral-900/5 p-4 rounded-xl border border-slate-300 relative overflow-hidden">
               <div className="flex items-center gap-3 relative z-10">
                 <Activity size={18} className="text-black" />
                 <span className="text-xs font-bold text-black uppercase">Restante Pago Móvil</span>
               </div>
               <div className="text-right relative z-10">
-                <span className="block text-lg text-zinc-900 font-mono">$10.00</span>
-                <span className="block text-[10px] text-black font-mono mt-1">Ref: Bs {remainingBs}</span>
+                <span className="block text-lg text-zinc-900 font-mono tabular-nums">$10.00</span>
+                <span className="block text-[10px] text-black font-mono tabular-nums mt-1">Ref: Bs {remainingBs}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Factura Final */}
-        <motion.div
-          initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}
-          className="w-full md:w-1/3 bg-white border border-emerald-200 rounded-2xl p-6 relative shadow-[0_0_50px_rgba(34,197,94,0.05)] z-20 mt-10 md:mt-0"
-        >
-          <div className="absolute -top-4 -left-4 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.4)]">
-            <CheckCircle2 size={20} className="text-black" />
+        <div className="w-full md:w-1/3 bg-white border border-emerald-200 rounded-2xl p-6 relative shadow-[0_10px_30px_rgba(34,197,94,0.05)] z-20 mt-6 md:mt-0">
+          <div className="absolute -top-4 -left-4 w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
+            <CheckCircle2 size={20} className="text-white" />
           </div>
 
-          <span className="text-[10px] font-mono text-green-500 uppercase tracking-widest mb-4 block">Cierre Perfecto</span>
+          <span className="text-[10px] font-mono text-emerald-600 uppercase tracking-widest mb-4 block">Cierre Perfecto</span>
 
-          <div className="space-y-3 font-mono text-xs text-slate-500">
+          <div className="space-y-3 font-mono text-xs text-slate-500 tabular-nums">
             <p className="text-zinc-900 font-bold">TICKET #9024</p>
             <p>--------------------</p>
             <p className="flex justify-between"><span>Efectivo:</span> <span>$20.00</span></p>
             <p className="flex justify-between"><span>Zelle:</span> <span>$15.00</span></p>
-            <p className="flex justify-between text-green-400"><span>Pago Móvil:</span> <span>Bs {remainingBs}</span></p>
+            <p className="flex justify-between text-emerald-600 font-semibold"><span>Pago Móvil:</span> <span>Bs {remainingBs}</span></p>
             <p>--------------------</p>
             <p className="text-zinc-900">Inventario descontado (-1)</p>
             <p className="text-zinc-900">Caja cuadrada automáticamente.</p>
           </div>
-        </motion.div>
+        </div>
 
       </div>
     </section>
@@ -1749,13 +1688,6 @@ const NodeSixMutation = ({ bcvRate }: { bcvRate: number }) => {
 // =========================================
 
 const NodeSevenSwarm = () => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "center center"]
-  })
-
-  // Actividad de Afiliados en Vivo
   const logs = [
     { name: "Carlos_Fit", action: "compartió link", item: "Proteína Whey", comm: "--" },
     { name: "Maria_Style", action: "generó venta", item: "Hoodie Titanio", comm: "+$2.50" },
@@ -1767,100 +1699,79 @@ const NodeSevenSwarm = () => {
   const [visibleLogs, setVisibleLogs] = useState<typeof logs>([])
 
   useEffect(() => {
-    let i = 0;
+    let i = 0
     const interval = setInterval(() => {
       setVisibleLogs(prev => {
         const next = [...prev, logs[i]]
-        if (next.length > 4) next.shift() // Mantener los últimos 4
+        if (next.length > 4) next.shift()
         return next
       })
       i = (i + 1) % logs.length
-    }, 2500)
+    }, 2800)
     return () => clearInterval(interval)
   }, [])
 
-  const opacityIn = useTransform(scrollYProgress, [0, 0.5], [0, 1])
-  const yUp = useTransform(scrollYProgress, [0, 0.5], [100, 0])
-
   return (
-    <section ref={containerRef} className="relative min-h-screen w-full bg-slate-50 py-40 overflow-hidden flex flex-col items-center border-t border-slate-200">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#f1f5f9_0%,transparent_50%)] opacity-[0.03] pointer-events-none" />
+    <section className="relative min-h-screen w-full bg-slate-50 py-32 md:py-40 overflow-hidden flex flex-col items-center justify-center border-t border-slate-200">
+      <div className="w-full max-w-5xl px-6 relative z-10 flex flex-col md:flex-row items-center gap-16">
 
-      <motion.div style={{ opacity: opacityIn, y: yUp }} className="w-full max-w-5xl px-6 relative z-10 flex flex-col md:flex-row items-center gap-16">
-
-   <div className="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left">
-          {/* Escultura 3: Núcleo Orbital de Red de Afiliados */}
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.92 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-5 md:-ml-3 transform-gpu will-change-transform select-none pointer-events-none"
-          >
-            <motion.div
-              animate={{ y: [0, -8] }}
-              transition={{
-                duration: 3.4,
-                repeat: Infinity,
-                repeatType: "mirror",
-                ease: "easeInOut",
-              }}
-              className="relative w-36 h-36 md:w-48 md:h-48 transform-gpu will-change-transform"
-            >
+        {/* COLUMNA IZQUIERDA CON ESCULTURA 3: Protagonista en Mobile / Fondo con Opacidad en Desktop */}
+        <div className="relative w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left">
+          <div className="relative w-full flex flex-col items-center md:items-start md:py-8">
+            <div className="relative w-36 h-36 mb-5 opacity-100 md:mb-0 md:w-[340px] md:h-[340px] lg:w-[380px] lg:h-[380px] md:opacity-[0.16] md:absolute md:top-1/2 md:left-1/3 md:-translate-x-1/2 md:-translate-y-1/2 md:-z-10 select-none pointer-events-none">
               <img
                 src="/Núcleo-futurista-de-red-metálica.webp"
                 alt="Red de Afiliados y Crecimiento Viral Preziso"
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-contain pointer-events-none"
+                className="w-full h-full object-contain pz-float-3d"
               />
-            </motion.div>
-          </motion.div>
+            </div>
 
-          <div className="flex items-center gap-3 mb-5">
-            <span className="text-[10px] font-mono text-black uppercase tracking-[0.35em]">
+            <span className="relative z-10 text-[10px] font-mono text-black uppercase tracking-[0.35em] mb-4 block">
               Motor de Crecimiento
             </span>
+            <h2 className="relative z-10 text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
+              Tus clientes son <br />
+              <span className="text-zinc-600">tus vendedores.</span>
+            </h2>
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
-            Tus clientes son <br />
-            <span className="text-zinc-600">tus vendedores.</span>
-          </h2>
-          <p className="text-slate-500 text-sm md:text-base leading-relaxed">
+
+          <p className="relative z-10 text-slate-500 text-sm md:text-base leading-relaxed">
             No pagues publicidad vacía. Preziso integra un sistema nativo de Afiliados. Genera códigos únicos para tus clientes fieles, dales un % de comisión y observa cómo promocionan tu inventario por todo WhatsApp e Instagram.
           </p>
         </div>
 
         {/* Dashboard de Afiliados */}
-        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.03)]">
-          <div className="bg-white/5 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="w-full md:w-1/2 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative z-10">
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
             <span className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Live: Comisiones Globales</span>
-            <div className="flex items-center gap-2 text-[10px] font-mono text-green-500">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Activo
+            <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-600">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Activo
             </div>
           </div>
 
           <div className="p-6 h-[300px] overflow-hidden flex flex-col justify-end">
-            <AnimatePresence>
+            <AnimatePresence initial={false}>
               {visibleLogs.map((log, idx) => (
                 <motion.div
                   key={`${log.name}-${idx}`}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
-                  transition={{ duration: 0.4 }}
-                  className="flex items-center justify-between py-4 border-b border-slate-200 last:border-0"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex items-center justify-between py-4 border-b border-slate-200 last:border-0 transform-gpu"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-500 border border-slate-200">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-600 border border-slate-200">
                       {log.name.charAt(0)}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-zinc-900">@{log.name}</span>
-                      <span className="text-[10px] text-slate-500">{log.action} <span className="text-slate-600">{log.item}</span></span>
+                      <span className="text-[10px] text-slate-500">{log.action} <span className="text-slate-700 font-medium">{log.item}</span></span>
                     </div>
                   </div>
-                  <span className={cn("text-xs font-mono font-bold", log.comm.includes('+') ? 'text-green-400' : 'text-zinc-600')}>
+                  <span className={cn("text-xs font-mono font-bold tabular-nums", log.comm.includes('+') ? 'text-emerald-600' : 'text-zinc-400')}>
                     {log.comm}
                   </span>
                 </motion.div>
@@ -1869,68 +1780,44 @@ const NodeSevenSwarm = () => {
           </div>
         </div>
 
-      </motion.div>
+      </div>
     </section>
   )
 }
-
 const NodeEightExtraction = () => {
-  const targetRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start end", "center center"]
-  })
-
-  const scaleUp = useTransform(scrollYProgress, [0, 1], [0.9, 1])
-  const opacityIn = useTransform(scrollYProgress, [0, 1], [0, 1])
-
   return (
-    <section id="precios" ref={targetRef} className="relative min-h-screen w-full bg-white py-40 border-t border-slate-200 flex flex-col items-center justify-center overflow-hidden">
+    <section id="precios" className="relative min-h-screen w-full bg-white py-32 md:py-40 border-t border-slate-200 flex flex-col items-center justify-center overflow-hidden">
 
-      {/* Resplandor Estructural */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-black/5 rounded-full blur-[150px] pointer-events-none" />
+      {/* Resplandor Estructural de Costo Cero en GPU */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.04)_0%,transparent_65%)] pointer-events-none"
+      />
 
-   <motion.div
-        style={{ scale: scaleUp, opacity: opacityIn }}
-        className="w-full max-w-5xl px-6 relative z-10 flex flex-col items-center"
-      >
-        {/* Escultura 4: Tarjeta Tecnológica de Membresía Ilimitada */}
-        <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.92 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-6 transform-gpu will-change-transform select-none pointer-events-none"
-        >
-          <motion.div
-            animate={{ y: [0, -9] }}
-            transition={{
-              duration: 3.8,
-              repeat: Infinity,
-              repeatType: "mirror",
-              ease: "easeInOut",
-            }}
-            className="relative w-40 h-40 md:w-52 md:h-52 mx-auto transform-gpu will-change-transform"
-          >
+      <div className="w-full max-w-5xl px-6 relative z-10 flex flex-col items-center">
+        {/* ENCABEZADO CON ESCULTURA 4: Protagonista en Mobile / Fondo con Opacidad en Desktop */}
+        <div className="relative flex flex-col items-center text-center mb-14 md:mb-16 md:py-10">
+          <div className="relative w-40 h-40 mb-5 opacity-100 md:mb-0 md:w-[360px] md:h-[360px] lg:w-[420px] lg:h-[420px] md:opacity-[0.16] md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:-z-10 select-none pointer-events-none">
             <img
               src="/Tarjeta-tecnológica-futurista-en-base-iluminada.webp"
               alt="Membresía de Acceso Ilimitado Preziso"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-contain pointer-events-none"
+              className="w-full h-full object-contain pz-float-3d"
             />
-          </motion.div>
-        </motion.div>
+          </div>
 
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-4">
-          Protocolo de Acceso
-        </span>
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-14">
-          Un Precio. <br />
-          <span className="text-zinc-600">Cero Comisiones.</span>
-        </h2>
+          <span className="relative z-10 text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-4 block">
+            Protocolo de Acceso
+          </span>
+          <h2 className="relative z-10 text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center">
+            Un Precio. <br />
+            <span className="text-zinc-600">Cero Comisiones.</span>
+          </h2>
+        </div>
+
         {/* El Recibo (Monolito) */}
-        <div className="w-full bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-2xl shadow-slate-200/50">
+        <div className="w-full bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.05)] z-10">
 
           {/* Lado A: Captura */}
           <div className="w-full md:w-1/2 p-12 md:p-20 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-slate-200 relative group">
@@ -1938,7 +1825,7 @@ const NodeEightExtraction = () => {
 
             <span className="text-[10px] font-mono text-black uppercase tracking-widest mb-6 relative z-10">Acceso Ilimitado</span>
 
-            <div className="flex items-start gap-1 mb-4 relative z-10">
+            <div className="flex items-start gap-1 mb-4 relative z-10 font-mono tabular-nums">
               <span className="text-2xl text-slate-500 mt-2">$</span>
               <span className="text-7xl md:text-9xl font-light tracking-tighter text-zinc-900 leading-none">18</span>
               <span className="text-3xl text-slate-500 mt-2">.99</span>
@@ -1948,7 +1835,7 @@ const NodeEightExtraction = () => {
 
             <Link href="/login" className="mt-12 w-full relative group/btn overflow-hidden rounded-xl bg-black text-white py-5 flex justify-center items-center gap-3 z-10">
               <span className="font-bold text-xs uppercase tracking-[0.2em] relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500">
-                7 dias gratis
+                7 días gratis
               </span>
               <ArrowUpRight size={16} strokeWidth={2} className="relative z-10 group-hover/btn:text-zinc-900 transition-colors duration-500" />
               <div className="absolute inset-0 bg-zinc-200 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-0" />
@@ -1971,7 +1858,7 @@ const NodeEightExtraction = () => {
                 "Subdominio .preziso.shop"
               ].map((item, idx) => (
                 <li key={idx} className="flex items-center gap-4 group/li">
-                  <div className="w-5 h-5 rounded-full bg-white/5 border border-slate-200 flex items-center justify-center shrink-0 group-hover/li:border-black group-hover/li:bg-black/20 transition-colors">
+                  <div className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover/li:border-black group-hover/li:bg-black/10 transition-colors">
                     <Check size={10} className="text-slate-500 group-hover/li:text-black transition-colors" strokeWidth={3} />
                   </div>
                   <span className="text-sm font-medium text-slate-600 group-hover/li:text-zinc-900 transition-colors">{item}</span>
@@ -1981,7 +1868,7 @@ const NodeEightExtraction = () => {
           </div>
 
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 }
@@ -2074,15 +1961,26 @@ export default function DeepCaptureLanding({ liveRate }: LandingProps) {
       {/* 🚀 INYECCIÓN ESTRUCTURADA DE ENTIDAD & SEO SEMÁNTICO */}
       <StructuredData />
 
-      <style jsx global>{`
+   <style jsx global>{`
         .text-outline-black {
-         -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
+          -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
           color: transparent;
         }
         @media (min-width: 768px) {
           .text-outline-black { -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3); }
         }
         body { cursor: crosshair; }
+
+        @keyframes pzFloat3D {
+          0%, 100% { transform: translate3d(0, 0px, 0); }
+          50% { transform: translate3d(0, -10px, 0); }
+        }
+        .pz-float-3d {
+          animation: pzFloat3D 4.2s ease-in-out infinite;
+          will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+        }
       `}</style>
 
       {/* 🚀 3. PASAMOS EL DATO A LOS NODOS QUE LO NECESITAN */}
