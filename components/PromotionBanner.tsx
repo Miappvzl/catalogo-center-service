@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { getOptimizedUrl } from '@/utils/cdn'
-import { Clock, ArrowRight, X, Sparkles, Tag, Check, Zap } from 'lucide-react'
+import { Clock, ArrowRight, X } from 'lucide-react'
 import { ThemeConfig } from '@/types/theme'
 
 interface PromotionBannerProps {
@@ -27,8 +27,16 @@ interface PromotionBannerProps {
     isPreview?: boolean
 }
 
-// Micro-Cápsula de Cuenta Regresiva de Precisión
-const BannerCountdown = ({ expiresAt, isMono = false }: { expiresAt: string, isMono?: boolean }) => {
+// Micro-Cápsula de Cuenta Regresiva de Precisión (Cero Ruido Visual)
+const BannerCountdown = ({
+    expiresAt,
+    textColor = '#ffffff',
+    variant = 'pill',
+}: {
+    expiresAt: string
+    textColor?: string
+    variant?: 'sharp' | 'minimal' | 'pill'
+}) => {
     const [timeLeft, setTimeLeft] = useState('')
 
     useEffect(() => {
@@ -42,10 +50,15 @@ const BannerCountdown = ({ expiresAt, isMono = false }: { expiresAt: string, isM
                 return
             }
 
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24))
             const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
             const s = Math.floor((diff % (1000 * 60)) / 1000)
-            setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+
+            const totalHours = d * 24 + h
+            setTimeLeft(
+                `${totalHours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+            )
         }
 
         calculate()
@@ -55,19 +68,31 @@ const BannerCountdown = ({ expiresAt, isMono = false }: { expiresAt: string, isM
 
     if (!timeLeft) return null
 
-    if (isMono) {
+    if (variant === 'minimal') {
         return (
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-medium text-white/90 tabular-nums">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <div
+                className="inline-flex items-center gap-1.5 text-[10px] font-mono tabular-nums tracking-[0.12em] uppercase opacity-85"
+                style={{ color: textColor }}
+            >
+                <Clock size={11} strokeWidth={1.5} className="shrink-0 opacity-75" />
                 <span>{timeLeft}</span>
             </div>
         )
     }
 
     return (
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[10px] font-medium text-white/90">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="font-mono font-medium tracking-tight">{timeLeft}</span>
+        <div
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono font-medium tabular-nums tracking-wider border backdrop-blur-md ${
+                variant === 'sharp' ? 'rounded-none' : 'rounded-full'
+            }`}
+            style={{
+                color: textColor,
+                borderColor: `${textColor}24`,
+                backgroundColor: `${textColor}0D`,
+            }}
+        >
+            <Clock size={11} strokeWidth={1.8} className="shrink-0 opacity-80" />
+            <span>{timeLeft}</span>
         </div>
     )
 }
@@ -80,10 +105,11 @@ export default function PromotionBanner({
     isPreview = false,
 }: PromotionBannerProps) {
     const templateId = themeConfig?.template_id || 'classic'
+    const cardStyle = themeConfig?.layout?.card_style || 'standard'
     const itemCount = promo.linked_products?.length || 0
     const hasImage = Boolean(promo.image_url)
 
-    // Extractor dinámico de paleta completa (compatible con JSON y con HEX legacy)
+    // Extractor dinámico de paleta completa (compatible con JSON de AiBannerStudio y HEX clásico)
     const colors = useMemo(() => {
         const rawBg = promo.bg_color || '#09090b'
         const rawText = promo.text_color || '#ffffff'
@@ -98,13 +124,28 @@ export default function PromotionBanner({
         if (typeof rawText === 'string' && rawText.startsWith('{')) {
             try {
                 const parsed = JSON.parse(rawText)
-                title = parsed.title || title
-                tagline = parsed.tagline || tagline
-                btnBg = parsed.btnBg || btnBg
-                btnText = parsed.btnText || btnText
-                badgeBg = parsed.badgeBg || badgeBg
-                badgeText = parsed.badgeText || badgeText
+                title = parsed.title || '#ffffff'
+                tagline = parsed.tagline || title
+                btnBg = parsed.btnBg || '#ffffff'
+                btnText = parsed.btnText || '#09090b'
+                badgeBg = parsed.badgeBg || btnBg
+                badgeText = parsed.badgeText || btnText
             } catch {}
+        } else {
+            // Si el texto principal es oscuro (fondo claro), invertimos el botón por defecto para alto contraste
+            const cleanHex = rawText.replace('#', '')
+            if (cleanHex.length === 6) {
+                const r = parseInt(cleanHex.substring(0, 2), 16)
+                const g = parseInt(cleanHex.substring(2, 4), 16)
+                const b = parseInt(cleanHex.substring(4, 6), 16)
+                const luminance = r * 0.299 + g * 0.587 + b * 0.114
+                if (luminance < 128) {
+                    btnBg = '#09090b'
+                    btnText = '#ffffff'
+                    badgeBg = '#09090b'
+                    badgeText = '#ffffff'
+                }
+            }
         }
 
         return {
@@ -118,484 +159,529 @@ export default function PromotionBanner({
         }
     }, [promo.bg_color, promo.text_color])
 
-    const bgColor = colors.bg
-    const textColor = colors.title
-
-    // Etiqueta semántica de descuento con formato visual
+    // Etiqueta semántica de beneficio comercial
     const offerBadge = useMemo(() => {
         if (promo.promo_type === 'percentage' && promo.discount_percentage) {
-            return `-${promo.discount_percentage}%`
+            return `-${promo.discount_percentage}% OFF`
         }
         if (promo.promo_type === 'bogo' && promo.bogo_buy && promo.bogo_pay) {
-            return `${promo.bogo_buy}x${promo.bogo_pay}`
+            return `PROMO ${promo.bogo_buy}x${promo.bogo_pay}`
         }
         return null
     }, [promo.promo_type, promo.discount_percentage, promo.bogo_buy, promo.bogo_pay])
+
+    // Copywriting universal, humano y libre de errores de conteo (0)
+    const copy = useMemo(() => {
+        const hasItems = itemCount > 0
+
+        if (templateId === 'hardware_dense' || cardStyle === 'dense_hardware') {
+            return {
+                fallbackTitle: 'EDICIÓN ESPECIAL',
+                ctaIdle: hasItems ? `VER SELECCIÓN · ${itemCount}` : 'VER DETALLES',
+                ctaActive: 'VER CATÁLOGO COMPLETO',
+            }
+        }
+
+        if (templateId === 'minimal_luxury' || cardStyle === 'editorial') {
+            return {
+                fallbackTitle: 'Selección Exclusiva',
+                ctaIdle: hasItems ? `Descubrir selección (${itemCount})` : 'Descubrir edición',
+                ctaActive: 'Volver al catálogo',
+            }
+        }
+
+        if (templateId === 'streetwear_bold' || cardStyle === 'brutalist') {
+            return {
+                fallbackTitle: 'EDICIÓN LIMITADA',
+                ctaIdle: hasItems ? `EXPLORAR SELECCIÓN · ${itemCount}` : 'EXPLORAR EDICIÓN',
+                ctaActive: 'CERRAR VISTA',
+            }
+        }
+
+        if (templateId === 'modular_tech' || cardStyle === 'modular_tech') {
+            return {
+                fallbackTitle: 'Selección Destacada',
+                ctaIdle: hasItems ? `Explorar oferta · ${itemCount}` : 'Explorar oferta',
+                ctaActive: 'Ver todo el catálogo',
+            }
+        }
+
+        return {
+            fallbackTitle: 'Promoción Especial',
+            ctaIdle: hasItems ? `Ver selección (${itemCount})` : 'Explorar promoción',
+            ctaActive: 'Ver todo el catálogo',
+        }
+    }, [templateId, cardStyle, itemCount])
 
     const handleClick = () => {
         if (isPreview || !onToggle) return
         onToggle()
     }
 
+    const hasEyebrow = Boolean(offerBadge || promo.expires_at)
+
+    // Scrim direccional calibrado que preserva la nitidez de la foto en la derecha/arriba y garantiza legibilidad en el texto
+    const renderDirectionalBackdrop = (imageExtraClasses = '') => {
+        if (!hasImage) {
+            return (
+                <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                        background: `radial-gradient(120% 120% at 100% 0%, ${colors.title}0A 0%, transparent 65%)`,
+                    }}
+                />
+            )
+        }
+
+        return (
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                <Image
+                    src={getOptimizedUrl(promo.image_url!)}
+                    alt={promo.title || 'Promoción'}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 1400px"
+                    className={`object-cover object-center scale-100 group-hover:scale-[1.03] transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${imageExtraClasses}`}
+                />
+                {/* Scrim Móvil: Protege la lectura inferior dejando respirar la parte superior/central */}
+                <div
+                    className="absolute inset-0 md:hidden"
+                    style={{
+                        background: `linear-gradient(180deg, ${colors.bg}40 0%, ${colors.bg}CC 45%, ${colors.bg}F8 100%)`,
+                    }}
+                />
+                {/* Scrim Desktop: Protege el bloque editorial izquierdo y revela la fotografía con claridad a la derecha */}
+                <div
+                    className="hidden md:block absolute inset-0"
+                    style={{
+                        background: `linear-gradient(90deg, ${colors.bg}FA 0%, ${colors.bg}E6 42%, ${colors.bg}73 72%, ${colors.bg}1A 100%)`,
+                    }}
+                />
+            </div>
+        )
+    }
+
     // =========================================================================
-    // 🛠️ VARIANTE 1: INDUSTRIAL PRO (Ingeniería de Precisión - Porsche Design / Dyson)
+    // 🛠️ VARIANTE 1: INDUSTRIAL PRO (Ingeniería de Precisión - Braun / Porsche Design)
     // =========================================================================
-    if (templateId === 'hardware_dense') {
+    if (templateId === 'hardware_dense' || cardStyle === 'dense_hardware') {
         return (
             <div
                 onClick={handleClick}
-                className={`relative w-full h-full min-h-[140px] text-left transition-all border border-neutral-800 overflow-hidden select-none group flex flex-col justify-between ${
-                    isPreview ? 'cursor-default' : 'cursor-pointer hover:border-neutral-500'
+                className={`relative w-full h-full min-h-[148px] rounded-none text-left transition-all duration-300 overflow-hidden select-none group flex flex-col justify-between ${
+                    isPreview ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
                 }`}
-                style={{ backgroundColor: bgColor }}
+                style={{
+                    backgroundColor: colors.bg,
+                    border: `1px solid ${colors.title}26`,
+                }}
             >
-                {/* 1. Fondo Cinemático con Velo Técnico */}
-                {hasImage && (
-                    <div className="absolute inset-0 z-0">
-                        <Image
-                            src={getOptimizedUrl(promo.image_url!)}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 100vw, 1400px"
-                            className="object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-700 ease-out opacity-45"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/85 to-black/60" />
-                    </div>
-                )}
+                {renderDirectionalBackdrop('opacity-80')}
 
-                {/* 2. Contenido Estructurado Técnico */}
-                <div className="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                    <div className="space-y-2 min-w-0 flex-1">
-                        {/* Metadatos de Cabecera */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-400 border border-neutral-700 px-2 py-0.5 bg-black/60">
-                               CAMPAÑA ACTIVA
-                            </span>
+                <div className="relative z-10 p-5 sm:p-6 md:px-8 md:py-7 flex flex-col md:flex-row md:items-center justify-between gap-5 my-auto">
+                    <div className="space-y-2 min-w-0 flex-1 max-w-2xl">
+                        {hasEyebrow && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {offerBadge && (
+                                    <span
+                                        className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] px-2.5 py-1 leading-none"
+                                        style={{
+                                            backgroundColor: colors.badgeBg,
+                                            color: colors.badgeText,
+                                        }}
+                                    >
+                                        {offerBadge}
+                                    </span>
+                                )}
+                                {promo.expires_at && (
+                                    <BannerCountdown
+                                        expiresAt={promo.expires_at}
+                                        textColor={colors.title}
+                                        variant="sharp"
+                                    />
+                                )}
+                            </div>
+                        )}
 
-                            {offerBadge && (
-                                <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2 py-0.5 bg-white text-black">
-                                    {offerBadge}
-                                </span>
-                            )}
-
-                            {promo.expires_at && (
-                                <BannerCountdown expiresAt={promo.expires_at} isMono={true} />
-                            )}
-                        </div>
-
-                        {/* Título Asertivo sin Recortes Rústicos */}
-                        <h4 className="text-lg sm:text-2xl md:text-3xl font-mono font-bold tracking-tight text-white uppercase leading-tight line-clamp-2">
-                            {promo.title || 'CAMPAÑA INDUSTRIAL'}
+                        <h4
+                            className="text-lg sm:text-2xl md:text-[26px] font-mono font-bold tracking-tight uppercase leading-[1.15] line-clamp-2"
+                            style={{ color: colors.title }}
+                        >
+                            {promo.title || copy.fallbackTitle}
                         </h4>
 
                         {promo.tagline && (
-                            <p className="text-xs sm:text-sm font-mono text-neutral-400 font-normal leading-relaxed line-clamp-2 max-w-2xl">
-                                {promo.tagline}
-                            </p>
-                        )}
-                    </div>
-
-              
-                    {/* Botón Táctil de Precisión */}
-                    <div className="shrink-0 pt-2 md:pt-0">
-                        <div
-                            className={`px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-widest border transition-all flex items-center justify-center gap-2 ${
-                                isActive
-                                    ? 'bg-transparent text-white border-white'
-                                    : 'bg-white text-black border-white hover:bg-neutral-200'
-                            }`}
-                        >
-                            <span>{isActive ? 'REMOVER FILTRO ✕' : `VER SELECCIÓN (${itemCount})`}</span>
-                            {!isActive && <ArrowRight size={13} strokeWidth={2} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    // =========================================================================
-    // 💎 VARIANTE 3: MINIMAL LUXURY (Joyería, Perfumes, Cosmética de Autor - Byredo / Céline)
-    // =========================================================================
-    if (templateId === 'minimal_luxury' || themeConfig?.layout?.card_style === 'editorial') {
-        return (
-             <div
-                onClick={handleClick}
-                className={`relative w-full h-full min-h-[140px] text-left transition-all border border-white/15 overflow-hidden select-none group flex flex-col justify-between ${
-                    isPreview ? 'cursor-default' : 'cursor-pointer hover:border-white/40'
-                }`}
-                style={{ backgroundColor: bgColor }}
-            >
-                {/* 1. Fondo Cinemático Editorial con Velo Suave */}
-                {hasImage ? (
-                    <div className="absolute inset-0 z-0">
-                        <Image
-                            src={getOptimizedUrl(promo.image_url!)}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 100vw, 1400px"
-                            className="object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] opacity-40"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/40 pointer-events-none" />
-                )}
-
-                {/* 2. Capa Tipográfica Serifa de Revista */}
-                <div className="relative z-10 px-6 py-6 sm:px-8 sm:py-8 md:px-12 md:py-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="space-y-2.5 min-w-0 flex-1">
-                        {/* Metadatos y Micro-Tag de Lujo */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                            {promo.tagline && (
-                                <span className="text-[9px] sm:text-[10px] font-serif uppercase tracking-[0.25em] text-neutral-300">
-                                    {promo.tagline}
-                                </span>
-                            )}
-
-                            {offerBadge && (
-                                <span className="text-[10px] font-sans font-semibold tracking-widest uppercase px-2 py-0.5 border border-white/30 text-white bg-black/40">
-                                    {offerBadge}
-                                </span>
-                            )}
-
-                            {promo.expires_at && (
-                                <BannerCountdown expiresAt={promo.expires_at} />
-                            )}
-                        </div>
-
-                        {/* Título Elegante en Serifa Clásica */}
-                        <h4 className="font-serif text-2xl sm:text-3xl md:text-4xl font-normal tracking-wide text-white leading-tight line-clamp-2 max-w-2xl">
-                            {promo.title || 'Colección Exclusiva'}
-                        </h4>
-                    </div>
-
-                    {/* Botón Rectangular Sobrio (Estilo Boutique) */}
-                    <div className="shrink-0 pt-1 md:pt-0">
-                        <div
-                            className={`px-6 py-2.5 sm:py-3 text-[11px] font-sans font-semibold uppercase tracking-[0.2em] border transition-all duration-300 flex items-center justify-center gap-2 ${
-                                isActive
-                                    ? 'bg-white text-neutral-950 border-white'
-                                    : 'bg-transparent text-white border-white/40 hover:border-white hover:bg-white/10'
-                            }`}
-                        >
-                            <span>{isActive ? 'Cerrar Colección ✕' : `Descubrir Piezas (${itemCount})`}</span>
-                            {!isActive && <ArrowRight size={13} strokeWidth={1.5} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    // =========================================================================
-    // 🏴‍☠️ VARIANTE 4: STREETWEAR MODERN (Drops Urbanos / High-Fashion Archive)
-    // =========================================================================
-    if (templateId === 'streetwear_bold' || themeConfig?.layout?.card_style === 'brutalist') {
-        return (
-          <div
-                onClick={handleClick}
-                className={`relative w-full h-full min-h-[140px] rounded-none text-left transition-all border-2 border-neutral-800 overflow-hidden select-none group flex flex-col justify-between ${
-                    isPreview ? 'cursor-default' : 'cursor-pointer hover:border-neutral-500'
-                }`}
-                style={{ backgroundColor: bgColor }}
-            >
-
-                {/* 1. Fondo Cinemático Urbano Monocromático */}
-                {hasImage ? (
-                    <div className="absolute inset-0 z-0">
-                        <Image
-                            src={getOptimizedUrl(promo.image_url!)}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 100vw, 1400px"
-                            className="object-cover object-center grayscale contrast-125 scale-100 group-hover:scale-105 transition-transform duration-700 ease-out opacity-50"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black via-black/85 to-black/50" />
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 z-0 bg-neutral-950 opacity-95" />
-                )}
-
-                {/* 2. Capa Estructural Brutalista */}
-                <div className="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                    <div className="space-y-2 min-w-0 flex-1">
-                        {/* Micro-Índice de Drop */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                     
-
-                            {offerBadge && (
-                                <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2 py-0.5 bg-white text-black border border-white">
-                                    {offerBadge}
-                                </span>
-                            )}
-
-                            {promo.expires_at && (
-                                <BannerCountdown expiresAt={promo.expires_at} isMono={true} />
-                            )}
-                        </div>
-
-                        {/* Título de Impacto en Manrope Mayúscula */}
-                        <h4 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight uppercase text-white leading-tight line-clamp-2 max-w-2xl">
-                            {promo.title || 'STREETWEAR CAPSULE'}
-                        </h4>
-
-                        {promo.tagline && (
-                            <p className="text-xs sm:text-sm font-mono text-neutral-300 font-normal leading-relaxed line-clamp-2 max-w-xl">
-                                {promo.tagline}
-                            </p>
-                        )}
-                    </div>
-
-             
-                    {/* Botón Afilado de Bloque Monocromático */}
-                    <div className="shrink-0 pt-2 md:pt-0">
-                        <div
-                            className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-none text-xs font-mono font-bold uppercase tracking-wider border-2 transition-all flex items-center justify-center gap-2 ${
-                                isActive
-                                    ? 'bg-transparent text-white border-white'
-                                    : 'bg-white text-black border-white hover:bg-neutral-200 active:scale-[0.98]'
-                            }`}
-                        >
-                            <span>{isActive ? 'Cerrar Drop ✕' : `Explorar Drop (${itemCount})`}</span>
-                            {!isActive && <ArrowRight size={14} strokeWidth={2} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    // =========================================================================
-    // ⚡ VARIANTE 5: TECH BENTO (Tecnología, Gadgets & Audio - Apple / Nothing Tech)
-    // =========================================================================
-    if (templateId === 'modular_tech' || themeConfig?.layout?.card_style === 'modular_tech') {
-        return (
-            <div
-                onClick={handleClick}
-                className={`relative w-full h-full min-h-[140px] rounded-xl text-left transition-all border border-neutral-800 overflow-hidden select-none group flex flex-col justify-between ${
-                    isPreview ? 'cursor-default' : 'cursor-pointer hover:border-neutral-600'
-                }`}
-                style={{ backgroundColor: bgColor }}
-            >
-                {/* 1. Fondo Cinemático Modular con Scrim Tech */}
-                {hasImage ? (
-                    <div className="absolute inset-0 z-0">
-                        <Image
-                            src={getOptimizedUrl(promo.image_url!)}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 100vw, 1400px"
-                            className="object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-700 ease-out opacity-45"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-neutral-950 via-neutral-950/85 to-neutral-900/50" />
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 z-0 bg-gradient-to-br from-neutral-900 via-neutral-950 to-black opacity-95" />
-                )}
-
-                {/* 2. Arquitectura de Bento Grid */}
-                <div className="relative z-10 p-5 sm:p-6 md:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                    <div className="space-y-2 min-w-0 flex-1">
-                        {/* Chips de Especificaciones Técnicas */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                           
-
-                            {offerBadge && (
-                                <span className="text-[10px] font-mono font-bold tracking-tight px-2 py-0.5 rounded-md bg-white text-neutral-950">
-                                    {offerBadge}
-                                </span>
-                            )}
-
-                            {promo.expires_at && (
-                                <BannerCountdown expiresAt={promo.expires_at} isMono={true} />
-                            )}
-                        </div>
-
-                        {/* Título de Dispositivo / Gadget */}
-                        <h4 className="text-lg sm:text-2xl md:text-3xl font-semibold tracking-tight text-white leading-tight line-clamp-2 max-w-2xl">
-                            {promo.title || 'INNOVACIÓN Y RENDIMIENTO'}
-                        </h4>
-
-                        {promo.tagline && (
-                            <p className="text-xs sm:text-sm font-normal text-neutral-400 leading-relaxed line-clamp-2 max-w-xl">
-                                {promo.tagline}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Botón Modular de Esquinas Suaves */}
-                    <div className="shrink-0 pt-2 md:pt-0">
-                        <div
-                            className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all flex items-center justify-center gap-2 ${
-                                isActive
-                                    ? 'bg-neutral-800 text-white border-neutral-700'
-                                    : 'bg-white text-neutral-950 border-white hover:bg-neutral-100 active:scale-[0.98]'
-                            }`}
-                        >
-                            <span>{isActive ? 'Remover Filtro ✕' : `Ver Hardware (${itemCount})`}</span>
-                            {!isActive && <ArrowRight size={13} strokeWidth={2} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    // =========================================================================
-    // 🌸 VARIANTE 6: BEAUTY POP (Cosmética, Skincare & Cuidado Personal - Glossier / Rhode)
-    // =========================================================================
-    if (templateId === 'bistro_fast' || themeConfig?.layout?.card_style === 'food_menu') {
-        return (
-            <div
-                onClick={handleClick}
-                className={`relative w-full rounded-3xl text-left transition-all border border-rose-200/20 overflow-hidden select-none group ${
-                    isPreview ? 'cursor-default' : 'cursor-pointer hover:border-rose-300/40'
-                }`}
-                style={{ backgroundColor: bgColor }}
-            >
-                {/* 1. Fondo Editorial con Velo Luminous Berry */}
-                {hasImage ? (
-                    <div className="absolute inset-0 z-0">
-                        <Image
-                            src={getOptimizedUrl(promo.image_url!)}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 100vw, 1400px"
-                            className="object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-700 ease-out opacity-50"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-rose-950/30" />
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-rose-900/25 via-neutral-950 to-black pointer-events-none" />
-                )}
-
-                {/* 2. Capa Tipográfica Lifestyle */}
-                <div className="relative z-10 p-5 sm:p-7 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                    <div className="space-y-2 min-w-0 flex-1">
-                        {/* Micro-Pill de Belleza Limpia */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                        
-
-                            {offerBadge && (
-                                <span className="text-[10px] font-semibold tracking-wide px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-950">
-                                    {offerBadge}
-                                </span>
-                            )}
-
-                            {promo.expires_at && (
-                                <BannerCountdown expiresAt={promo.expires_at} />
-                            )}
-                        </div>
-
-                        {/* Título Suave de Cosmética */}
-                        <h4 className="text-xl sm:text-2xl md:text-3xl font-medium sm:font-semibold tracking-tight text-white leading-tight line-clamp-2 max-w-2xl">
-                            {promo.title || 'Fórmulas Limpias y Esenciales'}
-                        </h4>
-
-                        {promo.tagline && (
-                            <p className="text-xs sm:text-sm text-neutral-300 font-normal leading-relaxed line-clamp-2 max-w-xl">
-                                {promo.tagline}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Botón Píldora Lifestyle */}
-                    <div className="shrink-0 pt-1 md:pt-0">
-                        <div
-                            className={`px-6 py-2.5 sm:py-3 rounded-full text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 ${
-                                isActive
-                                    ? 'bg-white/20 text-white border border-white/40 backdrop-blur-md'
-                                    : 'bg-white text-neutral-950 hover:bg-rose-50 active:scale-95'
-                            }`}
-                        >
-                            <span>{isActive ? 'Quitar Filtro ✕' : `Explorar Fórmulas (${itemCount})`}</span>
-                            {!isActive && <ArrowRight size={13} strokeWidth={2} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    // =========================================================================
-    // 🌟 VARIANTE 2: PREZISO UNIVERSAL (Classic - Lujo Accesible / Nike / Apple)
-    // =========================================================================
-    return (
-      <div
-            onClick={handleClick}
-            className={`relative w-full h-full min-h-[140px] rounded-2xl text-left transition-all border border-neutral-800/60 overflow-hidden select-none group flex flex-col justify-between ${
-                isPreview ? 'cursor-default' : 'cursor-pointer hover:border-neutral-600'
-            }`}
-            style={{ backgroundColor: bgColor }}
-        >
-            {/* 1. Fondo Cinemático Inmersivo con Scrim de Alto Contraste */}
-            {hasImage ? (
-                <div className="absolute inset-0 z-0">
-                    <Image
-                        src={getOptimizedUrl(promo.image_url!)}
-                        alt=""
-                        fill
-                        sizes="(max-width: 768px) 100vw, 1400px"
-                        className="object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-700 ease-out opacity-55"
-                    />
-                    {/* Gradiente multicapa: oscuro en el texto (izquierda) y aireado en la derecha */}
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/95 via-black/75 to-black/35" />
-                </div>
-            ) : (
-                /* Gradiente sutil ambiental si no hay foto */
-                <div className="absolute inset-0 z-0 bg-gradient-to-br from-white/5 via-transparent to-black/30 pointer-events-none" />
-            )}
-
-            {/* 2. Capa de Información Editorial */}
-            <div className="relative z-10 p-5 sm:p-7 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                <div className="space-y-2 min-w-0 flex-1">
-                       {/* Pills de Estado y Oferta Personalizadas */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {offerBadge && (
-                            <span 
-                                className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full"
-                                style={{ backgroundColor: colors.badgeBg, color: colors.badgeText }}
-                            >
-                                {offerBadge}
-                            </span>
-                        )}
-
-                        {promo.tagline && (
-                            <span 
-                                className="text-[11px] font-medium tracking-tight line-clamp-1 opacity-90"
+                            <p
+                                className="text-xs sm:text-sm font-mono font-normal leading-relaxed line-clamp-2 max-w-xl opacity-85"
                                 style={{ color: colors.tagline }}
                             >
                                 {promo.tagline}
-                            </span>
-                        )}
-
-                      {promo.expires_at && (
-                            <BannerCountdown expiresAt={promo.expires_at} />
+                            </p>
                         )}
                     </div>
 
-                    {/* Título Personalizado */}
-                    <h4 
-                        className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight leading-tight line-clamp-2 max-w-2xl"
+                    <div className="shrink-0 pt-1 md:pt-0">
+                        <div
+                            className="inline-flex w-full sm:w-auto min-h-[42px] px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.15em] border transition-all duration-300 items-center justify-center gap-2.5"
+                            style={{
+                                backgroundColor: isActive ? 'transparent' : colors.btnBg,
+                                color: isActive ? colors.title : colors.btnText,
+                                borderColor: isActive ? `${colors.title}66` : colors.btnBg,
+                            }}
+                        >
+                            <span>{isActive ? copy.ctaActive : copy.ctaIdle}</span>
+                            {isActive ? (
+                                <X size={13} strokeWidth={2} />
+                            ) : (
+                                <ArrowRight
+                                    size={13}
+                                    strokeWidth={2}
+                                    className="transition-transform duration-300 group-hover:translate-x-0.5"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // =========================================================================
+    // 💎 VARIANTE 2: MINIMAL LUXURY (Editorial Haute-Couture - SSENSE / Céline)
+    // =========================================================================
+    if (templateId === 'minimal_luxury' || cardStyle === 'editorial') {
+        return (
+            <div
+                onClick={handleClick}
+                className={`relative w-full h-full min-h-[160px] rounded-none text-left transition-all duration-500 overflow-hidden select-none group flex flex-col justify-between ${
+                    isPreview ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
+                }`}
+                style={{
+                    backgroundColor: colors.bg,
+                    border: `1px solid ${colors.title}22`,
+                }}
+            >
+                {renderDirectionalBackdrop('opacity-85')}
+
+                <div className="relative z-10 px-6 py-6 sm:px-8 sm:py-8 md:px-11 md:py-9 flex flex-col md:flex-row md:items-center justify-between gap-6 my-auto">
+                    <div className="space-y-2.5 min-w-0 flex-1 max-w-2xl">
+                        {hasEyebrow && (
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {offerBadge && (
+                                    <span
+                                        className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] px-2.5 py-1 leading-none"
+                                        style={{
+                                            backgroundColor: colors.badgeBg,
+                                            color: colors.badgeText,
+                                        }}
+                                    >
+                                        {offerBadge}
+                                    </span>
+                                )}
+                                {promo.expires_at && (
+                                    <BannerCountdown
+                                        expiresAt={promo.expires_at}
+                                        textColor={colors.title}
+                                        variant="minimal"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <h4
+                            className="font-serif text-2xl sm:text-3xl md:text-[34px] font-normal tracking-tight leading-[1.12] line-clamp-2"
+                            style={{ color: colors.title }}
+                        >
+                            {promo.title || copy.fallbackTitle}
+                        </h4>
+
+                        {promo.tagline && (
+                            <p
+                                className="text-xs sm:text-sm font-sans font-normal tracking-wide leading-relaxed line-clamp-2 max-w-xl opacity-85"
+                                style={{ color: colors.tagline }}
+                            >
+                                {promo.tagline}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="shrink-0 pt-1 md:pt-0">
+                        <div
+                            className="inline-flex w-full sm:w-auto min-h-[44px] px-6 py-3 text-[10px] font-sans font-semibold uppercase tracking-[0.22em] border transition-all duration-300 items-center justify-center gap-3"
+                            style={{
+                                backgroundColor: isActive ? 'transparent' : colors.btnBg,
+                                color: isActive ? colors.title : colors.btnText,
+                                borderColor: isActive ? `${colors.title}50` : colors.btnBg,
+                            }}
+                        >
+                            <span>{isActive ? copy.ctaActive : copy.ctaIdle}</span>
+                            {isActive ? (
+                                <X size={13} strokeWidth={1.5} />
+                            ) : (
+                                <ArrowRight
+                                    size={13}
+                                    strokeWidth={1.5}
+                                    className="transition-transform duration-300 group-hover:translate-x-1"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // =========================================================================
+    // 🏴‍☠️ VARIANTE 3: STREETWEAR MODERN (High-Contrast Archive / Brutalist)
+    // =========================================================================
+    if (templateId === 'streetwear_bold' || cardStyle === 'brutalist') {
+        return (
+            <div
+                onClick={handleClick}
+                className={`relative w-full h-full min-h-[152px] rounded-none text-left transition-all duration-300 overflow-hidden select-none group flex flex-col justify-between ${
+                    isPreview ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
+                }`}
+                style={{
+                    backgroundColor: colors.bg,
+                    border: `2px solid ${colors.title}33`,
+                }}
+            >
+                {renderDirectionalBackdrop('grayscale contrast-125 opacity-75')}
+
+                <div className="relative z-10 p-5 sm:p-6 md:px-8 md:py-7 flex flex-col md:flex-row md:items-center justify-between gap-5 my-auto">
+                    <div className="space-y-2 min-w-0 flex-1 max-w-2xl">
+                        {hasEyebrow && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {offerBadge && (
+                                    <span
+                                        className="text-[10px] font-mono font-black uppercase tracking-[0.15em] px-2.5 py-1 leading-none"
+                                        style={{
+                                            backgroundColor: colors.badgeBg,
+                                            color: colors.badgeText,
+                                        }}
+                                    >
+                                        {offerBadge}
+                                    </span>
+                                )}
+                                {promo.expires_at && (
+                                    <BannerCountdown
+                                        expiresAt={promo.expires_at}
+                                        textColor={colors.title}
+                                        variant="sharp"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <h4
+                            className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tighter uppercase leading-[1.08] line-clamp-2"
+                            style={{ color: colors.title }}
+                        >
+                            {promo.title || copy.fallbackTitle}
+                        </h4>
+
+                        {promo.tagline && (
+                            <p
+                                className="text-xs sm:text-sm font-mono font-normal leading-relaxed line-clamp-2 max-w-xl opacity-85"
+                                style={{ color: colors.tagline }}
+                            >
+                                {promo.tagline}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="shrink-0 pt-1 md:pt-0">
+                        <div
+                            className="inline-flex w-full sm:w-auto min-h-[44px] px-6 py-3 rounded-none text-[11px] font-mono font-bold uppercase tracking-[0.15em] border-2 transition-all duration-300 items-center justify-center gap-2.5"
+                            style={{
+                                backgroundColor: isActive ? 'transparent' : colors.btnBg,
+                                color: isActive ? colors.title : colors.btnText,
+                                borderColor: isActive ? colors.title : colors.btnBg,
+                            }}
+                        >
+                            <span>{isActive ? copy.ctaActive : copy.ctaIdle}</span>
+                            {isActive ? (
+                                <X size={14} strokeWidth={2.2} />
+                            ) : (
+                                <ArrowRight
+                                    size={14}
+                                    strokeWidth={2.2}
+                                    className="transition-transform duration-300 group-hover:translate-x-0.5"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // =========================================================================
+    // ⚡ VARIANTE 4: TECH BENTO (Arquitectura Modular - Apple / Linear)
+    // =========================================================================
+    if (templateId === 'modular_tech' || cardStyle === 'modular_tech') {
+        return (
+            <div
+                onClick={handleClick}
+                className={`relative w-full h-full min-h-[152px] rounded-2xl text-left transition-all duration-300 overflow-hidden select-none group flex flex-col justify-between ${
+                    isPreview ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
+                }`}
+                style={{
+                    backgroundColor: colors.bg,
+                    border: `1px solid ${colors.title}22`,
+                }}
+            >
+                {renderDirectionalBackdrop('opacity-85')}
+
+                <div className="relative z-10 p-5 sm:p-6 md:px-8 md:py-7 flex flex-col md:flex-row md:items-center justify-between gap-5 my-auto">
+                    <div className="space-y-2 min-w-0 flex-1 max-w-2xl">
+                        {hasEyebrow && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {offerBadge && (
+                                    <span
+                                        className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-md leading-none"
+                                        style={{
+                                            backgroundColor: colors.badgeBg,
+                                            color: colors.badgeText,
+                                        }}
+                                    >
+                                        {offerBadge}
+                                    </span>
+                                )}
+                                {promo.expires_at && (
+                                    <BannerCountdown
+                                        expiresAt={promo.expires_at}
+                                        textColor={colors.title}
+                                        variant="pill"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <h4
+                            className="text-xl sm:text-2xl md:text-[28px] font-semibold tracking-tight leading-[1.14] line-clamp-2"
+                            style={{ color: colors.title }}
+                        >
+                            {promo.title || copy.fallbackTitle}
+                        </h4>
+
+                        {promo.tagline && (
+                            <p
+                                className="text-xs sm:text-sm font-normal leading-relaxed line-clamp-2 max-w-xl opacity-85"
+                                style={{ color: colors.tagline }}
+                            >
+                                {promo.tagline}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="shrink-0 pt-1 md:pt-0">
+                        {/* Radio anidado óptico: Padre rounded-2xl (16px) -> Hijo rounded-xl (12px) */}
+                        <div
+                            className="inline-flex w-full sm:w-auto min-h-[42px] px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight border transition-all duration-300 items-center justify-center gap-2"
+                            style={{
+                                backgroundColor: isActive ? 'transparent' : colors.btnBg,
+                                color: isActive ? colors.title : colors.btnText,
+                                borderColor: isActive ? `${colors.title}4D` : colors.btnBg,
+                            }}
+                        >
+                            <span>{isActive ? copy.ctaActive : copy.ctaIdle}</span>
+                            {isActive ? (
+                                <X size={14} strokeWidth={2} />
+                            ) : (
+                                <ArrowRight
+                                    size={14}
+                                    strokeWidth={2}
+                                    className="transition-transform duration-300 group-hover:translate-x-0.5"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // =========================================================================
+    // 🌟 VARIANTE 5 & 6: PREZISO UNIVERSAL & SOFT LIFESTYLE (Classic & Bistro)
+    // =========================================================================
+    const isSoftLifestyle = templateId === 'bistro_fast' || cardStyle === 'food_menu'
+
+    return (
+        <div
+            onClick={handleClick}
+            className={`relative w-full h-full min-h-[152px] ${
+                isSoftLifestyle ? 'rounded-3xl' : 'rounded-2xl'
+            } text-left transition-all duration-300 overflow-hidden select-none group flex flex-col justify-between ${
+                isPreview ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
+            }`}
+            style={{
+                backgroundColor: colors.bg,
+                border: `1px solid ${colors.title}20`,
+            }}
+        >
+            {renderDirectionalBackdrop('opacity-85')}
+
+            <div className="relative z-10 p-5 sm:p-7 md:px-9 md:py-8 flex flex-col md:flex-row md:items-center justify-between gap-5 my-auto">
+                <div className="space-y-2 min-w-0 flex-1 max-w-2xl">
+                    {hasEyebrow && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {offerBadge && (
+                                <span
+                                    className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full leading-none"
+                                    style={{
+                                        backgroundColor: colors.badgeBg,
+                                        color: colors.badgeText,
+                                    }}
+                                >
+                                    {offerBadge}
+                                </span>
+                            )}
+                            {promo.expires_at && (
+                                <BannerCountdown
+                                    expiresAt={promo.expires_at}
+                                    textColor={colors.title}
+                                    variant="pill"
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    <h4
+                        className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight leading-[1.15] line-clamp-2"
                         style={{ color: colors.title }}
                     >
-                        {promo.title || 'Título de la Campaña'}
+                        {promo.title || copy.fallbackTitle}
                     </h4>
+
+                    {promo.tagline && (
+                        <p
+                            className="text-xs sm:text-sm font-normal leading-relaxed line-clamp-2 max-w-xl opacity-85"
+                            style={{ color: colors.tagline }}
+                        >
+                            {promo.tagline}
+                        </p>
+                    )}
                 </div>
 
-                {/* Botón Personalizado */}
                 <div className="shrink-0 pt-1 md:pt-0">
                     <div
-                        className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 active:scale-95 border"
+                        className="inline-flex w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-full text-xs font-semibold tracking-tight transition-all duration-300 items-center justify-center gap-2 border"
                         style={{
                             backgroundColor: isActive ? 'transparent' : colors.btnBg,
                             color: isActive ? colors.title : colors.btnText,
-                            borderColor: isActive ? colors.title : colors.btnBg,
+                            borderColor: isActive ? `${colors.title}4D` : colors.btnBg,
                         }}
                     >
-                        <span>{isActive ? 'Quitar Filtro ✕' : `Explorar Selección (${itemCount})`}</span>
-                        {!isActive && <ArrowRight size={14} strokeWidth={2} />}
+                        <span>{isActive ? copy.ctaActive : copy.ctaIdle}</span>
+                        {isActive ? (
+                            <X size={14} strokeWidth={2} />
+                        ) : (
+                            <ArrowRight
+                                size={14}
+                                strokeWidth={2}
+                                className="transition-transform duration-300 group-hover:translate-x-0.5"
+                            />
+                        )}
                     </div>
                 </div>
             </div>

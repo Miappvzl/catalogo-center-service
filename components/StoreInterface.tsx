@@ -28,6 +28,7 @@ import StoreHeader from './StoreHeader'
 import PromotionBanner from './PromotionBanner'
 import CollectionCard from './CollectionCard'
 import PromotionShowroom from './PromotionShowroom'
+import CatalogToolbar from './CatalogToolBar'
 
 
 
@@ -71,25 +72,25 @@ const PromoCountdown = ({ expiresAt, color, variant = 'standard' }: { expiresAt:
   if (!timeLeft) return null;
 
   if (variant === 'industrial') {
-      return (
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 bg-black/10" style={{ borderColor: `${color}40`, color: color }}>
-              <div className="w-2 h-2 shrink-0 animate-pulse" style={{ backgroundColor: timeLeft !== 'Expirado' ? color : 'transparent' }}></div>
-              <span className="text-[11px] font-mono font-black tabular-nums tracking-widest leading-none mt-px">
-                  {timeLeft}
-              </span>
-          </div>
-      )
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 bg-black/10" style={{ borderColor: `${color}40`, color: color }}>
+        <div className="w-2 h-2 shrink-0 animate-pulse" style={{ backgroundColor: timeLeft !== 'Expirado' ? color : 'transparent' }}></div>
+        <span className="text-[11px] font-mono font-black tabular-nums tracking-widest leading-none mt-px">
+          {timeLeft}
+        </span>
+      </div>
+    )
   }
 
   if (variant === 'editorial') {
-      return (
-          <div className="inline-flex items-center gap-2 opacity-80" style={{ color: color }}>
-              <Clock size={12} strokeWidth={1.5} />
-              <span className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] leading-none mt-px">
-                  {timeLeft !== 'Expirado' ? `Acceso expira en ${timeLeft}` : 'Acceso Expirado'}
-              </span>
-          </div>
-      )
+    return (
+      <div className="inline-flex items-center gap-2 opacity-80" style={{ color: color }}>
+        <Clock size={12} strokeWidth={1.5} />
+        <span className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] leading-none mt-px">
+          {timeLeft !== 'Expirado' ? `Acceso expira en ${timeLeft}` : 'Acceso Expirado'}
+        </span>
+      </div>
+    )
   }
 
   return (
@@ -123,15 +124,15 @@ const CartHUDIndicator = () => {
   return (
     <AnimatePresence>
       {hudData.visible && (
-       <motion.div
+        <motion.div
           initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
           onClick={() => {
-              // 🚀 HUD TÁCTIL: Abre la bolsa y destruye el popup inmediatamente
-              document.dispatchEvent(new CustomEvent('toggleCartDrawer'));
-              setHudData({ visible: false, quantity: 0 });
+            // 🚀 HUD TÁCTIL: Abre la bolsa y destruye el popup inmediatamente
+            document.dispatchEvent(new CustomEvent('toggleCartDrawer'));
+            setHudData({ visible: false, quantity: 0 });
           }}
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-auto cursor-pointer hover:scale-105 active:scale-95 flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/90 backdrop-blur-2xl rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/20 transition-all"
         >
@@ -218,121 +219,121 @@ const QuoteRecoveryBanner = ({ currentSlug }: { currentSlug: string }) => {
   )
 }
 
-interface Props { 
-  store: any; 
-  products: any[]; 
-  rates: any; 
+interface Props {
+  store: any;
+  products: any[];
+  rates: any;
   promotions?: any[];
   collections?: any[]; // 🚀 PROPS DE COLECCIONES ACTIVAS
 }
 
 export default function StoreInterface({ store: initialStore, products: initialProducts, rates, promotions = [], collections = [] }: Props) {
   const router = useRouter()
-    const searchParams = useSearchParams()
-     const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
+  const searchParams = useSearchParams()
+  const pathname = usePathname() // 👈 1. Inyecta este nuevo hook
   // ... (tus hooks de searchParams) ...
 
-// 🚀 1. EL INTERCEPTOR DE HOLOGRAMAS (MOCK HYDRATION)
+  // 🚀 1. EL INTERCEPTOR DE HOLOGRAMAS (MOCK HYDRATION)
   const isPreviewMode = searchParams?.get('mode') === 'preview';
   const isMockMode = initialProducts.length === 0 && isPreviewMode;
 
   // 🚀 2. CEREBRO DE TOKENS (Con Inyección Dinámica de Banners Duales)
   const [liveConfig, setLiveConfig] = useState<any>(() => normalizeThemeConfig(initialStore?.theme_config))
-  
-const activeTheme = useMemo(() => {
-      const baseTheme = normalizeThemeConfig(liveConfig || initialStore?.theme_config);
-      
-      // 🚀 PRIORIDAD EN VIVO (0ms vía postMessage): Lo que se edita en el Customizador manda sobre todo
-      const resolvedLogoUrl = liveConfig?.layout?.logo_url || baseTheme.layout?.logo_url || initialStore?.theme_config?.layout?.logo_url || initialStore?.logo_url;
-      const resolvedLogoType = liveConfig?.layout?.logo_type || baseTheme.layout?.logo_type || initialStore?.theme_config?.layout?.logo_type || 'png_transparent';
-      const resolvedHeroDesktop = liveConfig?.layout?.hero_desktop_url || baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
-      const resolvedHeroMobile = liveConfig?.layout?.hero_mobile_url || baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
-      const resolvedHeroCta = liveConfig?.layout?.hero_cta || baseTheme.layout?.hero_cta || initialStore?.theme_config?.layout?.hero_cta;
-      const resolvedCardMedia = liveConfig?.layout?.card_media || baseTheme.layout?.card_media || initialStore?.theme_config?.layout?.card_media;
 
-      if (isMockMode) {
-            const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
-            const niche = template ? template.niche : 'general';
-            const mockData = MOCK_DATA[niche];
-            
-            if (mockData) {
-                const bg = (baseTheme.colors?.background || '#ffffff').toLowerCase();
-                const isDarkTheme = bg === '#000000' || bg === '#0d0d0d' || bg === '#1f1f1f' || bg === '#171717' || baseTheme.template_id === 'hardware_dense' || baseTheme.template_id === 'streetwear_bold';
+  const activeTheme = useMemo(() => {
+    const baseTheme = normalizeThemeConfig(liveConfig || initialStore?.theme_config);
 
-                baseTheme.layout = {
-                    ...baseTheme.layout,
-                    logo_type: resolvedLogoType,
-                    logo_url: resolvedLogoUrl || mockData.logo || (isDarkTheme ? '/tu-logo-transparente-claro.webp' : '/tu-logo-transparente-oscuro.webp'),
-                    hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
-                    hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
-                    hero_cta: resolvedHeroCta,
-                    card_media: resolvedCardMedia || baseTheme.layout.card_media,
-                };
-            }
-      } else {
-          baseTheme.layout = {
-              ...baseTheme.layout,
-              logo_type: resolvedLogoType,
-              logo_url: resolvedLogoUrl || '',
-              hero_desktop_url: resolvedHeroDesktop || '',
-              hero_mobile_url: resolvedHeroMobile || '',
-              hero_cta: resolvedHeroCta,
-              card_media: resolvedCardMedia || baseTheme.layout.card_media,
-          };
+    // 🚀 PRIORIDAD EN VIVO (0ms vía postMessage): Lo que se edita en el Customizador manda sobre todo
+    const resolvedLogoUrl = liveConfig?.layout?.logo_url || baseTheme.layout?.logo_url || initialStore?.theme_config?.layout?.logo_url || initialStore?.logo_url;
+    const resolvedLogoType = liveConfig?.layout?.logo_type || baseTheme.layout?.logo_type || initialStore?.theme_config?.layout?.logo_type || 'png_transparent';
+    const resolvedHeroDesktop = liveConfig?.layout?.hero_desktop_url || baseTheme.layout?.hero_desktop_url || initialStore?.theme_config?.layout?.hero_desktop_url || initialStore?.hero_url;
+    const resolvedHeroMobile = liveConfig?.layout?.hero_mobile_url || baseTheme.layout?.hero_mobile_url || initialStore?.theme_config?.layout?.hero_mobile_url;
+    const resolvedHeroCta = liveConfig?.layout?.hero_cta || baseTheme.layout?.hero_cta || initialStore?.theme_config?.layout?.hero_cta;
+    const resolvedCardMedia = liveConfig?.layout?.card_media || baseTheme.layout?.card_media || initialStore?.theme_config?.layout?.card_media;
+
+    if (isMockMode) {
+      const template = TEMPLATES_REGISTRY.find(t => t.id === baseTheme.template_id);
+      const niche = template ? template.niche : 'general';
+      const mockData = MOCK_DATA[niche];
+
+      if (mockData) {
+        const bg = (baseTheme.colors?.background || '#ffffff').toLowerCase();
+        const isDarkTheme = bg === '#000000' || bg === '#0d0d0d' || bg === '#1f1f1f' || bg === '#171717' || baseTheme.template_id === 'hardware_dense' || baseTheme.template_id === 'streetwear_bold';
+
+        baseTheme.layout = {
+          ...baseTheme.layout,
+          logo_type: resolvedLogoType,
+          logo_url: resolvedLogoUrl || mockData.logo || (isDarkTheme ? '/tu-logo-transparente-claro.webp' : '/tu-logo-transparente-oscuro.webp'),
+          hero_desktop_url: resolvedHeroDesktop || mockData.hero_desktop,
+          hero_mobile_url: resolvedHeroMobile || mockData.hero_mobile,
+          hero_cta: resolvedHeroCta,
+          card_media: resolvedCardMedia || baseTheme.layout.card_media,
+        };
       }
-      return baseTheme;
+    } else {
+      baseTheme.layout = {
+        ...baseTheme.layout,
+        logo_type: resolvedLogoType,
+        logo_url: resolvedLogoUrl || '',
+        hero_desktop_url: resolvedHeroDesktop || '',
+        hero_mobile_url: resolvedHeroMobile || '',
+        hero_cta: resolvedHeroCta,
+        card_media: resolvedCardMedia || baseTheme.layout.card_media,
+      };
+    }
+    return baseTheme;
   }, [liveConfig, initialStore?.theme_config, initialStore?.logo_url, initialStore?.hero_url, isMockMode]);
 
   const activeThemeVariables = useMemo(() => generateCssVariables(activeTheme), [activeTheme]);
-  
+
   const currentNiche = useMemo(() => {
-      const template = TEMPLATES_REGISTRY.find(t => t.id === activeTheme.template_id);
-      return template ? template.niche : 'general';
+    const template = TEMPLATES_REGISTRY.find(t => t.id === activeTheme.template_id);
+    return template ? template.niche : 'general';
   }, [activeTheme.template_id]);
 
   const products = isMockMode && MOCK_DATA[currentNiche] ? MOCK_DATA[currentNiche].products : initialProducts;
 
   // 🚀 3. INTERCEPTOR DE PROMOCIONES VIGENTES (AUTO-OCULTA VENCIDAS)
   const displayPromotions = useMemo(() => {
-      if (isMockMode && MOCK_DATA[currentNiche]?.promotion) {
-          return [{
-              ...MOCK_DATA[currentNiche].promotion,
-              id: 'mock-promo-1',
-              is_active: true,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toString(),
-          }];
-      }
-      const now = Date.now();
-      return (promotions || []).filter((p: any) => {
-          if (!p.is_active) return false;
-          if (p.expires_at && new Date(p.expires_at).getTime() <= now) return false;
-          return true;
-      });
+    if (isMockMode && MOCK_DATA[currentNiche]?.promotion) {
+      return [{
+        ...MOCK_DATA[currentNiche].promotion,
+        id: 'mock-promo-1',
+        is_active: true,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toString(),
+      }];
+    }
+    const now = Date.now();
+    return (promotions || []).filter((p: any) => {
+      if (!p.is_active) return false;
+      if (p.expires_at && new Date(p.expires_at).getTime() <= now) return false;
+      return true;
+    });
   }, [isMockMode, currentNiche, promotions]);
 
   // 🚀 CONEXIÓN EN TIEMPO REAL UNIVERSAL CON STOREHEADER (Con o sin MockMode)
   const store = useMemo(() => {
-      if (!initialStore) return initialStore;
-      return {
-          ...initialStore,
-          logo_url: activeTheme.layout.logo_url || initialStore.logo_url,
-          hero_url: activeTheme.layout.hero_desktop_url || initialStore.hero_url,
-          theme_config: activeTheme,
-      };
+    if (!initialStore) return initialStore;
+    return {
+      ...initialStore,
+      logo_url: activeTheme.layout.logo_url || initialStore.logo_url,
+      hero_url: activeTheme.layout.hero_desktop_url || initialStore.hero_url,
+      theme_config: activeTheme,
+    };
   }, [initialStore, activeTheme]);
 
- 
 
-// LÓGICA BOUTIQUE, CAMPAÑAS Y COLECCIONES (SINCRONIZACIÓN REACTIVA)
+
+  // LÓGICA BOUTIQUE, CAMPAÑAS Y COLECCIONES (SINCRONIZACIÓN REACTIVA)
   const pasilloQuery = searchParams?.get('pasillo')
   const expQuery = searchParams?.get('exp')
   const collectionQuery = searchParams?.get('c')
   const promoQuery = searchParams?.get('promo')
   const catQuery = searchParams?.get('cat') // 🚀 Nuevo lector de navegación silenciosa
-  
+
   const [isBoutiqueMode, setIsBoutiqueMode] = useState(!!pasilloQuery)
   const [campaignContext, setCampaignContext] = useState<string | null>(pasilloQuery || null)
-  
+
   // FUENTE DE LA VERDAD REACTIVA
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(collectionQuery || null)
   const [activePromoId, setActivePromoId] = useState<string | null>(promoQuery || null)
@@ -421,7 +422,7 @@ const activeTheme = useMemo(() => {
     return () => clearInterval(interval);
   }, [expQuery]);
 
-  
+
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -441,7 +442,7 @@ const activeTheme = useMemo(() => {
   })
 
 
-const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFoodModalOpen, setIsFoodModalOpen] = useState(false) // 🚀 NUEVO ESTADO PARA COMIDA
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
   const [isStickyVisible, setIsStickyVisible] = useState(true)
@@ -449,6 +450,7 @@ const [isModalOpen, setIsModalOpen] = useState(false)
   const forceHeaderVisibleRef = useRef(0) // 🚀 NUEVO: Escudo magnético anti-scroll
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1) // 🚀 NUEVO ESTADO DE PAGINACIÓN
+  const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc'>('featured')
   const [isMobile, setIsMobile] = useState(true) // 🚀 NUEVO ESTADO RESPONSIVO
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
@@ -472,6 +474,7 @@ const [isModalOpen, setIsModalOpen] = useState(false)
 
   // 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
+  const isCarouselPausedRef = useRef(false)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   const catalogTopRef = useRef<HTMLDivElement>(null) // 🚀 NUEVA REFERENCIA DE ANCLAJE
@@ -479,7 +482,7 @@ const [isModalOpen, setIsModalOpen] = useState(false)
   // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
   const supabase = useMemo(() => getSupabase(), [])
   // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
-const items = useCart(state => state.items)
+  const items = useCart(state => state.items)
   const orderHistory = useCart(state => state.orderHistory)
   const addItem = useCart(state => state.addItem) // 🚀 Solución al error TS2304
 
@@ -550,15 +553,23 @@ const items = useCart(state => state.items)
     return ['Todos', ...sortedCats]
   }, [products, store?.categories_order])
 
-// 🚀 RESOLUCIÓN ESTRICTA Y SANEADA DE COLECCIÓN ACTIVA
+  // 🚀 RESOLUCIÓN ESTRICTA Y SANEADA DE COLECCIÓN ACTIVA
   const selectedCollectionData = useMemo(() => {
     if (!activeCollectionSlug || !collections || collections.length === 0) return null;
     return collections.find((c: any) => String(c.slug).toLowerCase() === String(activeCollectionSlug).toLowerCase()) || null;
   }, [activeCollectionSlug, collections]);
 
-  // 🚀 FILTRADO REACTIVO EN VIVO: COLECCIONES Y CAMPAÑAS DEDICADAS
+  // 🚀 FILTRADO REACTIVO EN VIVO: COLECCIONES, CAMPAÑAS, PRIORIZACIÓN DE STOCK Y ORDENAMIENTO
   const { featured: featuredProducts, standard: standardProducts } = useMemo(() => {
     let sourcePool = products;
+
+    // Helper determinista para conocer el stock real (producto simple o suma de variantes)
+    const getAvailableStock = (item: any): number => {
+      if (Array.isArray(item.product_variants) && item.product_variants.length > 0) {
+        return item.product_variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0);
+      }
+      return Number(item.stock || 0);
+    };
 
     // A. Filtro si hay una colección activa
     if (selectedCollectionData && Array.isArray(selectedCollectionData.collection_items)) {
@@ -597,17 +608,42 @@ const items = useCart(state => state.items)
       sourcePool = products.filter((p: any) => linkedProductIds.has(String(p.id)));
     }
 
-    let baseFiltered = sourcePool.filter((p: any) => {
+    const baseFiltered = sourcePool.filter((p: any) => {
       const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
       const productCatClean = normalizeCategory(p.category);
       const matchesCategory = selectedCategory === 'Todos' || productCatClean === selectedCategory;
       return matchesSearch && matchesCategory;
     });
 
+    // C. Ordenamiento inteligente: Productos con stock siempre primero + Criterio del comprador
+    const sortedStandard = [...baseFiltered].sort((a: any, b: any) => {
+      const aHasStock = getAvailableStock(a) > 0;
+      const bHasStock = getAvailableStock(b) > 0;
+
+      // Regla de Oro CRO: Nunca mostrar agotados antes que productos disponibles
+      if (aHasStock !== bHasStock) {
+        return aHasStock ? -1 : 1;
+      }
+
+      if (sortBy === 'price_asc') {
+        return Number(a.usd_cash_price || 0) - Number(b.usd_cash_price || 0);
+      }
+      if (sortBy === 'price_desc') {
+        return Number(b.usd_cash_price || 0) - Number(a.usd_cash_price || 0);
+      }
+
+      return 0;
+    });
+
     // Ocultamos "Lo más vendido" cuando el cliente está en una colección o campaña dedicada
-    const featured = (selectedCollectionData || selectedPromoData) ? [] : baseFiltered.filter(p => p.is_featured);
-    return { featured, standard: baseFiltered };
-  }, [products, debouncedSearch, selectedCategory, selectedCollectionData, selectedPromoData, displayPromotions]);
+    const featured = (selectedCollectionData || selectedPromoData)
+      ? []
+      : baseFiltered
+        .filter((p: any) => p.is_featured)
+        .sort((a: any, b: any) => (getAvailableStock(b) > 0 ? 1 : 0) - (getAvailableStock(a) > 0 ? 1 : 0));
+
+    return { featured, standard: sortedStandard };
+  }, [products, debouncedSearch, selectedCategory, selectedCollectionData, selectedPromoData, displayPromotions, sortBy]);
 
 
   // 🚀 INTERCEPTOR NATIVO: ENLACE MÁGICO (?add=ID)
@@ -778,7 +814,7 @@ const items = useCart(state => state.items)
         transition: { duration: 0.4, ease: "easeInOut", times: [0, 0.2, 0.6, 1] }
       });
     };
-  const handleFly = (e: any) => {
+    const handleFly = (e: any) => {
       // 🚀 INYECCIÓN MAGNÉTICA: Forzamos la bajada de la cabecera instantáneamente y la bloqueamos por 3 segundos
       setIsStickyVisible(true);
       forceHeaderVisibleRef.current = Date.now() + 3000;
@@ -822,7 +858,7 @@ const items = useCart(state => state.items)
 
       wrapper.appendChild(img);
       document.body.appendChild(wrapper);
-const startCenterX = startRect.left + offsetX + size / 2;
+      const startCenterX = startRect.left + offsetX + size / 2;
       const startCenterY = startRect.top + offsetY + size / 2;
       const destCenterX = destRect.left + destRect.width / 2;
       const destCenterY = adjustedDestTop + destRect.height / 2; // 🚀 Usa la Y ajustada matemáticamente
@@ -879,11 +915,10 @@ const startCenterX = startRect.left + offsetX + size / 2;
 
 
 
-// 🚀 REINICIO DE PÁGINA AL BUSCAR, CAMBIAR CATEGORÍA O ACTIVAR COLECCIÓN
+  // 🚀 REINICIO DE PÁGINA AL BUSCAR, CAMBIAR CATEGORÍA, ORDENAR O ACTIVAR COLECCIÓN
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, selectedCategory, activeCollectionSlug])
-
+  }, [debouncedSearch, selectedCategory, activeCollectionSlug, sortBy])
   // 🚀 DETECCIÓN ULTRA-LIGERA DEL DISPOSITIVO
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -892,19 +927,19 @@ const startCenterX = startRect.left + offsetX + size / 2;
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-// 🚀 SCROLL ULTRA-OPTIMIZADO: Solo muta el estado cuando hay un cambio real de dirección
+  // 🚀 SCROLL ULTRA-OPTIMIZADO: Solo muta el estado cuando hay un cambio real de dirección
   useEffect(() => {
     let ticking = false;
     const controlNavbar = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
-          
+
           // 🚀 ESCUDO MAGNÉTICO: Si acabamos de añadir un producto, ignoramos el scroll para no esconder la cabecera
           if (Date.now() < forceHeaderVisibleRef.current) {
-              lastScrollYRef.current = currentScrollY;
-              ticking = false;
-              return;
+            lastScrollYRef.current = currentScrollY;
+            ticking = false;
+            return;
           }
 
           if (currentScrollY < 250) {
@@ -932,15 +967,19 @@ const startCenterX = startRect.left + offsetX + size / 2;
     return () => document.removeEventListener('openProductModal', handleOpenFromCart);
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     if (!displayPromotions || displayPromotions.length <= 1) return;
     const interval = setInterval(() => {
+      if (isCarouselPausedRef.current) return;
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth - 10) { carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' }); }
-        else { carouselRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' }); }
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carouselRef.current.scrollBy({ left: clientWidth * 0.9, behavior: 'smooth' });
+        }
       }
-    }, 5000);
+    }, 5500);
     return () => clearInterval(interval);
   }, [displayPromotions]);
 
@@ -963,10 +1002,10 @@ useEffect(() => {
     handleCategoryScroll();
   }, []);
 
-  const handleOpenProduct = (product: any) => { 
+  const handleOpenProduct = (product: any) => {
     // 🚀 ENRUTADOR INTELIGENTE: Si la tienda es FoodTech O si el producto tiene modificadores asignados
     if (store?.store_type === 'restaurant' || (product.product_modifier_groups && product.product_modifier_groups.length > 0)) {
-      
+
       // Aplanamos la data de Supabase para que ProductFoodModal la consuma limpiamente
       const foodProduct = {
         ...product,
@@ -974,13 +1013,13 @@ useEffect(() => {
           ?.map((pmg: any) => pmg.modifier_groups)
           .filter(Boolean) || [] // Filtramos nulos
       };
-      
-      setSelectedProductForModal(foodProduct); 
-      setIsFoodModalOpen(true); 
+
+      setSelectedProductForModal(foodProduct);
+      setIsFoodModalOpen(true);
     } else {
       // Comportamiento Clásico (Ropa, Tecnología)
-      setSelectedProductForModal(product); 
-      setIsModalOpen(true); 
+      setSelectedProductForModal(product);
+      setIsModalOpen(true);
     }
   }
 
@@ -1109,7 +1148,7 @@ useEffect(() => {
     return computed;
   }, [categories, selectedCategory, products, store?.category_images]);
 
-// Manejador de transición ultra-rápida al elegir una nueva categoría (Limpia búsquedas activas)
+  // Manejador de transición ultra-rápida al elegir una nueva categoría (Limpia búsquedas activas)
   const handleExploreCategory = (catName: string) => {
     setSearch('');
     setDebouncedSearch('');
@@ -1131,7 +1170,7 @@ useEffect(() => {
 
       const isCompletelyOutOfStock = variantStockSum !== null ? variantStockSum <= 0 : (product.stock || 0) <= 0
       const totalStock = variantStockSum !== null ? variantStockSum : (product.stock || 0)
-      const isCritical = isBoutiqueMode && totalStock > 0 && totalStock <= 3
+      const isCritical = totalStock > 0 && totalStock <= 3
 
       const productCard = (
         <ProductCard
@@ -1146,7 +1185,7 @@ useEffect(() => {
           showTaxIndicator={showTaxInCatalog}
           taxPercentage={taxPercentage}
           cardStyle={activeTheme.layout?.card_style || 'standard'}
-           mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
+          mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
         />
       )
 
@@ -1154,38 +1193,45 @@ useEffect(() => {
       const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3
 
       if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
+        const hasMultiple = displayPromotions.length > 1
+
         return (
           <React.Fragment key={`promo-injection-${product.id}`}>
             {productCard}
-            <div className="col-span-full w-full py-4 md:py-6 overflow-hidden">
-              <div 
-                ref={carouselRef} 
-                className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-3 sm:gap-4" 
+            <div
+              className="col-span-full w-full py-3 md:py-5 overflow-hidden min-w-0"
+              onMouseEnter={() => { isCarouselPausedRef.current = true }}
+              onMouseLeave={() => { isCarouselPausedRef.current = false }}
+              onTouchStart={() => { isCarouselPausedRef.current = true }}
+              onTouchEnd={() => { isCarouselPausedRef.current = false }}
+            >
+              <div
+                ref={carouselRef}
+                className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-3.5 sm:gap-4"
                 style={{ scrollBehavior: 'smooth' }}
               >
                 {displayPromotions.map((promo: any) => {
-                  const hasMultiple = displayPromotions.length > 1
-
                   return (
-                    <div 
-                      key={promo.id} 
-                      className={`shrink-0 snap-start flex flex-col transition-all ${
-                        hasMultiple ? 'w-[88%] sm:w-[92%] md:w-full' : 'w-full'
-                      }`}
+                    <div
+                      key={promo.id}
+                      className={`shrink-0 snap-start flex flex-col transition-all ${hasMultiple
+                          ? 'w-[88%] sm:w-[90%] md:w-[92%] lg:w-[94%]'
+                          : 'w-full'
+                        }`}
                     >
                       <PromotionBanner
                         promo={promo}
                         themeConfig={activeTheme}
                         isActive={false}
                         onToggle={() => {
-                          const isSubdomain = typeof window !== 'undefined' && 
-                            (window.location.host.startsWith(`${store.slug}.`) || 
-                            (window.location.host.includes('.') && !window.location.host.startsWith('www.')))
-                          
-                          const targetUrl = isSubdomain 
-                            ? `/promo/${promo.id}` 
+                          const isSubdomain = typeof window !== 'undefined' &&
+                            (window.location.host.startsWith(`${store.slug}.`) ||
+                              (window.location.host.includes('.') && !window.location.host.startsWith('www.')))
+
+                          const targetUrl = isSubdomain
+                            ? `/promo/${promo.id}`
                             : `/${store.slug}/promo/${promo.id}`
-                          
+
                           router.push(targetUrl)
                         }}
                       />
@@ -1216,7 +1262,7 @@ useEffect(() => {
       {/* 1. NOTIFICACIÓN DE COTIZACIÓN PENDIENTE (Hasta arriba de todo) */}
       <QuoteRecoveryBanner currentSlug={store.slug} />
 
-       {/* 🚀 NOTIFICACIÓN FLOTANTE EDITORIAL: REGALO / GIVEAWAY (?add=ID) */}
+      {/* 🚀 NOTIFICACIÓN FLOTANTE EDITORIAL: REGALO / GIVEAWAY (?add=ID) */}
       <AnimatePresence>
         {giftNotification?.show && (
           <motion.div
@@ -1227,11 +1273,10 @@ useEffect(() => {
             className="fixed top-4 inset-x-0 mx-auto z-[999999] max-w-[92vw] sm:max-w-md w-full px-2 pointer-events-auto"
           >
             <div
-              className={`p-3 sm:p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 ${
-                giftNotification.type === 'success'
+              className={`p-3 sm:p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 ${giftNotification.type === 'success'
                   ? 'bg-neutral-950/95 text-white border-neutral-800'
                   : 'bg-white/95 text-neutral-950 border-neutral-200 shadow-lg'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 {/* Icono animado con micro-pulso elástico */}
@@ -1239,11 +1284,10 @@ useEffect(() => {
                   initial={{ rotate: -20, scale: 0.7 }}
                   animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: 1 }}
                   transition={{ duration: 0.6, ease: 'easeOut' }}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                    giftNotification.type === 'success'
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${giftNotification.type === 'success'
                       ? 'bg-white/10 text-emerald-400 border border-white/10 shadow-2xs'
                       : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
-                  }`}
+                    }`}
                 >
                   <Gift size={16} strokeWidth={2} />
                 </motion.div>
@@ -1253,9 +1297,8 @@ useEffect(() => {
                     {giftNotification.title}
                   </p>
                   <p
-                    className={`text-[11px] truncate font-normal ${
-                      giftNotification.type === 'success' ? 'text-neutral-400' : 'text-neutral-500'
-                    }`}
+                    className={`text-[11px] truncate font-normal ${giftNotification.type === 'success' ? 'text-neutral-400' : 'text-neutral-500'
+                      }`}
                   >
                     {giftNotification.description}
                   </p>
@@ -1304,7 +1347,7 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-<StoreHeader
+      <StoreHeader
         layoutStyle={activeTheme.layout?.header_style || 'classic'}
         store={store}
         products={products} // 🚀 Extracción determinista de portadas de categoría
@@ -1313,7 +1356,7 @@ useEffect(() => {
         isEur={isEur}
         search={search}
         setSearch={setSearch}
-       categories={categories}
+        categories={categories}
         selectedCategory={selectedCategory}
         setSelectedCategory={(cat: string) => {
           setSearch('');
@@ -1342,43 +1385,42 @@ useEffect(() => {
 
 
 
- 
-   
 
-  <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${
-        activeTheme.layout?.card_style === 'modular_tech' 
-          ? 'px-2 md:px-8' 
+
+
+      <main className={`max-w-[1500px] mx-auto pt-6 md:pt-8 pb-24 ${activeTheme.layout?.card_style === 'modular_tech'
+          ? 'px-2 md:px-8'
           : 'px-4 md:px-8'
-      }`}>
+        }`}>
         <>
-{/* 🚀 ESCAPARATE DEDICADO DE CAMPAÑA (AUTÓNOMO Y DESACOPLADO) */}
-      {selectedPromoData && (
-        <div id="promo-view-anchor" className="mb-10 animate-in fade-in duration-500">
-          <PromotionShowroom
-            promo={selectedPromoData}
-            themeConfig={activeTheme}
-            productCount={standardProducts.length}
-            onExit={exitPromoMode}
-          />
-        </div>
-      )}
-
-      {/* 🚀 ESCAPARATE DE COLECCIÓN ACTIVA (SHOWROOM LOOKBOOK) */}
-      {selectedCollectionData && (
-        <div id="collection-view-anchor" className="mb-10 relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] animate-in fade-in duration-500">
-
-          {/* Fondo sutil con imagen desenfocada si existe portada */}
-          {selectedCollectionData.image_url && (
-            <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
-              <Image 
-                src={getOptimizedUrl(selectedCollectionData.image_url)} 
-                alt="" 
-                fill 
-                className="object-cover blur-md" 
+          {/* 🚀 ESCAPARATE DEDICADO DE CAMPAÑA (AUTÓNOMO Y DESACOPLADO) */}
+          {selectedPromoData && (
+            <div id="promo-view-anchor" className="mb-10 animate-in fade-in duration-500">
+              <PromotionShowroom
+                promo={selectedPromoData}
+                themeConfig={activeTheme}
+                productCount={standardProducts.length}
+                onExit={exitPromoMode}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--store-surface)] via-[var(--store-surface)]/90 to-transparent" />
             </div>
           )}
+
+          {/* 🚀 ESCAPARATE DE COLECCIÓN ACTIVA (SHOWROOM LOOKBOOK) */}
+          {selectedCollectionData && (
+            <div id="collection-view-anchor" className="mb-10 relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] animate-in fade-in duration-500">
+
+              {/* Fondo sutil con imagen desenfocada si existe portada */}
+              {selectedCollectionData.image_url && (
+                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+                  <Image
+                    src={getOptimizedUrl(selectedCollectionData.image_url)}
+                    alt=""
+                    fill
+                    className="object-cover blur-md"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--store-surface)] via-[var(--store-surface)]/90 to-transparent" />
+                </div>
+              )}
 
               <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="space-y-2 max-w-2xl text-left">
@@ -1422,53 +1464,52 @@ useEffect(() => {
             </div>
           )}
 
-      {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
-      {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
-        <section className="mb-14 animate-in fade-in">
-          {/* Encabezado Editorial Dinámico */}
-          <div className="flex items-end justify-between mb-5 px-1">
-            <div className="flex flex-col text-left">
-             
-              <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${
-                activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
-              }`}>
-                {activeTheme.template_id === 'hardware_dense' ? 'Kits Disponibles' : 'Colecciones Destacadas'}
-              </h2>
-            </div>
-          </div>
+          {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
+          {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
+            <section className="mb-14 animate-in fade-in">
+              {/* Encabezado Editorial Dinámico */}
+              <div className="flex items-end justify-between mb-5 px-1">
+                <div className="flex flex-col text-left">
 
-         {/* Carrusel Editorial en Proporción Vertical 3:4 */}
-          <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
-            {collections.map((col: any, idx: number) => (
-              <CollectionCard
-                key={col.id}
-                index={idx}
-                collection={col}
-                products={products}
-                themeConfig={activeTheme}
-                onClick={() => {
-                  setActiveCollectionSlug(col.slug)
-                  setSelectedCategory('Todos')
-                  setCurrentPage(1)
-                  window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
+                  <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
+                    }`}>
+                    {activeTheme.template_id === 'hardware_dense' ? 'Kits Disponibles' : 'Colecciones Destacadas'}
+                  </h2>
+                </div>
+              </div>
 
-                  setTimeout(() => {
-                    const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
-                    if (anchor) {
-                      const yOffset = -130
-                      const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
-                      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-                    }
-                  }, 60)
-                }}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-          
+              {/* Carrusel Editorial en Proporción Vertical 3:4 */}
+              <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
+                {collections.map((col: any, idx: number) => (
+                  <CollectionCard
+                    key={col.id}
+                    index={idx}
+                    collection={col}
+                    products={products}
+                    themeConfig={activeTheme}
+                    onClick={() => {
+                      setActiveCollectionSlug(col.slug)
+                      setSelectedCategory('Todos')
+                      setCurrentPage(1)
+                      window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
 
-       {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+                      setTimeout(() => {
+                        const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
+                        if (anchor) {
+                          const yOffset = -130
+                          const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+                        }
+                      }, 60)
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+
+          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
             <section id="bestsellers-section" className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className={`flex items-end justify-between mb-6 px-1 ${activeTheme.layout?.card_style === 'dense_hardware' ? ' pb-2' : ''}`}>
@@ -1497,9 +1538,9 @@ useEffect(() => {
                   <ChevronLeft size={24} strokeWidth={2.5} className="-ml-0.5" />
                 </button>
 
-          <div
-                  ref={featuredCarouselRef} 
-                  onScroll={checkFeaturedScrollStatus} 
+                <div
+                  ref={featuredCarouselRef}
+                  onScroll={checkFeaturedScrollStatus}
                   className="flex gap-3.5 md:gap-5 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:-mx-8 md:px-8 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 scroll-smooth items-stretch"
                 >
                   {featuredProducts.map((product: any, idx: number) => {
@@ -1519,9 +1560,9 @@ useEffect(() => {
                           isFavorite={favoriteIds.has(String(product.id))}
                           showTaxIndicator={showTaxInCatalog}
                           taxPercentage={taxPercentage}
-                          cardStyle={activeTheme.layout?.card_style || 'standard'} 
+                          cardStyle={activeTheme.layout?.card_style || 'standard'}
                           isFeatured={true} // 🚀 INYECCIÓN DEL PROP PARA DISEÑO ESPECIAL
-                           mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
+                          mediaConfig={activeTheme.layout?.card_media} // 🚀 INYECTADO AQUÍ
                         />
                       </div>
                     )
@@ -1542,7 +1583,7 @@ useEffect(() => {
             </section>
           )}
 
-    {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
+          {/* 🚀 ANCLAJE DE SCROLL INVISIBLE */}
           <div id="catalog-grid-start" ref={catalogTopRef} className="w-full h-px mt-2"></div>
 
           {/* 🚀 BARRA CONTEXTUAL DE BÚSQUEDA ACTIVA CON CTA DE RETORNO */}
@@ -1556,8 +1597,8 @@ useEffect(() => {
                   <p className="text-xs sm:text-sm font-bold text-[var(--store-text-main)] truncate">
                     Resultados para &quot;{debouncedSearch}&quot;
                   </p>
-                  <p className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]">
-                    {standardProducts.length} {standardProducts.length === 1 ? 'artículo encontrado' : 'artículos encontrados'}
+                  <p className="text-[10px] font-mono tabular-nums font-medium text-[var(--store-surface-text)]">
+                    {standardProducts.length} {standardProducts.length === 1 ? 'producto encontrado' : 'productos encontrados'}
                     {selectedCategory !== 'Todos' ? ` en ${selectedCategory}` : ''}
                   </p>
                 </div>
@@ -1579,51 +1620,69 @@ useEffect(() => {
             </div>
           )}
 
+         {/* 🚀 CABECERA EDITORIAL DEL CATÁLOGO + SELECTOR PERSONALIZADO POLIMÓRFICO */}
+          {standardProducts.length > 0 && debouncedSearch.trim() === '' && (
+            <CatalogToolbar
+              selectedCategory={selectedCategory}
+              totalCount={standardProducts.length}
+              sortBy={sortBy}
+              onSortChange={(val) => setSortBy(val)}
+              onResetCategory={() => {
+                setSelectedCategory('Todos');
+                setCurrentPage(1);
+              }}
+              isBoutiqueMode={isBoutiqueMode}
+              cardStyle={activeTheme.layout?.card_style || 'standard'}
+              templateId={activeTheme.template_id || 'classic'}
+            />
+          )}
+
           {/* 🚀 ENRUTADOR DE ESTADO (VACÍO VS CATÁLOGO) */}
           {standardProducts.length === 0 ? (
-              <div className="w-full min-h-[40vh] flex flex-col items-center justify-center py-16 px-4 animate-in fade-in zoom-in-95 duration-500">
-                  {activeTheme.layout?.card_style === 'brutalist' ? (
-                      /* 🏴‍☠️ Empty State: Brutalist */
-                      <div className="flex flex-col items-center text-center p-8 md:p-12 border-2 border-[var(--store-border)] shadow-[8px_8px_0px_#000] bg-[var(--store-surface)] max-w-lg w-full mx-auto">
-                          <SearchX size={48} strokeWidth={1.5} className="mb-4 text-[var(--store-text-main)]" />
-                          <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">0 RESULTADOS</h3>
-                          <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO HAY COINCIDENCIAS PARA "{debouncedSearch}"</p>
-                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
-                              RESETEAR FILTROS
-                          </button>
-                      </div>
-                  ) : activeTheme.layout?.card_style === 'editorial' ? (
-                      /* 💎 Empty State: Minimal Luxury */
-                      <div className="flex flex-col items-center text-center p-8 max-w-lg w-full mx-auto">
-                          <SearchX size={32} strokeWidth={1} className="mb-6 text-[var(--store-surface-text)] opacity-50" />
-                          <h3 className="font-heading text-2xl md:text-3xl mb-3 text-[var(--store-text-main)]">Sin resultados</h3>
-                          <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No pudimos encontrar piezas que coincidan con tu búsqueda actual.</p>
-                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                              Explorar Colección
-                          </button>
-                      </div>
-                  ) : (
-                      /* 🌟 Empty State: Universal & Food */
-                      <div className="flex flex-col items-center text-center p-8 md:p-12 bg-[var(--store-surface)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] max-w-lg w-full mx-auto">
-                          <div className="bg-[var(--store-bg)] p-4 rounded-full mb-5 border border-[var(--store-border)]/50 shadow-sm">
-                              <SearchX size={28} strokeWidth={1.5} className="text-[var(--store-text-main)] opacity-70" />
-                          </div>
-                          <h3 className="font-black text-xl text-[var(--store-text-main)] mb-2">No encontramos lo que buscas</h3>
-                          <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otras palabras o revisa nuestras categorías principales.</p>
-                          <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
-                              Ver todo el catálogo
-                          </button>
-                      </div>
-                  )}
-              </div>
-    ) : (
-         <div className={`grid grid-flow-dense min-h-[40vh] ${
-                activeTheme.layout?.card_style === 'dense_hardware'
-                  ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+            <div className="w-full min-h-[40vh] flex flex-col items-center justify-center py-16 px-4 animate-in fade-in zoom-in-95 duration-500">
+              {activeTheme.layout?.card_style === 'brutalist' ? (
+                /* 🏴‍☠️ Empty State: Brutalist */
+                <div className="flex flex-col items-center text-center p-8 md:p-12 border-2 border-[var(--store-border)] shadow-[8px_8px_0px_#000] bg-[var(--store-surface)] max-w-lg w-full mx-auto">
+                  <SearchX size={48} strokeWidth={1.5} className="mb-4 text-[var(--store-text-main)]" />
+                  <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">0 RESULTADOS</h3>
+                  <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO HAY COINCIDENCIAS PARA &quot;{debouncedSearch}&quot;</p>
+                  <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                    VER TODO EL CATÁLOGO
+                  </button>
+                </div>
+              ) : activeTheme.layout?.card_style === 'editorial' ? (
+                /* 💎 Empty State: Minimal Luxury */
+                <div className="flex flex-col items-center text-center p-8 max-w-lg w-full mx-auto">
+                  <SearchX size={32} strokeWidth={1} className="mb-6 text-[var(--store-surface-text)] opacity-50" />
+                  <h3 className="font-heading text-2xl md:text-3xl mb-3 text-[var(--store-text-main)]">Sin resultados</h3>
+                  <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No encontramos piezas que coincidan con tu búsqueda actual.</p>
+                  <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                    Ver todas las piezas
+                  </button>
+                </div>
+              ) : (
+                /* 🌟 Empty State: Universal & Food */
+                <div className="flex flex-col items-center text-center p-8 md:p-12 bg-[var(--store-surface)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] max-w-lg w-full mx-auto">
+                  <div className="bg-[var(--store-bg)] p-4 rounded-full mb-5 border border-[var(--store-border)]/50 shadow-sm">
+                    <SearchX size={28} strokeWidth={1.5} className="text-[var(--store-text-main)] opacity-70" />
+                  </div>
+                  <h3 className="font-black text-xl text-[var(--store-text-main)] mb-2">No encontramos lo que buscas</h3>
+                  <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otras palabras o explora todas nuestras categorías.</p>
+                  <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
+                    Ver todo el catálogo
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={`grid grid-flow-dense min-h-[40vh] ${activeTheme.layout?.card_style === 'dense_hardware'
+                ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5'
+                : activeTheme.layout?.card_style === 'editorial'
+                  ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3.5 gap-y-8 md:gap-x-7 md:gap-y-12'
                   : activeTheme.layout?.card_style === 'modular_tech'
-                    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1 md:gap-6 lg:gap-8'
+                    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-6 lg:gap-8'
                     : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8'
-            }`}>
+              }`}>
               {renderedProductGrid}
             </div>
           )}
@@ -1673,13 +1732,13 @@ useEffect(() => {
             </div>
           )}
 
-         {/* ========================================== */}
+          {/* ========================================== */}
           {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Polimórfico) */}
           {/* ========================================== */}
           {explorableCategories.length > 0 && (
             <div className="mt-8 md:mt-12 pt-8 border-t border-[var(--store-border)]/40 w-full animate-in fade-in duration-500">
-              
-            {activeTheme.layout?.card_style === 'dense_hardware' ? (
+
+              {activeTheme.layout?.card_style === 'dense_hardware' ? (
                 /* 🛠️ TEMA 2 (INDUSTRIAL): Directorio de Partes */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1 border-b border-[var(--store-border)] pb-3">
@@ -1746,9 +1805,9 @@ useEffect(() => {
                   </div>
                   <div className="flex gap-3 ml-2 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
                     {explorableCategories.map((cat: any, idx: number) => (
-                      <button 
-                        key={cat.name} 
-                        onClick={() => handleExploreCategory(cat.name)} 
+                      <button
+                        key={cat.name}
+                        onClick={() => handleExploreCategory(cat.name)}
                         className="group relative shrink-0 w-[150px] md:w-[190px] aspect-[4/5] rounded-[var(--radius-card)] border border-[var(--store-border)]/60 overflow-hidden snap-start flex flex-col justify-between p-3.5 text-left active:scale-[0.98] transition-all duration-300 bg-[var(--store-surface)] hover:border-[var(--store-text-main)] shadow-sm"
                       >
                         {!cat.useSolidColor && cat.coverUrl ? (
@@ -1758,7 +1817,7 @@ useEffect(() => {
                         )}
                         {/* Gradiente cinemático oscuro */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent pointer-events-none" />
-                        
+
                         {/* Micro Índice Superior */}
                         <span className="relative z-10 text-[9px] font-mono font-bold text-white/70 uppercase tracking-widest">
                           {(idx + 1).toString().padStart(2, '0')} //
@@ -1988,7 +2047,7 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-  <FloatingCheckout
+      <FloatingCheckout
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         currency={isEur ? 'eur' : 'usd'}
         phone={store.phone || '584120000000'}
@@ -2009,7 +2068,7 @@ useEffect(() => {
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         promotions={displayPromotions}
         activePromoContext={activePromo}
-       storeConfig={{ ...store, theme_config: activeTheme }}
+        storeConfig={{ ...store, theme_config: activeTheme }}
         isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
       />
 
