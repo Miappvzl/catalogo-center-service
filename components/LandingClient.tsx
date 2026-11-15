@@ -853,25 +853,38 @@ const NodeTwoSingularity = ({ bcvRate }: { bcvRate: number }) => {
               </div>
             </div>
 
-            {/* Conector Central */}
-            <div className="hidden md:flex flex-col items-center justify-center relative">
-              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-slate-300 to-transparent relative overflow-hidden">
+         {/* Conector Central: Escultura 1 (Sincronizador Giroscópico BCV) */}
+            <div className="flex flex-col items-center justify-center relative my-2 md:my-0 shrink-0">
+              <div className="hidden md:block h-12 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
+
+              <motion.div
+                initial={{ opacity: 0, y: 14, scale: 0.92 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="my-2 transform-gpu will-change-transform select-none pointer-events-none"
+              >
                 <motion.div
-                  animate={{ y: ["-100%", "100%"] }}
-                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                  className="absolute top-0 left-0 w-full h-1/2 bg-white"
-                />
-              </div>
-              <div className="w-10 h-10 border border-slate-300 bg-white flex items-center justify-center my-4 rotate-45 group-hover:rotate-0 transition-transform duration-700">
-                <ArrowRightLeft size={16} className="text-black -rotate-45 group-hover:rotate-0 transition-transform duration-700" />
-              </div>
-              <div className="h-24 w-[1px] bg-gradient-to-b from-transparent via-slate-300 to-transparent relative overflow-hidden">
-                <motion.div
-                  animate={{ y: ["-100%", "100%"] }}
-                  transition={{ repeat: Infinity, duration: 1, ease: "linear", delay: 0.5 }}
-                  className="absolute top-0 left-0 w-full h-1/2 bg-white"
-                />
-              </div>
+                  animate={{ y: [0, -8] }}
+                  transition={{
+                    duration: 3.2,
+                    repeat: Infinity,
+                    repeatType: "mirror",
+                    ease: "easeInOut",
+                  }}
+                  className="relative w-32 h-32 md:w-44 md:h-44 flex items-center justify-center transform-gpu will-change-transform"
+                >
+                  <img
+                    src="/Emblema-giroscópico-futurista-resplandeciente.webp"
+                    alt="Sincronizador Giroscópico BCV en Tiempo Real"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-contain pointer-events-none"
+                  />
+                </motion.div>
+              </motion.div>
+
+              <div className="hidden md:block h-12 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent" />
             </div>
 
             {/* Lado Bs (Output Automatizado) */}
@@ -1368,19 +1381,48 @@ const NodeFiveExtraction = ({ bcvRate }: { bcvRate: number }) => {
 
 
 
-  return (
-    <section ref={targetRef} className="relative min-h-screen w-full bg-slate-50 py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
-      <div className="max-w-7xl px-6 relative z-10 w-full text-center mb-20">
-        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-6 block">Fricción Cero en el Mostrador</span>
-        <h2 className="ext-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-4xl md:text-7x">
+ return (
+    <section ref={targetRef} className="relative min-h-screen w-full bg-slate-50 py-32 md:py-40 border-t border-slate-200 overflow-hidden flex flex-col items-center">
+      <div className="max-w-7xl px-6 relative z-10 w-full flex flex-col items-center text-center mb-16 md:mb-20">
+        {/* Escultura 2: Prisma Cúbico de Fusión Multimoneda */}
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.92 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-6 transform-gpu will-change-transform select-none pointer-events-none"
+        >
+          <motion.div
+            animate={{ y: [0, -9] }}
+            transition={{
+              duration: 3.6,
+              repeat: Infinity,
+              repeatType: "mirror",
+              ease: "easeInOut",
+            }}
+            className="relative w-40 h-40 md:w-52 md:h-52 mx-auto transform-gpu will-change-transform"
+          >
+            <img
+              src="/Emblema-cúbico-futurista-de-cristal-y-metal.webp"
+              alt="Motor de Pagos Mixtos Multimoneda"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain pointer-events-none"
+            />
+          </motion.div>
+        </motion.div>
+
+        <span className="text-[10px] font-mono text-black uppercase tracking-[0.5em] mb-5 block">
+          Fricción Cero en el Mostrador
+        </span>
+        <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
           Pagos Mixtos <br />
           <span className="text-zinc-600">Sin Calculadora.</span>
         </h2>
-        <p className="mt-8 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
+        <p className="mt-4 max-w-2xl mx-auto text-slate-500 text-sm md:text-base leading-relaxed">
           ¿Tu cliente quiere pagar una parte en un billete de $20, mandarte un Zelle de $15 y el resto exacto en Pago Móvil? Preziso lo procesa, lo calcula y lo factura en 1 segundo.
         </p>
       </div>
-
       <div className="relative w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-12 px-6">
 
         {/* Simulación del Split Payment de Preziso */}
@@ -1746,12 +1788,41 @@ const NodeSevenSwarm = () => {
 
       <motion.div style={{ opacity: opacityIn, y: yUp }} className="w-full max-w-5xl px-6 relative z-10 flex flex-col md:flex-row items-center gap-16">
 
-        <div className="w-full md:w-1/2">
-          <div className="flex items-center gap-4 mb-8">
-            <Zap size={32} className="text-black" />
-            <span className="text-[10px] font-mono text-black uppercase tracking-widest">Motor de Crecimiento</span>
+   <div className="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left">
+          {/* Escultura 3: Núcleo Orbital de Red de Afiliados */}
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.92 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-5 md:-ml-3 transform-gpu will-change-transform select-none pointer-events-none"
+          >
+            <motion.div
+              animate={{ y: [0, -8] }}
+              transition={{
+                duration: 3.4,
+                repeat: Infinity,
+                repeatType: "mirror",
+                ease: "easeInOut",
+              }}
+              className="relative w-36 h-36 md:w-48 md:h-48 transform-gpu will-change-transform"
+            >
+              <img
+                src="/Núcleo-futurista-de-red-metálica.webp"
+                alt="Red de Afiliados y Crecimiento Viral Preziso"
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-contain pointer-events-none"
+              />
+            </motion.div>
+          </motion.div>
+
+          <div className="flex items-center gap-3 mb-5">
+            <span className="text-[10px] font-mono text-black uppercase tracking-[0.35em]">
+              Motor de Crecimiento
+            </span>
           </div>
-          <h2 className="sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6  text-4xl md:text-6xl">
+          <h2 className="text-4xl sm:text-5xl lg:text-7xl font-light tracking-tighter text-neutral-900 leading-[1.1] mb-6">
             Tus clientes son <br />
             <span className="text-zinc-600">tus vendedores.</span>
           </h2>
@@ -1819,16 +1890,45 @@ const NodeEightExtraction = () => {
       {/* Resplandor Estructural */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-black/5 rounded-full blur-[150px] pointer-events-none" />
 
-      <motion.div
+   <motion.div
         style={{ scale: scaleUp, opacity: opacityIn }}
         className="w-full max-w-5xl px-6 relative z-10 flex flex-col items-center"
       >
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-4">Protocolo de Acceso</span>
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-16">
+        {/* Escultura 4: Tarjeta Tecnológica de Membresía Ilimitada */}
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.92 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-6 transform-gpu will-change-transform select-none pointer-events-none"
+        >
+          <motion.div
+            animate={{ y: [0, -9] }}
+            transition={{
+              duration: 3.8,
+              repeat: Infinity,
+              repeatType: "mirror",
+              ease: "easeInOut",
+            }}
+            className="relative w-40 h-40 md:w-52 md:h-52 mx-auto transform-gpu will-change-transform"
+          >
+            <img
+              src="/Tarjeta-tecnológica-futurista-en-base-iluminada.webp"
+              alt="Membresía de Acceso Ilimitado Preziso"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain pointer-events-none"
+            />
+          </motion.div>
+        </motion.div>
+
+        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.5em] mb-4">
+          Protocolo de Acceso
+        </span>
+        <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-zinc-900 uppercase text-center mb-14">
           Un Precio. <br />
           <span className="text-zinc-600">Cero Comisiones.</span>
         </h2>
-
         {/* El Recibo (Monolito) */}
         <div className="w-full bg-white border border-slate-200 rounded-[2rem] flex flex-col md:flex-row relative overflow-hidden shadow-2xl shadow-slate-200/50">
 

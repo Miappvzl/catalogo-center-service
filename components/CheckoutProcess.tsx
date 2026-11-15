@@ -42,6 +42,7 @@ import { DeliveryMapPicker } from "./checkout/DeliveryMapPicker";
 import { useDeliveryStore } from "@/app/store/useDeliveryStore";
 import { DeliveryConfig } from "@/utils/geoUtils";
 import { formatUSD, formatVES } from "@/utils/currency";
+import PhoneInput from "./ui/PhoneInput";
 
 // --- TIPOS ESTRICTOS ---
 export interface CheckoutProcessProps {
@@ -991,10 +992,12 @@ switch (pm) {
 
     // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
     const handleCheckout = async () => {
-        // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
+    // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
         const newErrors: Record<string, string> = {};
         if (!clientData.name) newErrors.name = "El nombre es obligatorio";
-        if (!clientData.phone) newErrors.phone = "El teléfono es obligatorio";
+        if (!clientData.phone || clientData.phone.replace(/\D/g, "").length < 10) {
+            newErrors.phone = "Ingresa un número válido sin el 0 inicial";
+        }
 
         if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
             newErrors.payment = "Selecciona un método de pago";
@@ -1641,21 +1644,17 @@ switch (pm) {
                     </AnimatePresence>
                 </div>
 
-                <div id="field-phone" className="w-full">
-                    <input
-                        maxLength={20}
-                        value={clientData.phone}
-                        onChange={(e) => {
-                            setClientData({ ...clientData, phone: e.target.value.replace(/[^\d+]/g, "") });
-                            if (errors.phone) setErrors(prev => ({ ...prev, phone: "" }));
-                        }}
-                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.phone ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30  text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
-                        placeholder="Teléfono / WhatsApp *"
-                    />
-                    <AnimatePresence>
-                        {errors.phone && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.phone}</motion.p>}
-                    </AnimatePresence>
-                </div>
+          <PhoneInput
+                    id="field-phone"
+                    variant="underline"
+                    value={clientData.phone}
+                    onChange={(fullPhone) => {
+                        setClientData((prev) => ({ ...prev, phone: fullPhone }));
+                        if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
+                    }}
+                    error={errors.phone}
+                    placeholder="Teléfono / WhatsApp (sin el 0) *"
+                />
 
                 {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
                 <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
