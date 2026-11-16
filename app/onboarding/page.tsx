@@ -398,12 +398,12 @@ export default function OnboardingWizard() {
                   <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider ml-1">
                     WhatsApp de Atención
                   </label>
-                  <PhoneInput
-                    variant="boxed"
-                    value={phone}
-                    onChange={(fullPhone) => setPhone(fullPhone)}
-                    placeholder="4121234567 (sin el 0 inicial)"
-                  />
+             <PhoneInput
+                 variant="boxed"
+                 required={false}
+                 value={phone}
+                 onChange={(fullPhone) => setPhone(fullPhone)}
+               />
                 </div>
                 {/* CÓDIGO DE PARTNER / INVITACIÓN (OPCIONAL) */}
                 <div className="space-y-2 w-full pt-1">

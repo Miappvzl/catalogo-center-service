@@ -1644,17 +1644,17 @@ switch (pm) {
                     </AnimatePresence>
                 </div>
 
-          <PhoneInput
-                    id="field-phone"
-                    variant="underline"
-                    value={clientData.phone}
-                    onChange={(fullPhone) => {
-                        setClientData((prev) => ({ ...prev, phone: fullPhone }));
-                        if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
-                    }}
-                    error={errors.phone}
-                    placeholder="Teléfono / WhatsApp (sin el 0) *"
-                />
+        <PhoneInput
+                 id="field-phone"
+                 variant="underline"
+                 required={true}
+                 value={clientData.phone}
+                 onChange={(fullPhone) => {
+                     setClientData((prev) => ({ ...prev, phone: fullPhone }));
+                     if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
+                 }}
+                 error={errors.phone}
+             />
 
                 {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
                 <div className="mt-6 pt-6 border-t border-[var(--store-border)]">

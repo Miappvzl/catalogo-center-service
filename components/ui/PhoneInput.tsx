@@ -8,23 +8,112 @@ export interface CountryDialConfig {
     code: string;
     iso: string;
     label: string;
-    stripLeadingZero: boolean;
+    example: string;
+    hasDomesticZero: boolean;
     minLen: number;
     maxLen: number;
 }
 
 export const PHONE_COUNTRIES: CountryDialConfig[] = [
-    { code: "+58", iso: "VE", label: "Venezuela (+58)", stripLeadingZero: true, minLen: 10, maxLen: 10 },
-    { code: "+57", iso: "CO", label: "Colombia (+57)", stripLeadingZero: true, minLen: 10, maxLen: 10 },
-    { code: "+1", iso: "US", label: "EE. UU. / Canadá (+1)", stripLeadingZero: true, minLen: 10, maxLen: 10 },
-    { code: "+34", iso: "ES", label: "España (+34)", stripLeadingZero: true, minLen: 9, maxLen: 9 },
-    { code: "+507", iso: "PA", label: "Panamá (+507)", stripLeadingZero: true, minLen: 7, maxLen: 8 },
-    { code: "+56", iso: "CL", label: "Chile (+56)", stripLeadingZero: true, minLen: 9, maxLen: 9 },
-    { code: "+54", iso: "AR", label: "Argentina (+54)", stripLeadingZero: true, minLen: 10, maxLen: 10 },
-    { code: "+52", iso: "MX", label: "México (+52)", stripLeadingZero: true, minLen: 10, maxLen: 10 },
-    { code: "+51", iso: "PE", label: "Perú (+51)", stripLeadingZero: true, minLen: 9, maxLen: 9 },
-    { code: "+593", iso: "EC", label: "Ecuador (+593)", stripLeadingZero: true, minLen: 9, maxLen: 9 },
-    { code: "+55", iso: "BR", label: "Brasil (+55)", stripLeadingZero: true, minLen: 10, maxLen: 11 },
+    {
+        code: "+58",
+        iso: "VE",
+        label: "Venezuela (+58)",
+        example: "412 1234567",
+        hasDomesticZero: true,
+        minLen: 10,
+        maxLen: 10,
+    },
+    {
+        code: "+57",
+        iso: "CO",
+        label: "Colombia (+57)",
+        example: "300 1234567",
+        hasDomesticZero: false,
+        minLen: 10,
+        maxLen: 10,
+    },
+    {
+        code: "+1",
+        iso: "US",
+        label: "EE. UU. / Canadá (+1)",
+        example: "305 1234567",
+        hasDomesticZero: false,
+        minLen: 10,
+        maxLen: 10,
+    },
+    {
+        code: "+34",
+        iso: "ES",
+        label: "España (+34)",
+        example: "612 345678",
+        hasDomesticZero: false,
+        minLen: 9,
+        maxLen: 9,
+    },
+    {
+        code: "+507",
+        iso: "PA",
+        label: "Panamá (+507)",
+        example: "6123 4567",
+        hasDomesticZero: false,
+        minLen: 7,
+        maxLen: 8,
+    },
+    {
+        code: "+56",
+        iso: "CL",
+        label: "Chile (+56)",
+        example: "9 12345678",
+        hasDomesticZero: false,
+        minLen: 9,
+        maxLen: 9,
+    },
+    {
+        code: "+54",
+        iso: "AR",
+        label: "Argentina (+54)",
+        example: "911 23456789",
+        hasDomesticZero: true,
+        minLen: 10,
+        maxLen: 10,
+    },
+    {
+        code: "+52",
+        iso: "MX",
+        label: "México (+52)",
+        example: "55 12345678",
+        hasDomesticZero: false,
+        minLen: 10,
+        maxLen: 10,
+    },
+    {
+        code: "+51",
+        iso: "PE",
+        label: "Perú (+51)",
+        example: "912 345678",
+        hasDomesticZero: false,
+        minLen: 9,
+        maxLen: 9,
+    },
+    {
+        code: "+593",
+        iso: "EC",
+        label: "Ecuador (+593)",
+        example: "99 1234567",
+        hasDomesticZero: true,
+        minLen: 9,
+        maxLen: 9,
+    },
+    {
+        code: "+55",
+        iso: "BR",
+        label: "Brasil (+55)",
+        example: "11 912345678",
+        hasDomesticZero: true,
+        minLen: 10,
+        maxLen: 11,
+    },
 ];
 
 // Ordenados de mayor a menor longitud de código (ej. +507 antes que +58) para parseo exacto
@@ -37,6 +126,7 @@ interface PhoneInputProps {
     placeholder?: string;
     defaultCountryCode?: string;
     variant?: "underline" | "boxed";
+    required?: boolean;
     id?: string;
     disabled?: boolean;
 }
@@ -45,9 +135,10 @@ export default function PhoneInput({
     value,
     onChange,
     error,
-    placeholder = "Teléfono / WhatsApp *",
+    placeholder,
     defaultCountryCode = "+58",
     variant = "underline",
+    required = true,
     id,
     disabled = false,
 }: PhoneInputProps) {
@@ -63,6 +154,14 @@ export default function PhoneInput({
         [selectedCode]
     );
 
+    // Placeholder dinámico según la normativa telefónica del país seleccionado
+    const dynamicPlaceholder = useMemo(() => {
+        if (placeholder) return placeholder;
+        const zeroNotice = activeCountry.hasDomesticZero ? " (sin 0)" : "";
+        const requiredMark = required ? " *" : "";
+        return `Ej: ${activeCountry.example}${zeroNotice}${requiredMark}`;
+    }, [placeholder, activeCountry, required]);
+
     // Sanitizador determinista que elimina ceros iniciales y prefijos duplicados por autocompletado móvil
     const sanitizeNationalDigits = (raw: string, country: CountryDialConfig): string => {
         let digits = raw.replace(/\D/g, "");
@@ -73,10 +172,8 @@ export default function PhoneInput({
             digits = digits.slice(numericCode.length);
         }
 
-        // Bloqueo estricto de ceros iniciales (ej. 0414 -> 414)
-        if (country.stripLeadingZero) {
-            digits = digits.replace(/^0+/, "");
-        }
+        // Bloqueo estricto de ceros iniciales en todos los países para cumplir con ITU-T E.164
+        digits = digits.replace(/^0+/, "");
 
         return digits.slice(0, country.maxLen);
     };
@@ -101,7 +198,6 @@ export default function PhoneInput({
             }
         }
 
-        // Si viene sin '+' (ej. un número guardado antiguamente como 04141234567)
         const cleanFallback = sanitizeNationalDigits(trimmed, activeCountry);
         setLocalDigits(cleanFallback);
     }, [value]);
@@ -175,7 +271,7 @@ export default function PhoneInput({
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--store-surface-text,#71717a)]">
                         {activeCountry.iso}
                     </span>
-                   <span
+                    <span
                         className={`font-mono tabular-nums ${
                             variant === "underline"
                                 ? "text-sm sm:text-base font-bold"
@@ -205,7 +301,7 @@ export default function PhoneInput({
                     }`}
                 />
 
-             {/* 3. INPUT NUMÉRICO SIN CERO INICIAL */}
+                {/* 3. INPUT NUMÉRICO CON PLACEHOLDER DINÁMICO POR PAÍS */}
                 <input
                     type="tel"
                     inputMode="numeric"
@@ -214,8 +310,8 @@ export default function PhoneInput({
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     onChange={handleInputChange}
-                    placeholder={placeholder}
-                    className={`flex-1 min-w-0 bg-transparent border-0 py-3 pl-3 font-mono tabular-nums outline-none focus:ring-0 focus:shadow-none rounded-none placeholder:font-sans ${
+                    placeholder={dynamicPlaceholder}
+                    className={`flex-1 min-w-0 bg-transparent border-0 focus:border-0 py-3 pl-3 font-mono tabular-nums outline-none focus:outline-none focus:ring-0 focus:shadow-none shadow-none rounded-none placeholder:font-sans ${
                         variant === "underline"
                             ? "text-base font-bold placeholder:font-bold placeholder:text-[var(--store-surface-text,#71717a)]/70"
                             : "text-sm font-medium placeholder:font-normal placeholder:text-neutral-400/70"
@@ -239,9 +335,11 @@ export default function PhoneInput({
                             <span className="text-[9px] font-mono font-bold uppercase tracking-[0.14em] text-[var(--store-surface-text,#71717a)]">
                                 Código de país
                             </span>
-                            <span className="text-[9px] font-mono text-[var(--store-surface-text,#71717a)]">
-                                Sin 0 inicial
-                            </span>
+                            {activeCountry.hasDomesticZero && (
+                                <span className="text-[9px] font-mono text-[var(--store-surface-text,#71717a)]">
+                                    Sin 0 inicial
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex flex-col gap-0.5">
