@@ -32,6 +32,7 @@ import { calculateCartEngine } from '@/utils/cartLogic'
 import { NumberInput } from '@/components/NumberInput'
 import { feedback } from '@/app/store/useFeedBackStore'
 import PrezisoFeedbackProvider from '@/components/ui/PrezisoFeedbackProvider'
+import PhoneInput from '@/components/ui/PhoneInput'
 // --- TIPOS ESTRICTOS (Sincronizados con Catálogo) ---
 type Variant = {
     id: string
@@ -75,18 +76,7 @@ type CartItem = {
 
 export default function POSPage() {
 
-    const PHONE_COUNTRY_CODES = [
-        { code: '+58', iso: 'VE', label: 'Venezuela (+58)', stripLeadingZero: true, maxLen: 10 },
-        { code: '+57', iso: 'CO', label: 'Colombia (+57)', stripLeadingZero: true, maxLen: 10 },
-        { code: '+1', iso: 'US', label: 'EE. UU. / Canadá (+1)', stripLeadingZero: true, maxLen: 10 },
-        { code: '+34', iso: 'ES', label: 'España (+34)', stripLeadingZero: true, maxLen: 9 },
-        { code: '+507', iso: 'PA', label: 'Panamá (+507)', stripLeadingZero: true, maxLen: 8 },
-        { code: '+56', iso: 'CL', label: 'Chile (+56)', stripLeadingZero: true, maxLen: 9 },
-        { code: '+54', iso: 'AR', label: 'Argentina (+54)', stripLeadingZero: true, maxLen: 10 },
-        { code: '+52', iso: 'MX', label: 'México (+52)', stripLeadingZero: true, maxLen: 10 },
-        { code: '+51', iso: 'PE', label: 'Perú (+51)', stripLeadingZero: true, maxLen: 9 },
-        { code: '+593', iso: 'EC', label: 'Ecuador (+593)', stripLeadingZero: true, maxLen: 9 },
-    ]
+
 
     const DNI_PREFIXES = ['V', 'J', 'E', 'G', 'P']
 
@@ -115,36 +105,21 @@ export default function POSPage() {
     // CARRITO
     const [cart, setCart] = useState<CartItem[]>([])
 
-    // DATOS FISCALES Y DE CONTACTO DEL CLIENTE
+// DATOS FISCALES Y DE CONTACTO DEL CLIENTE
     const [customerName, setCustomerName] = useState('')
-    const [phoneDialCode, setPhoneDialCode] = useState('+58')
-    const [isPhoneCodeOpen, setIsPhoneCodeOpen] = useState(false)
     const [customerPhone, setCustomerPhone] = useState('')
     const [dniPrefix, setDniPrefix] = useState('V')
     const [isDniPrefixOpen, setIsDniPrefixOpen] = useState(false)
     const [customerDNI, setCustomerDNI] = useState('')
     const [customerAddress, setCustomerAddress] = useState('')
 
-    const activeCountryConfig = useMemo(
-        () => PHONE_COUNTRY_CODES.find((c) => c.code === phoneDialCode) || PHONE_COUNTRY_CODES[0],
-        [phoneDialCode]
-    )
-
-    // Sanitizador estricto: impide escribir el '0' inicial en números venezolanos (ej. 0414 -> 414) y filtra solo dígitos
-    const handlePhoneChange = (rawValue: string) => {
-        let digitsOnly = rawValue.replace(/\D/g, '')
-        if (activeCountryConfig.stripLeadingZero || phoneDialCode === '+58') {
-            digitsOnly = digitsOnly.replace(/^0+/, '')
-        }
-        setCustomerPhone(digitsOnly.slice(0, activeCountryConfig.maxLen))
-    }
-
-    // Sanitizador de CI / RIF: solo números/guiones limpios sin duplicar la letra
+    // Sanitizador de CI / RIF: solo números limpios sin duplicar la letra
     const handleDniChange = (rawValue: string) => {
         const cleaned = rawValue.replace(/^[VJEGvjepg][-]?/i, '').replace(/[^0-9]/g, '')
         setCustomerDNI(cleaned.slice(0, 10))
     }
 
+ 
     const [shippingMethod, setShippingMethod] = useState<'pickup' | 'local_delivery' | 'courier'>('pickup')
     const [shippingAddress, setShippingAddress] = useState('')
 
@@ -513,12 +488,12 @@ export default function POSPage() {
         const requiresFullLegalData =
             type === 'quote' || (type === 'paid' && documentType === 'invoice')
 
-        if (requiresFullLegalData) {
+ if (requiresFullLegalData) {
             const missingFields: string[] = []
             if (!customerName.trim()) missingFields.push('Nombre o Razón Social')
             if (!customerDNI.trim()) missingFields.push('CI / RIF')
-            if (!customerPhone.trim() || customerPhone.trim().length < 7)
-                missingFields.push('Teléfono de contacto válido (sin el 0 inicial)')
+            if (!customerPhone.trim() || customerPhone.replace(/\D/g, '').length < 10)
+                missingFields.push('Teléfono de contacto válido')
             if (!customerAddress.trim()) missingFields.push('Dirección Fiscal')
             if (shippingMethod !== 'pickup' && !shippingAddress.trim())
                 missingFields.push('Dirección de entrega')
@@ -578,12 +553,11 @@ export default function POSPage() {
             if (paymentReference && type === 'paid')
                 deliveryInfoFull += ` | Ref: ${paymentReference}`
 
-            const formattedFullPhone = customerPhone.trim()
-                ? `${phoneDialCode}${customerPhone.trim().replace(/^0+/, '')}`
-                : null
+       const formattedFullPhone = customerPhone.trim() || null
             const formattedFullDNI = customerDNI.trim()
                 ? `${dniPrefix}-${customerDNI.trim()}`
                 : null
+          
 
             const { data: order, error: orderError } = await supabase
                 .from('orders')
@@ -1453,134 +1427,23 @@ export default function POSPage() {
                                             </div>
                                         </div>
 
-                                        {/* FILA 2: TELÉFONO CON SELECTOR DE PAÍS (+58 POR DEFECTO) Y BLOQUEO DE CERO INICIAL */}
+                                     {/* FILA 2: TELÉFONO / WHATSAPP (COMPONENTE UNIFICADO) */}
                                         <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-[11px] font-medium text-neutral-600">
-                                                    Teléfono / WhatsApp{' '}
-                                                    {isCustomerRequired && (
-                                                        <span className="text-amber-600">*</span>
-                                                    )}
-                                                </label>
-                                                {phoneDialCode === '+58' && (
-                                                    <span className="text-[10px] font-mono text-neutral-400">
-                                                        Sin el 0 inicial (ej. 414...)
-                                                    </span>
+                                            <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
+                                                Teléfono / WhatsApp{' '}
+                                                {isCustomerRequired && (
+                                                    <span className="text-amber-600">*</span>
                                                 )}
-                                            </div>
-
-                                            <div className="flex items-center gap-1.5 relative">
-                                                {/* Selector Personalizado de Código Telefónico */}
-                                                <div className="relative shrink-0">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setIsPhoneCodeOpen((prev) => !prev)
-                                                            setIsDniPrefixOpen(false)
-                                                        }}
-                                                        className="h-9 px-2.5 bg-[#FAFAFC] hover:bg-neutral-100 border border-neutral-200 rounded-lg flex items-center gap-1.5 text-xs font-mono font-semibold text-neutral-900 transition-colors cursor-pointer"
-                                                    >
-                                                        <span className="text-[10px] font-bold text-neutral-500">
-                                                            {activeCountryConfig.iso}
-                                                        </span>
-                                                        <span>{activeCountryConfig.code}</span>
-                                                        <ChevronDown
-                                                            size={12}
-                                                            className={`text-neutral-400 transition-transform ${isPhoneCodeOpen ? 'rotate-180' : ''
-                                                                }`}
-                                                        />
-                                                    </button>
-
-                                                    <AnimatePresence>
-                                                        {isPhoneCodeOpen && (
-                                                            <motion.div
-                                                                initial={{
-                                                                    opacity: 0,
-                                                                    y: 4,
-                                                                    scale: 0.98,
-                                                                }}
-                                                                animate={{
-                                                                    opacity: 1,
-                                                                    y: 0,
-                                                                    scale: 1,
-                                                                }}
-                                                                exit={{
-                                                                    opacity: 0,
-                                                                    y: 4,
-                                                                    scale: 0.98,
-                                                                }}
-                                                                transition={{ duration: 0.15 }}
-                                                                className="absolute left-0 mt-1 w-52 max-h-48 overflow-y-auto no-scrollbar bg-white border border-neutral-200 rounded-xl p-1 shadow-[0_12px_30px_rgba(0,0,0,0.12)] z-50"
-                                                            >
-                                                                {PHONE_COUNTRY_CODES.map((c) => {
-                                                                    const selected =
-                                                                        c.code === phoneDialCode
-                                                                    return (
-                                                                        <button
-                                                                            key={c.code}
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setPhoneDialCode(
-                                                                                    c.code
-                                                                                )
-                                                                                if (
-                                                                                    c.stripLeadingZero
-                                                                                ) {
-                                                                                    setCustomerPhone(
-                                                                                        (prev) =>
-                                                                                            prev.replace(
-                                                                                                /^0+/,
-                                                                                                ''
-                                                                                            )
-                                                                                    )
-                                                                                }
-                                                                                setIsPhoneCodeOpen(
-                                                                                    false
-                                                                                )
-                                                                            }}
-                                                                            className={`w-full px-2.5 py-1.5 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${selected
-                                                                                    ? 'bg-neutral-950 text-white font-semibold'
-                                                                                    : 'text-neutral-800 hover:bg-neutral-100'
-                                                                                }`}
-                                                                        >
-                                                                            <span className="truncate">
-                                                                                {c.label}
-                                                                            </span>
-                                                                            {selected && (
-                                                                                <Check size={12} />
-                                                                            )}
-                                                                        </button>
-                                                                    )
-                                                                })}
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
-
-                                                {/* Input numérico con bloqueo automático de 0 al inicio */}
-                                                <div className="relative flex-1 min-w-0">
-                                                    <input
-                                                        type="tel"
-                                                        inputMode="numeric"
-                                                        placeholder={
-                                                            phoneDialCode === '+58'
-                                                                ? '4121234567'
-                                                                : 'Número sin 0 inicial'
-                                                        }
-                                                        value={customerPhone}
-                                                        onChange={(e) =>
-                                                            handlePhoneChange(e.target.value)
-                                                        }
-                                                        className={`w-full h-9 px-3 bg-[#FAFAFC] rounded-lg text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${isCustomerRequired &&
-                                                                customerPhone.trim().length < 7
-                                                                ? 'border-amber-300'
-                                                                : 'border-neutral-200'
-                                                            }`}
-                                                    />
-                                                </div>
-                                            </div>
+                                            </label>
+                                            <PhoneInput
+                                                variant="boxed"
+                                                required={false}
+                                                value={customerPhone}
+                                                onChange={(fullPhone) =>
+                                                    setCustomerPhone(fullPhone)
+                                                }
+                                            />
                                         </div>
-
                                         {/* FILA 3: DOCUMENTO FISCAL (CI / RIF) CON SELECTOR PERSONALIZADO */}
                                         <div>
                                             <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
@@ -1595,7 +1458,6 @@ export default function POSPage() {
                                                         type="button"
                                                         onClick={() => {
                                                             setIsDniPrefixOpen((prev) => !prev)
-                                                            setIsPhoneCodeOpen(false)
                                                         }}
                                                         className="h-9 px-2.5 bg-[#FAFAFC] hover:bg-neutral-100 border border-neutral-200 rounded-lg flex items-center gap-1 text-xs font-mono font-semibold text-neutral-900 transition-colors cursor-pointer"
                                                     >
