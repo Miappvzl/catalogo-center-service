@@ -189,7 +189,7 @@ export const PREZISO_ACHIEVEMENTS: AchievementDefinition[] = [
     threshold: 500000,
     metricDisplay: '500.000',
     unitLabel: 'visitas en nuestra tienda',
-    badgeTitle: 'Leyenda Digital Soberana',
+    badgeTitle: 'Leyenda Digital',
     eyebrowLabel: 'MEDIO MILLÓN DE VISITAS',
     customerStoryCopy:
       'Medio millón de visitas en nuestra plataforma oficial. Gracias a toda nuestra comunidad por hacer historia con nosotros.',
