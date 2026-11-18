@@ -47,15 +47,15 @@ export async function triggerCriticalStockAlert({
             return; // Ya se generó una alerta hoy para este artículo, evitamos spam
         }
 
-        // 3. Registrar notificación in-app (Campanita)
-        await supabase.from('notifications').insert({
+      // 3. Registrar notificación in-app (Campanita) con tipo propio para no colisionar con hitos de tráfico
+        const { error: notifErr } = await supabase.from('notifications').insert({
             store_id: storeId,
             title: alertTitle,
             message: alertMessage,
-            type: 'alert',
+            type: 'stock_alert',
             link: '/admin/inventory'
         });
-
+        if (notifErr && notifErr.code === '23505') return;
         // 4. Enviar notificación Web Push
         const { data: subs } = await supabase
             .from('push_subscriptions')

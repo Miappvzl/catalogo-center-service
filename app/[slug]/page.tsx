@@ -22,23 +22,28 @@ const createUncachedClient = () =>
   )
 
 const getStoreData = cache(async (slug: string) => {
+  // 🛡️ ESCUDO ANTI-ARCHIVOS FANTASMA Y BOTS: Corta en 0ms si piden meta.json, favicon.ico, apple-touch-icon.png, etc.
+  if (!slug || slug.includes('.')) return null
+
   const supabase = createPublicCachedClient([`store-${slug}`])
   const { data } = await supabase
     .from('stores')
     .select('*, payment_config, shipping_config, theme_config')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
   return data
 })
 
 // Consulta Zero-Cache (Modo Live Preview)
 async function getLiveStoreData(slug: string) {
+  if (!slug || slug.includes('.')) return null
+
   const supabase = createUncachedClient()
   const { data } = await supabase
     .from('stores')
     .select('*, payment_config, shipping_config, theme_config')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
   return data
 }
 
