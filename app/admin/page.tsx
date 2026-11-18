@@ -103,7 +103,7 @@ export default async function AdminDashboard() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const fallbackDateString = thirtyDaysAgo.toISOString();
 
-    const [
+const [
         productsRes,
         variantsRes,
         pendingRes,
@@ -111,6 +111,7 @@ export default async function AdminDashboard() {
         configRes,
         recentOrdersRes,
         eventsRes,
+        aggregatedViewsRes,
     ] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", store.id),
         supabase.from("product_variants").select("stock, products!inner(store_id)").eq("products.store_id", store.id).lte("stock", 3),
@@ -120,6 +121,7 @@ export default async function AdminDashboard() {
         supabase.from("app_config").select("usd_rate, eur_rate, previous_usd_rate, previous_eur_rate, updated_at").eq("id", 1).single(),
         supabase.from("orders").select("*").eq("store_id", store.id).order("created_at", { ascending: false }).limit(5),
         supabase.from("analytics_raw_events").select("session_id, event_type, location_state, created_at").eq("store_id", store.id).gte("created_at", fallbackDateString).limit(10000),
+        supabase.from("analytics_aggregated_daily").select("total_views, unique_visitors").eq("store_id", store.id),
     ]);
     const totalProducts = productsRes.count || 0;
     const lowStockCount = variantsRes.data?.length || 0;
@@ -236,6 +238,13 @@ export default async function AdminDashboard() {
 
     const visitsCount = uniqueSessions.size;
 
+    // 🚀 CONTEO HISTÓRICO REAL SINCRONIZADO PARA LA VITRINA DE LOGROS
+    const aggregatedTotalViews = (aggregatedViewsRes.data || []).reduce(
+        (acc: number, row: any) => acc + Number(row.total_views || row.unique_visitors || 0),
+        0
+    );
+    const totalHistoricalVisits = Math.max(aggregatedTotalViews, rawEvents.length, visitsCount);
+
     // 1. Datos para Histograma de 7 días
     const dailyTrafficCounts = last7DaysSessions.map(s => s.size);
     const maxDailyTraffic = Math.max(...dailyTrafficCounts, 1);
@@ -296,7 +305,13 @@ export default async function AdminDashboard() {
                 <PushNotificationManager storeId={store.id} />
 
                 {/* 🚀 BARRA DE ACCESOS DIRECTOS Y ACCIONES RÁPIDAS (Siempre visible con o sin misiones) */}
-                <QuickActionsBar store={store} isCompact={showMissionControl} />
+            <QuickActionsBar
+                    store={store}
+                    isCompact={showMissionControl}
+                    todayUniqueVisits={dailyTrafficCounts[6] || 0}
+                    monthlyUniqueVisits={totalHistoricalVisits}
+                    totalProducts={totalProducts || 0}
+                />
 
                 {/* =======================================================
                     MODO ENFOQUE: BENTO GRID COMPACTO DE ALTA DENSIDAD

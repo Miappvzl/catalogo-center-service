@@ -213,10 +213,10 @@ export async function POST(req: Request) {
                         process.env.VAPID_PRIVATE_KEY!
                       );
 
-                      const payload = JSON.stringify({
+                const payload = JSON.stringify({
                         title: highestReachedTier.title,
-                        body: message,
-                        url: '/admin/analytics',
+                        body: `${message} Toca para descargar y compartir tu nueva Etiqueta de Certificación en WhatsApp e Instagram.`,
+                        url: `/admin?milestone=${highestReachedTier.threshold}`,
                         icon: '/favicon-light.png'
                       });
 
