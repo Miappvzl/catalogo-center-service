@@ -33,6 +33,7 @@ import { BentoGridWrapper, FadeInBlock } from "@/components/admin/DashboardAnima
 import { DeliveryRadarFeatureModal } from "@/components/admin/DeliveryRadarFeatureModal";
 import { formatUSD } from "@/utils/currency";
 import QuickActionsBar from "@/components/admin/QuickActionsBar";
+import { getSupabaseAdmin } from "@/utils/supabaseAdmin";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -98,12 +99,12 @@ export default async function AdminDashboard() {
         .eq("user_id", user?.id)
         .single();
 
-    // 2. Define la fecha límite de analíticas (Últimos 30 días)
+  // 2. Define la fecha límite de analíticas (Últimos 30 días para el histograma de 7d)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const fallbackDateString = thirtyDaysAgo.toISOString();
 
-const [
+    const [
         productsRes,
         variantsRes,
         pendingRes,
@@ -111,7 +112,7 @@ const [
         configRes,
         recentOrdersRes,
         eventsRes,
-        aggregatedViewsRes,
+        analyticsSummaryRes,
     ] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", store.id),
         supabase.from("product_variants").select("stock, products!inner(store_id)").eq("products.store_id", store.id).lte("stock", 3),
@@ -121,7 +122,11 @@ const [
         supabase.from("app_config").select("usd_rate, eur_rate, previous_usd_rate, previous_eur_rate, updated_at").eq("id", 1).single(),
         supabase.from("orders").select("*").eq("store_id", store.id).order("created_at", { ascending: false }).limit(5),
         supabase.from("analytics_raw_events").select("session_id, event_type, location_state, created_at").eq("store_id", store.id).gte("created_at", fallbackDateString).limit(10000),
-        supabase.from("analytics_aggregated_daily").select("total_views, unique_visitors").eq("store_id", store.id),
+        // 🚀 MISMO RPC OFICIAL DE /admin/analytics (Sincronización 1:1 en 0% RAM)
+        supabase.rpc("get_store_analytics_summary", {
+            p_store_id: store.id,
+            p_start_date: "2020-01-01T00:00:00.000Z",
+        }),
     ]);
     const totalProducts = productsRes.count || 0;
     const lowStockCount = variantsRes.data?.length || 0;
@@ -236,15 +241,12 @@ const [
 
 
 
-    const visitsCount = uniqueSessions.size;
+   // 🚀 SINCRONIZACIÓN 1:1 CON /admin/analytics: Usa totals.total_visits del RPC oficial
+    const rpcTotalVisits = Number(analyticsSummaryRes.data?.totals?.total_visits || 0);
+    const visitsCount = Math.max(rpcTotalVisits, uniqueSessions.size);
+    const totalHistoricalVisits = visitsCount;
 
-    // 🚀 CONTEO HISTÓRICO REAL SINCRONIZADO PARA LA VITRINA DE LOGROS
-    const aggregatedTotalViews = (aggregatedViewsRes.data || []).reduce(
-        (acc: number, row: any) => acc + Number(row.total_views || row.unique_visitors || 0),
-        0
-    );
-    const totalHistoricalVisits = Math.max(aggregatedTotalViews, rawEvents.length, visitsCount);
-
+   
     // 1. Datos para Histograma de 7 días
     const dailyTrafficCounts = last7DaysSessions.map(s => s.size);
     const maxDailyTraffic = Math.max(...dailyTrafficCounts, 1);
