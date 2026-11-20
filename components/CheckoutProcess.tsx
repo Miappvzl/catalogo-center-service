@@ -24,7 +24,8 @@ import {
     Wallet,
     AlertCircle,
     Gift,
-    GiftIcon
+    GiftIcon,
+    ChevronDown
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase-client";
 import { compressImage } from "@/utils/imageOptimizer";
@@ -174,7 +175,20 @@ export default function CheckoutProcess({
     const items = isQuickLinkMode && overrideItems ? overrideItems : globalCartItems;
     const [checkoutState, setCheckoutState] = useState<'idle' | 'validating' | 'processing' | 'success'>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({}); // 🚀 MOTOR DE ERRORES ORGÁNICOS
-    const [supabase] = useState(() => getSupabase());
+
+
+    const [isDniDropdownOpen, setIsDniDropdownOpen] = useState(false);
+    const dniDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dniDropdownRef.current && !dniDropdownRef.current.contains(e.target as Node)) {
+                setIsDniDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);const [supabase] = useState(() => getSupabase());
     const [pfOriginBank, setPfOriginBank] = useState('');
     const [pfOriginPhone, setPfOriginPhone] = useState('');
     const [pfReference, setPfReference] = useState('');
@@ -1687,9 +1701,16 @@ switch (pm) {
                         </AnimatePresence>
                     </div>
 
-                    {/* 2. Cédula o RIF (Visible solo para Contribuyente Ordinario o Especial) */}
+                 {/* 2. Cédula o RIF con Desplegable y Línea Vertical Flotante (Idéntico a PhoneInput) */}
                     {isStrictTax &&
                         (() => {
+                            const DNI_OPTIONS = [
+                                { code: "V", label: "Venezolano / Natural" },
+                                { code: "J", label: "Jurídico (RIF)" },
+                                { code: "E", label: "Extranjero" },
+                                { code: "G", label: "Gubernamental" },
+                                { code: "P", label: "Pasaporte" },
+                            ];
                             const rawId = clientData.identityCard || "";
                             const prefixMatch = rawId.match(/^([VJEGP])-/i);
                             const activePrefix = prefixMatch ? prefixMatch[1].toUpperCase() : "V";
@@ -1702,7 +1723,7 @@ switch (pm) {
                                 const cleaned = newDigits.replace(/[^0-9]/g, "").slice(0, 10);
                                 setClientData({
                                     ...clientData,
-                                    identityCard: cleaned ? `${newPrefix}-${cleaned}` : "",
+                                    identityCard: cleaned ? `${newPrefix}-${cleaned}` : `${newPrefix}-`,
                                 });
                                 if (errors.identityCard) {
                                     setErrors((prev) => ({ ...prev, identityCard: "" }));
@@ -1710,35 +1731,42 @@ switch (pm) {
                             };
 
                             return (
-                                <div id="field-identityCard" className="w-full">
+                                <div
+                                    id="field-identityCard"
+                                    ref={dniDropdownRef}
+                                    className="w-full relative"
+                                >
+                                    {/* Contenedor con SOLO línea inferior (border-b-2) y py-3 para despegar la barra vertical de la base */}
                                     <div
-                                        className={`flex items-center gap-3 border-b-2 py-2 transition-colors ${
+                                        className={`w-full flex items-center border-0 border-b-2 py-3 transition-colors ${
                                             errors.identityCard
                                                 ? "border-red-500"
                                                 : "border-[var(--store-text-main)]/30 focus-within:border-[var(--store-text-main)]"
                                         }`}
                                     >
-                                        <div className="inline-flex items-center gap-1 shrink-0">
-                                            {["V", "J", "E", "G", "P"].map((pref) => (
-                                                <button
-                                                    key={pref}
-                                                    type="button"
-                                                    onClick={() =>
-                                                        updateIdentity(pref, activeDigits)
-                                                    }
-                                                    className={`w-7 h-7 rounded-md text-xs font-mono font-black transition-all cursor-pointer ${
-                                                        activePrefix === pref
-                                                            ? "bg-[var(--store-text-main)] text-[var(--store-surface)]"
-                                                            : "bg-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]"
-                                                    }`}
-                                                >
-                                                    {pref}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <span className="font-mono font-bold text-[var(--store-surface-text)]">
-                                            -
-                                        </span>
+                                        {/* Desplegador Izquierdo: Letra + Chevron (Sin fondo ni bordes) */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsDniDropdownOpen((prev) => !prev)}
+                                            className="flex items-center gap-1.5 bg-transparent border-0 p-0 text-base font-bold text-[var(--store-text-main)] outline-none select-none cursor-pointer shrink-0"
+                                        >
+                                            <span>{activePrefix}</span>
+                                            <ChevronDown
+                                                size={14}
+                                                strokeWidth={2.2}
+                                                className={`text-[var(--store-surface-text)] transition-transform duration-200 ${
+                                                    isDniDropdownOpen ? "rotate-180" : ""
+                                                }`}
+                                            />
+                                        </button>
+
+                                        {/* Línea Vertical Suspendida (No toca la línea inferior gracias a h-4 + self-center + py-3 del padre) */}
+                                        <span
+                                            aria-hidden="true"
+                                            className="h-4 w-[1.5px] bg-[var(--store-text-main)]/25 mx-3.5 self-center shrink-0"
+                                        />
+
+                                        {/* Input Numérico Derecho */}
                                         <input
                                             type="text"
                                             inputMode="numeric"
@@ -1747,10 +1775,53 @@ switch (pm) {
                                             onChange={(e) =>
                                                 updateIdentity(activePrefix, e.target.value)
                                             }
-                                            className="flex-1 min-w-0 bg-transparent border-0 py-1 text-base font-mono font-bold tabular-nums outline-none focus:ring-0 text-[var(--store-text-main)] placeholder:font-sans placeholder:text-[var(--store-surface-text)]/70"
+                                            className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-bold tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70"
                                             placeholder="Cédula o RIF (ej: 12345678) *"
                                         />
                                     </div>
+
+                                    {/* Popover Desplegable al clicar la letra */}
+                                    <AnimatePresence>
+                                        {isDniDropdownOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="absolute left-0 top-full mt-1.5 w-52 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-xl p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] z-50"
+                                            >
+                                                {DNI_OPTIONS.map((opt) => {
+                                                    const isSelected = activePrefix === opt.code;
+                                                    return (
+                                                        <button
+                                                            key={opt.code}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                updateIdentity(opt.code, activeDigits);
+                                                                setIsDniDropdownOpen(false);
+                                                            }}
+                                                            className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                                                isSelected
+                                                                    ? "bg-[var(--store-text-main)] text-[var(--store-surface)] font-bold"
+                                                                    : "text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/5 font-medium"
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5">
+                                                                <span className="font-mono font-bold w-3.5">
+                                                                    {opt.code}
+                                                                </span>
+                                                                <span className="opacity-85">
+                                                                    {opt.label}
+                                                                </span>
+                                                            </div>
+                                                            {isSelected && <Check size={13} />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     <AnimatePresence>
                                         {errors.identityCard && (
                                             <motion.p

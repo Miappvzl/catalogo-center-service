@@ -21,6 +21,7 @@ import {
     User,
     PenSquare,
     FileText,
+    ChevronDown,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { getOptimizedUrl } from '@/utils/cdn'
@@ -86,9 +87,10 @@ export default function QuotePublicPage() {
     const [fiscalName, setFiscalName] = useState('')
     const [dniPrefix, setDniPrefix] = useState('V')
     const [fiscalDniNumber, setFiscalDniNumber] = useState('')
-    const [fiscalPhone, setFiscalPhone] = useState('')
+  const [fiscalPhone, setFiscalPhone] = useState('')
     const [fiscalAddress, setFiscalAddress] = useState('')
     const [isEditingFiscal, setIsEditingFiscal] = useState(false)
+    const [isDniPrefixOpen, setIsDniPrefixOpen] = useState(false)
 
     const isFiscalDataComplete = useMemo(() => {
         return (
@@ -1225,29 +1227,35 @@ export default function QuotePublicPage() {
                                             </div>
                                         </div>
 
-                                        {/* Cédula o RIF */}
-                                        <div>
+                                       {/* Cédula o RIF con Desplegable Integrado */}
+                                        <div className="relative">
                                             <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
                                                 Cédula de Identidad o RIF{' '}
                                                 <span className="text-amber-600">*</span>
                                             </label>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="inline-flex bg-white border border-neutral-200 rounded-lg p-0.5 shrink-0 h-10 items-center">
-                                                    {DNI_PREFIXES.map((pref) => (
-                                                        <button
-                                                            key={pref}
-                                                            type="button"
-                                                            onClick={() => setDniPrefix(pref)}
-                                                            className={`w-7 h-8 rounded-md text-[11px] font-mono font-bold transition-colors cursor-pointer ${
-                                                                dniPrefix === pref
-                                                                    ? 'bg-neutral-950 text-white'
-                                                                    : 'text-neutral-500 hover:text-neutral-900'
-                                                            }`}
-                                                        >
-                                                            {pref}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                            <div
+                                                className={`flex items-center h-10 px-3 bg-white rounded-lg transition-colors border ${
+                                                    !/^\d{5,10}$/.test(fiscalDniNumber.trim())
+                                                        ? 'border-amber-300 focus-within:border-neutral-900'
+                                                        : 'border-neutral-200 focus-within:border-neutral-900'
+                                                }`}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setIsDniPrefixOpen((prev) => !prev)
+                                                    }
+                                                    className="flex items-center gap-1 pr-2.5 text-xs font-mono font-bold text-neutral-900 cursor-pointer select-none shrink-0"
+                                                >
+                                                    <span>{dniPrefix}</span>
+                                                    <ChevronDown
+                                                        size={13}
+                                                        className={`text-neutral-400 transition-transform ${
+                                                            isDniPrefixOpen ? 'rotate-180' : ''
+                                                        }`}
+                                                    />
+                                                </button>
+                                                <div className="h-4 w-[1px] bg-neutral-200 mr-2.5 shrink-0" />
                                                 <input
                                                     type="text"
                                                     inputMode="numeric"
@@ -1260,56 +1268,34 @@ export default function QuotePublicPage() {
                                                         setFiscalDniNumber(clean)
                                                     }}
                                                     placeholder="123456789"
-                                                    className={`flex-1 min-w-0 h-10 px-3 bg-white rounded-lg text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none transition-colors border ${
-                                                        !/^\d{5,10}$/.test(fiscalDniNumber.trim())
-                                                            ? 'border-amber-300 focus:border-neutral-900'
-                                                            : 'border-neutral-200 focus:border-neutral-900'
-                                                    }`}
+                                                    className="flex-1 min-w-0 bg-transparent border-0 p-0 text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none focus:ring-0"
                                                 />
                                             </div>
-                                        </div>
 
-                                        {/* Teléfono / WhatsApp */}
-                                        <div>
-                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
-                                                Teléfono / WhatsApp{' '}
-                                                <span className="text-amber-600">*</span>
-                                            </label>
-                                            <div className="bg-white rounded-lg">
-                                                <PhoneInput
-                                                    variant="boxed"
-                                                    required={true}
-                                                    value={fiscalPhone}
-                                                    onChange={(val) => setFiscalPhone(val)}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Dirección Fiscal */}
-                                        <div>
-                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
-                                                Dirección Fiscal / de Facturación{' '}
-                                                <span className="text-amber-600">*</span>
-                                            </label>
-                                            <div className="relative">
-                                                <MapPin
-                                                    size={13}
-                                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={fiscalAddress}
-                                                    onChange={(e) =>
-                                                        setFiscalAddress(e.target.value)
-                                                    }
-                                                    placeholder="Av. / Calle, Edificio, Ciudad, Estado"
-                                                    className={`w-full h-10 pl-8 pr-3 bg-white rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none transition-colors border ${
-                                                        fiscalAddress.trim().length < 5
-                                                            ? 'border-amber-300 focus:border-neutral-900'
-                                                            : 'border-neutral-200 focus:border-neutral-900'
-                                                    }`}
-                                                />
-                                            </div>
+                                            {isDniPrefixOpen && (
+                                                <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-neutral-200 rounded-xl p-1 shadow-[0_12px_30px_rgba(0,0,0,0.12)] z-50">
+                                                    {DNI_PREFIXES.map((pref) => (
+                                                        <button
+                                                            key={pref}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setDniPrefix(pref)
+                                                                setIsDniPrefixOpen(false)
+                                                            }}
+                                                            className={`w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
+                                                                dniPrefix === pref
+                                                                    ? 'bg-neutral-950 text-white font-semibold'
+                                                                    : 'text-neutral-800 hover:bg-neutral-100'
+                                                            }`}
+                                                        >
+                                                            <span>{pref}-</span>
+                                                            {dniPrefix === pref && (
+                                                                <Check size={11} />
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {isFiscalDataComplete && (

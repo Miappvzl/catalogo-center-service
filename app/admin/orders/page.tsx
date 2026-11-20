@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck, Store, Zap } from 'lucide-react'
+import { ArrowLeft, Search, CheckCircle2, Clock, Truck, XCircle, Package, MessageCircle, DollarSign, MapPin, Loader2, Copy, Check, ArrowUpRight, FileText, Gift, Printer, PrinterIcon, PrinterCheckIcon, PrinterCheck, Store, Zap, PenSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase-client'
@@ -95,6 +95,14 @@ const StatusBadge = ({ status }: { status: string }) => {
 const getBsAmount = (order: Partial<Order>) => {
     if (order.total_bs && Number(order.total_bs) > 0) return Number(order.total_bs)
     return Number(order.total_usd || 0) * Number(order.exchange_rate || 0)
+}
+
+// 🚀 Valida estrictamente que sea una orden de cotización y esté en estado pendiente o cotización
+const isEditableQuote = (order: Partial<Order> | null) => {
+    if (!order) return false
+    const isQuoteOrder = Boolean(order.is_quote || order.status === 'quote')
+    const isEditableStatus = order.status === 'quote' || order.status === 'pending'
+    return isQuoteOrder && isEditableStatus
 }
 
 export default function OrdersPage() {
@@ -570,7 +578,20 @@ interface EnrichedOrderItem extends OrderItem {
                                                     )}
                                                 </div>
                                             </div>
-                                            <StatusBadge status={order.status} />
+                                           <div className="flex items-center gap-1.5 shrink-0">
+                                                {isEditableQuote(order) && (
+                                                    <Link
+                                                        href={`/admin/pos?edit_quote=${order.id}`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/80 rounded text-[9px] font-bold uppercase tracking-wider transition-all shadow-2xs active:scale-95"
+                                                        title="Editar cotización en POS"
+                                                    >
+                                                        <PenSquare size={10} strokeWidth={2.5} />
+                                                        <span>Editar</span>
+                                                    </Link>
+                                                )}
+                                                <StatusBadge status={order.status} />
+                                            </div>
                                         </div>
 
                                         <div className="flex items-center justify-between">
@@ -650,13 +671,26 @@ interface EnrichedOrderItem extends OrderItem {
                                                     <td className="px-6 py-4 whitespace-nowrap font-mono text-neutral-500 text-[11px]">
                                                         {new Date(order.created_at).toLocaleDateString()}
                                                     </td>
-                                                    <td className="px-6 py-4 min-w-50">
-                                                        <div className="flex items-center justify-between">
+                                                   <td className="px-6 py-4 min-w-50">
+                                                        <div className="flex items-center justify-between gap-2">
                                                             <span className="font-semibold text-xs text-neutral-900 truncate block">{order.customer_name}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <StatusBadge status={order.status} />
+                                                        <div className="inline-flex items-center gap-2">
+                                                            <StatusBadge status={order.status} />
+                                                            {isEditableQuote(order) && (
+                                                                <Link
+                                                                    href={`/admin/pos?edit_quote=${order.id}`}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-neutral-100 text-neutral-700 hover:text-neutral-950 border border-neutral-200/80 rounded text-[9px] font-bold uppercase tracking-wider transition-all shadow-2xs active:scale-95"
+                                                                    title="Editar cotización en POS"
+                                                                >
+                                                                    <PenSquare size={10} strokeWidth={2.5} />
+                                                                    <span>Editar</span>
+                                                                </Link>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <p className="font-bold text-sm font-mono tabular-nums flex items-center justify-end gap-1.5">
@@ -758,6 +792,14 @@ interface EnrichedOrderItem extends OrderItem {
                                     </div>
                                     <div className="flex flex-col gap-2 mt-1">
                                         <div className="flex gap-2">
+                                            {isEditableQuote(selectedOrder) && (
+                                                <Link
+                                                    href={`/admin/pos?edit_quote=${selectedOrder.id}`}
+                                                    className="flex-1 py-2.5 bg-white border border-neutral-200/70 text-neutral-900 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95"
+                                                >
+                                                    <PenSquare size={13} strokeWidth={2.2} /> Editar
+                                                </Link>
+                                            )}
                                             <button onClick={(e) => handleCopyQuote(e, selectedOrder.id)} className="flex-1 py-2.5 bg-white border border-neutral-200/50 rounded-lg text-[10px] font-semibold uppercase tracking-wider hover:bg-neutral-50 transition-all flex items-center justify-center gap-1.5 text-neutral-700 active:scale-95 shadow-xs">
                                                 {copiedQuote === selectedOrder.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />} Copiar Link
                                             </button>

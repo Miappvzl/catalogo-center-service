@@ -1,13 +1,26 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Search, FileText, CheckCircle2, Clock, AlertCircle, MessageCircle, DollarSign, ArrowLeft, Loader2, Copy, Check, ArrowUpRight, TrendingUp, XCircle, ChevronDown, PenSquare } from 'lucide-react'
+import {
+    Search,
+    FileText,
+    CheckCircle2,
+    Clock,
+    AlertCircle,
+    MessageCircle,
+    ArrowLeft,
+    Loader2,
+    Copy,
+    Check,
+    ArrowUpRight,
+    XCircle,
+    PenSquare,
+    Plus,
+} from 'lucide-react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
-import Swal from 'sweetalert2'
-import { AnimatePresence, motion } from 'framer-motion'
+import { formatUSD, formatVES } from '@/utils/currency'
 
-// --- TIPOS ESTRICTOS ---
 interface Quote {
     id: string
     order_number: number
@@ -18,30 +31,55 @@ interface Quote {
     is_quote: boolean
     customer_name: string
     customer_phone: string | null
+    customer_dni?: string | null
     total_usd: number
     total_bs: number | null
+    exchange_rate: number | null
     isExpired: boolean
     isConverted: boolean
 }
 
-const QuoteStatusBadge = ({ status, isExpired }: { status: string, isExpired: boolean }) => {
+// 💎 CLEANLOOK: Badges Muted con bordes ultra-finos (Homologados con orders/page.tsx)
+const QuoteStatusBadge = ({ status, isExpired }: { status: string; isExpired: boolean }) => {
     if (status === 'cancelled') {
-        return <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-red-50 text-red-600 shrink-0"><XCircle size={14} strokeWidth={2.5} /> Cancelado</span>
+        return (
+            <span className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 bg-rose-50 text-rose-700 border-rose-200/50">
+                <XCircle size={10} strokeWidth={3} />
+                Cancelado
+            </span>
+        )
     }
-    if (status === 'paid' || status === 'completed') {
-        return <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-600 shrink-0"><CheckCircle2 size={14} strokeWidth={2.5} /> Convertido</span>
+    if (status === 'paid' || status === 'completed' || status === 'shipped') {
+        return (
+            <span className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200/50">
+                <CheckCircle2 size={10} strokeWidth={3} />
+                Convertido
+            </span>
+        )
     }
     if (isExpired) {
-        return <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-gray-100 text-gray-500 shrink-0"><Clock size={14} strokeWidth={2.5} /> Vencido</span>
+        return (
+            <span className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 bg-neutral-100 text-neutral-500 border-neutral-200/60">
+                <Clock size={10} strokeWidth={3} />
+                Vencido
+            </span>
+        )
     }
-    return <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-blue-600 shrink-0"><AlertCircle size={14} strokeWidth={2.5} /> Pendiente</span>
+    return (
+        <span className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 bg-amber-50 text-amber-700 border-amber-200/50">
+            <AlertCircle size={10} strokeWidth={3} />
+            Pendiente
+        </span>
+    )
 }
 
 export default function QuotesPage() {
     const supabase = getSupabase()
     const [quotes, setQuotes] = useState<Quote[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [filterTab, setFilterTab] = useState<'all' | 'active' | 'converted' | 'expired'>('all')
     const [copiedId, setCopiedId] = useState<string | null>(null)
     const [storeSlug, setStoreSlug] = useState<string | null>(null)
 
@@ -49,81 +87,126 @@ export default function QuotesPage() {
     const [hasMore, setHasMore] = useState(true)
     const PAGE_SIZE = 20
 
-    const fetchQuotes = useCallback(async (isInitial = false) => {
-        if (isInitial) setLoading(true)
+    const fetchQuotes = useCallback(
+        async (pageIndex = 0, isInitial = false) => {
+            if (isInitial) {
+                setLoading(true)
+                setPage(0)
+            } else {
+                setLoadingMore(true)
+            }
 
-        try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            try {
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser()
+                if (!user) return
 
-            const { data: store } = await supabase.from('stores').select('id, slug').eq('user_id', user.id).single()
-            if (!store) return
-            setStoreSlug(store.slug)
+                const { data: store } = await supabase
+                    .from('stores')
+                    .select('id, slug')
+                    .eq('user_id', user.id)
+                    .single()
+                if (!store) return
+                setStoreSlug(store.slug)
 
-            const start = isInitial ? 0 : page * PAGE_SIZE
-            const end = start + PAGE_SIZE - 1
+                const start = isInitial ? 0 : pageIndex * PAGE_SIZE
+                const end = start + PAGE_SIZE - 1
 
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('store_id', store.id)
-                .or('is_quote.eq.true,status.eq.quote')
-                .order('created_at', { ascending: false })
-                .range(start, end)
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('store_id', store.id)
+                    .or('is_quote.eq.true,status.eq.quote')
+                    .order('created_at', { ascending: false })
+                    .range(start, end)
 
-            if (error) throw error
+                if (error) throw error
 
-            const now = new Date().getTime()
-            const processed = (data || []).map((q: any) => ({
-                ...q,
-                isExpired: q.expires_at ? new Date(q.expires_at).getTime() < now : false,
-                isConverted: q.status === 'paid' || q.status === 'completed'
-            }))
+                const now = new Date().getTime()
+                const processed: Quote[] = (data || []).map((q: any) => ({
+                    ...q,
+                    isExpired: q.expires_at ? new Date(q.expires_at).getTime() < now : false,
+                    isConverted:
+                        q.status === 'paid' || q.status === 'completed' || q.status === 'shipped',
+                }))
 
-            if (isInitial) setQuotes(processed)
-            else setQuotes(prev => [...prev, ...processed])
+                if (isInitial) setQuotes(processed)
+                else setQuotes((prev) => [...prev, ...processed])
 
-            setHasMore(data.length === PAGE_SIZE)
-        } catch (error) {
-            console.error('Error fetching quotes:', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [page, supabase])
+                setHasMore((data || []).length === PAGE_SIZE)
+            } catch (error) {
+                console.error('Error fetching quotes:', error)
+            } finally {
+                setLoading(false)
+                setLoadingMore(false)
+            }
+        },
+        [supabase]
+    )
 
     useEffect(() => {
-        fetchQuotes(true)
+        fetchQuotes(0, true)
         const channel = supabase
             .channel('quotes_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchQuotes(true))
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'orders' },
+                () => fetchQuotes(0, true)
+            )
             .subscribe()
-        return () => { supabase.removeChannel(channel) }
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [supabase, fetchQuotes])
 
     const filteredQuotes = useMemo(() => {
-        return quotes.filter(q =>
-            q.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            q.order_number.toString().includes(searchTerm)
-        )
-    }, [quotes, searchTerm])
+        return quotes.filter((q) => {
+            const matchesSearch =
+                q.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                q.order_number?.toString().includes(searchTerm) ||
+                (q.customer_dni && q.customer_dni.toLowerCase().includes(searchTerm.toLowerCase()))
+
+            if (!matchesSearch) return false
+
+            if (filterTab === 'active') {
+                return !q.isConverted && !q.isExpired && q.status !== 'cancelled'
+            }
+            if (filterTab === 'converted') {
+                return q.isConverted
+            }
+            if (filterTab === 'expired') {
+                return q.isExpired || q.status === 'cancelled'
+            }
+            return true
+        })
+    }, [quotes, searchTerm, filterTab])
 
     const stats = useMemo(() => {
         const now = new Date().getTime()
-        const active = quotes.filter(q => !q.isConverted && !q.isExpired && q.status !== 'cancelled')
+        const active = quotes.filter((q) => !q.isConverted && !q.isExpired && q.status !== 'cancelled')
         return {
             totalActive: active.length,
-            activeAmount: active.reduce((acc, q) => acc + q.total_usd, 0),
-            convertedCount: quotes.filter(q => q.isConverted).length,
-            expiringSoon: active.filter(q => {
+            activeAmount: active.reduce((acc, q) => acc + Number(q.total_usd || 0), 0),
+            convertedCount: quotes.filter((q) => q.isConverted).length,
+            expiringSoon: active.filter((q) => {
                 if (!q.expires_at) return false
                 const hoursLeft = (new Date(q.expires_at).getTime() - now) / (1000 * 60 * 60)
                 return hoursLeft > 0 && hoursLeft <= 48
-            }).length
+            }).length,
         }
     }, [quotes])
 
+    const getQuoteUrl = (id: string) => {
+        if (typeof window === 'undefined') return `/quote/${id}`
+        const host = window.location.host.replace('www.', '')
+        return storeSlug
+            ? `${window.location.protocol}//${storeSlug}.${host}/quote/${id}`
+            : `/quote/${id}`
+    }
+
     const handleCopy = (id: string) => {
-        const link = `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${id}`
+        const link = getQuoteUrl(id)
         navigator.clipboard.writeText(link)
         setCopiedId(id)
         setTimeout(() => setCopiedId(null), 2000)
@@ -132,146 +215,451 @@ export default function QuotesPage() {
     const sendWhatsAppFollowUp = (e: React.MouseEvent, quote: Quote) => {
         e.preventDefault()
         if (!quote.customer_phone) return
-        const link = `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${quote.id}`
-        const message = `Hola ${quote.customer_name}, recordatorio de tu presupuesto #${quote.order_number}: ${link}`
-        window.open(`https://wa.me/${quote.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank')
+        const link = getQuoteUrl(quote.id)
+        const message = `Hola ${quote.customer_name}, te compartimos el enlace de tu presupuesto #${quote.order_number}: ${link}`
+        window.open(
+            `https://wa.me/${quote.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`,
+            '_blank'
+        )
+    }
+
+    const getBsEquivalent = (quote: Quote) => {
+        if (quote.total_bs && Number(quote.total_bs) > 0) return Number(quote.total_bs)
+        if (quote.exchange_rate && Number(quote.exchange_rate) > 0) {
+            return Number(quote.total_usd || 0) * Number(quote.exchange_rate)
+        }
+        return 0
     }
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-20 font-sans text-gray-900 selection:bg-[#3600ff] selection:text-white">
-            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-12">
-
-                {/* Header Superior */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="min-h-screen bg-[#F6F6F6] pb-20 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-900 selection:text-white">
+            {/* 💎 HEADER STICKY CLEANLOOK */}
+            <div className="bg-[#F6F6F6]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/admin"
+                        className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs"
+                    >
+                        <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
+                    </Link>
                     <div>
-                        <div className="flex items-center gap-2 text-gray-400 mb-3">
-                            <Link href="/admin" className="p-1.5 hover:bg-gray-200 rounded-xl transition-colors"><ArrowLeft size={16} strokeWidth={2.5} /></Link>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Panel Administrativo</span>
-                        </div>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Presupuestos</h1>
-                        <p className="text-sm text-gray-500 mt-2 font-medium">Gestión de proformas y seguimiento B2B.</p>
+                        <h1 className="font-bold text-base tracking-tight leading-none text-neutral-900">
+                            Presupuestos
+                        </h1>
+                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">
+                            Proformas & Seguimiento B2B
+                        </p>
                     </div>
+                </div>
 
-                    <Link href="/admin/pos" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-black text-white rounded-2xl font-bold text-[11px] uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-95 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.3)]">
-                        <FileText size={16} strokeWidth={2.5} /> Nuevo Presupuesto
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => fetchQuotes(0, true)}
+                        className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 hover:text-neutral-900 transition-all active:rotate-180 duration-500 shrink-0 shadow-xs cursor-pointer"
+                        title="Sincronizar Presupuestos"
+                    >
+                        <Clock size={15} className="text-neutral-500" />
+                    </button>
+
+                    <Link
+                        href="/admin/pos"
+                        className="h-9 px-3.5 bg-neutral-950 hover:bg-neutral-800 text-white rounded-lg font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-xs"
+                    >
+                        <Plus size={14} strokeWidth={2.5} />
+                        <span className="hidden sm:inline">Nuevo Presupuesto</span>
+                        <span className="sm:hidden">Nuevo</span>
                     </Link>
                 </div>
+            </div>
 
-                {/* Grid de Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
-                    {[
-                        { label: 'Activos', value: stats.totalActive, icon: Clock, iconColor: 'text-[#3600ff]', bgIcon: 'bg-blue-50' },
-                        { label: 'Monto Proyectado', value: `$${stats.activeAmount.toFixed(2)}`, icon: DollarSign, iconColor: 'text-gray-900', bgIcon: 'bg-gray-100' },
-                        { label: 'Convertidos', value: stats.convertedCount, icon: TrendingUp, iconColor: 'text-emerald-600', bgIcon: 'bg-emerald-50' },
-                        { label: 'Por Vencer', value: stats.expiringSoon, icon: AlertCircle, iconColor: 'text-orange-500', bgIcon: 'bg-orange-50' },
-                    ].map((s, i) => (
-                        <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100/80 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.03)] transition-shadow">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{s.label}</span>
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${s.bgIcon} ${s.iconColor}`}><s.icon size={16} strokeWidth={2.5} /></div>
-                            </div>
-                            <p className="text-3xl font-black tracking-tighter text-gray-900 tabular-nums">{s.value}</p>
+            <div className="w-full max-w-[100vw] overflow-x-hidden flex-1">
+                <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6 md:space-y-8">
+                    {/* 💎 KPI CARDS (Bento Grid Style idéntico a Gestión de Pedidos) */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
+                        <div className="bg-white p-5 rounded-xl border border-neutral-200/40 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">
+                                Activos
+                            </p>
+                            <span className="text-2xl md:text-3xl font-bold text-neutral-900 font-mono tabular-nums truncate">
+                                {stats.totalActive}
+                            </span>
                         </div>
-                    ))}
-                </div>
 
-                {/* Buscador */}
-                <div className="relative mb-8">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} strokeWidth={2.5} />
-                    <input type="text" placeholder="Buscar por cliente o número..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 md:py-5 text-sm font-bold text-gray-900 transition-all shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]" />
-                </div>
+                        <div className="bg-white p-5 rounded-xl border border-neutral-200/40 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">
+                                Monto Proyectado
+                            </p>
+                            <span className="text-2xl md:text-3xl font-bold text-neutral-900 font-mono tabular-nums truncate">
+                                {formatUSD(stats.activeAmount)}
+                            </span>
+                        </div>
 
-                {/* 🚀 CONTENEDOR DE RESULTADOS RESPONSIVE */}
-                {loading && page === 0 ? (
-                    <div className="py-24 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-zinc-300" size={40} /><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sincronizando...</p></div>
-                ) : filteredQuotes.length === 0 ? (
-                    <div className="py-24 text-center flex flex-col items-center bg-white rounded-2xl border border-gray-100 shadow-sm"><div className="bg-gray-50 w-20 h-20 rounded-2xl flex items-center justify-center mb-6"><FileText className="text-zinc-300" size={32} /></div><p className="text-gray-900 font-bold text-lg">Sin resultados</p></div>
-                ) : (
-                    <div className="space-y-6">
+                        <div className="bg-white p-5 rounded-xl border border-neutral-200/40 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">
+                                Convertidos
+                            </p>
+                            <span className="text-2xl md:text-3xl font-bold text-emerald-700 font-mono tabular-nums truncate">
+                                {stats.convertedCount}
+                            </span>
+                        </div>
 
-                        {/* 📱 VISTA MOBILE (Card Grid con Divs) */}
-                        <div className="md:hidden space-y-4">
-                            {filteredQuotes.map((quote) => (
-                                <div key={quote.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.03)] space-y-5">
-                                    <div className="flex justify-between items-start">
-                                        <div><span className="text-xs font-black text-gray-900">#{quote.order_number}</span><p className="text-[10px] font-medium text-gray-400 mt-1">{new Date(quote.created_at).toLocaleDateString()}</p></div>
-                                        <QuoteStatusBadge status={quote.status} isExpired={quote.isExpired} />
-                                    </div>
-                                    <div className="border-t border-gray-50 pt-4"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Cliente</p><span className="text-sm font-bold text-gray-900 block">{quote.customer_name}</span>{quote.customer_phone && <span className="text-[10px] font-medium text-gray-500 mt-1 block">{quote.customer_phone}</span>}</div>
-                                    <div className="flex justify-between items-end border-t border-gray-50 pt-4">
-                                        <div><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Monto Total</p><span className="text-xl font-black text-gray-900 tabular-nums">${quote.total_usd.toFixed(2)}</span><p className="text-[10px] font-mono font-medium text-gray-400">Bs {(quote.total_bs || 0).toLocaleString()}</p></div>
-                                           <div className="flex gap-2">
-                                            {!quote.isConverted && quote.status !== 'cancelled' && (
-                                                <Link
-                                                    href={`/admin/pos?edit_quote=${quote.id}`}
-                                                    className="p-3 bg-white text-gray-700 hover:text-gray-900 border border-gray-200 rounded-xl shadow-xs transition-all active:scale-90"
-                                                    title="Editar Presupuesto"
-                                                >
-                                                    <PenSquare size={16} />
-                                                </Link>
-                                            )}
-                                            <button onClick={() => handleCopy(quote.id)} className={`p-3 rounded-xl border transition-all active:scale-90 ${copiedId === quote.id ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white border-gray-200 text-gray-400 shadow-sm'}`}>{copiedId === quote.id ? <Check size={16} /> : <Copy size={16} />}</button>
-                                            {!quote.isConverted && !quote.isExpired && quote.customer_phone && (<button onClick={(e) => sendWhatsAppFollowUp(e, quote)} className="p-3 bg-white text-gray-400 border border-gray-200 rounded-xl shadow-sm"><MessageCircle size={16} /></button>)}
-                                            <a
-                                                href={storeSlug ? `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${quote.id}` : `/quote/${quote.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="p-3 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-[#3600ff] transition-colors"
-                                            >
-                                                <ArrowUpRight size={16} />
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="bg-white p-5 rounded-xl border border-neutral-200/40 shadow-[0_1px_3px_rgba(0,0,0,0.01)] min-w-0 flex flex-col justify-between">
+                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 truncate">
+                                Por Vencer (48h)
+                            </p>
+                            <span className="text-2xl md:text-3xl font-bold text-amber-600 font-mono tabular-nums truncate">
+                                {stats.expiringSoon}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* 💎 FILTROS PILL TABS Y BÚSQUEDA */}
+                    <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center w-full">
+                        <div className="flex bg-neutral-100/60 p-1 rounded-lg border border-neutral-200/50 shrink-0 w-full overflow-x-auto no-scrollbar lg:w-auto max-w-full">
+                            {(
+                                [
+                                    { id: 'all', label: 'Todos' },
+                                    { id: 'active', label: 'Pendientes' },
+                                    { id: 'converted', label: 'Convertidos' },
+                                    { id: 'expired', label: 'Vencidos / Cancelados' },
+                                ] as const
+                            ).map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setFilterTab(tab.id)}
+                                    className={`shrink-0 px-3.5 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                                        filterTab === tab.id
+                                            ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/50'
+                                            : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-neutral-50/50'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
                             ))}
                         </div>
 
-                        {/* 💻 VISTA DESKTOP (Tabla Tradicional) */}
-                        <div className="hidden md:block bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-[0_8px_30px_-4px_rgba(0,0,0,0.03)]">
-                            <div className="overflow-x-auto no-scrollbar">
-                                <table className="w-full text-left border-collapse whitespace-nowrap">
-                                    <thead><tr className="border-b border-gray-100 bg-gray-50/50"><th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Orden / Fecha</th><th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Cliente</th><th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400">Estado</th><th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Monto (USD/BS)</th><th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-right">Acciones</th></tr></thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {filteredQuotes.map((quote) => (
-                                            <tr key={quote.id} className="group hover:bg-gray-50 transition-colors duration-200">
-                                                <td className="px-8 py-5"><span className="text-sm font-black text-gray-900">#{quote.order_number}</span><p className="text-[10px] font-medium text-gray-400 mt-1">{new Date(quote.created_at).toLocaleDateString()}</p></td>
-                                                <td className="px-8 py-5"><span className="text-sm font-bold text-gray-900 block">{quote.customer_name}</span>{quote.customer_phone && <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">{quote.customer_phone}</span>}</td>
-                                                <td className="px-8 py-5"><QuoteStatusBadge status={quote.status} isExpired={quote.isExpired} /></td>
-                                                <td className="px-8 py-5 text-right"><span className="text-sm font-black text-gray-900 block tabular-nums">${quote.total_usd.toFixed(2)}</span><span className="text-[10px] font-mono font-medium text-gray-400 mt-0.5 block">Bs {(quote.total_bs || 0).toLocaleString()}</span></td>
-                                                <td className="px-8 py-5">
-                                                    <div className="flex items-center justify-end gap-2 md:opacity-40 md:group-hover:opacity-100 transition-opacity">
-                                                        {!quote.isConverted && quote.status !== 'cancelled' && (
-                                                            <Link
-                                                                href={`/admin/pos?edit_quote=${quote.id}`}
-                                                                className="flex items-center gap-1.5 px-3 py-2.5 bg-white text-gray-700 hover:text-gray-950 hover:border-gray-300 border border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-xs"
-                                                                title="Editar Presupuesto en POS"
-                                                            >
-                                                                <PenSquare size={14} strokeWidth={2.2} />
-                                                                <span className="hidden sm:inline">Editar</span>
-                                                            </Link>
-                                                        )}
-                                                        <button onClick={() => handleCopy(quote.id)} className={`p-2.5 rounded-xl transition-all active:scale-90 ${copiedId === quote.id ? 'bg-emerald-50 text-emerald-600' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm'}`}>{copiedId === quote.id ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}</button>
-                                                        {!quote.isConverted && !quote.isExpired && quote.customer_phone && (<button onClick={(e) => sendWhatsAppFollowUp(e, quote)} className="flex items-center gap-2 px-3 py-2.5 bg-white text-gray-600 hover:text-green-700 hover:border-green-200 border border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"><MessageCircle size={16} /> <span className="hidden sm:inline">Notificar</span></button>)}
-                                                        <a 
-                                                            href={storeSlug ? `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${quote.id}` : `/quote/${quote.id}`}
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-[#3600ff] transition-all active:scale-95 flex items-center shadow-sm"
-                                                            title="Ver Proforma"
-                                                        >
-                                                            <ArrowUpRight size={16} strokeWidth={2.5}/>
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                {hasMore && (<div className="p-8 border-t border-gray-100 flex justify-center bg-gray-50/50"><button onClick={() => setPage(p => p + 1)} disabled={loading} className="inline-flex items-center gap-2 px-8 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all disabled:opacity-50 shadow-sm active:scale-95">{loading ? <Loader2 className="animate-spin" size={16} strokeWidth={2.5} /> : <><ChevronDown size={16} strokeWidth={2.5} /> Cargar más presupuestos</>}</button></div>)}
-                            </div>
+                        <div className="relative group w-full lg:w-80 shrink-0">
+                            <Search
+                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors"
+                                size={15}
+                            />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Buscar por cliente, RIF o número..."
+                                className="w-full bg-white border border-neutral-200/50 focus:border-neutral-400 rounded-xl pl-9 pr-4 py-2.5 text-xs font-medium text-neutral-900 placeholder:text-neutral-400 outline-none transition-all"
+                            />
                         </div>
                     </div>
-                )}
+
+                    {/* 💎 RESULTADOS RESPONSIVE */}
+                    {loading && page === 0 ? (
+                        <div className="text-center py-20">
+                            <Loader2 className="animate-spin text-neutral-300 mx-auto" size={24} />
+                        </div>
+                    ) : filteredQuotes.length === 0 ? (
+                        <div className="text-center py-20 bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+                            <div className="w-12 h-12 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-neutral-300">
+                                <FileText size={20} />
+                            </div>
+                            <p className="text-neutral-500 font-semibold text-xs">
+                                No se encontraron presupuestos.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* 📱 VISTA MOBILE (Tarjetas Cleanlook) */}
+                            <div className="md:hidden space-y-3 w-full">
+                                {filteredQuotes.map((quote) => {
+                                    const bsAmount = getBsEquivalent(quote)
+                                    const canEdit =
+                                        !quote.isConverted && quote.status !== 'cancelled'
+
+                                    return (
+                                        <div
+                                            key={quote.id}
+                                            className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] p-4.5 space-y-3.5"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <span className="text-xs font-bold text-neutral-900 font-mono">
+                                                        #{quote.order_number}
+                                                    </span>
+                                                    <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                                                        {new Date(
+                                                            quote.created_at
+                                                        ).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                                <QuoteStatusBadge
+                                                    status={quote.status}
+                                                    isExpired={quote.isExpired}
+                                                />
+                                            </div>
+
+                                            <div className="border-t border-neutral-100 pt-3">
+                                                <p className="font-semibold text-xs text-neutral-900 truncate">
+                                                    {quote.customer_name}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1 text-[10px] font-mono text-neutral-400">
+                                                    {quote.customer_dni && (
+                                                        <span>{quote.customer_dni}</span>
+                                                    )}
+                                                    {quote.customer_phone && (
+                                                        <span>{quote.customer_phone}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-end border-t border-neutral-100 pt-3">
+                                                <div>
+                                                    <span className="text-base font-bold text-neutral-900 font-mono tabular-nums block leading-none">
+                                                        {formatUSD(quote.total_usd)}
+                                                    </span>
+                                                    {bsAmount > 0 && (
+                                                        <span className="text-[10px] font-mono text-neutral-400 mt-1 block">
+                                                            {formatVES(bsAmount)}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    {canEdit && (
+                                                        <Link
+                                                            href={`/admin/pos?edit_quote=${quote.id}`}
+                                                            className="p-2 bg-white text-neutral-700 hover:text-neutral-950 border border-neutral-200/70 rounded-lg shadow-2xs transition-all active:scale-95"
+                                                            title="Editar Presupuesto"
+                                                        >
+                                                            <PenSquare size={14} />
+                                                        </Link>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopy(quote.id)}
+                                                        className={`p-2 rounded-lg border transition-all active:scale-95 ${
+                                                            copiedId === quote.id
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                                : 'bg-white border-neutral-200/70 text-neutral-500 shadow-2xs'
+                                                        }`}
+                                                        title="Copiar enlace"
+                                                    >
+                                                        {copiedId === quote.id ? (
+                                                            <Check size={14} />
+                                                        ) : (
+                                                            <Copy size={14} />
+                                                        )}
+                                                    </button>
+                                                    {canEdit &&
+                                                        !quote.isExpired &&
+                                                        quote.customer_phone && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) =>
+                                                                    sendWhatsAppFollowUp(e, quote)
+                                                                }
+                                                                className="p-2 bg-white text-neutral-500 hover:text-emerald-700 border border-neutral-200/70 rounded-lg shadow-2xs transition-all active:scale-95"
+                                                                title="Recordatorio por WhatsApp"
+                                                            >
+                                                                <MessageCircle size={14} />
+                                                            </button>
+                                                        )}
+                                                    <a
+                                                        href={getQuoteUrl(quote.id)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-2 bg-neutral-950 text-white rounded-lg shadow-2xs hover:bg-neutral-800 transition-colors"
+                                                        title="Abrir Proforma"
+                                                    >
+                                                        <ArrowUpRight size={14} />
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* 💻 VISTA DESKTOP (Tabla Ejecutiva Cleanlook) */}
+                            <div className="hidden md:block bg-white rounded-xl overflow-hidden w-full border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+                                <div className="overflow-x-auto w-full">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-neutral-50/50 border-b border-neutral-200/50 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">
+                                            <tr>
+                                                <th className="px-6 py-3.5">Proforma</th>
+                                                <th className="px-6 py-3.5">Fecha</th>
+                                                <th className="px-6 py-3.5">Cliente</th>
+                                                <th className="px-6 py-3.5">Estado</th>
+                                                <th className="px-6 py-3.5 text-right">
+                                                    Monto Total
+                                                </th>
+                                                <th className="px-6 py-3.5 text-right">
+                                                    Acciones
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-100">
+                                            {filteredQuotes.map((quote) => {
+                                                const bsAmount = getBsEquivalent(quote)
+                                                const canEdit =
+                                                    !quote.isConverted &&
+                                                    quote.status !== 'cancelled'
+
+                                                return (
+                                                    <tr
+                                                        key={quote.id}
+                                                        className="hover:bg-neutral-50/40 transition-colors group"
+                                                    >
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="font-bold text-xs font-mono text-neutral-900">
+                                                                #{quote.order_number}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-neutral-500 text-[11px]">
+                                                            {new Date(
+                                                                quote.created_at
+                                                            ).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="font-semibold text-xs text-neutral-900 block">
+                                                                {quote.customer_name}
+                                                            </span>
+                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-neutral-400">
+                                                                {quote.customer_dni && (
+                                                                    <span>
+                                                                        {quote.customer_dni}
+                                                                    </span>
+                                                                )}
+                                                                {quote.customer_phone && (
+                                                                    <span>
+                                                                        {quote.customer_phone}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <QuoteStatusBadge
+                                                                status={quote.status}
+                                                                isExpired={quote.isExpired}
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <span className="font-bold text-sm font-mono tabular-nums text-neutral-900 block">
+                                                                {formatUSD(quote.total_usd)}
+                                                            </span>
+                                                            {bsAmount > 0 && (
+                                                                <span className="text-[10px] font-mono text-neutral-400 mt-0.5 block">
+                                                                    {formatVES(bsAmount)}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                {canEdit && (
+                                                                    <Link
+                                                                        href={`/admin/pos?edit_quote=${quote.id}`}
+                                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white text-neutral-700 hover:text-neutral-950 hover:bg-neutral-50 border border-neutral-200/70 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all active:scale-95 shadow-2xs"
+                                                                        title="Editar Presupuesto en POS"
+                                                                    >
+                                                                        <PenSquare
+                                                                            size={12}
+                                                                            strokeWidth={2.2}
+                                                                        />
+                                                                        <span>Editar</span>
+                                                                    </Link>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        handleCopy(quote.id)
+                                                                    }
+                                                                    className={`p-1.5 rounded-lg border transition-all active:scale-95 cursor-pointer ${
+                                                                        copiedId === quote.id
+                                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                                                            : 'bg-white border-neutral-200/70 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 shadow-2xs'
+                                                                    }`}
+                                                                    title="Copiar enlace"
+                                                                >
+                                                                    {copiedId === quote.id ? (
+                                                                        <Check
+                                                                            size={14}
+                                                                            strokeWidth={2.5}
+                                                                        />
+                                                                    ) : (
+                                                                        <Copy
+                                                                            size={14}
+                                                                            strokeWidth={2}
+                                                                        />
+                                                                    )}
+                                                                </button>
+                                                                {canEdit &&
+                                                                    !quote.isExpired &&
+                                                                    quote.customer_phone && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) =>
+                                                                                sendWhatsAppFollowUp(
+                                                                                    e,
+                                                                                    quote
+                                                                                )
+                                                                            }
+                                                                            className="p-1.5 bg-white text-neutral-500 hover:text-emerald-700 hover:border-emerald-200 border border-neutral-200/70 rounded-lg transition-all active:scale-95 shadow-2xs cursor-pointer"
+                                                                            title="Enviar por WhatsApp"
+                                                                        >
+                                                                            <MessageCircle
+                                                                                size={14}
+                                                                            />
+                                                                        </button>
+                                                                    )}
+                                                                <a
+                                                                    href={getQuoteUrl(quote.id)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="p-1.5 bg-neutral-950 text-white rounded-lg hover:bg-neutral-800 transition-all active:scale-95 inline-flex items-center shadow-2xs"
+                                                                    title="Ver Proforma"
+                                                                >
+                                                                    <ArrowUpRight
+                                                                        size={14}
+                                                                        strokeWidth={2.5}
+                                                                    />
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* BOTÓN CARGAR MÁS */}
+                            {hasMore && !searchTerm && filterTab === 'all' && (
+                                <div className="flex justify-center pt-6 pb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const nextPage = page + 1
+                                            setPage(nextPage)
+                                            fetchQuotes(nextPage, false)
+                                        }}
+                                        disabled={loadingMore}
+                                        className="bg-white shadow-xs border border-neutral-200/50 text-neutral-700 font-semibold text-[11px] uppercase tracking-wider px-6 py-2.5 rounded-lg hover:bg-neutral-50 hover:text-neutral-900 transition-all flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer"
+                                    >
+                                        {loadingMore ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                            <ArrowLeft size={14} className="-rotate-90" />
+                                        )}
+                                        Cargar más presupuestos
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     )
