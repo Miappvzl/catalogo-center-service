@@ -377,7 +377,7 @@ const handleSendOtp = async () => {
                     setAvailableCredit(Number(creditRes.data.balance_usd));
                 }
 
-                if (customerRes.data) {
+            if (customerRes.data) {
                     const cust = customerRes.data;
                     const details = cust.shipping_details || {};
 
@@ -387,6 +387,7 @@ const handleSendOtp = async () => {
                         name: cust.full_name || prev.name,
                         phone: cust.phone || prev.phone,
                         identityCard: cust.dni || prev.identityCard,
+                        fiscalAddress: details.fiscalAddress || details.addressDetail || prev.fiscalAddress,
                         deliveryType: details.deliveryType || prev.deliveryType,
                         courier: details.courier || prev.courier,
                         state: details.state || prev.state,
@@ -405,14 +406,8 @@ const handleSendOtp = async () => {
         fetchProfileAndCredit();
     }, [storeId, supabase]);
 
-
-
-
-
     // 🚀 HELPER: GENERADOR DE WHATSAPP OMNICANAL (TICKET PREMIUM)
     const generateWaMessage = (orderNum: string | number, isP2P: boolean = false) => {
-        // 1. Lógica de Envíos y Modalidad (Blindada)
-        // 🚀 RESOLUCIÓN DE LOGÍSTICA (Dinámica y Polimórfica)
         let deliveryInfoFull = "Servicio en Local / Experiencia";
         let finalShippingMethod = "service";
 
@@ -426,7 +421,6 @@ const handleSendOtp = async () => {
             }
 
         } else if (needsShipping) {
-            // Lógica original de retail
             finalShippingMethod = clientData.deliveryType;
             if (clientData.deliveryType === "courier") {
                 deliveryInfoFull = `${clientData.courier} ${nationalShippingLabel} - ${clientData.addressDetail}, ${clientData.city}, ${clientData.state}. Ref: ${clientData.reference || "N/A"} | CI: ${clientData.identityCard} | Tlf: ${clientData.phone}`;
@@ -437,9 +431,6 @@ const handleSendOtp = async () => {
             }
         }
 
-
-        // 🚀 INGENIERÍA VISUAL: Generador de Filas Simétricas (Efecto POS Premium)
-        // Calcula el relleno exacto ignorando los caracteres de formato de WhatsApp (* y ~)
         const row = (left: string, right: string, width: number = 28) => {
             const cleanLeft = left.replace(/[\*~]/g, "");
             const cleanRight = right.replace(/[\*~]/g, "");
@@ -447,16 +438,16 @@ const handleSendOtp = async () => {
             return `${left} ${".".repeat(dotsCount)} ${right}\n`;
         };
 
-        // 2. Construcción Estructural del Ticket
-         const ticketHeader = isQuickLinkMode 
+        const ticketHeader = isQuickLinkMode 
             ? `*TICKET DE COBRO RÁPIDO #${orderNum}*` 
             : `*TICKET DE ORDEN #${orderNum}*`;
         let msg = `${ticketHeader}\n============================\n\n`;
-        msg += `============================\n\n`;
 
-        msg += `*DATOS DEL CLIENTE*\n`;
-        msg += `NOMBRE: ${clientData.name}\n`;
-        msg += `CONTACTO: ${clientData.phone}\n\n`;
+        msg += `*DATOS FISCALES DEL CLIENTE*\n`;
+        msg += `NOMBRE / RAZÓN SOCIAL: ${clientData.name}\n`;
+        msg += `CI / RIF: ${clientData.identityCard}\n`;
+        msg += `CONTACTO: ${clientData.phone}\n`;
+        msg += `DIR. FISCAL: ${clientData.fiscalAddress}\n\n`;
 
     msg += `*DETALLE DE COMPRA*\n`;
         cartEngine.processedItems.forEach((item: any) => {
@@ -990,22 +981,29 @@ switch (pm) {
 
 
 
-    // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
+   // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
     const handleCheckout = async () => {
-    // 🚀 1. VALIDACIÓN ORGÁNICA (El formulario respira, no regaña)
+        // 🚀 1. VALIDACIÓN FISCAL Y DE FACTURACIÓN OBLIGATORIA (4 CAMPOS CANÓNICOS)
         const newErrors: Record<string, string> = {};
-        if (!clientData.name) newErrors.name = "El nombre es obligatorio";
+        if (!clientData.name || clientData.name.trim().length < 2) {
+            newErrors.name = "El nombre completo o razón social es obligatorio";
+        }
+
+        const normalizedIdentity = (clientData.identityCard || "").trim().toUpperCase();
+        if (!normalizedIdentity || !/^[VJEGP]-\d{5,10}$/.test(normalizedIdentity)) {
+            newErrors.identityCard = "Ingresa una Cédula o RIF válido (ej: V-12345678 o J-123456789)";
+        }
+
         if (!clientData.phone || clientData.phone.replace(/\D/g, "").length < 10) {
-            newErrors.phone = "Ingresa un número válido sin el 0 inicial";
+            newErrors.phone = "Ingresa un número de WhatsApp válido";
+        }
+
+        if (!clientData.fiscalAddress || clientData.fiscalAddress.trim().length < 5) {
+            newErrors.fiscalAddress = "La dirección fiscal o de facturación es obligatoria";
         }
 
         if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
             newErrors.payment = "Selecciona un método de pago";
-        }
-
-        if (isStrictTax && wantsFiscalData) {
-            if (!clientData.identityCard) newErrors.identityCard = "La Cédula/RIF es obligatoria";
-            if (!clientData.fiscalAddress) newErrors.fiscalAddress = "La Dirección Fiscal es obligatoria";
         }
 
         if (!storeHoursStatus.isOpen) {
@@ -1344,22 +1342,24 @@ switch (pm) {
                         tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
                         promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
                         wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                       affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
                         fx_savings_usd: Number(actualFxSavings.toFixed(2)),
-                        customer_dni: (isStrictTax && wantsFiscalData) || clientData.deliveryType === "courier" ? clientData.identityCard : null,
-                        customer_address: isStrictTax && wantsFiscalData ? clientData.fiscalAddress : null,
-                        shipping_details: structuredShippingDetails,
+                        customer_dni: clientData.identityCard.trim().toUpperCase(),
+                        customer_address: clientData.fiscalAddress.trim(),
+                        shipping_details: {
+                            ...structuredShippingDetails,
+                            fiscalAddress: clientData.fiscalAddress.trim(),
+                        },
                     }).select().single();
                 if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
                 order = insertedOrder;
             }
 
-          const orderItemsPayload = items.map((item) => {
+            const orderItemsPayload = items.map((item) => {
                 const numericProductId = item.productId && !isNaN(Number(item.productId)) && Number(item.productId) > 0
                     ? Number(item.productId)
                     : null;
 
-   // 💎 TRAZABILIDAD VISUAL Y RATIO: Sellamos el nombre del combo y las unidades por paquete (ej: x5)
                 const ratioText = (item.bundleItemRatio && item.bundleItemRatio > 1) ? ` (x${item.bundleItemRatio})` : '';
                 const comboTag = `[Combo: ${item.bundleName}${ratioText}]`;
 
@@ -1383,12 +1383,10 @@ switch (pm) {
                 };
             });
 
-
             const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
 
             if (itemsError) {
-                // 🚀 FAIL-FORWARD: Rescate de venta
-                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n*Intento de Pedido:* #${order.order_number}\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\nHola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
+                let fallbackMessage = `*ALERTA DE PEDIDO INCOMPLETO (Fallo de Red)* ⚠️\n------------------------\n*Intento de Pedido:* #${order.order_number}\n*Cliente:* ${clientData.name}\n*CI/RIF:* ${clientData.identityCard}\n*Teléfono:* ${clientData.phone}\n\nHola, la página tuvo un corte de red al intentar guardar los productos de mi carrito, pero mi registro de pago se envió por un total de *$${grandTotalUSD.toFixed(2)}*. Por favor verifica en tu panel el pedido #${order.order_number} y confirmemos los productos por aquí.`;
                 const fallbackWaLink = `https://wa.me/${phone}?text=${encodeURIComponent(fallbackMessage)}`;
                 clearCart();
                 setCheckoutState('success');
@@ -1396,14 +1394,12 @@ switch (pm) {
                 return;
             }
 
-            // Web Push Silencioso
             await fetch("/api/web-push/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeId, orderNumber: order.order_number, totalUsd: grandTotalUSD.toFixed(2), customerName: clientData.name }) }).catch(() => { });
 
-            // Generar WhatsApp (Intacto)
-              const ticketHeader = isQuickLinkMode 
+            const ticketHeader = isQuickLinkMode 
                 ? `*COBRO RÁPIDO #${order.order_number}*` 
                 : `*PEDIDO #${order.order_number}*`;
-            let message = `${ticketHeader}\n------------------------\n*Cliente:* ${clientData.name}\n*Teléfono:* ${clientData.phone}\n\n*DETALLE DEL PEDIDO:*\n`;
+            let message = `${ticketHeader}\n------------------------\n*Cliente:* ${clientData.name}\n*CI/RIF:* ${clientData.identityCard.trim().toUpperCase()}\n*Teléfono:* ${clientData.phone}\n*Dir. Fiscal:* ${clientData.fiscalAddress.trim()}\n\n*DETALLE DEL PEDIDO:*\n`;
          // 💎 AGRUPACIÓN JERÁRQUICA: Combos consolidados vs Productos Sueltos
             const bundleMap = new Map<string, any[]>();
             const looseItems: any[] = [];
@@ -1628,123 +1624,186 @@ switch (pm) {
             className="checkout-typography-lock flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)] antialiased"
         >
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
-                <div id="field-name" className="w-full">
-                    <input
-                        maxLength={50}
-                        value={clientData.name}
-                        onChange={(e) => {
-                            setClientData({ ...clientData, name: e.target.value.replace(/[<>]/g, "") });
-                            if (errors.name) setErrors(prev => ({ ...prev, name: "" }));
-                        }}
-                        className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.name ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30  text-[var(--store-text-main)] focus:border-[var(--store-text-main)]'}`}
-                        placeholder="Nombre completo *"
-                    />
-                    <AnimatePresence>
-                        {errors.name && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.name}</motion.p>}
-                    </AnimatePresence>
-                </div>
+              {/* 🚀 DATOS DE FACTURACIÓN OBLIGATORIOS DEL CLIENTE */}
+                <div className="space-y-6">
+                    <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
+                        Datos de Facturación
+                    </h2>
 
-        <PhoneInput
-                 id="field-phone"
-                 variant="underline"
-                 required={true}
-                 value={clientData.phone}
-                 onChange={(fullPhone) => {
-                     setClientData((prev) => ({ ...prev, phone: fullPhone }));
-                     if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
-                 }}
-                 error={errors.phone}
-             />
+                    {/* 1. Nombre Completo o Razón Social */}
+                    <div id="field-name" className="w-full">
+                        <input
+                            maxLength={80}
+                            value={clientData.name}
+                            onChange={(e) => {
+                                setClientData({
+                                    ...clientData,
+                                    name: e.target.value.replace(/[<>]/g, ""),
+                                });
+                                if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
+                            }}
+                            className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${
+                                errors.name
+                                    ? "border-red-500 text-red-600 focus:border-red-500"
+                                    : "border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
+                            }`}
+                            placeholder="Nombre completo o Razón Social *"
+                        />
+                        <AnimatePresence>
+                            {errors.name && (
+                                <motion.p
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="text-red-500 text-[10px] font-bold mt-1.5 px-1"
+                                >
+                                    {errors.name}
+                                </motion.p>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                {/* 🚀 LÓGICA FISCAL DETERMINISTA (UX Limpia) */}
-                <div className="mt-6 pt-6 border-t border-[var(--store-border)]">
-                    {isStrictTax ? (
-                        // 🟢 MODO CORPORATIVO: Ordinario / Especial
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-4 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
-                                <div className="mt-0.5 w-4 h-4 rounded-full border-2 border-[var(--store-primary)] flex items-center justify-center shrink-0">
-                                    <div className="w-2 h-2 rounded-full bg-[var(--store-primary)]" />
+                    {/* 2. Cédula de Identidad o RIF con Selector de Prefijo Validado */}
+                    {(() => {
+                        const rawId = clientData.identityCard || "";
+                        const prefixMatch = rawId.match(/^([VJEGP])-/i);
+                        const activePrefix = prefixMatch ? prefixMatch[1].toUpperCase() : "V";
+                        const activeDigits = rawId
+                            .replace(/^[VJEGPvjegp][-]?/i, "")
+                            .replace(/[^0-9]/g, "")
+                            .slice(0, 10);
+
+                        const updateIdentity = (newPrefix: string, newDigits: string) => {
+                            const cleaned = newDigits.replace(/[^0-9]/g, "").slice(0, 10);
+                            setClientData({
+                                ...clientData,
+                                identityCard: cleaned ? `${newPrefix}-${cleaned}` : "",
+                            });
+                            if (errors.identityCard) {
+                                setErrors((prev) => ({ ...prev, identityCard: "" }));
+                            }
+                        };
+
+                        return (
+                            <div id="field-identityCard" className="w-full">
+                                <div
+                                    className={`flex items-center gap-3 border-b-2 py-2 transition-colors ${
+                                        errors.identityCard
+                                            ? "border-red-500"
+                                            : "border-[var(--store-text-main)]/30 focus-within:border-[var(--store-text-main)]"
+                                    }`}
+                                >
+                                    <div className="inline-flex items-center gap-1 shrink-0">
+                                        {["V", "J", "E", "G", "P"].map((pref) => (
+                                            <button
+                                                key={pref}
+                                                type="button"
+                                                onClick={() => updateIdentity(pref, activeDigits)}
+                                                className={`w-7 h-7 rounded-md text-xs font-mono font-black transition-all cursor-pointer ${
+                                                    activePrefix === pref
+                                                        ? "bg-[var(--store-text-main)] text-[var(--store-surface)]"
+                                                        : "bg-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]"
+                                                }`}
+                                            >
+                                                {pref}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <span className="font-mono font-bold text-[var(--store-surface-text)]">
+                                        -
+                                    </span>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={10}
+                                        value={activeDigits}
+                                        onChange={(e) =>
+                                            updateIdentity(activePrefix, e.target.value)
+                                        }
+                                        className="flex-1 min-w-0 bg-transparent border-0 py-1 text-base font-mono font-bold tabular-nums outline-none focus:ring-0 text-[var(--store-text-main)] placeholder:font-sans placeholder:text-[var(--store-surface-text)]/70"
+                                        placeholder="Cédula o RIF (ej: 12345678) *"
+                                    />
                                 </div>
-                                <div>
-                                    <p className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-widest leading-none mb-1">
-                                        Impuesto de Ley Aplicado
-                                    </p>
-                                    <p className="text-[10px] font-medium text-[var(--store-surface-text)] leading-relaxed">
-                                        Por normativa del SENIAT, esta orden incluye el cálculo del{" "}
-                                        {taxPercentage}% de I.V.A.
-                                    </p>
-                                </div>
+                                <AnimatePresence>
+                                    {errors.identityCard && (
+                                        <motion.p
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="text-red-500 text-[10px] font-bold mt-1.5 px-1"
+                                        >
+                                            {errors.identityCard}
+                                        </motion.p>
+                                    )}
+                                </AnimatePresence>
                             </div>
+                        );
+                    })()}
 
-                            <label className="flex items-center gap-3 p-4 border border-[var(--store-border)] rounded-xl cursor-pointer hover:bg-[var(--store-bg)] transition-colors group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 accent-[var(--store-primary)] border-[var(--store-border)] rounded shadow-sm focus:ring-0 cursor-pointer"
-                                    checked={wantsFiscalData}
-                                    onChange={(e) => setWantsFiscalData(e.target.checked)}
-                                />
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-bold text-[var(--store-text-main)] transition-colors group-hover:text-[var(--store-primary)]">
-                                        Deseo comprobante con mis datos fiscales (RIF)
-                                    </span>
-                                    <span className="text-[10px] text-[var(--store-surface-text)] font-medium">
-                                        Si no lo seleccionas, se emitirá a Consumidor Final.
-                                    </span>
-                                </div>
-                            </label>
+                    {/* 3. Teléfono WhatsApp */}
+                    <PhoneInput
+                        id="field-phone"
+                        variant="underline"
+                        required={true}
+                        value={clientData.phone}
+                        onChange={(fullPhone) => {
+                            setClientData((prev) => ({ ...prev, phone: fullPhone }));
+                            if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
+                        }}
+                        error={errors.phone}
+                    />
 
-                            <AnimatePresence>
-                                {wantsFiscalData && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="pt-2 space-y-4">
-                                            <div id="field-identityCard" className="w-full relative">
-                                                <input
-                                                    maxLength={20}
-                                                    value={clientData.identityCard}
-                                                    onChange={(e) => {
-                                                        setClientData({
-                                                            ...clientData,
-                                                            identityCard: e.target.value.replace(/[^JVEG0-9-]/gi, "").toUpperCase(),
-                                                        });
-                                                        if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
-                                                    }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                    placeholder="Ej: J-12345678-9 *"
-                                                />
-                                                <AnimatePresence>
-                                                    {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
-                                                </AnimatePresence>
-                                            </div>
+                    {/* 4. Dirección Fiscal / de Facturación */}
+                    <div id="field-fiscalAddress" className="w-full relative">
+                        <input
+                            maxLength={140}
+                            value={clientData.fiscalAddress}
+                            onChange={(e) => {
+                                setClientData({
+                                    ...clientData,
+                                    fiscalAddress: e.target.value.replace(/[<>]/g, ""),
+                                });
+                                if (errors.fiscalAddress) {
+                                    setErrors((prev) => ({ ...prev, fiscalAddress: "" }));
+                                }
+                            }}
+                            className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${
+                                errors.fiscalAddress
+                                    ? "border-red-500 text-red-600 focus:border-red-500"
+                                    : "border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
+                            }`}
+                            placeholder="Dirección Fiscal o de Facturación *"
+                        />
+                        <AnimatePresence>
+                            {errors.fiscalAddress && (
+                                <motion.p
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="text-red-500 text-[10px] font-bold mt-1.5 px-1"
+                                >
+                                    {errors.fiscalAddress}
+                                </motion.p>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                                            <div id="field-fiscalAddress" className="w-full relative">
-                                                <input
-                                                    maxLength={100}
-                                                    value={clientData.fiscalAddress}
-                                                    onChange={(e) => {
-                                                        setClientData({ ...clientData, fiscalAddress: e.target.value });
-                                                        if (errors.fiscalAddress) setErrors(prev => ({ ...prev, fiscalAddress: "" }));
-                                                    }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)] ${errors.fiscalAddress ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-border)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                    placeholder="Dirección Fiscal Completa *"
-                                                />
-                                                <AnimatePresence>
-                                                    {errors.fiscalAddress && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.fiscalAddress}</motion.p>}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                    {/* Aviso Informativo SENIAT cuando la tienda es Contribuyente Ordinario/Especial */}
+                    {isStrictTax && (
+                        <div className="flex items-start gap-3 p-4 bg-[var(--store-bg)] rounded-xl border border-[var(--store-border)]">
+                            <div className="mt-0.5 w-4 h-4 rounded-full border-2 border-[var(--store-primary)] flex items-center justify-center shrink-0">
+                                <div className="w-2 h-2 rounded-full bg-[var(--store-primary)]" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-widest leading-none mb-1">
+                                    Impuesto de Ley Aplicado
+                                </p>
+                                <p className="text-[10px] font-medium text-[var(--store-surface-text)] leading-relaxed">
+                                    Por normativa del SENIAT, esta orden incluye el cálculo del{" "}
+                                    {taxPercentage}% de I.V.A. y se emitirá con tus datos fiscales.
+                                </p>
+                            </div>
                         </div>
-                    ) : (
-                        // 🔴 MODO INFORMAL: Emprendedor
-                        // No mostramos nada relacionado al IVA, la orden sigue limpia.
-                        <div className="hidden"></div>
                     )}
                 </div>
 
@@ -2149,24 +2208,9 @@ switch (pm) {
                                         })}
                                     </div>
                                 </div>
-                                {clientData.courier && (
+                            
+                                  {clientData.courier && (
                                     <div className="space-y-6 animate-in fade-in pt-2">
-                                        <div id="field-identityCard" className="w-full relative">
-                                            <input
-                                                maxLength={15}
-                                                value={clientData.identityCard}
-                                                onChange={(e) => {
-                                                    setClientData({ ...clientData, identityCard: e.target.value.replace(/[^a-zA-Z0-9-]/g, "") });
-                                                    if (errors.identityCard) setErrors(prev => ({ ...prev, identityCard: "" }));
-                                                }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.identityCard ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                placeholder="Cédula de Identidad *"
-                                            />
-                                            <AnimatePresence>
-                                                {errors.identityCard && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.identityCard}</motion.p>}
-                                            </AnimatePresence>
-                                        </div>
-
                                         <div className="grid grid-cols-2 gap-6">
                                             <div id="field-state" className="w-full relative">
                                                 <input

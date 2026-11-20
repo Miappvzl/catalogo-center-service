@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Search, FileText, CheckCircle2, Clock, AlertCircle, MessageCircle, DollarSign, ArrowLeft, Loader2, Copy, Check, ArrowUpRight, TrendingUp, XCircle, ChevronDown } from 'lucide-react'
+import { Search, FileText, CheckCircle2, Clock, AlertCircle, MessageCircle, DollarSign, ArrowLeft, Loader2, Copy, Check, ArrowUpRight, TrendingUp, XCircle, ChevronDown, PenSquare } from 'lucide-react'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
@@ -200,7 +200,16 @@ export default function QuotesPage() {
                                     <div className="border-t border-gray-50 pt-4"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Cliente</p><span className="text-sm font-bold text-gray-900 block">{quote.customer_name}</span>{quote.customer_phone && <span className="text-[10px] font-medium text-gray-500 mt-1 block">{quote.customer_phone}</span>}</div>
                                     <div className="flex justify-between items-end border-t border-gray-50 pt-4">
                                         <div><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Monto Total</p><span className="text-xl font-black text-gray-900 tabular-nums">${quote.total_usd.toFixed(2)}</span><p className="text-[10px] font-mono font-medium text-gray-400">Bs {(quote.total_bs || 0).toLocaleString()}</p></div>
-                                        <div className="flex gap-2">
+                                           <div className="flex gap-2">
+                                            {!quote.isConverted && quote.status !== 'cancelled' && (
+                                                <Link
+                                                    href={`/admin/pos?edit_quote=${quote.id}`}
+                                                    className="p-3 bg-white text-gray-700 hover:text-gray-900 border border-gray-200 rounded-xl shadow-xs transition-all active:scale-90"
+                                                    title="Editar Presupuesto"
+                                                >
+                                                    <PenSquare size={16} />
+                                                </Link>
+                                            )}
                                             <button onClick={() => handleCopy(quote.id)} className={`p-3 rounded-xl border transition-all active:scale-90 ${copiedId === quote.id ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-white border-gray-200 text-gray-400 shadow-sm'}`}>{copiedId === quote.id ? <Check size={16} /> : <Copy size={16} />}</button>
                                             {!quote.isConverted && !quote.isExpired && quote.customer_phone && (<button onClick={(e) => sendWhatsAppFollowUp(e, quote)} className="p-3 bg-white text-gray-400 border border-gray-200 rounded-xl shadow-sm"><MessageCircle size={16} /></button>)}
                                             <a
@@ -229,15 +238,31 @@ export default function QuotesPage() {
                                                 <td className="px-8 py-5"><span className="text-sm font-bold text-gray-900 block">{quote.customer_name}</span>{quote.customer_phone && <span className="text-[10px] font-medium text-gray-500 mt-0.5 block">{quote.customer_phone}</span>}</td>
                                                 <td className="px-8 py-5"><QuoteStatusBadge status={quote.status} isExpired={quote.isExpired} /></td>
                                                 <td className="px-8 py-5 text-right"><span className="text-sm font-black text-gray-900 block tabular-nums">${quote.total_usd.toFixed(2)}</span><span className="text-[10px] font-mono font-medium text-gray-400 mt-0.5 block">Bs {(quote.total_bs || 0).toLocaleString()}</span></td>
-                                                <td className="px-8 py-5"><div className="flex items-center justify-end gap-2 md:opacity-40 md:group-hover:opacity-100 transition-opacity"><button onClick={() => handleCopy(quote.id)} className={`p-2.5 rounded-xl transition-all active:scale-90 ${copiedId === quote.id ? 'bg-emerald-50 text-emerald-600' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm'}`}>{copiedId === quote.id ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}</button>{!quote.isConverted && !quote.isExpired && quote.customer_phone && (<button onClick={(e) => sendWhatsAppFollowUp(e, quote)} className="flex items-center gap-2 px-3 py-2.5 bg-white text-gray-600 hover:text-green-700 hover:border-green-200 border border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"><MessageCircle size={16} /> <span className="hidden sm:inline">Notificar</span></button>)}<a 
-    href={storeSlug ? `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${quote.id}` : `/quote/${quote.id}`}
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-[#3600ff] transition-all active:scale-95 flex items-center shadow-sm"
-    title="Ver Proforma"
->
-    <ArrowUpRight size={16} strokeWidth={2.5}/>
-</a></div></td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center justify-end gap-2 md:opacity-40 md:group-hover:opacity-100 transition-opacity">
+                                                        {!quote.isConverted && quote.status !== 'cancelled' && (
+                                                            <Link
+                                                                href={`/admin/pos?edit_quote=${quote.id}`}
+                                                                className="flex items-center gap-1.5 px-3 py-2.5 bg-white text-gray-700 hover:text-gray-950 hover:border-gray-300 border border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-xs"
+                                                                title="Editar Presupuesto en POS"
+                                                            >
+                                                                <PenSquare size={14} strokeWidth={2.2} />
+                                                                <span className="hidden sm:inline">Editar</span>
+                                                            </Link>
+                                                        )}
+                                                        <button onClick={() => handleCopy(quote.id)} className={`p-2.5 rounded-xl transition-all active:scale-90 ${copiedId === quote.id ? 'bg-emerald-50 text-emerald-600' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 shadow-sm'}`}>{copiedId === quote.id ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}</button>
+                                                        {!quote.isConverted && !quote.isExpired && quote.customer_phone && (<button onClick={(e) => sendWhatsAppFollowUp(e, quote)} className="flex items-center gap-2 px-3 py-2.5 bg-white text-gray-600 hover:text-green-700 hover:border-green-200 border border-gray-200 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-sm"><MessageCircle size={16} /> <span className="hidden sm:inline">Notificar</span></button>)}
+                                                        <a 
+                                                            href={storeSlug ? `${window.location.protocol}//${storeSlug}.${window.location.host.replace('www.', '')}/quote/${quote.id}` : `/quote/${quote.id}`}
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-[#3600ff] transition-all active:scale-95 flex items-center shadow-sm"
+                                                            title="Ver Proforma"
+                                                        >
+                                                            <ArrowUpRight size={16} strokeWidth={2.5}/>
+                                                        </a>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

@@ -17,11 +17,16 @@ import {
     Store,
     ArrowUpRight,
     Sparkles,
+    MapPin,
+    User,
+    PenSquare,
+    FileText,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { getOptimizedUrl } from '@/utils/cdn'
 import { Icon } from '@iconify/react'
 import { formatUSD, formatVES, formatBankTransferAmount } from '@/utils/currency'
+import PhoneInput from '@/components/ui/PhoneInput'
 
 const BrandLogos = {
     Transferencia: ({ className, size }: any) => (
@@ -72,9 +77,27 @@ export default function QuotePublicPage() {
     const isQuoteActive = order?.status === 'quote'
     const isPaymentVerified = ['paid', 'shipped', 'completed'].includes(order?.status)
 
-    const [selectedMethod, setSelectedMethod] = useState<string>('')
+  const [selectedMethod, setSelectedMethod] = useState<string>('')
     const [reference, setReference] = useState('')
     const [receiptFile, setReceiptFile] = useState<File | null>(null)
+
+    // --- ESTADOS FISCALES OBLIGATORIOS PARA CONVERTIR PRESUPUESTO ---
+    const DNI_PREFIXES = ['V', 'J', 'E', 'G', 'P']
+    const [fiscalName, setFiscalName] = useState('')
+    const [dniPrefix, setDniPrefix] = useState('V')
+    const [fiscalDniNumber, setFiscalDniNumber] = useState('')
+    const [fiscalPhone, setFiscalPhone] = useState('')
+    const [fiscalAddress, setFiscalAddress] = useState('')
+    const [isEditingFiscal, setIsEditingFiscal] = useState(false)
+
+    const isFiscalDataComplete = useMemo(() => {
+        return (
+            fiscalName.trim().length >= 2 &&
+            /^\d{5,10}$/.test(fiscalDniNumber.trim()) &&
+            fiscalPhone.replace(/\D/g, '').length >= 10 &&
+            fiscalAddress.trim().length >= 5
+        )
+    }, [fiscalName, fiscalDniNumber, fiscalPhone, fiscalAddress])
 
     const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
@@ -119,6 +142,46 @@ export default function QuotePublicPage() {
                     .single()
                 if (!orderData) throw new Error('Presupuesto no encontrado')
                 setOrder(orderData)
+
+                // Hidratar campos fiscales con lo que ya exista en la orden
+                const initialName =
+                    orderData.customer_name &&
+                    orderData.customer_name !== 'Cliente Mostrador'
+                        ? String(orderData.customer_name).trim()
+                        : ''
+                setFiscalName(initialName)
+
+                let initialDniDigits = ''
+                if (orderData.customer_dni) {
+                    const rawDni = String(orderData.customer_dni).trim()
+                    const prefixMatch = rawDni.match(/^([VJEGPvjegp])[-]?/)
+                    if (prefixMatch) {
+                        setDniPrefix(prefixMatch[1].toUpperCase())
+                    }
+                    initialDniDigits = rawDni
+                        .replace(/^[VJEGPvjegp][-]?/i, '')
+                        .replace(/[^0-9]/g, '')
+                        .slice(0, 10)
+                    setFiscalDniNumber(initialDniDigits)
+                }
+
+                const initialPhone = orderData.customer_phone
+                    ? String(orderData.customer_phone).trim()
+                    : ''
+                setFiscalPhone(initialPhone)
+
+                const initialAddress = orderData.customer_address
+                    ? String(orderData.customer_address).trim()
+                    : ''
+                setFiscalAddress(initialAddress)
+
+                const hasMissingFiscalField =
+                    !initialName ||
+                    !/^\d{5,10}$/.test(initialDniDigits) ||
+                    initialPhone.replace(/\D/g, '').length < 10 ||
+                    initialAddress.length < 5
+
+                setIsEditingFiscal(hasMissingFiscalField)
 
                 if (orderData.status === 'quote') {
                     localStorage.setItem(
@@ -387,7 +450,24 @@ export default function QuotePublicPage() {
         return Number(order?.total_usd || 0) * activeRate
     }, [order, activeRate])
 
-    const handleProcessPayment = async () => {
+   const handleProcessPayment = async () => {
+        if (!isFiscalDataComplete) {
+            setIsEditingFiscal(true)
+            const missingList: string[] = []
+            if (fiscalName.trim().length < 2) missingList.push('Nombre o Razón Social')
+            if (!/^\d{5,10}$/.test(fiscalDniNumber.trim())) missingList.push('Cédula / RIF válido')
+            if (fiscalPhone.replace(/\D/g, '').length < 10) missingList.push('Teléfono de contacto')
+            if (fiscalAddress.trim().length < 5) missingList.push('Dirección Fiscal')
+
+            return Swal.fire({
+                title: 'Datos fiscales incompletos',
+                text: `Para procesar tu presupuesto y emitir el comprobante fiscal, completa: ${missingList.join(', ')}.`,
+                icon: 'warning',
+                confirmButtonColor: '#171717',
+                customClass: { popup: 'rounded-xl font-sans text-xs' },
+            })
+        }
+
         if (!selectedMethod) {
             return Swal.fire({
                 title: 'Método requerido',
@@ -440,10 +520,18 @@ export default function QuotePublicPage() {
                 ? quoteFinancials.potentialFxSavingsUSD
                 : 0
 
+            const formattedFullDni = `${dniPrefix}-${fiscalDniNumber.trim()}`
+            const convertedTimestamp = new Date().toISOString()
+
             const { error: updateError } = await supabase
                 .from('orders')
                 .update({
                     status: 'pending',
+                    customer_name: fiscalName.trim(),
+                    customer_dni: formattedFullDni,
+                    customer_phone: fiscalPhone.trim(),
+                    customer_address: fiscalAddress.trim(),
+                    converted_at: convertedTimestamp,
                     payment_method: selectedMethod,
                     subtotal_usd: finalSubtotalUSD,
                     tax_amount_usd: finalTaxUSD,
@@ -474,6 +562,11 @@ export default function QuotePublicPage() {
             setOrder({
                 ...order,
                 status: 'pending',
+                customer_name: fiscalName.trim(),
+                customer_dni: formattedFullDni,
+                customer_phone: fiscalPhone.trim(),
+                customer_address: fiscalAddress.trim(),
+                converted_at: convertedTimestamp,
                 payment_method: selectedMethod,
                 subtotal_usd: finalSubtotalUSD,
                 tax_amount_usd: finalTaxUSD,
@@ -682,19 +775,28 @@ export default function QuotePublicPage() {
 
                         {/* SECCIÓN CLIENTE Y ENVÍO */}
                         <div className="flex flex-col md:flex-row print:flex-row justify-between gap-6 mb-8 text-xs">
-                            <div className="flex-1 print:w-1/2 space-y-1">
+                         <div className="flex-1 print:w-1/2 space-y-1">
                                 <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-neutral-400 mb-1.5">
                                     Cliente:
                                 </p>
                                 <p className="font-semibold text-neutral-900 text-sm leading-tight">
-                                    {order.customer_name}
+                                    {fiscalName.trim() || order.customer_name}
                                 </p>
                                 <div className="text-neutral-500 font-mono text-[11px] space-y-0.5 pt-0.5">
-                                    {order.customer_dni && <p>CI/RIF: {order.customer_dni}</p>}
-                                    {order.customer_phone && <p>Télf: {order.customer_phone}</p>}
-                                    {order.customer_address && (
+                                    {(fiscalDniNumber.trim() || order.customer_dni) && (
+                                        <p>
+                                            CI/RIF:{' '}
+                                            {fiscalDniNumber.trim()
+                                                ? `${dniPrefix}-${fiscalDniNumber.trim()}`
+                                                : order.customer_dni}
+                                        </p>
+                                    )}
+                                    {(fiscalPhone.trim() || order.customer_phone) && (
+                                        <p>Télf: {fiscalPhone.trim() || order.customer_phone}</p>
+                                    )}
+                                    {(fiscalAddress.trim() || order.customer_address) && (
                                         <p className="font-sans text-neutral-600 max-w-[280px] leading-tight pt-1">
-                                            {order.customer_address}
+                                            {fiscalAddress.trim() || order.customer_address}
                                         </p>
                                     )}
                                 </div>
@@ -1021,14 +1123,216 @@ export default function QuotePublicPage() {
                         </div>
                     </div>
 
-                    {/* MÓDULO DE REPORTE DE PAGO (Solo visible en proformas activas) */}
+                  {/* MÓDULO DE REPORTE DE PAGO (Solo visible en proformas activas) */}
                     {isQuoteActive && stockIssues.length === 0 && (
-                        <div className="bg-white rounded-xl p-5 md:p-8 border border-neutral-200/70 print-hidden space-y-5">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="bg-white rounded-xl p-5 md:p-8 border border-neutral-200/70 print-hidden space-y-6">
+                            {/* PASO 1: COMPUERTA DE DATOS FISCALES DE FACTURACIÓN */}
+                            <div className="rounded-xl border border-neutral-200/80 bg-[#FAFAFC] p-4 sm:p-5 space-y-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <FileText size={15} className="text-neutral-700" />
+                                            <h4 className="text-xs sm:text-sm font-semibold text-neutral-950">
+                                                1. Datos Fiscales de Facturación
+                                            </h4>
+                                            {isFiscalDataComplete ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200/70 text-[10px] font-mono font-semibold text-emerald-800">
+                                                    <Check size={11} strokeWidth={2.5} />
+                                                    Completos
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200/80 text-[10px] font-mono font-semibold text-amber-800">
+                                                    Requerido para pagar
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[11px] text-neutral-500 mt-0.5">
+                                            Verifica o completa tus datos fiscales para emitir tu comprobante oficial.
+                                        </p>
+                                    </div>
+
+                                    {isFiscalDataComplete && !isEditingFiscal && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditingFiscal(true)}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-neutral-200/90 hover:border-neutral-900 text-[11px] font-medium text-neutral-700 hover:text-neutral-950 transition-colors cursor-pointer shrink-0"
+                                        >
+                                            <PenSquare size={12} />
+                                            <span>Editar</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {!isEditingFiscal && isFiscalDataComplete ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs bg-white p-3.5 rounded-lg border border-neutral-200/60">
+                                        <div>
+                                            <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block">
+                                                Nombre / Razón Social
+                                            </span>
+                                            <span className="font-semibold text-neutral-900">
+                                                {fiscalName}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block">
+                                                Cédula / RIF
+                                            </span>
+                                            <span className="font-mono font-semibold text-neutral-900">
+                                                {dniPrefix}-{fiscalDniNumber}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block">
+                                                Teléfono WhatsApp
+                                            </span>
+                                            <span className="font-mono text-neutral-800">
+                                                {fiscalPhone}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block">
+                                                Dirección Fiscal
+                                            </span>
+                                            <span className="text-neutral-800 line-clamp-1">
+                                                {fiscalAddress}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                                        {/* Nombre o Razón Social */}
+                                        <div>
+                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
+                                                Nombre Completo o Razón Social{' '}
+                                                <span className="text-amber-600">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <User
+                                                    size={13}
+                                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={fiscalName}
+                                                    onChange={(e) => setFiscalName(e.target.value)}
+                                                    placeholder="Ej. Inversiones Preziso C.A."
+                                                    className={`w-full h-10 pl-8 pr-3 bg-white rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none transition-colors border ${
+                                                        fiscalName.trim().length < 2
+                                                            ? 'border-amber-300 focus:border-neutral-900'
+                                                            : 'border-neutral-200 focus:border-neutral-900'
+                                                    }`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Cédula o RIF */}
+                                        <div>
+                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
+                                                Cédula de Identidad o RIF{' '}
+                                                <span className="text-amber-600">*</span>
+                                            </label>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="inline-flex bg-white border border-neutral-200 rounded-lg p-0.5 shrink-0 h-10 items-center">
+                                                    {DNI_PREFIXES.map((pref) => (
+                                                        <button
+                                                            key={pref}
+                                                            type="button"
+                                                            onClick={() => setDniPrefix(pref)}
+                                                            className={`w-7 h-8 rounded-md text-[11px] font-mono font-bold transition-colors cursor-pointer ${
+                                                                dniPrefix === pref
+                                                                    ? 'bg-neutral-950 text-white'
+                                                                    : 'text-neutral-500 hover:text-neutral-900'
+                                                            }`}
+                                                        >
+                                                            {pref}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={fiscalDniNumber}
+                                                    onChange={(e) => {
+                                                        const clean = e.target.value
+                                                            .replace(/^[VJEGPvjegp][-]?/i, '')
+                                                            .replace(/[^0-9]/g, '')
+                                                            .slice(0, 10)
+                                                        setFiscalDniNumber(clean)
+                                                    }}
+                                                    placeholder="123456789"
+                                                    className={`flex-1 min-w-0 h-10 px-3 bg-white rounded-lg text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none transition-colors border ${
+                                                        !/^\d{5,10}$/.test(fiscalDniNumber.trim())
+                                                            ? 'border-amber-300 focus:border-neutral-900'
+                                                            : 'border-neutral-200 focus:border-neutral-900'
+                                                    }`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Teléfono / WhatsApp */}
+                                        <div>
+                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
+                                                Teléfono / WhatsApp{' '}
+                                                <span className="text-amber-600">*</span>
+                                            </label>
+                                            <div className="bg-white rounded-lg">
+                                                <PhoneInput
+                                                    variant="boxed"
+                                                    required={true}
+                                                    value={fiscalPhone}
+                                                    onChange={(val) => setFiscalPhone(val)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Dirección Fiscal */}
+                                        <div>
+                                            <label className="text-[11px] font-medium text-neutral-700 mb-1 block">
+                                                Dirección Fiscal / de Facturación{' '}
+                                                <span className="text-amber-600">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <MapPin
+                                                    size={13}
+                                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={fiscalAddress}
+                                                    onChange={(e) =>
+                                                        setFiscalAddress(e.target.value)
+                                                    }
+                                                    placeholder="Av. / Calle, Edificio, Ciudad, Estado"
+                                                    className={`w-full h-10 pl-8 pr-3 bg-white rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none transition-colors border ${
+                                                        fiscalAddress.trim().length < 5
+                                                            ? 'border-amber-300 focus:border-neutral-900'
+                                                            : 'border-neutral-200 focus:border-neutral-900'
+                                                    }`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {isFiscalDataComplete && (
+                                            <div className="sm:col-span-2 flex justify-end pt-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditingFiscal(false)}
+                                                    className="px-3.5 py-1.5 rounded-lg bg-neutral-950 text-white text-[11px] font-semibold hover:bg-neutral-800 transition-colors cursor-pointer"
+                                                >
+                                                    Confirmar datos fiscales
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* PASO 2: SELECCIÓN DE MÉTODO DE PAGO */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                                 <div>
                                     <h3 className="text-sm font-semibold text-neutral-950 flex items-center gap-2">
                                         <CreditCard size={16} className="text-neutral-500" />
-                                        <span>Reportar pago de esta proforma</span>
+                                        <span>2. Reportar pago de esta proforma</span>
                                     </h3>
                                     <p className="text-xs text-neutral-500 mt-0.5">
                                         Elige cómo deseas pagar para ver los datos bancarios y el
@@ -1435,14 +1739,18 @@ export default function QuotePublicPage() {
                                         </div>
                                     </div>
 
-                                    <button
+                                 <button
                                         type="button"
                                         onClick={handleProcessPayment}
-                                        disabled={submitting}
-                                        className="w-full h-11 bg-neutral-950 text-white rounded-xl font-semibold text-xs hover:bg-neutral-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                                        disabled={submitting || !isFiscalDataComplete}
+                                        className="w-full h-11 bg-neutral-950 text-white rounded-xl font-semibold text-xs hover:bg-neutral-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-45 cursor-pointer"
                                     >
                                         {submitting ? (
                                             <Loader2 className="animate-spin" size={15} />
+                                        ) : !isFiscalDataComplete ? (
+                                            <span>
+                                                Completa tus datos fiscales arriba para confirmar el pago
+                                            </span>
                                         ) : (
                                             <>
                                                 <span>

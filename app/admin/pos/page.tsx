@@ -123,8 +123,13 @@ export default function POSPage() {
     const [shippingMethod, setShippingMethod] = useState<'pickup' | 'local_delivery' | 'courier'>('pickup')
     const [shippingAddress, setShippingAddress] = useState('')
 
-    // MODO DE OPERACIÓN E IMPUESTOS
+     // MODO DE OPERACIÓN, EDICIÓN DE PRESUPUESTO E IMPUESTOS
     const [operationMode, setOperationMode] = useState<'paid' | 'quote'>('paid')
+    const [editingQuote, setEditingQuote] = useState<{
+        id: string
+        order_number: number
+        expires_at: string | null
+    } | null>(null)
     const [documentType, setDocumentType] = useState<'invoice' | 'note'>('note')
     const [applyTax, setApplyTax] = useState(false)
     const [taxPercentage, setTaxPercentage] = useState(16)
@@ -137,6 +142,19 @@ export default function POSPage() {
     const [selectedPayment, setSelectedPayment] = useState<string>('')
     const [customPayment, setCustomPayment] = useState('')
     const [paymentReference, setPaymentReference] = useState('')
+
+    const handleCancelEditQuote = () => {
+        setEditingQuote(null)
+        setCart([])
+        setCustomerName('')
+        setCustomerPhone('')
+        setCustomerDNI('')
+        setCustomerAddress('')
+        setShippingAddress('')
+        if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', '/admin/pos')
+        }
+    }
 
     useEffect(() => {
         const initPOS = async () => {
@@ -162,6 +180,10 @@ export default function POSPage() {
                     .eq('status', 'active'),
                 supabase.from('app_config').select('usd_rate, eur_rate').single(),
             ])
+
+            const catalogProducts = (productsRes.data || []) as Product[]
+            if (productsRes.data) setProducts(catalogProducts)
+            if (ratesRes.data) setRates(ratesRes.data)
 
             if (storeRes.data) {
                 setStore(storeRes.data)
@@ -192,7 +214,6 @@ export default function POSPage() {
                 if (pConfig.wally?.active) pm.push('WallyTech')
 
                 setActivePaymentMethods(pm)
-            
 
                 // Hidratar métodos por defecto de Proforma (Desde BD o LocalStorage)
                 let storedDefaults: string[] | null = null
@@ -218,18 +239,190 @@ export default function POSPage() {
                     setSavedQuoteDefaults(storedDefaults)
                     setQuoteAllowedMethods(storedDefaults)
                 } else {
-                    // Si aún no ha escogido métodos por defecto, inicia vacío para mostrar el recuadro guía
                     setSavedQuoteDefaults(null)
                     setQuoteAllowedMethods([])
                 }
+
+                // 🚀 HIDRATACIÓN QUIRÚRGICA SI VIENE ?edit_quote=[id]
+                const editQuoteId =
+                    typeof window !== 'undefined'
+                        ? new URLSearchParams(window.location.search).get('edit_quote')
+                        : null
+
+                if (editQuoteId) {
+                    const { data: quoteOrder } = await supabase
+                        .from('orders')
+                        .select('*')
+                        .eq('id', editQuoteId)
+                        .eq('store_id', storeRes.data.id)
+                        .or('is_quote.eq.true,status.eq.quote')
+                        .single()
+
+                    if (quoteOrder) {
+                        const { data: quoteItems } = await supabase
+                            .from('order_items')
+                            .select('*')
+                            .eq('order_id', quoteOrder.id)
+
+                        setEditingQuote({
+                            id: quoteOrder.id,
+                            order_number: quoteOrder.order_number,
+                            expires_at: quoteOrder.expires_at || null,
+                        })
+                        setOperationMode('quote')
+                        setIsCustomerPanelOpen(true)
+
+                        // Hidratar Cliente
+                        setCustomerName(
+                            quoteOrder.customer_name &&
+                                quoteOrder.customer_name !== 'Cliente Mostrador'
+                                ? quoteOrder.customer_name
+                                : ''
+                        )
+                        setCustomerPhone(quoteOrder.customer_phone || '')
+
+                        if (quoteOrder.customer_dni) {
+                            const rawDni = String(quoteOrder.customer_dni).trim()
+                            const prefixMatch = rawDni.match(/^([VJEGPvjegp])[-]?/)
+                            if (prefixMatch) {
+                                setDniPrefix(prefixMatch[1].toUpperCase())
+                            }
+                            const cleanedDigits = rawDni
+                                .replace(/^[VJEGPvjegp][-]?/i, '')
+                                .replace(/[^0-9]/g, '')
+                                .slice(0, 10)
+                            setCustomerDNI(cleanedDigits)
+                        } else {
+                            setCustomerDNI('')
+                        }
+
+                        setCustomerAddress(quoteOrder.customer_address || '')
+
+                        if (
+                            quoteOrder.shipping_method &&
+                            ['pickup', 'local_delivery', 'courier'].includes(
+                                quoteOrder.shipping_method
+                            )
+                        ) {
+                            setShippingMethod(quoteOrder.shipping_method as any)
+                        }
+
+                        if (
+                            quoteOrder.delivery_info &&
+                            String(quoteOrder.delivery_info).startsWith('Envío a:')
+                        ) {
+                            const cleanShip = String(quoteOrder.delivery_info)
+                                .replace(/^Envío a:\s*/i, '')
+                                .split(' | Ref:')[0]
+                                .trim()
+                            setShippingAddress(cleanShip)
+                        }
+
+                        // Hidratar Configuración Fiscal del Presupuesto
+                        if (typeof quoteOrder.is_tax_applied === 'boolean') {
+                            setApplyTax(quoteOrder.is_tax_applied)
+                        }
+                        if (quoteOrder.tax_percentage) {
+                            setTaxPercentage(Number(quoteOrder.tax_percentage))
+                        }
+
+                        // Hidratar Pasarelas Permitidas en el Presupuesto
+                        if (quoteOrder.payment_method) {
+                            const allowedFromQuote = String(quoteOrder.payment_method)
+                                .split(',')
+                                .map((m: string) => m.trim())
+                                .filter((m: string) => pm.includes(m))
+                            if (allowedFromQuote.length > 0) {
+                                setQuoteAllowedMethods(allowedFromQuote)
+                            }
+                        }
+
+                        // Hidratar Carrito cruzando con el Catálogo Vivo
+                        if (quoteItems && quoteItems.length > 0) {
+                            const hydratedCart: CartItem[] = quoteItems.map((item: any, idx: number) => {
+                                const matchedProduct = item.product_id
+                                    ? catalogProducts.find(
+                                          (p) => Number(p.id) === Number(item.product_id)
+                                      )
+                                    : undefined
+
+                                if (matchedProduct) {
+                                    const matchedVariant = item.variant_id
+                                        ? matchedProduct.product_variants?.find(
+                                              (v) => String(v.id) === String(item.variant_id)
+                                          )
+                                        : undefined
+
+                                    const cartId = matchedVariant
+                                        ? `${matchedProduct.id}-${matchedVariant.id}`
+                                        : `${matchedProduct.id}`
+                                    const basePrice =
+                                        matchedVariant?.override_usd_price ??
+                                        matchedProduct.usd_cash_price
+                                    const penalty =
+                                        matchedVariant?.override_usd_penalty ??
+                                        matchedProduct.usd_penalty ??
+                                        0
+                                    const currentStock = matchedVariant
+                                        ? matchedVariant.stock
+                                        : matchedProduct.stock
+                                    const itemQty = Number(item.quantity) || 1
+
+                                    return {
+                                        cartId,
+                                        productId: matchedProduct.id,
+                                        variantId: matchedVariant ? String(matchedVariant.id) : '',
+                                        name: matchedProduct.name,
+                                        variantInfo:
+                                            item.variant_info ||
+                                            (matchedVariant
+                                                ? `${matchedVariant.color_name || ''} ${matchedVariant.size || ''}`.trim()
+                                                : undefined),
+                                        basePrice,
+                                        penalty,
+                                        qty: itemQty,
+                                        maxStock: Math.max(itemQty, currentStock),
+                                        image: matchedProduct.image_url,
+                                        isTaxExempt: matchedProduct.is_tax_exempt || false,
+                                        productWholesaleActive:
+                                            matchedProduct.wholesale_active || false,
+                                        productWholesaleMinQty: Number(
+                                            matchedProduct.wholesale_min_qty || 6
+                                        ),
+                                        productWholesaleDiscountPct: Number(
+                                            matchedProduct.wholesale_discount_pct || 0
+                                        ),
+                                    }
+                                }
+
+                                // Concepto manual o producto ya no presente en catálogo
+                                return {
+                                    cartId: `custom-${item.id || idx}-${Date.now()}`,
+                                    productId: null,
+                                    name: item.product_name,
+                                    variantInfo: item.variant_info || 'Concepto manual',
+                                    basePrice: Number(item.price_at_purchase) || 0,
+                                    penalty: 0,
+                                    qty: Number(item.quantity) || 1,
+                                    maxStock: 9999999,
+                                    image: '',
+                                    isTaxExempt: false,
+                                    productWholesaleActive: false,
+                                    productWholesaleMinQty: 0,
+                                    productWholesaleDiscountPct: 0,
+                                }
+                            })
+
+                            setCart(hydratedCart)
+                        }
+                    }
+                }
             }
-            if (productsRes.data) setProducts(productsRes.data as Product[])
-            if (ratesRes.data) setRates(ratesRes.data)
 
             setLoading(false)
         }
         initPOS()
-    }, [supabase])
+    }, [supabase]) 
 
     // Guarda los métodos seleccionados actualmente como predeterminados para todas las proformas futuras
     const handleSaveQuoteDefaults = async () => {
@@ -348,9 +541,10 @@ export default function POSPage() {
         ['Zelle', 'Binance', 'Zinli', 'WallyTech', 'Efectivo'].includes(m)
     )
 
-    // Determina si los datos del cliente son obligatorios según el modo fiscal/proforma
-    const isCustomerRequired =
-        operationMode === 'quote' || (operationMode === 'paid' && documentType === 'invoice')
+ // En Proforma ('quote') SOLO el nombre/referencia es obligatorio.
+    // En Venta Directa ('paid') con Factura Fiscal ('invoice'), todos los datos fiscales son obligatorios.
+    const isFullFiscalRequired = operationMode === 'paid' && documentType === 'invoice'
+    const isCustomerRequired = operationMode === 'quote' || isFullFiscalRequired
 
     // Auto-abrir el panel de cliente si pasa a ser obligatorio
     useEffect(() => {
@@ -483,12 +677,29 @@ export default function POSPage() {
         )
     }
 
-    // --- TRANSACT ENGINE (100% Nativo con PrezisoFeedbackProvider) ---
+      // --- TRANSACT ENGINE (100% Nativo con PrezisoFeedbackProvider) ---
     const handleCheckout = async (type: 'paid' | 'quote') => {
-        const requiresFullLegalData =
-            type === 'quote' || (type === 'paid' && documentType === 'invoice')
+        // 1. En modo Presupuesto ('quote'), ÚNICAMENTE el Nombre o Referencia del cliente es obligatorio
+        if (type === 'quote') {
+            if (!customerName.trim()) {
+                setIsCustomerPanelOpen(true)
+                await feedback.confirm({
+                    eyebrow: '[ PROFORMA COMERCIAL ]',
+                    title: 'Nombre o referencia requerido',
+                    description:
+                        'Para emitir o actualizar un presupuesto, ingresa únicamente el Nombre o Referencia del cliente. Los datos fiscales (RIF, teléfono y dirección) son opcionales aquí y se solicitarán al cliente al pagar.',
+                    confirmText: 'Ingresar nombre',
+                    variant: 'warning',
+                    icon: 'alert',
+                })
+                return
+            }
+        }
 
- if (requiresFullLegalData) {
+        // 2. En modo Venta Directa ('paid') con Factura Fiscal ('invoice'), se mantiene la validación fiscal formal completa
+        const requiresFullLegalData = type === 'paid' && documentType === 'invoice'
+
+        if (requiresFullLegalData) {
             const missingFields: string[] = []
             if (!customerName.trim()) missingFields.push('Nombre o Razón Social')
             if (!customerDNI.trim()) missingFields.push('CI / RIF')
@@ -501,12 +712,9 @@ export default function POSPage() {
             if (missingFields.length > 0) {
                 setIsCustomerPanelOpen(true)
                 await feedback.confirm({
-                    eyebrow: type === 'quote' ? '[ PROFORMA COMERCIAL ]' : '[ FACTURA FISCAL ]',
-                    title:
-                        type === 'quote'
-                            ? 'Datos obligatorios para Proforma'
-                            : 'Datos fiscales incompletos',
-                    description: `Para emitir este documento legalmente, por favor completa: ${missingFields.join(', ')}.`,
+                    eyebrow: '[ FACTURA FISCAL ]',
+                    title: 'Datos fiscales incompletos',
+                    description: `Para emitir esta factura legalmente, por favor completa: ${missingFields.join(', ')}.`,
                     confirmText: 'Completar datos',
                     variant: 'warning',
                     icon: 'alert',
@@ -531,85 +739,168 @@ export default function POSPage() {
             return
         }
 
-        setIsSubmitting(true)
-        try {
-            const finalPaymentMethod =
-                type === 'quote'
-                    ? quoteAllowedMethods.join(',')
-                    : selectedPayment === 'Otro'
-                        ? customPayment.trim()
-                        : selectedPayment
-                        if (type === 'quote' && quoteAllowedMethods.length === 0) {
+        if (type === 'quote' && quoteAllowedMethods.length === 0) {
             feedback.toast.warning(
                 'Habilita un método de pago',
                 'Selecciona al menos una pasarela de pago para generar la proforma.'
             )
             return
         }
+
+        setIsSubmitting(true)
+        try {
+            const finalPaymentMethod =
+                type === 'quote'
+                    ? quoteAllowedMethods.join(',')
+                    : selectedPayment === 'Otro'
+                      ? customPayment.trim()
+                      : selectedPayment
+
             let deliveryInfoFull =
                 shippingMethod === 'pickup'
                     ? 'Venta en Mostrador / Retiro Personal'
-                    : `Envío a: ${shippingAddress || customerAddress}`
+                    : `Envío a: ${shippingAddress || customerAddress || 'Por definir'}`
             if (paymentReference && type === 'paid')
                 deliveryInfoFull += ` | Ref: ${paymentReference}`
 
-       const formattedFullPhone = customerPhone.trim() || null
+            const formattedFullPhone =
+                customerPhone.trim().replace(/\D/g, '').length >= 7 ? customerPhone.trim() : null
             const formattedFullDNI = customerDNI.trim()
                 ? `${dniPrefix}-${customerDNI.trim()}`
                 : null
-          
 
-            const { data: order, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                    store_id: store.id,
-                    customer_name: customerName.trim() || 'Cliente Mostrador',
-                    customer_phone: formattedFullPhone,
-                    customer_dni: formattedFullDNI,
-                    customer_address: customerAddress.trim() || null,
-                    document_type: type === 'quote' ? 'quote' : documentType,
-                    is_tax_applied: applyTax,
-                    subtotal_usd: Number(
-                        (isHardCurrency ? subtotalCashUSD : subtotalListUSD).toFixed(2)
-                    ),
-                    tax_amount_usd: Number(taxAmountUSD.toFixed(2)),
-                    total_usd: Number(totalUSD.toFixed(2)),
-                    total_bs: type === 'paid' ? Number(totalBS.toFixed(2)) : null,
-                    iva_retention_pct: 0,
-                    iva_retention_usd: 0,
-                    liquid_amount_usd: Number(totalUSD.toFixed(2)),
-                    promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
-                    wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                    affiliate_discount_usd: 0,
-                    fx_savings_usd: isHardCurrency ? Number(actualFxSavings.toFixed(2)) : 0,
-                    exchange_rate: type === 'paid' ? activeRate : null,
-                    status: type,
-                    is_quote: type === 'quote',
-                    source: 'pos',
-                    payment_method: finalPaymentMethod,
-                    shipping_method: shippingMethod,
-                    delivery_info: deliveryInfoFull,
-                    currency_type: isEur ? 'eur' : 'usd',
-                })
-                .select('id, order_number')
-                .single()
+            const totalDiscountAmountUSD = Number(
+                (cartEngine.listPromoDiscounts + wholesaleDiscountList).toFixed(2)
+            )
 
-            if (orderError) throw orderError
+            let order: { id: string; order_number: number }
+            const isUpdatingExistingQuote = type === 'quote' && editingQuote !== null
 
-            const orderItemsPayload = cartEngine.processedItems.map((item) => ({
-                order_id: order.id,
-                product_id: item.productId,
-                variant_id: item.variantId || null,
-                product_name: item.name,
-                variant_info: item.variantInfo || null,
-                quantity: item.qty,
-                price_at_purchase: isHardCurrency ? item.finalCashPrice : item.finalListPrice,
-            }))
+            if (isUpdatingExistingQuote && editingQuote) {
+                // 🚀 MODO EDICIÓN: UPDATE sobre la misma fila en public.orders
+                const renewedExpiresAt = editingQuote.expires_at
+                    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+                    : null
 
-            const { error: itemsError } = await supabase
-                .from('order_items')
-                .insert(orderItemsPayload)
-            if (itemsError) throw new Error('Error al guardar los artículos.')
+                const { data: updatedOrder, error: updateError } = await supabase
+                    .from('orders')
+                    .update({
+                        customer_name: customerName.trim(),
+                        customer_phone: formattedFullPhone,
+                        customer_dni: formattedFullDNI,
+                        customer_address: customerAddress.trim() || null,
+                        document_type: 'quote',
+                        is_tax_applied: applyTax,
+                        tax_percentage: taxPercentage,
+                        subtotal_usd: Number(subtotalListUSD.toFixed(2)),
+                        tax_amount_usd: Number(taxAmountUSD.toFixed(2)),
+                        discount_amount: totalDiscountAmountUSD,
+                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                        total_usd: Number(totalUSD.toFixed(2)),
+                        liquid_amount_usd: Number(totalUSD.toFixed(2)),
+                        total_bs: Number(totalBS.toFixed(2)),
+                        exchange_rate: activeRate,
+                        payment_method: finalPaymentMethod,
+                        shipping_method: shippingMethod,
+                        delivery_info: deliveryInfoFull,
+                        currency_type: isEur ? 'eur' : 'usd',
+                        ...(renewedExpiresAt ? { expires_at: renewedExpiresAt } : {}),
+                    })
+                    .eq('id', editingQuote.id)
+                    .eq('store_id', store.id)
+                    .select('id, order_number')
+                    .single()
+
+                if (updateError) throw updateError
+                order = updatedOrder
+
+                // Sincronizar public.order_items (Eliminar anteriores e insertar nuevos)
+                const { error: deleteItemsError } = await supabase
+                    .from('order_items')
+                    .delete()
+                    .eq('order_id', editingQuote.id)
+
+                if (deleteItemsError) {
+                    throw new Error(
+                        'Error al limpiar los artículos previos del presupuesto editado.'
+                    )
+                }
+
+                const updatedItemsPayload = cartEngine.processedItems.map((item) => ({
+                    order_id: editingQuote.id,
+                    product_id: item.productId,
+                    variant_id: item.variantId || null,
+                    product_name: item.name,
+                    variant_info: item.variantInfo || null,
+                    quantity: item.qty,
+                    price_at_purchase: item.finalListPrice,
+                }))
+
+                const { error: insertUpdatedItemsError } = await supabase
+                    .from('order_items')
+                    .insert(updatedItemsPayload)
+
+                if (insertUpdatedItemsError) {
+                    throw new Error('Error al guardar los artículos actualizados del presupuesto.')
+                }
+            } else {
+                // 🚀 MODO CREACIÓN NORMAL: INSERT en public.orders
+                const { data: insertedOrder, error: orderError } = await supabase
+                    .from('orders')
+                    .insert({
+                        store_id: store.id,
+                        customer_name: customerName.trim() || 'Cliente Mostrador',
+                        customer_phone: formattedFullPhone,
+                        customer_dni: formattedFullDNI,
+                        customer_address: customerAddress.trim() || null,
+                        document_type: type === 'quote' ? 'quote' : documentType,
+                        is_tax_applied: applyTax,
+                        tax_percentage: taxPercentage,
+                        subtotal_usd: Number(
+                            (isHardCurrency ? subtotalCashUSD : subtotalListUSD).toFixed(2)
+                        ),
+                        tax_amount_usd: Number(taxAmountUSD.toFixed(2)),
+                        discount_amount: totalDiscountAmountUSD,
+                        total_usd: Number(totalUSD.toFixed(2)),
+                        total_bs: type === 'paid' ? Number(totalBS.toFixed(2)) : null,
+                        iva_retention_pct: 0,
+                        iva_retention_usd: 0,
+                        liquid_amount_usd: Number(totalUSD.toFixed(2)),
+                        promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
+                        wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
+                        affiliate_discount_usd: 0,
+                        fx_savings_usd: isHardCurrency ? Number(actualFxSavings.toFixed(2)) : 0,
+                        exchange_rate: type === 'paid' ? activeRate : null,
+                        status: type,
+                        is_quote: type === 'quote',
+                        source: 'pos',
+                        payment_method: finalPaymentMethod,
+                        shipping_method: shippingMethod,
+                        delivery_info: deliveryInfoFull,
+                        currency_type: isEur ? 'eur' : 'usd',
+                    })
+                    .select('id, order_number')
+                    .single()
+
+                if (orderError) throw orderError
+                order = insertedOrder
+
+                const orderItemsPayload = cartEngine.processedItems.map((item) => ({
+                    order_id: order.id,
+                    product_id: item.productId,
+                    variant_id: item.variantId || null,
+                    product_name: item.name,
+                    variant_info: item.variantInfo || null,
+                    quantity: item.qty,
+                    price_at_purchase: isHardCurrency ? item.finalCashPrice : item.finalListPrice,
+                }))
+
+                const { error: itemsError } = await supabase
+                    .from('order_items')
+                    .insert(orderItemsPayload)
+                if (itemsError) throw new Error('Error al guardar los artículos.')
+            }
 
             const purchasedSnapshot = [...cart]
 
@@ -622,16 +913,26 @@ export default function POSPage() {
             setCustomerDNI('')
             setCustomerAddress('')
             setShippingAddress('')
+            setEditingQuote(null)
             setIsMobileCartOpen(false)
+            if (typeof window !== 'undefined' && isUpdatingExistingQuote) {
+                window.history.replaceState({}, '', '/admin/pos')
+            }
             // 🚀 Liberamos el estado de carga inmediatamente tras guardar en BD
             setIsSubmitting(false)
 
             const documentUrl = `${window.location.protocol}//${store.slug}.${window.location.host.replace('www.', '')}/quote/${order.id}`
             if (type === 'quote') {
                 const shouldCopy = await feedback.confirm({
-                    eyebrow: '[ PROFORMA EMITIDA ]',
-                    title: `Proforma #${order.order_number} generada`,
-                    description: `El documento comercial ha sido creado con éxito. Copia el enlace para compartirlo con el cliente: ${documentUrl}`,
+                    eyebrow: isUpdatingExistingQuote
+                        ? '[ PROFORMA ACTUALIZADA ]'
+                        : '[ PROFORMA EMITIDA ]',
+                    title: isUpdatingExistingQuote
+                        ? `Proforma #${order.order_number} actualizada`
+                        : `Proforma #${order.order_number} generada`,
+                    description: isUpdatingExistingQuote
+                        ? `Los cambios se sincronizaron en tiempo real sobre el mismo enlace: ${documentUrl}`
+                        : `El documento comercial ha sido creado con éxito. Copia el enlace para compartirlo con el cliente: ${documentUrl}`,
                     confirmText: 'Copiar enlace',
                     cancelText: 'Cerrar',
                     variant: 'default',
@@ -680,7 +981,7 @@ export default function POSPage() {
                 }
             }
         } catch (error: any) {
-            console.error('ERROR FATAL AL INSERTAR:', error)
+            console.error('ERROR FATAL AL INSERTAR/ACTUALIZAR:', error)
             await feedback.confirm({
                 eyebrow: '[ ERROR DE SISTEMA ]',
                 title: 'No se pudo procesar la operación',
@@ -973,12 +1274,14 @@ export default function POSPage() {
                     <div className="w-9 h-1 bg-neutral-300 rounded-full" />
                 </div>
 
-                {/* CABECERA FIJA DE LA CAJA + SELECTOR DE OPERACIÓN */}
+                 {/* CABECERA FIJA DE LA CAJA + SELECTOR DE OPERACIÓN */}
                 <div className="px-5 pt-3 md:pt-4 pb-3 border-b border-neutral-200/80 shrink-0 space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <h2 className="font-semibold text-base text-neutral-950 tracking-tight">
-                                Terminal de Caja
+                                {editingQuote
+                                    ? `Editando Proforma #${editingQuote.order_number}`
+                                    : 'Terminal de Caja'}
                             </h2>
                             <span className="text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-700 font-medium">
                                 {totalItemsCount}
@@ -986,7 +1289,17 @@ export default function POSPage() {
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                            {cart.length > 0 && (
+                            {editingQuote && (
+                                <button
+                                    type="button"
+                                    onClick={handleCancelEditQuote}
+                                    className="text-[11px] font-medium text-neutral-500 hover:text-neutral-950 px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200/70 transition-colors cursor-pointer"
+                                    title="Salir del modo edición"
+                                >
+                                    Cancelar edición
+                                </button>
+                            )}
+                            {cart.length > 0 && !editingQuote && (
                                 <button
                                     type="button"
                                     onClick={() => setCart([])}
@@ -1010,11 +1323,15 @@ export default function POSPage() {
                     <div className="bg-neutral-100 p-1 rounded-xl grid grid-cols-2 gap-1">
                         <button
                             type="button"
+                            disabled={Boolean(editingQuote)}
                             onClick={() => setOperationMode('paid')}
-                            className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${operationMode === 'paid'
-                                    ? 'bg-white text-neutral-950 font-semibold border border-neutral-200/80'
-                                    : 'text-neutral-600 hover:text-neutral-950'
-                                }`}
+                            className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                                editingQuote
+                                    ? 'opacity-40 cursor-not-allowed text-neutral-400'
+                                    : operationMode === 'paid'
+                                      ? 'bg-white text-neutral-950 font-semibold border border-neutral-200/80 cursor-pointer'
+                                      : 'text-neutral-600 hover:text-neutral-950 cursor-pointer'
+                            }`}
                         >
                             <Banknote size={14} strokeWidth={1.8} />
                             <span>Venta directa</span>
@@ -1022,13 +1339,14 @@ export default function POSPage() {
                         <button
                             type="button"
                             onClick={() => setOperationMode('quote')}
-                            className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${operationMode === 'quote'
+                            className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                operationMode === 'quote'
                                     ? 'bg-white text-neutral-950 font-semibold border border-neutral-200/80'
                                     : 'text-neutral-600 hover:text-neutral-950'
-                                }`}
+                            }`}
                         >
                             <FileText size={14} strokeWidth={1.8} />
-                            <span>Proforma</span>
+                            <span>{editingQuote ? 'Modo Edición' : 'Proforma'}</span>
                         </button>
                     </div>
                 </div>
@@ -1322,7 +1640,7 @@ export default function POSPage() {
                         </div>
                     )}
 
-                    {/* 3. CLIENTE, FACTURACIÓN Y ENTREGA (DIVULGACIÓN PROGRESIVA) */}
+                      {/* 3. CLIENTE, FACTURACIÓN Y ENTREGA (DIVULGACIÓN PROGRESIVA) */}
                     <div className="border border-neutral-200/80 rounded-xl bg-[#FAFAFC] overflow-hidden">
                         <button
                             type="button"
@@ -1337,9 +1655,13 @@ export default function POSPage() {
                                             ? customerName
                                             : 'Datos del cliente y entrega'}
                                     </span>
-                                    {isCustomerRequired ? (
+                                    {operationMode === 'quote' ? (
+                                        <span className="ml-2 text-[10px] font-mono font-medium text-neutral-600 bg-neutral-200/60 px-1.5 py-0.5 rounded">
+                                            Solo nombre req.
+                                        </span>
+                                    ) : isFullFiscalRequired ? (
                                         <span className="ml-2 text-[10px] font-mono font-medium text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded">
-                                            Requerido
+                                            Fiscal req.
                                         </span>
                                     ) : (
                                         <span className="ml-1.5 text-[11px] text-neutral-400">
@@ -1350,8 +1672,9 @@ export default function POSPage() {
                             </div>
                             <ChevronDown
                                 size={15}
-                                className={`text-neutral-400 transition-transform duration-200 ${isCustomerPanelOpen ? 'rotate-180' : ''
-                                    }`}
+                                className={`text-neutral-400 transition-transform duration-200 ${
+                                    isCustomerPanelOpen ? 'rotate-180' : ''
+                                }`}
                             />
                         </button>
 
@@ -1378,20 +1701,22 @@ export default function POSPage() {
                                                             onClick={() =>
                                                                 setDocumentType('invoice')
                                                             }
-                                                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${documentType === 'invoice'
+                                                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                                                                documentType === 'invoice'
                                                                     ? 'bg-white text-neutral-950 shadow-2xs'
                                                                     : 'text-neutral-500'
-                                                                }`}
+                                                            }`}
                                                         >
                                                             Factura Fiscal
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => setDocumentType('note')}
-                                                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${documentType === 'note'
+                                                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                                                                documentType === 'note'
                                                                     ? 'bg-white text-neutral-950 shadow-2xs'
                                                                     : 'text-neutral-500'
-                                                                }`}
+                                                            }`}
                                                         >
                                                             Nota de entrega
                                                         </button>
@@ -1399,10 +1724,12 @@ export default function POSPage() {
                                                 </div>
                                             )}
 
-                                        {/* FILA 1: NOMBRE / RAZÓN SOCIAL */}
+                                        {/* FILA 1: NOMBRE / RAZÓN SOCIAL / REFERENCIA */}
                                         <div>
                                             <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
-                                                Nombre o Razón Social{' '}
+                                                {operationMode === 'quote'
+                                                    ? 'Nombre o Referencia del Cliente'
+                                                    : 'Nombre o Razón Social'}{' '}
                                                 {isCustomerRequired && (
                                                     <span className="text-amber-600">*</span>
                                                 )}
@@ -1419,20 +1746,25 @@ export default function POSPage() {
                                                     onChange={(e) =>
                                                         setCustomerName(e.target.value)
                                                     }
-                                                    className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${isCustomerRequired && !customerName.trim()
+                                                    className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${
+                                                        isCustomerRequired && !customerName.trim()
                                                             ? 'border-amber-300'
                                                             : 'border-neutral-200'
-                                                        }`}
+                                                    }`}
                                                 />
                                             </div>
                                         </div>
 
-                                     {/* FILA 2: TELÉFONO / WHATSAPP (COMPONENTE UNIFICADO) */}
+                                        {/* FILA 2: TELÉFONO / WHATSAPP (100% Opcional en Proforma) */}
                                         <div>
                                             <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
                                                 Teléfono / WhatsApp{' '}
-                                                {isCustomerRequired && (
+                                                {isFullFiscalRequired ? (
                                                     <span className="text-amber-600">*</span>
+                                                ) : (
+                                                    <span className="text-[10px] font-normal text-neutral-400">
+                                                        (Opcional)
+                                                    </span>
                                                 )}
                                             </label>
                                             <PhoneInput
@@ -1444,12 +1776,17 @@ export default function POSPage() {
                                                 }
                                             />
                                         </div>
-                                        {/* FILA 3: DOCUMENTO FISCAL (CI / RIF) CON SELECTOR PERSONALIZADO */}
+
+                                        {/* FILA 3: DOCUMENTO FISCAL (CI / RIF) (100% Opcional en Proforma) */}
                                         <div>
                                             <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
                                                 Documento de Identidad / RIF{' '}
-                                                {isCustomerRequired && (
+                                                {isFullFiscalRequired ? (
                                                     <span className="text-amber-600">*</span>
+                                                ) : (
+                                                    <span className="text-[10px] font-normal text-neutral-400">
+                                                        (Opcional)
+                                                    </span>
                                                 )}
                                             </label>
                                             <div className="flex items-center gap-1.5 relative">
@@ -1464,8 +1801,9 @@ export default function POSPage() {
                                                         <span>{dniPrefix}-</span>
                                                         <ChevronDown
                                                             size={12}
-                                                            className={`text-neutral-400 transition-transform ${isDniPrefixOpen ? 'rotate-180' : ''
-                                                                }`}
+                                                            className={`text-neutral-400 transition-transform ${
+                                                                isDniPrefixOpen ? 'rotate-180' : ''
+                                                            }`}
                                                         />
                                                     </button>
 
@@ -1500,10 +1838,11 @@ export default function POSPage() {
                                                                                 false
                                                                             )
                                                                         }}
-                                                                        className={`w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${dniPrefix === pref
+                                                                        className={`w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
+                                                                            dniPrefix === pref
                                                                                 ? 'bg-neutral-950 text-white font-semibold'
                                                                                 : 'text-neutral-800 hover:bg-neutral-100'
-                                                                            }`}
+                                                                        }`}
                                                                     >
                                                                         <span>{pref}-</span>
                                                                         {dniPrefix === pref && (
@@ -1524,20 +1863,25 @@ export default function POSPage() {
                                                     onChange={(e) =>
                                                         handleDniChange(e.target.value)
                                                     }
-                                                    className={`flex-1 min-w-0 h-9 px-3 bg-[#FAFAFC] rounded-lg text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${isCustomerRequired && !customerDNI.trim()
+                                                    className={`flex-1 min-w-0 h-9 px-3 bg-[#FAFAFC] rounded-lg text-xs font-mono tabular-nums text-neutral-950 placeholder:font-sans placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${
+                                                        isFullFiscalRequired && !customerDNI.trim()
                                                             ? 'border-amber-300'
                                                             : 'border-neutral-200'
-                                                        }`}
+                                                    }`}
                                                 />
                                             </div>
                                         </div>
 
-                                        {/* FILA 4: DIRECCIÓN FISCAL */}
+                                        {/* FILA 4: DIRECCIÓN FISCAL (100% Opcional en Proforma) */}
                                         <div>
                                             <label className="text-[11px] font-medium text-neutral-600 mb-1 block">
                                                 Dirección Fiscal{' '}
-                                                {isCustomerRequired && (
+                                                {isFullFiscalRequired ? (
                                                     <span className="text-amber-600">*</span>
+                                                ) : (
+                                                    <span className="text-[10px] font-normal text-neutral-400">
+                                                        (Opcional)
+                                                    </span>
                                                 )}
                                             </label>
                                             <div className="relative">
@@ -1552,11 +1896,12 @@ export default function POSPage() {
                                                     onChange={(e) =>
                                                         setCustomerAddress(e.target.value)
                                                     }
-                                                    className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${isCustomerRequired &&
-                                                            !customerAddress.trim()
+                                                    className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 placeholder:text-neutral-400 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${
+                                                        isFullFiscalRequired &&
+                                                        !customerAddress.trim()
                                                             ? 'border-amber-300'
                                                             : 'border-neutral-200'
-                                                        }`}
+                                                    }`}
                                                 />
                                             </div>
                                         </div>
@@ -1570,10 +1915,11 @@ export default function POSPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setShippingMethod('pickup')}
-                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${shippingMethod === 'pickup'
+                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                                        shippingMethod === 'pickup'
                                                             ? 'bg-white text-neutral-950 font-semibold shadow-2xs'
                                                             : 'text-neutral-600'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <Store size={12} />
                                                     <span>Mostrador</span>
@@ -1583,10 +1929,11 @@ export default function POSPage() {
                                                     onClick={() =>
                                                         setShippingMethod('local_delivery')
                                                     }
-                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${shippingMethod === 'local_delivery'
+                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                                        shippingMethod === 'local_delivery'
                                                             ? 'bg-white text-neutral-950 font-semibold shadow-2xs'
                                                             : 'text-neutral-600'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <Truck size={12} />
                                                     <span>Delivery</span>
@@ -1594,10 +1941,11 @@ export default function POSPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setShippingMethod('courier')}
-                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${shippingMethod === 'courier'
+                                                    className={`h-7 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                                        shippingMethod === 'courier'
                                                             ? 'bg-white text-neutral-950 font-semibold shadow-2xs'
                                                             : 'text-neutral-600'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <Package size={12} />
                                                     <span>Encomienda</span>
@@ -1613,19 +1961,20 @@ export default function POSPage() {
                                                     <input
                                                         type="text"
                                                         placeholder={
-                                                            isCustomerRequired
+                                                            isFullFiscalRequired
                                                                 ? 'Dirección o agencia de destino *'
-                                                                : 'Dirección o agencia de destino'
+                                                                : 'Dirección o agencia de destino (Opcional)'
                                                         }
                                                         value={shippingAddress}
                                                         onChange={(e) =>
                                                             setShippingAddress(e.target.value)
                                                         }
-                                                        className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${isCustomerRequired &&
-                                                                !shippingAddress.trim()
+                                                        className={`w-full h-9 pl-8 pr-3 bg-[#FAFAFC] rounded-lg text-xs text-neutral-950 outline-none focus:bg-white focus:border-neutral-900 transition-colors border ${
+                                                            isFullFiscalRequired &&
+                                                            !shippingAddress.trim()
                                                                 ? 'border-amber-300'
                                                                 : 'border-neutral-200'
-                                                            }`}
+                                                        }`}
                                                     />
                                                 </div>
                                             )}
@@ -1656,46 +2005,46 @@ export default function POSPage() {
                         {(cartEngine.listPromoDiscounts > 0 ||
                             wholesaleDiscountList > 0 ||
                             (isHardCurrency && actualFxSavings > 0)) && (
-                                <div className="space-y-1">
-                                    {(isHardCurrency
-                                        ? cartEngine.cashPromoDiscounts
-                                        : cartEngine.listPromoDiscounts) > 0 && (
-                                            <div className="flex justify-between items-center text-xs text-emerald-700">
-                                                <span>Descuento promocional</span>
-                                                <span className="font-mono tabular-nums font-medium">
-                                                    -{currencySymbol}
-                                                    {(isHardCurrency
-                                                        ? cartEngine.cashPromoDiscounts
-                                                        : cartEngine.listPromoDiscounts
-                                                    ).toFixed(2)}
-                                                </span>
-                                            </div>
-                                        )}
-                                    {(isHardCurrency
-                                        ? wholesaleDiscountCash
-                                        : wholesaleDiscountList) > 0 && (
-                                            <div className="flex justify-between items-center text-xs text-emerald-700">
-                                                <span>Descuento mayorista</span>
-                                                <span className="font-mono tabular-nums font-medium">
-                                                    -{currencySymbol}
-                                                    {(isHardCurrency
-                                                        ? wholesaleDiscountCash
-                                                        : wholesaleDiscountList
-                                                    ).toFixed(2)}
-                                                </span>
-                                            </div>
-                                        )}
-                                    {isHardCurrency && actualFxSavings > 0 && (
-                                        <div className="flex justify-between items-center text-xs text-emerald-700">
-                                            <span>Ahorro pago en divisas</span>
-                                            <span className="font-mono tabular-nums font-medium">
-                                                -{currencySymbol}
-                                                {actualFxSavings.toFixed(2)}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            <div className="space-y-1">
+                                {(isHardCurrency
+                                    ? cartEngine.cashPromoDiscounts
+                                    : cartEngine.listPromoDiscounts) > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-emerald-700">
+                                        <span>Descuento promocional</span>
+                                        <span className="font-mono tabular-nums font-medium">
+                                            -{currencySymbol}
+                                            {(isHardCurrency
+                                                ? cartEngine.cashPromoDiscounts
+                                                : cartEngine.listPromoDiscounts
+                                            ).toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+                                {(isHardCurrency
+                                    ? wholesaleDiscountCash
+                                    : wholesaleDiscountList) > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-emerald-700">
+                                        <span>Descuento mayorista</span>
+                                        <span className="font-mono tabular-nums font-medium">
+                                            -{currencySymbol}
+                                            {(isHardCurrency
+                                                ? wholesaleDiscountCash
+                                                : wholesaleDiscountList
+                                            ).toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+                                {isHardCurrency && actualFxSavings > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-emerald-700">
+                                        <span>Ahorro pago en divisas</span>
+                                        <span className="font-mono tabular-nums font-medium">
+                                            -{currencySymbol}
+                                            {actualFxSavings.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Aviso Discreto en Modo Proforma cuando existen productos con incentivo en divisas */}
                         {operationMode === 'quote' &&
@@ -1756,10 +2105,11 @@ export default function POSPage() {
                         type="button"
                         onClick={() => handleCheckout(operationMode)}
                         disabled={isSubmitting || cart.length === 0}
-                        className={`w-full h-12 px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98] cursor-pointer ${operationMode === 'quote'
+                        className={`w-full h-12 px-4 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98] cursor-pointer ${
+                            operationMode === 'quote'
                                 ? 'bg-white text-neutral-950 border border-neutral-300 hover:bg-neutral-50'
                                 : 'bg-neutral-950 text-white hover:bg-neutral-800'
-                            }`}
+                        }`}
                     >
                         {isSubmitting ? (
                             <Loader2 size={16} className="animate-spin" />
@@ -1770,7 +2120,9 @@ export default function POSPage() {
                         )}
                         <span>
                             {operationMode === 'quote'
-                                ? 'Generar enlace de proforma'
+                                ? editingQuote
+                                    ? `Guardar cambios en Proforma #${editingQuote.order_number}`
+                                    : 'Generar enlace de proforma'
                                 : `Registrar cobro · ${currencySymbol}${totalUSD.toFixed(2)}`}
                         </span>
                     </button>
