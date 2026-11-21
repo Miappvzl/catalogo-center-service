@@ -674,14 +674,7 @@ function ProductCardComponent({
           </div>
         )}
 
-        {isCriticalStock && !isOutOfStock && (
-          <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 z-10 bg-red-600 text-white px-2.5 py-1 rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] flex items-center gap-1.5 pointer-events-none">
-            <AlertCircle size={12} strokeWidth={2.5} />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest leading-none mt-px">
-              Últimas {product.stock}
-            </span>
-          </div>
-        )}
+       
 
         {isPromo && !isOutOfStock && (
           <div className="absolute top-2.5 right-2.5 md:top-3 md:right-3 z-10 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] md:text-xs font-black px-2.5 py-1 rounded-[var(--radius-btn)] tracking-widest shadow-[var(--shadow-ui)] pointer-events-none">
