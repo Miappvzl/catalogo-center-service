@@ -5,7 +5,7 @@ import { getOptimizedUrl } from '@/utils/cdn';
 import { getVariantSwatchStyle } from '@/utils/ColorUtils';
 import { ImageIcon, ShoppingCart, Flame, Heart, AlertCircle, Receipt, CheckCircle2, Plus, Zap, X, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
-import { useMemo, useState, memo, useCallback } from 'react'
+import { useMemo, useState, memo, useCallback, useRef } from 'react'
 import { formatUSD, formatVES } from '@/utils/currency'; // 🚀 FORMATO HISPANO UNIFICADO (COMA DECIMAL)
 
 interface ProductCardProps {
@@ -42,7 +42,16 @@ function ProductCardComponent({
   isFeatured = false,
   mediaConfig
 }: ProductCardProps) {
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  // 🚀 ZERO-RENDER IMAGE LOADER: Muta el nodo DOM directamente al cargar (0 re-renders en scroll)
+  // y memoriza la URL en un ref para mantener la opacidad si la tarjeta se re-renderiza por Favoritos.
+  const loadedUrlRef = useRef<string | null>(null);
+  const isImageLoaded = loadedUrlRef.current === product.image_url;
+
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    loadedUrlRef.current = product.image_url;
+    e.currentTarget.classList.remove('opacity-0');
+    e.currentTarget.classList.add('opacity-100');
+  }, [product.image_url]);
 
   // 🚀 MOTOR GEOMÉTRICO (Fallback automático si no se pasa la prop)
   const aspectClass = mediaConfig?.ratio || (['dense_hardware', 'food_menu', 'modular_tech'].includes(cardStyle) ? 'aspect-square' : 'aspect-[4/5]');
@@ -100,7 +109,7 @@ function ProductCardComponent({
       >
         {/* 1. ENCUADRE TÉCNICO (Limpio y sin etiquetas invasivas) */}
         <div className={`relative ${aspectClass} w-full bg-[var(--store-bg)] overflow-hidden shrink-0 border-b border-[var(--store-border)]`} style={imageBgStyle}>
-          {product.image_url ? (
+         {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
@@ -108,8 +117,8 @@ function ProductCardComponent({
               priority={isPriorityImage}
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-500 will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleImageLoad}
+              className={`transition-[transform,opacity] duration-300 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-border)]">
@@ -216,7 +225,7 @@ function ProductCardComponent({
       >
         {/* Contenedor de Imagen (Sin rebote externo, animación contenida) */}
         <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] mb-4`} style={imageBgStyle}>
-          {product.image_url ? (
+        {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
@@ -224,8 +233,8 @@ function ProductCardComponent({
               priority={isPriorityImage}
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleImageLoad}
+              className={`transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] opacity-40">
@@ -233,14 +242,14 @@ function ProductCardComponent({
             </div>
           )}
 
-          {/* Insignias Translúcidas (Glassmorphism de alta gama) */}
+          {/* Insignias Translúcidas (Aislamiento de Blur en Móvil para 120fps) */}
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none">
             {isOutOfStock ? (
-              <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-white bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] shadow-sm border border-white/10">
+              <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-white bg-black/80 md:bg-black/60 md:backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] shadow-sm border border-white/10">
                 Agotado
               </span>
             ) : isPromo ? (
-              <span className="text-[8.5px] font-bold tracking-[0.15em] text-[var(--store-text-main)] bg-[var(--store-bg)]/80 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+              <span className="text-[8.5px] font-bold tracking-[0.15em] text-[var(--store-text-main)] bg-[var(--store-bg)]/95 md:bg-[var(--store-bg)]/80 md:backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-btn)] border border-[var(--store-border)]/40 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                 -{promoPercent}%
               </span>
             ) : null}
@@ -315,7 +324,7 @@ function ProductCardComponent({
       >
         {/* 1. IMAGEN DE PASARELA (High-End Feel) */}
         <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--store-border)]/20 mb-3`} style={imageBgStyle}>
-          {product.image_url ? (
+       {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
@@ -323,8 +332,8 @@ function ProductCardComponent({
               priority={isPriorityImage}
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleImageLoad}
+              className={`transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-[1.03]'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-neutral-400 font-mono text-xs tracking-widest">
@@ -335,12 +344,8 @@ function ProductCardComponent({
           {/* Micro-Badges Técnicos */}
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
             {isOutOfStock ? (
-              <span className="bg-black/80 backdrop-blur-md text-white text-[9px] font-mono uppercase tracking-[0.2em] px-2 py-1">
+              <span className="bg-black/90 md:bg-black/80 md:backdrop-blur-md text-white text-[9px] font-mono uppercase tracking-[0.2em] px-2 py-1">
                 [ AGOTADO ]
-              </span>
-            ) : isCriticalStock ? (
-              <span className="bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-mono uppercase tracking-[0.2em] px-2 py-1">
-                LAST {product.stock}
               </span>
             ) : null}
             {isPromo && !isOutOfStock && (
@@ -447,7 +452,7 @@ function ProductCardComponent({
       >
         {/* Contenedor de Imagen */}
         <div className={`relative ${aspectClass} w-full bg-neutral-100 overflow-hidden`} style={imageBgStyle}>
-          {product.image_url ? (
+         {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
@@ -455,8 +460,8 @@ function ProductCardComponent({
               priority={isPriorityImage}
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-500 ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleImageLoad}
+              className={`transition-[transform,opacity] duration-300 ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">
@@ -480,7 +485,7 @@ function ProductCardComponent({
           {/* Botón de Favorito */}
           <button
             onClick={handleToggleFav}
-            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-all shadow-xs active:scale-90 ${isFavorite ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' : 'bg-white/80 backdrop-blur-xs text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`}
+            className={`absolute top-2.5 right-2.5 z-20 p-2 rounded-full transition-colors shadow-xs active:scale-90 ${isFavorite ? 'text-[var(--store-action-favorite)] bg-white shadow-sm' : 'bg-white/95 md:bg-white/80 md:backdrop-blur-xs text-[var(--store-surface-text)] hover:text-[var(--store-action-favorite)]'}`}
             aria-label="Favorito"
           >
             <Heart size={15} strokeWidth={2.2} className={isFavorite ? "fill-current" : ""} />
@@ -557,7 +562,7 @@ function ProductCardComponent({
       >
         {/* 1. IMAGEN FLOTANTE (Sin divisiones ni fondos separados) */}
         <div className={`relative ${aspectClass} w-full flex items-center justify-center`} style={imageBgStyle}>
-          {product.image_url ? (
+        {product.image_url ? (
             <Image
               src={getOptimizedUrl(product.image_url)}
               alt={product.name}
@@ -565,8 +570,8 @@ function ProductCardComponent({
               priority={isPriorityImage}
               loading={isPriorityImage ? undefined : 'lazy'}
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              onLoad={() => setIsImageLoaded(true)}
-              className={`transition-transform duration-500 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleImageLoad}
+              className={`transition-[transform,opacity] duration-300 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)] opacity-30"><ImageIcon size={32} strokeWidth={1.5} /></div>
@@ -649,7 +654,7 @@ function ProductCardComponent({
     >
       {/* Encuadre Dinámico controlado por Image Engine */}
       <div className={`relative ${aspectClass} w-full bg-[var(--store-surface)] overflow-hidden rounded-[var(--radius-card)]`} style={imageBgStyle}>
-        {product.image_url ? (
+      {product.image_url ? (
           <Image
             src={getOptimizedUrl(product.image_url)}
             alt={product.name}
@@ -657,8 +662,8 @@ function ProductCardComponent({
             priority={isPriorityImage}
             loading={isPriorityImage ? undefined : 'lazy'}
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            onLoad={() => setIsImageLoaded(true)}
-            className={`transition-transform duration-300 ease-out will-change-transform ${fitClass} ${isContain ? 'group-hover:scale-100' : 'group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={handleImageLoad}
+            className={`transition-[transform,opacity] duration-300 ease-out ${fitClass} ${isContain ? 'group-hover:scale-100' : 'md:group-hover:scale-105'} ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--store-surface-text)]">

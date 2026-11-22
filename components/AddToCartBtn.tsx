@@ -5,10 +5,14 @@ import { useCart } from '@/app/store/useCart'
 import Swal from 'sweetalert2'
 
 export default function AddToCartBtn({ product, iconOnly = false }: { product: any, iconOnly?: boolean }) {
-  const { addItem, items, updateQuantity, removeItem } = useCart()
+  const addItem = useCart(state => state.addItem)
+  const updateQuantity = useCart(state => state.updateQuantity)
+  const removeItem = useCart(state => state.removeItem)
 
-  // Buscar si este producto ya existe en el carrito
-  const existingItem = items.find((item) => item.productId === product.id || item.id === `${product.id}`)
+  // 🚀 SELECTOR ATÓMICO: Solo re-renderiza si cambia la cantidad de ESTE producto específico
+  const existingItem = useCart(state =>
+    state.items.find((item) => item.productId === product.id || item.id === `${product.id}`)
+  )
   const quantity = existingItem ? existingItem.quantity : 0
 
   const handleAdd = (e: React.MouseEvent) => {

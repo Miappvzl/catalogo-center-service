@@ -170,7 +170,8 @@ export default function CheckoutProcess({
         if (storeConfig?.store_type !== 'restaurant') return { isOpen: true, detailLabel: '' };
         return evaluateStoreHours(storeConfig?.store_hours);
     }, [storeConfig]);
-    const { items: globalCartItems, clearCart } = useCart();
+    const globalCartItems = useCart(state => state.items);
+    const clearCart = useCart(state => state.clearCart);
     // Aislamiento: Si es Quick Link, usa los productos del link y no toca el carrito del navegador
     const items = isQuickLinkMode && overrideItems ? overrideItems : globalCartItems;
     const [checkoutState, setCheckoutState] = useState<'idle' | 'validating' | 'processing' | 'success'>('idle');
@@ -584,11 +585,13 @@ const handleSendOtp = async () => {
         isHydratedStorageRef.current = true;
     }, [storeId, isQuickLinkMode]);
 
-    // 3. Persistencia anti-frustración (Solo guarda una vez hidratado)
+   // 3. Persistencia anti-frustración unificada y con debounce (Cero bloqueo del Main Thread al teclear)
     useEffect(() => {
-        if (isHydratedStorageRef.current && !isQuickLinkMode) {
+        if (!isHydratedStorageRef.current || isQuickLinkMode) return;
+        const timer = setTimeout(() => {
             sessionStorage.setItem(`pz_checkout_${storeId}`, JSON.stringify(clientData));
-        }
+        }, 250);
+        return () => clearTimeout(timer);
     }, [clientData, storeId, isQuickLinkMode]);
 
     // 🚀 FASE 2: PERSISTENCIA ANTI-FRUSTRACIÓN (Guarda en caché en tiempo real)
@@ -671,14 +674,13 @@ const handleSendOtp = async () => {
     const subtotalForTip = netListWithoutDelivery;
     const tipAmountUSD = isFoodTech ? Number((subtotalForTip * (tipPercentage / 100)).toFixed(2)) : 0;
 
-    // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
+  // 🚀 CÁLCULO O(1) DIRECTO: processedItem ya porta isTaxExempt desde cartLogic.ts
     const safeTaxableSubtotalList = useMemo(() => {
         return cartEngine.processedItems.reduce((acc: number, processedItem: any) => {
-            const originalItem = items.find(i => i.id === processedItem.id);
-            const isExempt = originalItem?.isTaxExempt === true;
+            const isExempt = processedItem?.isTaxExempt === true;
             return isExempt ? acc : acc + (processedItem.finalListPrice * processedItem.quantity);
         }, 0);
-    }, [cartEngine.processedItems, items]);
+    }, [cartEngine.processedItems]);
 
     // 🚀 LÓGICA FISCAL ESTRICTA (Base Imponible Proporcional Segura)
     const listDiscountMultiplier =

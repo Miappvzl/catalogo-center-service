@@ -9,9 +9,17 @@ export function calculateCartEngine(
     let taxableSubtotalList = 0; let taxableSubtotalCash = 0;
     let wholesaleDiscountList = 0; let wholesaleDiscountCash = 0;
 
-    const parentProductTally: Record<string, number> = {};
+   const parentProductTally: Record<string, number> = {};
     const promoCounts: Record<string, number> = {};
-    let totalItemsInCart = 0; // 🚀 NUEVO: Conteo total para la regla global
+    let totalItemsInCart = 0; // 🚀 Conteo total para la regla global
+
+    // 🚀 PRE-INDEXACIÓN O(1) DE PROMOCIONES VINCULADAS (Evita .some() anidados O(N*M*K))
+    const promoLinkedSets = new Map<any, Set<string>>();
+    promotions?.forEach(p => {
+        if (Array.isArray(p.linked_products) && p.linked_products.length > 0) {
+            promoLinkedSets.set(p.id, new Set(p.linked_products.map((id: any) => String(id))));
+        }
+    });
 
    // 1. TALLY PASS (O(N))
     items.forEach(item => {
@@ -27,9 +35,10 @@ export function calculateCartEngine(
             totalItemsInCart += item.quantity;
         }
         
-        // Tally BOGO (Tu lógica existente)
+        // Tally BOGO (Lookup O(1))
+        const itemPidStr = String(item.productId);
         promotions?.forEach(p => {
-            if (p.promo_type === 'bogo' && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) {
+            if (p.promo_type === 'bogo' && promoLinkedSets.get(p.id)?.has(itemPidStr)) {
                 promoCounts[p.id] = (promoCounts[p.id] || 0) + item.quantity;
             }
         });
@@ -74,8 +83,9 @@ export function calculateCartEngine(
             };
         }
 
-        // --- ⚔️ EVALUACIÓN A: PROMOCIONES ---
-        const applicablePromos = promotions?.filter((p: any) => p.is_active && (p.linked_products || []).some((id: any) => String(id) === String(item.productId))) || [];
+        // --- ⚔️ EVALUACIÓN A: PROMOCIONES (Lookup O(1)) ---
+        const itemPidStr = String(item.productId);
+        const applicablePromos = promotions?.filter((p: any) => p.is_active && promoLinkedSets.get(p.id)?.has(itemPidStr)) || [];
         let bestPromo = null;
         let promoEffectivePct = 0;
 

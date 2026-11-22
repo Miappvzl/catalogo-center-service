@@ -359,7 +359,7 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ isOpen, onClose, product, currency, rates, promotions = [], activePromoContext, storeConfig, isFavorite = false }: ProductModalProps) {
-    const { addItem } = useCart()
+    const addItem = useCart(state => state.addItem)
 
 
     // 🚀 INYECCIÓN DEL CEREBRO DE TOKENS
@@ -386,30 +386,35 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
     const [currentGallery, setCurrentGallery] = useState<string[]>([])
     const [galleryIndex, setGalleryIndex] = useState(0)
 
-    // 🚀 ESTADOS DEL ZOOM DUAL (Motores Desacoplados)
+ // 🚀 ESTADOS DEL ZOOM DUAL (Cortocircuito en Móvil + Throttling rAF a 120fps en Desktop)
     const [zoomData, setZoomData] = useState({ show: false, mouseX: 0, mouseY: 0, bgX: 0, bgY: 0 })
     const [isLightboxOpen, setIsLightboxOpen] = useState(false)
     const [lightboxIndex, setLightboxIndex] = useState(0)
+    const zoomRafRef = useRef<number | null>(null)
 
     const handleZoomMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        // 1. Posición física real del ratón dentro del marco exacto de la foto
-        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-        const rawX = ((e.clientX - left) / width) * 100;
-        const rawY = ((e.clientY - top) / height) * 100;
+        if (typeof window !== 'undefined' && window.innerWidth < 768) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clientX = e.clientX;
+        const clientY = e.clientY;
 
-        // 2. MOTOR DE PROYECCIÓN (Overdrive 1.5x): Llega a los bordes sin esfuerzo
-        const bgX = Math.max(0, Math.min(100, (rawX - 50) * 1.5 + 50));
-        const bgY = Math.max(0, Math.min(100, (rawY - 50) * 1.5 + 50));
+        if (zoomRafRef.current) cancelAnimationFrame(zoomRafRef.current);
+        zoomRafRef.current = requestAnimationFrame(() => {
+            const rawX = ((clientX - rect.left) / rect.width) * 100;
+            const rawY = ((clientY - rect.top) / rect.height) * 100;
 
-        // 3. MOTOR DEL CRISTAL (Sincronización Láser 1:1)
-        // La lupa mide 24% de ancho. Su centro es 12%. Clampamos entre 12% y 88% para no salir del borde.
-        const mouseX = Math.max(12, Math.min(88, rawX));
-        const mouseY = Math.max(12, Math.min(88, rawY));
+            const bgX = Math.max(0, Math.min(100, (rawX - 50) * 1.5 + 50));
+            const bgY = Math.max(0, Math.min(100, (rawY - 50) * 1.5 + 50));
 
-        setZoomData({ show: true, mouseX, mouseY, bgX, bgY });
+            const mouseX = Math.max(12, Math.min(88, rawX));
+            const mouseY = Math.max(12, Math.min(88, rawY));
+
+            setZoomData({ show: true, mouseX, mouseY, bgX, bgY });
+        });
     }
 
     const handleZoomEnter = () => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) return;
         setZoomData(prev => ({ ...prev, show: true }));
     }
 
@@ -445,7 +450,7 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         };
     }, [isOpen]); // 🚀 Blindado: Ya no se destruye con re-renders de búsqueda
 
-    // 🚀 MOTOR DE ANALÍTICAS: Captura de vistas y tiempo de permanencia en Modal
+  // 🚀 MOTOR DE ANALÍTICAS DIFERIDO: Cero competencia con los 450ms de la animación de apertura y ahorro de Fluid CPU
     useEffect(() => {
         if (!isOpen || !product || !storeConfig?.id) return;
 
@@ -468,14 +473,15 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                keepalive: true, // Garantiza el envío si cierran la pestaña abruptamente
+                keepalive: true,
             }).catch(() => { });
         };
 
-        // 1. Registrar vista de producto inicial (dwell_time = 0)
-        sendEvent(0);
+        // 1. Diferimos la vista inicial 650ms (post-animación de entrada y filtro anti-rebotes accidentales)
+        const initialTrackTimer = setTimeout(() => {
+            sendEvent(0);
+        }, 650);
 
-        // 2. Escuchar si cierran la pestaña del navegador estando el modal abierto
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
                 const dwellTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
@@ -486,8 +492,8 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // 3. Capturar el cierre del modal (Cuando 'isOpen' pasa a ser false o cambian de producto)
         return () => {
+            clearTimeout(initialTrackTimer);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             const dwellTimeSeconds = Math.floor((Date.now() - startTime) / 1000);
             if (dwellTimeSeconds > 2) {
@@ -496,94 +502,86 @@ export default function ProductModal({ isOpen, onClose, product, currency, rates
         };
     }, [isOpen, product?.id, storeConfig?.id]);
 
-
     const isEur = currency === 'eur'
     const activeRate = isEur ? rates.eur : rates.usd
 
-    // 🚀 1. INICIALIZACIÓN DIFERIDA (The Render Yielding Hack para 120 FPS)
-    useEffect(() => {
-        if (isOpen) setIsHiding(false); // Resetea el estado visual
+    // 🚀 1. INICIALIZACIÓN SÍNCRONA EN FRAME 0 (1 Solo Renderizado Limpio, Cero Flash de Spinner, Cero Layout Shift)
+    const [syncedProductKey, setSyncedProductKey] = useState<string | null>(null);
+    const activeProductKey = isOpen && product ? `${product.id}` : null;
 
+    if (activeProductKey !== syncedProductKey) {
+        setSyncedProductKey(activeProductKey);
         if (isOpen && product) {
-            setLoading(true);
-            
-            // 1. Cargamos lo más crítico al instante (Galería base)
-            const defaultGallery = [product.image_url, ...(product.gallery || [])].filter(Boolean);
-            setCurrentGallery(defaultGallery);
-            setGalleryIndex(0);
+            setIsHiding(false);
+            setLoading(false);
             setQuantity(1);
-
-      // 2. Cedemos el paso al Main Thread (El navegador anima el modal a 60-120fps sin tirones)
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const vars = product.product_variants || [];
-                    if (vars.length > 0) {
-                        setVariants(vars);
-                        // 🚀 AUTO-SELECCIÓN 1D: Si todas las variantes pertenecen a un mismo grupo (ej: 'Talla' o un único color),
-                        // lo seleccionamos de inmediato para mostrar las tallas al instante sin obligar a un clic extra.
-                        const uniqueColorNames = Array.from(new Set(vars.map((v: any) => v.color_name)));
-                        if (uniqueColorNames.length === 1) {
-                            const singleGroup = uniqueColorNames[0] as string;
-                            setSelectedColor(singleGroup);
-                            const availableInGroup = vars.filter((v: any) => v.color_name === singleGroup && (v.stock || 0) > 0);
-                            if (availableInGroup.length === 1) {
-                                setSelectedSize(availableInGroup[0].size);
-                            } else {
-                                setSelectedSize(null);
-                            }
-                        } else {
-                            setSelectedColor(null);
-                            setSelectedSize(null);
-                        }
-                    } else {
-                        setVariants([]);
-                        setSelectedColor(null);
-                        setSelectedSize(null);
-                    }
-                    setLoading(false);
-                });
-            });
-            
-        } else {
-            // 3. Limpieza absoluta al cerrar el modal (Libera RAM del teléfono)
-            setFullProduct(null);
-            setVariants([]);
-            setSelectedColor(null);
-            setSelectedSize(null);
-            setCurrentGallery([]);
-            setGalleryIndex(0);
-            setQuantity(1);
+            setErrorShake(null);
+            setIsDescriptionOpen(false);
+            setIsShippingOpen(false);
             setZoomData({ show: false, mouseX: 0, mouseY: 0, bgX: 0, bgY: 0 });
-        }
-    }, [isOpen, product]);
 
-    // 🚀 2. AUTO-SELECCIÓN DE VARIANTES Y SINCRONIZACIÓN DE GALERÍA
+            const vars = Array.isArray(product.product_variants) ? product.product_variants : [];
+            setVariants(vars);
+
+            let initColor: string | null = null;
+            let initSize: string | null = null;
+
+            if (vars.length > 0) {
+                const uniqueColorNames = Array.from(new Set(vars.map((v: any) => v.color_name)));
+                if (uniqueColorNames.length === 1) {
+                    initColor = uniqueColorNames[0] as string;
+                    const availableInGroup = vars.filter((v: any) => v.color_name === initColor && (v.stock || 0) > 0);
+                    if (availableInGroup.length === 1) {
+                        initSize = availableInGroup[0].size;
+                    }
+                }
+            }
+
+            setSelectedColor(initColor);
+            setSelectedSize(initSize);
+
+            let initialImages: string[] = [];
+            if (initColor) {
+                const firstVar = vars.find((v: any) => v.color_name === initColor);
+                if (firstVar?.gallery && firstVar.gallery.length > 0) initialImages = firstVar.gallery;
+                else if (firstVar?.variant_image) initialImages = [firstVar.variant_image];
+            }
+            if (initialImages.length === 0) {
+                initialImages = [product.image_url, ...(product.gallery || [])].filter(Boolean);
+            }
+            setCurrentGallery(initialImages);
+            setGalleryIndex(0);
+        }
+    }
+
+    // 🚀 2. AUTO-SELECCIÓN DE VARIANTES Y SINCRONIZACIÓN DE GALERÍA AL CAMBIAR COLOR
     useEffect(() => {
-        if (!selectedColor || variants.length === 0) return;
+        if (!isOpen || !selectedColor || variants.length === 0 || !product) return;
 
         const variantsForColor = variants.filter(v => v.color_name === selectedColor);
-        
-        // Auto-selecciona la talla si solo hay una disponible para ese color
         if (variantsForColor.length === 1 && selectedSize !== variantsForColor[0].size) {
             setSelectedSize(variantsForColor[0].size);
         } else if (variantsForColor.length > 1 && !variantsForColor.some(v => v.size === selectedSize)) {
             setSelectedSize(null);
         }
 
-        // Sincroniza la foto del modal con la foto de la variante seleccionada
         const variant = variantsForColor[0];
         if (variant) {
-            let images = [];
+            let images: string[] = [];
             if (variant.gallery && variant.gallery.length > 0) images = variant.gallery;
             else if (variant.variant_image) images = [variant.variant_image];
             else images = [product.image_url, ...(product.gallery || [])].filter(Boolean);
-            
-            if (JSON.stringify(images) !== JSON.stringify(currentGallery)) {
+
+            const isSameGallery =
+                images.length === currentGallery.length &&
+                images.every((url, i) => url === currentGallery[i]);
+
+            if (!isSameGallery) {
                 setCurrentGallery(images);
                 setGalleryIndex(0);
             }
         }
-    }, [selectedColor, variants, product, currentGallery, selectedSize]);
+    }, [isOpen, selectedColor, variants, product, currentGallery, selectedSize]);
 
     // 🚀 CONTROLADOR DEL SCROLL DE FONDO (BLINDADO CROSS-BROWSER/iOS)
     useEffect(() => {

@@ -1,7 +1,7 @@
 // components/StoreHeader.tsx
 'use client'
 
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, createContext, useContext, memo } from 'react'
 import { Search, ShoppingBag, X, ShoppingCart, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Menu, Flame, Zap, Utensils, LayoutGrid, ShieldCheck, Truck, Award, Headset, Clock, RefreshCcw, CreditCard, ThumbsUp, Package, Star, Lock, SearchX } from 'lucide-react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -133,27 +133,24 @@ const TrustIcon = ({ name, className }: { name: string, className?: string }) =>
     }
 };
 
-// 🚀 COMPONENTE AISLADO: BUSCADOR PREDICTIVO (Live Search Popover Blindado)
-const LiveSearchPopover = ({ search, products, activeRate, isFocused, setIsFocused, setSearch }: any) => {
+// 🚀 COMPONENTE AISLADO: BUSCADOR PREDICTIVO (Cortocircuitado cuando no hay foco)
+const LiveSearchPopover = memo(({ search, products, isFocused, setIsFocused, setSearch }: any) => {
     const searchResults = useMemo(() => {
-        if (!search.trim() || !products) return [];
+        if (!isFocused || !search.trim() || !products) return [];
         const term = search.toLowerCase().trim();
         return products
             .filter((p: any) => p.name.toLowerCase().includes(term) || p.category?.toLowerCase().includes(term))
             .slice(0, 5);
-    }, [search, products]);
+    }, [isFocused, search, products]);
 
     const handleProductSelect = (product: any) => {
-        // 1. Limpiamos la búsqueda y cerramos el popover
         setSearch("");
         setIsFocused(false);
 
-        // 2. Desenfocamos el input en el DOM para reiniciar el ciclo de onFocus
         if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
             document.activeElement.blur();
         }
 
-        // 3. Deferimos la apertura para evitar que el click residual golpee el backdrop del modal
         setTimeout(() => {
             document.dispatchEvent(new CustomEvent('openProductModal', { detail: product }));
         }, 60);
@@ -214,165 +211,131 @@ const LiveSearchPopover = ({ search, products, activeRate, isFocused, setIsFocus
             )}
         </AnimatePresence>
     );
-};
-export default function StoreHeader(props: StoreHeaderProps) {
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+});
+LiveSearchPopover.displayName = 'LiveSearchPopover';
 
-    // 🚀 MOTOR DE APERTURA DE BOLSA/CARRITO (Bulletproof 360°)
-    const handleOpenCart = () => {
-        // 1. Propagación global (Burbujeo garantizado para React y Vanilla)
-        const event = new CustomEvent('toggleCartDrawer', { bubbles: true, composed: true });
-        window.dispatchEvent(event);
-        document.dispatchEvent(event);
+// 🚀 MICRO-COMPONENTE AISLADO: Ticker Classic (Evita re-renderizar todo el Header cada 3.5s)
+const TICKER_ITEMS = [
+    { icon: ShieldCheck, text: "Pagos 100% Seguros" },
+    { icon: Truck, text: "Envíos a Nivel Nacional" },
+    { icon: Award, text: "Garantía de Calidad" }
+];
 
-        // 2. Fallback Sensorial: Scroll suave si la bolsa está montada en el DOM inferior
-        const cartSection = document.getElementById('cart-section') || document.getElementById('floating-checkout') || document.getElementById('bolsa');
-        if (cartSection) {
-            cartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-
-    // 🚀 CEREBRO DEL TICKER EDITORIAL (Desplazamiento Vertical)
+const ClassicTrustTicker = memo(() => {
     const [tickerIndex, setTickerIndex] = useState(0);
-    const tickerItems = useMemo(() => [
-        { icon: ShieldCheck, text: "Pagos 100% Seguros" },
-        { icon: Truck, text: "Envíos a Nivel Nacional" },
-        { icon: Award, text: "Garantía de Calidad" }
-    ], []);
 
     useEffect(() => {
-        if (props.layoutStyle !== 'classic') return;
         const interval = setInterval(() => {
-            setTickerIndex((prev) => (prev + 1) % tickerItems.length);
-        }, 3500); // Cambia cada 3.5 segundos
+            setTickerIndex((prev) => (prev + 1) % TICKER_ITEMS.length);
+        }, 3500);
         return () => clearInterval(interval);
-    }, [props.layoutStyle, tickerItems.length]);
+    }, []);
 
-    // 🚀 DEFINICIÓN GLOBAL
-    const liveTheme = normalizeThemeConfig(props.store.theme_config);
+    const ActiveIcon = TICKER_ITEMS[tickerIndex].icon;
 
+    return (
+        <div className="flex-1 flex justify-start md:justify-center items-center overflow-hidden h-[18px] relative">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={tickerIndex}
+                    initial={{ y: -15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 15, opacity: 0 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    className="flex items-center gap-1.5 whitespace-nowrap absolute"
+                >
+                    <ActiveIcon size={13} strokeWidth={2.5} />
+                    <span>{TICKER_ITEMS[tickerIndex].text}</span>
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+});
+ClassicTrustTicker.displayName = 'ClassicTrustTicker';
 
- const heroCta = props.store?.theme_config?.layout?.hero_cta || liveTheme.layout?.hero_cta;
+// ==========================================
+// 🚀 FUNCIONES PURAS DE CTA HERO (A Nivel de Módulo: 0 Re-alocaciones)
+// ==========================================
+const resolveCtaButtonBg = (fillStyle: string, rawColor?: string) => {
+    if (fillStyle === 'outline_pill' || fillStyle === 'minimal_underline') {
+        return 'transparent';
+    }
+    const clean = (rawColor || '').trim();
+    if (!clean || clean === 'transparent') {
+        return fillStyle === 'glass' ? 'rgba(255, 255, 255, 0.28)' : '#171717';
+    }
 
-   // 🎯 EJECUTOR DE ACCIÓN DE CADA BOTÓN CTA (Catálogo, Lo Más Vendido o Producto Específico)
-    const executeHeroButtonAction = (btn?: {
-        action_type?: 'catalog' | 'product' | 'bestsellers';
-        target_product_id?: string | number | null;
-    }) => {
-        if (!btn) return;
-
-        if (btn.action_type === 'product' && btn.target_product_id) {
-            const targetProd = (props.products || []).find(
-                (p: any) => String(p.id) === String(btn.target_product_id)
-            );
-            if (targetProd) {
-                document.dispatchEvent(new CustomEvent('openProductModal', { detail: targetProd }));
-                return;
+    let r = 255, g = 255, b = 255, a = 1;
+    if (clean.startsWith('#')) {
+        const hex = clean.slice(1);
+        if (hex.length === 3) {
+            r = parseInt(hex[0] + hex[0], 16);
+            g = parseInt(hex[1] + hex[1], 16);
+            b = parseInt(hex[2] + hex[2], 16);
+        } else if (hex.length >= 6) {
+            r = parseInt(hex.slice(0, 2), 16);
+            g = parseInt(hex.slice(2, 4), 16);
+            b = parseInt(hex.slice(4, 6), 16);
+            if (hex.length === 8) {
+                a = parseInt(hex.slice(6, 8), 16) / 255;
             }
         }
-
-        if (btn.action_type === 'bestsellers') {
-            const bestsellersEl =
-                document.getElementById('bestsellers-section') ||
-                document.getElementById('catalog-grid-start');
-            if (bestsellersEl) {
-                const y = bestsellersEl.getBoundingClientRect().top + window.scrollY - 125;
-                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                return;
-            }
+    } else if (clean.startsWith('rgb')) {
+        const nums = clean.match(/\d+(\.\d+)?/g);
+        if (nums && nums.length >= 3) {
+            r = Number(nums[0]);
+            g = Number(nums[1]);
+            b = Number(nums[2]);
+            a = nums.length >= 4 ? Number(nums[3]) : 1;
         }
+    }
 
-        const catalogAnchor = document.getElementById('catalog-grid-start');
-        if (catalogAnchor) {
-            const y = catalogAnchor.getBoundingClientRect().top + window.scrollY - 130;
-            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-        } else {
-            window.scrollTo({ top: 520, behavior: 'smooth' });
-        }
-    };
+    if (fillStyle === 'glass') {
+        const glassAlpha = a >= 0.88 || a <= 0.02 ? 0.32 : Number(a.toFixed(2));
+        return `rgba(${r}, ${g}, ${b}, ${glassAlpha})`;
+    }
 
-    const mobileAspectClass = heroCta?.mobile_banner_ratio || 'aspect-[9/10]';
+    return a < 0.1 ? `rgb(${r}, ${g}, ${b})` : clean;
+};
 
-    const resolveCtaButtonBg = (fillStyle: string, rawColor?: string) => {
-        if (fillStyle === 'outline_pill' || fillStyle === 'minimal_underline') {
-            return 'transparent';
-        }
-        const clean = (rawColor || '').trim();
-        if (!clean || clean === 'transparent') {
-            return fillStyle === 'glass' ? 'rgba(255, 255, 255, 0.28)' : '#171717';
-        }
+// ==========================================
+// 💎 CONTEXTO INTERNO Y SUB-COMPONENTES ESTÁTICOS (Cero Desmontaje DOM)
+// ==========================================
+interface StoreHeaderInternalCtx {
+    props: StoreHeaderProps;
+    liveTheme: any;
+    heroCta: any;
+    isMobileMenuOpen: boolean;
+    setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsMinimalSearchOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    handleOpenCart: () => void;
+    executeHeroButtonAction: (btn?: any) => void;
+}
 
-        let r = 255, g = 255, b = 255, a = 1;
-        if (clean.startsWith('#')) {
-            const hex = clean.slice(1);
-            if (hex.length === 3) {
-                r = parseInt(hex[0] + hex[0], 16);
-                g = parseInt(hex[1] + hex[1], 16);
-                b = parseInt(hex[2] + hex[2], 16);
-            } else if (hex.length >= 6) {
-                r = parseInt(hex.slice(0, 2), 16);
-                g = parseInt(hex.slice(2, 4), 16);
-                b = parseInt(hex.slice(4, 6), 16);
-                if (hex.length === 8) {
-                    a = parseInt(hex.slice(6, 8), 16) / 255;
-                }
-            }
-        } else if (clean.startsWith('rgb')) {
-            const nums = clean.match(/\d+(\.\d+)?/g);
-            if (nums && nums.length >= 3) {
-                r = Number(nums[0]);
-                g = Number(nums[1]);
-                b = Number(nums[2]);
-                a = nums.length >= 4 ? Number(nums[3]) : 1;
-            }
-        }
+const StoreHeaderContext = createContext<StoreHeaderInternalCtx | null>(null);
 
-        if (fillStyle === 'glass') {
-            const glassAlpha = a >= 0.88 || a <= 0.02 ? 0.32 : Number(a.toFixed(2));
-            return `rgba(${r}, ${g}, ${b}, ${glassAlpha})`;
-        }
+const useStoreHeaderCtx = () => {
+    const ctx = useContext(StoreHeaderContext);
+    if (!ctx) throw new Error('useStoreHeaderCtx must be used within StoreHeader');
+    return ctx;
+};
 
-        return a < 0.1 ? `rgb(${r}, ${g}, ${b})` : clean;
-    };
+const HeroInteractiveCtaOverlay = () => {
+    const { heroCta, executeHeroButtonAction } = useStoreHeaderCtx();
+    if (!heroCta) return null;
 
-    // 💎 RENDERIZADOR INDIVIDUAL DE BOTÓN CTA CON UNIDADES PROPORCIONALES (cqw)
-    // Garantiza que el botón mida exactamente la misma proporción respecto a la imagen en el Modal y en la Tienda Real
-    const renderHeroCtaButton = (
-        btn: any,
-        key: string,
-        vpConfig?: any,
-        isMobileViewport?: boolean
-    ) => {
+    const renderHeroCtaButton = (btn: any, key: string, vpConfig?: any, isMobileViewport?: boolean) => {
         if (!btn) return null;
 
-        const hasTwoInRow =
-            vpConfig?.secondary_button_enabled &&
-            (vpConfig?.buttons_layout || 'row') === 'row';
-        const maxAllowed =
-            isMobileViewport && hasTwoInRow ? 1.32 : isMobileViewport ? 1.5 : 1.65;
+        const hasTwoInRow = vpConfig?.secondary_button_enabled && (vpConfig?.buttons_layout || 'row') === 'row';
+        const maxAllowed = isMobileViewport && hasTwoInRow ? 1.32 : isMobileViewport ? 1.5 : 1.65;
         const scale = Math.min(maxAllowed, Math.max(0.65, Number(btn.scale || 1)));
 
-        // Dimensiones en % del ancho del banner (cqw): 100% idénticas en un modal de 600px y en un monitor de 1500px
-        const padXCqw = isMobileViewport
-            ? (hasTwoInRow ? 3.8 : 5.2) * scale
-            : 3.4 * scale;
-        const padYCqw = isMobileViewport
-            ? (hasTwoInRow ? 2.2 : 2.75) * scale
-            : 1.55 * scale;
-        const fontCqw = isMobileViewport
-            ? (hasTwoInRow ? 3.1 : 3.5) * scale
-            : 1.95 * scale;
+        const padXCqw = isMobileViewport ? (hasTwoInRow ? 3.8 : 5.2) * scale : 3.4 * scale;
+        const padYCqw = isMobileViewport ? (hasTwoInRow ? 2.2 : 2.75) * scale : 1.55 * scale;
+        const fontCqw = isMobileViewport ? (hasTwoInRow ? 3.1 : 3.5) * scale : 1.95 * scale;
 
-        const radiusClass =
-            btn.radius === 'pill'
-                ? 'rounded-full'
-                : btn.radius === 'rounded'
-                ? 'rounded-[10px]'
-                : 'rounded-none';
-
+        const radiusClass = btn.radius === 'pill' ? 'rounded-full' : btn.radius === 'rounded' ? 'rounded-[10px]' : 'rounded-none';
         const shadowColor = btn.shadow_color || 'rgba(0, 0, 0, 0.35)';
         const boxShadow =
             btn.shadow === 'crisp'
@@ -431,29 +394,17 @@ export default function StoreHeader(props: StoreHeaderProps) {
         );
     };
 
-    // Renderiza la capa con paridad geométrica 1:1 exacta respecto al Editor Modal
     const renderViewportOverlayContent = (vpConfig: any, isMobileViewport: boolean) => {
         if (!vpConfig || !vpConfig.enabled || !vpConfig.primary_button) return null;
 
         const posX = Math.max(0, Math.min(100, typeof vpConfig.pos_x === 'number' ? vpConfig.pos_x : 50));
         const posY = Math.max(0, Math.min(100, typeof vpConfig.pos_y === 'number' ? vpConfig.pos_y : 82));
-
         const isStacked = vpConfig.buttons_layout === 'column';
 
-        const textAlignClass =
-            posX > 64 ? 'items-end text-right' : posX >= 36 ? 'items-center text-center' : 'items-start text-left';
-
+        const textAlignClass = posX > 64 ? 'items-end text-right' : posX >= 36 ? 'items-center text-center' : 'items-start text-left';
         const buttonsAlignClass = isStacked
-            ? posX > 64
-                ? 'flex-col items-end'
-                : posX >= 36
-                ? 'flex-col items-center'
-                : 'flex-col items-start'
-            : posX > 64
-            ? 'flex-row flex-nowrap items-center justify-end'
-            : posX >= 36
-            ? 'flex-row flex-nowrap items-center justify-center'
-            : 'flex-row flex-nowrap items-center justify-start';
+            ? posX > 64 ? 'flex-col items-end' : posX >= 36 ? 'flex-col items-center' : 'flex-col items-start'
+            : posX > 64 ? 'flex-row flex-nowrap items-center justify-end' : posX >= 36 ? 'flex-row flex-nowrap items-center justify-center' : 'flex-row flex-nowrap items-center justify-start';
 
         const descShadowColor = vpConfig.description_shadow_color || 'rgba(0, 0, 0, 0.55)';
         const textShadow =
@@ -464,16 +415,8 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 : 'none';
 
         const descFontCqw = isMobileViewport
-            ? vpConfig.description_size === 'lg'
-                ? '4.4cqw'
-                : vpConfig.description_size === 'sm'
-                ? '3.1cqw'
-                : '3.6cqw'
-            : vpConfig.description_size === 'lg'
-            ? '2.5cqw'
-            : vpConfig.description_size === 'sm'
-            ? '1.5cqw'
-            : '1.95cqw';
+            ? vpConfig.description_size === 'lg' ? '4.4cqw' : vpConfig.description_size === 'sm' ? '3.1cqw' : '3.6cqw'
+            : vpConfig.description_size === 'lg' ? '2.5cqw' : vpConfig.description_size === 'sm' ? '1.5cqw' : '1.95cqw';
 
         return (
             <div className="@container absolute inset-0 pointer-events-none overflow-hidden">
@@ -504,20 +447,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                             style={{ gap: isMobileViewport ? '2.2cqw' : '1.2cqw' }}
                             className={`flex items-center justify-center ${buttonsAlignClass}`}
                         >
-                            {renderHeroCtaButton(
-                                vpConfig.primary_button,
-                                `hero-btn-1-${isMobileViewport ? 'm' : 'd'}`,
-                                vpConfig,
-                                isMobileViewport
-                            )}
-                            {vpConfig.secondary_button_enabled &&
-                                vpConfig.secondary_button &&
-                                renderHeroCtaButton(
-                                    vpConfig.secondary_button,
-                                    `hero-btn-2-${isMobileViewport ? 'm' : 'd'}`,
-                                    vpConfig,
-                                    isMobileViewport
-                                )}
+                            {renderHeroCtaButton(vpConfig.primary_button, `hero-btn-1-${isMobileViewport ? 'm' : 'd'}`, vpConfig, isMobileViewport)}
+                            {vpConfig.secondary_button_enabled && vpConfig.secondary_button &&
+                                renderHeroCtaButton(vpConfig.secondary_button, `hero-btn-2-${isMobileViewport ? 'm' : 'd'}`, vpConfig, isMobileViewport)}
                         </div>
                     </div>
                 </div>
@@ -525,24 +457,363 @@ export default function StoreHeader(props: StoreHeaderProps) {
         );
     };
 
-    // 💎 CAPA DUAL INDEPENDIENTE: MÓVIL Y DESKTOP NO SE INTERFIEREN ENTRE SÍ
-    const HeroInteractiveCtaOverlay = () => {
-        if (!heroCta) return null;
-        const desktopCfg = heroCta.desktop || heroCta;
-        const mobileCfg = heroCta.mobile || heroCta;
+    const desktopCfg = heroCta.desktop || heroCta;
+    const mobileCfg = heroCta.mobile || heroCta;
 
-        return (
-            <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
-                <div className="hidden md:block relative w-full h-full">
-                    {renderViewportOverlayContent(desktopCfg, false)}
-                </div>
-                <div className="block md:hidden relative w-full h-full">
-                    {renderViewportOverlayContent(mobileCfg, true)}
-                </div>
+    return (
+        <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+            <div className="hidden md:block relative w-full h-full">
+                {renderViewportOverlayContent(desktopCfg, false)}
             </div>
+            <div className="block md:hidden relative w-full h-full">
+                {renderViewportOverlayContent(mobileCfg, true)}
+            </div>
+        </div>
+    );
+};
+
+const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
+    const { props, liveTheme } = useStoreHeaderCtx();
+    const liveLogoUrl = liveTheme.layout?.logo_url || props.store.logo_url;
+    const isPng = liveTheme.layout?.logo_type === 'png_transparent';
+
+    return (
+        <div className={`flex items-center gap-3 cursor-pointer ${centered ? 'justify-center' : ''}`} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div className="relative shrink-0 flex items-center justify-center">
+                {liveLogoUrl ? (
+                    <Image
+                        src={getOptimizedUrl(liveLogoUrl)}
+                        width={isPng ? 140 : 44}
+                        height={isPng ? 44 : 44}
+                        className={`object-contain transition-all ${isPng
+                            ? 'bg-transparent border-0 shadow-none w-24 h-8 md:w-32 md:h-10'
+                            : 'w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
+                            } ${props.layoutStyle === 'minimal' && !isPng ? 'rounded-none' : 'rounded-full'}`}
+                        alt="Logo"
+                    />
+                ) : (
+                    <div className={`w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] flex items-center justify-center text-[var(--store-surface-text)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] ${props.layoutStyle === 'minimal' ? 'rounded-none' : 'rounded-full'}`}>
+                        <ShoppingBag size={18} strokeWidth={1.5} />
+                    </div>
+                )}
+            </div>
+
+            {!isPng && (
+                <h1 className={`text-base md:text-lg font-semibold text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px] ${centered ? 'hidden md:block' : ''}`}>
+                    {props.store.name}
+                </h1>
+            )}
+        </div>
+    );
+};
+
+const RateBlock = () => {
+    const { props } = useStoreHeaderCtx();
+    return (
+        <div className="flex items-center gap-2">
+            {props.store?.store_type === 'restaurant' && (
+                <StoreScheduleBadge storeHours={props.store.store_hours} storeType={props.store.store_type} />
+            )}
+            <button onClick={() => props.setIsRateModalOpen(true)} className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-[var(--radius-btn)] active:scale-95 transition-all">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
+                        {props.isEur ? 'Tasa EUR' : 'Tasa BCV'}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors sm:hidden">
+                        {props.isEur ? 'EUR' : 'BCV'}
+                    </span>
+                </div>
+                <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
+                <div className="flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
+                    <span className="mr-0.5 select-none font-sans text-xs opacity-80">Bs.</span>
+                    <span className="tabular-nums">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                </div>
+            </button>
+        </div>
+    );
+};
+
+const IconsBlock = () => {
+    const { props, handleOpenCart, isMobileMenuOpen, setIsMobileMenuOpen } = useStoreHeaderCtx();
+    return (
+        <div className="flex items-center gap-1">
+            <button onClick={props.onProfileClick} className="relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
+                <UserCircle size={24} strokeWidth={1.5} />
+            </button>
+
+            {props.orderHistory && props.orderHistory.length > 0 && (
+                <button onClick={() => props.setIsHistoryModalOpen(true)} className="hidden md:flex relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
+                    <Receipt size={24} strokeWidth={1.5} />
+                    <span className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                        {props.orderHistory.length}
+                    </span>
+                </button>
+            )}
+
+            <button data-cart-target="true" onClick={handleOpenCart} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
+                <motion.div animate={props.cartControls} className="inline-block origin-top">
+                    <ShoppingCart size={24} strokeWidth={1.5} />
+                </motion.div>
+                <AnimatePresence>
+                    {props.hasItems && (
+                        <motion.span key={props.totalItems} initial={{ scale: 0, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                            {props.totalItems}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </button>
+
+            {props.layoutStyle !== 'classic' && (
+                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden relative p-2.5 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300 active:scale-90">
+                    {isMobileMenuOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
+                </button>
+            )}
+        </div>
+    );
+};
+
+const CategoriesBlock = ({ isMinimal = false }: { isMinimal?: boolean }) => {
+    const { props } = useStoreHeaderCtx();
+    return (
+        <div className="w-full md:flex-1 md:min-w-0 relative group flex items-center">
+            {props.isBoutiqueMode ? (
+                <div className="w-full flex items-center justify-between py-1 px-1 animate-in fade-in duration-500">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 bg-[var(--store-primary)]/10 px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-primary)]/20 shadow-[var(--shadow-ui)]">
+                            <Sparkles size={12} className="text-[var(--store-primary)]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--store-primary)] hidden sm:inline">Pasillo VIP</span>
+                        </div>
+                        <h2 className="text-sm md:text-base font-black text-[var(--store-text-main)] truncate max-w-[150px] md:max-w-none">{props.selectedCategory}</h2>
+                    </div>
+                    <button onClick={props.exitBoutiqueMode} className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-95 bg-[var(--store-surface)] px-3 py-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] shrink-0">
+                        Ver Todo <ArrowRight size={12} />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button onClick={() => props.scrollCategories('left')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronLeft size={14} strokeWidth={2.5} /></button>
+                    </div>
+
+                    <div ref={props.categoryScrollRef} onScroll={props.handleCategoryScroll} className="w-full overflow-x-auto no-scrollbar py-1" style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}>
+                        <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
+                            {props.categories.map((category) => {
+                                const isActivePill = props.selectedCategory === category && !(category === 'Todos' && props.search.trim().length > 0);
+                                return (
+                                    <CategoryPill
+                                        key={category}
+                                        label={category}
+                                        active={isActivePill}
+                                        onClick={() => props.setSelectedCategory(category)}
+                                        isMinimal={isMinimal}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button onClick={() => props.scrollCategories('right')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronRight size={14} strokeWidth={2.5} /></button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const MobileMenu = () => {
+    const { props, isMobileMenuOpen, setIsMobileMenuOpen, setIsMinimalSearchOpen } = useStoreHeaderCtx();
+
+    if (props.layoutStyle === 'minimal') {
+        return (
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ x: '-100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '-100%' }}
+                        transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
+                        className="fixed inset-0 z-[100] bg-[var(--store-bg)] flex flex-col w-full h-[100dvh] overflow-hidden"
+                    >
+                        <div className="flex justify-between items-center px-6 py-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-surface-text)] shrink-0">
+                            <span>Menu</span>
+                            <button onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-1.5 hover:text-[var(--store-text-main)] transition-colors active:scale-90">
+                                Close <X size={14} strokeWidth={1} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6 no-scrollbar">
+                            {props.categories.map((cat, idx) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => {
+                                        props.setSelectedCategory(cat);
+                                        setIsMobileMenuOpen(false);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    className="flex items-center gap-5 text-left group w-full"
+                                >
+                                    <span className="text-[10px] font-mono text-[var(--store-surface-text)] opacity-70 mt-1">
+                                        {(idx + 1).toString().padStart(2, '0')}
+                                    </span>
+                                    <span className="text-3xl md:text-4xl font-heading text-[var(--store-text-main)] group-hover:opacity-60 transition-opacity tracking-tight">
+                                        {cat}
+                                    </span>
+                                    <ChevronRight size={18} strokeWidth={1} className="text-[var(--store-surface-text)] ml-auto opacity-0 group-hover:opacity-100 transition-opacity -translate-x-4 group-hover:translate-x-0 duration-300" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-6 flex flex-col gap-5 shrink-0 border-t border-[var(--store-border)]/20">
+                            <button onClick={() => { setIsMobileMenuOpen(false); setIsMinimalSearchOpen(true); }} className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                                <Search size={16} strokeWidth={1} /> Search
+                            </button>
+                            <button onClick={() => { setIsMobileMenuOpen(false); props.onProfileClick(); }} className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
+                                <UserCircle size={16} strokeWidth={1} /> Sign In
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         );
+    }
+
+    return (
+        <AnimatePresence>
+            {isMobileMenuOpen && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    className="md:hidden border-b border-[var(--store-border)] bg-[var(--store-bg)]/98 backdrop-blur-xl overflow-hidden shadow-xl"
+                >
+                    <div className="flex flex-col px-5 py-4 max-h-[60vh] overflow-y-auto overscroll-contain no-scrollbar">
+                        {props.orderHistory && props.orderHistory.length > 0 && (
+                            <button
+                                onClick={() => { setIsMobileMenuOpen(false); props.setIsHistoryModalOpen(true); }}
+                                className="flex items-center justify-between p-3 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)] text-[var(--store-text-main)] mb-3 active:scale-[0.99] transition-all"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="font-mono text-xs font-bold uppercase tracking-wider">Mis Pedidos</span>
+                                </div>
+                                <span className="font-mono text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                    {props.orderHistory.length} Activos →
+                                </span>
+                            </button>
+                        )}
+
+                        <div className="flex items-center justify-between pb-2 mb-1 border-b border-[var(--store-border)]/40">
+                            <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em]">
+                                CATEGORÍAS DE LA TIENDA
+                            </span>
+                            <span className="text-[9px] font-mono text-[var(--store-surface-text)] opacity-70">
+                                [{props.categories.length}]
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col divide-y divide-[var(--store-border)]/20">
+                            {props.categories.map((cat, idx) => {
+                                const isActive = props.selectedCategory === cat;
+                                return (
+                                    <button
+                                        key={cat}
+                                        onClick={() => {
+                                            props.setSelectedCategory(cat);
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${isActive
+                                            ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
+                                            : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="font-mono text-[9px] text-[var(--store-surface-text)] opacity-40 shrink-0">
+                                                {(idx + 1).toString().padStart(2, '0')} //
+                                            </span>
+                                            <span className={`text-sm truncate tracking-tight ${isActive ? 'font-bold text-[var(--store-text-main)]' : 'font-medium'}`}>
+                                                {cat}
+                                            </span>
+                                        </div>
+
+                                        {isActive ? (
+                                            <span className="flex items-center gap-1.5 font-mono text-[8.5px] font-bold uppercase tracking-widest text-[var(--store-text-main)] shrink-0">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
+                                                ACTIVO
+                                            </span>
+                                        ) : (
+                                            <span className="font-mono text-[10px] text-[var(--store-surface-text)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                →
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+function StoreHeader(props: StoreHeaderProps) {
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [isMinimalSearchOpen, setIsMinimalSearchOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const handleOpenCart = () => {
+        const event = new CustomEvent('toggleCartDrawer', { bubbles: true, composed: true });
+        window.dispatchEvent(event);
+        document.dispatchEvent(event);
+
+        const cartSection = document.getElementById('cart-section') || document.getElementById('floating-checkout') || document.getElementById('bolsa');
+        if (cartSection) {
+            cartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     };
-    // 🚀 RESOLUCIÓN DETERMINISTA DE IMÁGENES DE CATEGORÍA (Admin custom > 1er Producto)
+
+    const liveTheme = useMemo(() => normalizeThemeConfig(props.store?.theme_config), [props.store?.theme_config]);
+    const heroCta = props.store?.theme_config?.layout?.hero_cta || liveTheme.layout?.hero_cta;
+    const mobileAspectClass = heroCta?.mobile_banner_ratio || 'aspect-[9/10]';
+
+    const executeHeroButtonAction = (btn?: {
+        action_type?: 'catalog' | 'product' | 'bestsellers';
+        target_product_id?: string | number | null;
+    }) => {
+        if (!btn) return;
+
+        if (btn.action_type === 'product' && btn.target_product_id) {
+            const targetProd = (props.products || []).find(
+                (p: any) => String(p.id) === String(btn.target_product_id)
+            );
+            if (targetProd) {
+                document.dispatchEvent(new CustomEvent('openProductModal', { detail: targetProd }));
+                return;
+            }
+        }
+
+        if (btn.action_type === 'bestsellers') {
+            const bestsellersEl =
+                document.getElementById('bestsellers-section') ||
+                document.getElementById('catalog-grid-start');
+            if (bestsellersEl) {
+                const y = bestsellersEl.getBoundingClientRect().top + window.scrollY - 125;
+                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                return;
+            }
+        }
+
+        const catalogAnchor = document.getElementById('catalog-grid-start');
+        if (catalogAnchor) {
+            const y = catalogAnchor.getBoundingClientRect().top + window.scrollY - 130;
+            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 520, behavior: 'smooth' });
+        }
+    };
+
     const categoryImages = useMemo(() => {
         const customImages = props.store?.category_images || {};
         const map: Record<string, string> = { ...customImages };
@@ -567,67 +838,6 @@ export default function StoreHeader(props: StoreHeaderProps) {
         return map;
     }, [props.store?.category_images, props.categories, props.products]);
 
-    // ==========================================
-    // COMPONENTES REUTILIZABLES (DRY)
-    // ==========================================
-    const LogoBlock = ({ centered = false }: { centered?: boolean }) => {
-        // 🚀 Lee prioritariamente el logo en vivo del postMessage para renderizado en 0ms
-        const liveLogoUrl = liveTheme.layout?.logo_url || props.store.logo_url;
-        const isPng = liveTheme.layout?.logo_type === 'png_transparent';
-
-        return (
-            <div className={`flex items-center gap-3 cursor-pointer ${centered ? 'justify-center' : ''}`} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                <div className="relative shrink-0 flex items-center justify-center">
-                    {liveLogoUrl ? (
-                        <Image
-                            src={getOptimizedUrl(liveLogoUrl)}
-                            // 🚀 DIMENSIONES ADAPTABLES: Proporción horizontal elegante para marcas de lujo si es PNG
-                            width={isPng ? 140 : 44}
-                            height={isPng ? 44 : 44}
-                            className={`object-contain transition-all ${isPng
-                                ? 'bg-transparent border-0 shadow-none w-24 h-8 md:w-32 md:h-10'
-                                : 'w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)]'
-                                } ${props.layoutStyle === 'minimal' && !isPng ? 'rounded-none' : 'rounded-full'}`}
-                            alt="Logo"
-                        />
-                    ) : (
-                        <div className={`w-10 h-10 md:w-11 md:h-11 bg-[var(--store-surface)] flex items-center justify-center text-[var(--store-surface-text)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] ${props.layoutStyle === 'minimal' ? 'rounded-none' : 'rounded-full'}`}>
-                            <ShoppingBag size={18} strokeWidth={1.5} />
-                        </div>
-                    )}
-                </div>
-
-                {/* 🚀 ELIMINACIÓN DE REDUNDANCIA: Ocultamos el nombre de la tienda si el logo es un PNG transparente */}
-                {!isPng && (
-                    <h1 className={`text-base md:text-lg font-semibold text-[var(--store-text-main)] tracking-tight leading-none truncate max-w-[150px] md:max-w-[250px] ${centered ? 'hidden md:block' : ''}`}>
-                        {props.store.name}
-                    </h1>
-                )}
-            </div>
-        );
-    };
-    const RateBlock = () => (
-        <div className="flex items-center gap-2">
-            {props.store?.store_type === 'restaurant' && (
-                <StoreScheduleBadge storeHours={props.store.store_hours} />
-            )}
-            <button onClick={() => props.setIsRateModalOpen(true)} className="group flex items-center gap-2 px-2.5 py-1.5 shrink-0 rounded-[var(--radius-btn)] active:scale-95 transition-all">
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors hidden sm:block">
-                        {props.isEur ? 'Tasa EUR' : 'Tasa BCV'}
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-wider text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)] transition-colors sm:hidden">
-                        {props.isEur ? 'EUR' : 'BCV'}
-                    </span>
-                </div>
-                <div className="h-3.5 w-[1px] bg-[var(--store-border)]/60"></div>
-                <div className="flex items-baseline pt-[1px] text-[var(--store-text-main)] font-mono text-[13px] font-bold tracking-tight border-b border-[var(--store-text-main)]/30 group-hover:border-[var(--store-text-main)]/70 transition-colors pb-[1px] leading-none">
-                    <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="mr-0.5 select-none font-sans text-xs">Bs.</motion.span>
-                    <span className="tabular-nums">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
-                </div>
-            </button>
-        </div>
-    );
     const renderSearchBlock = (isDense: boolean = false, customWidthClass?: string) => (
         <div className={`relative flex-1 group min-w-0 ${customWidthClass ? customWidthClass : (isDense ? 'w-full' : 'w-full md:max-w-sm')}`}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2} />
@@ -641,7 +851,6 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 }}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => {
-                    // Delay para permitir que onMouseDown procese la selección antes de cerrar el popover
                     setTimeout(() => setIsSearchFocused(false), 200);
                 }}
                 className="w-full bg-[var(--store-surface)] focus:bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] pl-11 pr-4 py-2.5 text-sm font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-primary)] transition-all rounded-[var(--radius-search)]"
@@ -668,237 +877,18 @@ export default function StoreHeader(props: StoreHeaderProps) {
         </div>
     );
 
-    const IconsBlock = () => (
-        <div className="flex items-center gap-1">
-            {/* Perfil - Siempre visible */}
-            <button onClick={props.onProfileClick} className="relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
-                <UserCircle size={24} strokeWidth={1.5} />
-            </button>
-
-            {/* Mis Pedidos - Oculto en Mobile (Se mueve al menú hamburguesa si aplica) */}
-            {props.orderHistory && props.orderHistory.length > 0 && (
-                <button onClick={() => props.setIsHistoryModalOpen(true)} className="hidden md:flex relative p-2.5 md:p-3 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60 transition-all duration-300 active:scale-95">
-                    <Receipt size={24} strokeWidth={1.5} />
-                    <span className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                        {props.orderHistory.length}
-                    </span>
-                </button>
-            )}
-
-            {/* Carrito Superior - SIEMPRE OCULTO EN MOBILE (Evita duplicados con FloatingCheckout) */}
-            <button data-cart-target="true" onClick={handleOpenCart} className={`hidden md:flex relative p-2.5 md:p-3 rounded-full transition-all duration-300 active:scale-95 ${props.hasItems ? 'text-[var(--store-text-main)] hover:text-[var(--store-text-main)]/60' : 'text-[var(--store-surface-text)] hover:text-[var(--store-primary)]'}`}>
-                <motion.div animate={props.cartControls} className="inline-block origin-top">
-                    <ShoppingCart size={24} strokeWidth={1.5} />
-                </motion.div>
-                <AnimatePresence>
-                    {props.hasItems && (
-                        <motion.span key={props.totalItems} initial={{ scale: 0, y: 10, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="absolute top-1 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                            {props.totalItems}
-                        </motion.span>
-                    )}
-                </AnimatePresence>
-            </button>
-
-            {/* Menú Hamburguesa - SOLO VISIBLE EN MOBILE Y SOLO EN TEMAS NO CLÁSICOS */}
-            {props.layoutStyle !== 'classic' && (
-                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden relative p-2.5 rounded-full text-[var(--store-text-main)] hover:text-[var(--store-primary)] transition-all duration-300 active:scale-90">
-                    {isMobileMenuOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
-                </button>
-            )}
-        </div>
-    );
-
-    // 🚀 CATEGORÍAS CON ANCHO ELÁSTICO RESPONSIVO (md:flex-1 md:min-w-0)
-    const CategoriesBlock = ({ isMinimal = false }: { isMinimal?: boolean }) => (
-        <div className="w-full md:flex-1 md:min-w-0 relative group flex items-center">
-            {props.isBoutiqueMode ? (
-                <div className="w-full flex items-center justify-between py-1 px-1 animate-in fade-in duration-500">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 bg-[var(--store-primary)]/10 px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-primary)]/20 shadow-[var(--shadow-ui)]">
-                            <Sparkles size={12} className="text-[var(--store-primary)]" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--store-primary)] hidden sm:inline">Pasillo VIP</span>
-                        </div>
-                        <h2 className="text-sm md:text-base font-black text-[var(--store-text-main)] truncate max-w-[150px] md:max-w-none">{props.selectedCategory}</h2>
-                    </div>
-                    <button onClick={props.exitBoutiqueMode} className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-95 bg-[var(--store-surface)] px-3 py-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] shrink-0">
-                        Ver Todo <ArrowRight size={12} />
-                    </button>
-                </div>
-            ) : (
-                <>
-                    <div className="absolute left-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <button onClick={() => props.scrollCategories('left')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronLeft size={14} strokeWidth={2.5} /></button>
-                    </div>
-
-                    {/* Contenedor Auto-Centrado en Desktop & Scrollable en Mobile */}
-                    <div ref={props.categoryScrollRef} onScroll={props.handleCategoryScroll} className="w-full overflow-x-auto no-scrollbar py-1" style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}>
-                        <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
-                            {props.categories.map((category) => {
-                                const isActivePill = props.selectedCategory === category && !(category === 'Todos' && props.search.trim().length > 0);
-                                return (
-                                    <CategoryPill
-                                        key={category}
-                                        label={category}
-                                        active={isActivePill}
-                                        onClick={() => props.setSelectedCategory(category)}
-                                        isMinimal={isMinimal}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="absolute right-2 z-20 hidden md:flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <button onClick={() => props.scrollCategories('right')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronRight size={14} strokeWidth={2.5} /></button>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-
-    const MobileMenu = () => {
-        // 💎 VARIANTE: MENÚ EDITORIAL FULL-SCREEN (TEMA MINIMAL LUXURY)
-        if (props.layoutStyle === 'minimal') {
-            return (
-                <AnimatePresence>
-                    {isMobileMenuOpen && (
-                        <motion.div
-                            initial={{ x: '-100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
-                            transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-                            className="fixed inset-0 z-[100] bg-[var(--store-bg)] flex flex-col w-full h-[100dvh] overflow-hidden"
-                        >
-                            {/* Cabecera del Menú */}
-                            <div className="flex justify-between items-center px-6 py-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-surface-text)] shrink-0">
-                                <span>Menu</span>
-                                <button onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-1.5 hover:text-[var(--store-text-main)] transition-colors active:scale-90">
-                                    Close <X size={14} strokeWidth={1} />
-                                </button>
-                            </div>
-
-                            {/* Lista Editorial de Categorías */}
-                            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6 no-scrollbar">
-                                {props.categories.map((cat, idx) => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => {
-                                            props.setSelectedCategory(cat);
-                                            setIsMobileMenuOpen(false);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                        className="flex items-center gap-5 text-left group w-full"
-                                    >
-                                        <span className="text-[10px] font-mono text-[var(--store-surface-text)] opacity-70 mt-1">
-                                            {(idx + 1).toString().padStart(2, '0')}
-                                        </span>
-                                        <span className="text-3xl md:text-4xl font-heading text-[var(--store-text-main)] group-hover:opacity-60 transition-opacity tracking-tight">
-                                            {cat}
-                                        </span>
-                                        <ChevronRight size={18} strokeWidth={1} className="text-[var(--store-surface-text)] ml-auto opacity-0 group-hover:opacity-100 transition-opacity -translate-x-4 group-hover:translate-x-0 duration-300" />
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Footer del Menú */}
-                            <div className="p-6 flex flex-col gap-5 shrink-0 border-t border-[var(--store-border)]/20">
-                                <button onClick={() => { setIsMobileMenuOpen(false); setIsMinimalSearchOpen(true); }} className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                                    <Search size={16} strokeWidth={1} /> Search
-                                </button>
-                                <button onClick={() => { setIsMobileMenuOpen(false); props.onProfileClick(); }} className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                                    <UserCircle size={16} strokeWidth={1} /> Sign In
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            );
-        }
-
-        // 🛠️ VARIANTE: MENÚ DESPLEGABLE ESTÁNDAR (TEMA INDUSTRIAL / CLASSIC)
-        return (
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="md:hidden border-b border-[var(--store-border)] bg-[var(--store-bg)]/98 backdrop-blur-xl overflow-hidden shadow-xl"
-                    >
-                        <div className="flex flex-col px-5 py-4 max-h-[60vh] overflow-y-auto overscroll-contain no-scrollbar">
-
-                            {/* Módulo de Mis Pedidos (Compacto y Técnico) */}
-                            {props.orderHistory && props.orderHistory.length > 0 && (
-                                <button
-                                    onClick={() => { setIsMobileMenuOpen(false); props.setIsHistoryModalOpen(true); }}
-                                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)] text-[var(--store-text-main)] mb-3 active:scale-[0.99] transition-all"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span className="font-mono text-xs font-bold uppercase tracking-wider">Mis Pedidos</span>
-                                    </div>
-                                    <span className="font-mono text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                        {props.orderHistory.length} Activos →
-                                    </span>
-                                </button>
-                            )}
-
-                            {/* Encabezado del Directorio */}
-                            <div className="flex items-center justify-between pb-2 mb-1 border-b border-[var(--store-border)]/40">
-                                <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em]">
-                                    CATEGORÍAS DE LA TIENDA
-                                </span>
-                                <span className="text-[9px] font-mono text-[var(--store-surface-text)] opacity-70">
-                                    [{props.categories.length}]
-                                </span>
-                            </div>
-
-                            {/* Lista Depurada y Escaneable (Cero cajas pesadas) */}
-                            <div className="flex flex-col divide-y divide-[var(--store-border)]/20">
-                                {props.categories.map((cat, idx) => {
-                                    const isActive = props.selectedCategory === cat;
-                                    return (
-                                        <button
-                                            key={cat}
-                                            onClick={() => {
-                                                props.setSelectedCategory(cat);
-                                                setIsMobileMenuOpen(false);
-                                            }}
-                                            className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${isActive
-                                                ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
-                                                : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <span className="font-mono text-[9px] text-[var(--store-surface-text)] opacity-40 shrink-0">
-                                                    {(idx + 1).toString().padStart(2, '0')} //
-                                                </span>
-                                                <span className={`text-sm truncate tracking-tight ${isActive ? 'font-bold text-[var(--store-text-main)]' : 'font-medium'}`}>
-                                                    {cat}
-                                                </span>
-                                            </div>
-
-                                            {isActive ? (
-                                                <span className="flex items-center gap-1.5 font-mono text-[8.5px] font-bold uppercase tracking-widest text-[var(--store-text-main)] shrink-0">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
-                                                    ACTIVO
-                                                </span>
-                                            ) : (
-                                                <span className="font-mono text-[10px] text-[var(--store-surface-text)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                                    →
-                                                </span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        );
+    const headerCtxValue: StoreHeaderInternalCtx = {
+        props,
+        liveTheme,
+        heroCta,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
+        setIsMinimalSearchOpen,
+        handleOpenCart,
+        executeHeroButtonAction,
     };
+
+    const renderHeaderLayout = () => {
     // ==========================================
     // 🛠️ RENDERIZADO: TEMA 2 - INDUSTRIAL PRO (DENSE SEARCH)
     // ==========================================
@@ -1588,25 +1578,11 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 storeType={props.store.store_type}
             />
 
-            {/* 1. TOP BAR PRIMARIA (Ticker Dinámico de Confianza) */}
+           {/* 1. TOP BAR PRIMARIA (Ticker Dinámico de Confianza Aislado) */}
             <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 md:px-8 py-2 flex items-center justify-between text-[9px] md:text-[10px] font-bold uppercase tracking-widest z-50 relative">
                 <div className="hidden md:block flex-1"></div>
 
-                <div className="flex-1 flex justify-start md:justify-center items-center overflow-hidden h-[18px] relative">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={tickerIndex}
-                            initial={{ y: -15, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 15, opacity: 0 }}
-                            transition={{ duration: 0.4, ease: "easeInOut" }}
-                            className="flex items-center gap-1.5 whitespace-nowrap absolute"
-                        >
-                            {React.createElement(tickerItems[tickerIndex].icon, { size: 13, strokeWidth: 2.5 })}
-                            <span>{tickerItems[tickerIndex].text}</span>
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
+                <ClassicTrustTicker />
 
                 <div className="flex-1 flex justify-end shrink-0 pl-3">
                     <button onClick={() => props.setIsRateModalOpen(true)} className="flex items-center gap-2 hover:opacity-70 transition-opacity active:scale-95 group">
@@ -1614,9 +1590,9 @@ export default function StoreHeader(props: StoreHeaderProps) {
                         <span className="sm:hidden opacity-80">{props.isEur ? 'EUR' : 'BCV'}</span>
                         <div className="h-3 w-px bg-[var(--store-primary-text)]/40"></div>
                         <div className="flex items-baseline pt-px border-b border-[var(--store-primary-text)]/30 group-hover:border-[var(--store-primary-text)]/70 transition-colors pb-px leading-none">
-                            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="mr-0.5 select-none font-sans text-[10px]">
+                            <span className="mr-0.5 select-none font-sans text-[10px] opacity-80">
                                 Bs.
-                            </motion.span>
+                            </span>
                             <span className="tabular-nums text-xs md:text-sm tracking-tight">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                         </div>
                     </button>
@@ -1693,7 +1669,7 @@ export default function StoreHeader(props: StoreHeaderProps) {
                 </div>
             )}
 
-            {/* 5. MÓVIL: STICKY BUSCADOR Y CATEGORÍAS (Hijo directo del fragmento: flota en todo el catálogo) */}
+          {/* 5. MÓVIL: STICKY BUSCADOR Y CATEGORÍAS (Hijo directo del fragmento: flota en todo el catálogo) */}
             <div className={`block md:hidden sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="flex w-full px-4 pt-3 pb-1">
                     {renderSearchBlock(false, 'w-full')}
@@ -1704,4 +1680,13 @@ export default function StoreHeader(props: StoreHeaderProps) {
             </div>
         </>
     );
+    };
+
+    return (
+        <StoreHeaderContext.Provider value={headerCtxValue}>
+            {renderHeaderLayout()}
+        </StoreHeaderContext.Provider>
+    );
 }
+
+export default memo(StoreHeader);

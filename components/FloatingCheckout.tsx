@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { ShoppingCart, ShoppingBag, X, Trash2, ArrowUpRight, ArrowLeft, Check, ChevronRight, Minus, Plus, Percent, MessageCircle, BadgeDollarSign, FileText, Sparkle, AlertCircle, TriangleAlert, ChevronLeft, Receipt, Zap, ArrowRight, Package } from 'lucide-react'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { useCart } from '@/app/store/useCart'
@@ -37,21 +37,40 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const updateQuantity = useCart(state => state.updateQuantity)
     const addOrderToHistory = useCart(state => state.addOrderToHistory)
     const [isMounted, setIsMounted] = useState(false)
-    const [isOpen, setIsOpen] = useState(false)
+   const [isOpen, setIsOpen] = useState(false)
+    const [isCrossSellReady, setIsCrossSellReady] = useState(false) // 🚀 Montaje diferido post-animación
     const [step, setStep] = useState(1)
     const [direction, setDirection] = useState(1)
-    const [isTransitioning, setIsTransitioning] = useState(false) // 🚀 CANDADO SÍNCRONO
+    const [isTransitioning, setIsTransitioning] = useState(false)
     const [cartBump, setCartBump] = useState(false)
 
+    // 🚀 DIFERIMIENTO DE CROSS-SELLING: Espera 320ms a que el cajón deslice a 120 FPS antes de montar las 10 ProductCards
+    useEffect(() => {
+        if (!isOpen) {
+            setIsCrossSellReady(false);
+            return;
+        }
+        const timer = setTimeout(() => setIsCrossSellReady(true), 320);
+        return () => clearTimeout(timer);
+    }, [isOpen]);
+
+    // 🚀 ENRUTADOR ESPACIAL BLINDADO (Ignora transiciones al mismo paso activo)
+    const changeStep = useCallback((newStep: number) => {
+        setStep((prev) => {
+            if (prev === newStep) return prev;
+            setIsTransitioning(true);
+            setDirection(newStep > prev ? 1 : -1);
+            return newStep;
+        });
+    }, []);
+
     // 🚀 INTERCEPTOR GLOBAL DE APERTURA (Nervio Receptor)
-    // Escucha el evento 'toggleCartDrawer' disparado desde el Header, HUD o Notificaciones mágicas
     useEffect(() => {
         const openCartFromAnywhere = () => {
-            changeStep(1); // Nos aseguramos de que abra en la vista de la bolsa
+            changeStep(1);
             setIsOpen(true);
         };
         
-        // Atrapamos el evento sin importar si burbujeó al window o al document
         window.addEventListener('toggleCartDrawer', openCartFromAnywhere);
         document.addEventListener('toggleCartDrawer', openCartFromAnywhere);
         
@@ -59,16 +78,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             window.removeEventListener('toggleCartDrawer', openCartFromAnywhere);
             document.removeEventListener('toggleCartDrawer', openCartFromAnywhere);
         };
-    }, []);
-
-    // 🚀 ENRUTADOR ESPACIAL BLINDADO
-    const changeStep = (newStep: number) => {
-        setIsTransitioning(true); // 1. Matamos el scroll ANTES de animar
-        setStep((prev) => {
-            setDirection(newStep > prev ? 1 : -1);
-            return newStep;
-        });
-    };
+    }, [changeStep]);
     // Reemplaza estas variantes:
     const walletVariants: Variants = {
         initial: (direction: number) => ({
@@ -176,12 +186,22 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
     const [isWhatsAppInterception, setIsWhatsAppInterception] = useState(false) // 🚀 NUEVO: Peaje Psicológico
     const [hasClickedWhatsApp, setHasClickedWhatsApp] = useState(false) // 🚀 NUEVO: Memoria de acción
 
-    // 🛡️ CENTINELA EN CALIENTE: Cada vez que se abre la bolsa, audita que los precios coincidan con Postgres
-    useEffect(() => {
-        if (!isOpen || items.length === 0) return
+// 🛡️ CENTINELA EN CALIENTE (FinOps): Audita contra Postgres SOLO 1 VEZ por apertura de bolsa (no en cada clic de + / -)
+    // y difiere la petición 380ms para no competir con la animación de entrada del cajón.
+    const hasAuditedThisOpenRef = useRef(false)
 
-        const auditCartPrices = async () => {
-            const looseItems = items.filter(i => !i.bundleInstanceId)
+    useEffect(() => {
+        if (!isOpen) {
+            hasAuditedThisOpenRef.current = false
+            return
+        }
+        if (items.length === 0 || hasAuditedThisOpenRef.current) return
+
+        hasAuditedThisOpenRef.current = true
+
+        const timer = setTimeout(async () => {
+            const currentItems = useCart.getState().items
+            const looseItems = currentItems.filter(i => !i.bundleInstanceId)
             if (looseItems.length === 0) return
 
             const productIds = Array.from(new Set(looseItems.map(i => i.productId)))
@@ -206,19 +226,19 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             } catch (err) {
                 console.error('Silencioso: Error verificando precios en caliente:', err)
             }
-        }
+        }, 380)
 
-        auditCartPrices()
-    }, [isOpen, items])
+        return () => clearTimeout(timer)
+    }, [isOpen, items.length])
 
-    // 🚀 EFECTO 2: Enrutador Automático (Si abre el carrito vacío pero hay orden, va al Paso 3)
+    // 🚀 EFECTO 2: Enrutador Automático (Sin doble disparo cuando ya está en step 1)
     useEffect(() => {
         if (isOpen && items.length === 0 && generatedOrderNumber) {
-            changeStep(3); // 🚀 Actualizado
-        } else if (isOpen && items.length > 0 && step !== 2) {
-            changeStep(1); // Si abre el carrito con items, aseguramos que esté en el Paso 1
+            changeStep(3);
+        } else if (isOpen && items.length > 0 && step !== 1 && step !== 2) {
+            changeStep(1);
         }
-    }, [isOpen, items.length, generatedOrderNumber]);
+    }, [isOpen, items.length, generatedOrderNumber, step, changeStep]);
 
     const [hasFiredConfetti, setHasFiredConfetti] = useState(false);
 
@@ -295,9 +315,9 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
 
     const wholesale = storeConfig?.wholesale_config || { active: false, min_items: 6, discount_percentage: 15 }
 
-    // --- 🚀 MOTOR DE RECOMENDACIONES (CROSS-SELLING) ---
+// --- 🚀 MOTOR DE RECOMENDACIONES (Cortocircuitado cuando la bolsa está cerrada) ---
     const recommendedProducts = useMemo(() => {
-        if (items.length === 0 || !products || products.length === 0) return []
+        if (!isOpen || items.length === 0 || !products || products.length === 0) return []
         const cartCategories = Array.from(new Set(items.map(item => item.category?.toLowerCase() || '')))
         const cartProductIds = new Set(items.map(item => item.productId))
         const recommendations = products.filter(p => {
@@ -306,48 +326,49 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             return cartCategories.includes(p.category?.toLowerCase() || '')
         })
         return recommendations.slice(0, 10)
-    }, [items, products])
+    }, [isOpen, items, products])
 
-
-    // --- 🚀 MÁQUINA DE SCROLL Y ESTADO REACTIVO PARA SUGERENCIAS ---
+    // --- 🚀 MÁQUINA DE SCROLL Y ESTADO REACTIVO PARA SUGERENCIAS (Con Guardián de Igualdad) ---
     const recommendScrollRef = useRef<HTMLDivElement>(null)
     const [scrollStatus, setScrollStatus] = useState({ left: false, right: false })
 
-    const checkScrollStatus = () => {
+    const checkScrollStatus = useCallback(() => {
         if (!recommendScrollRef.current) return;
         const { scrollLeft, scrollWidth, clientWidth } = recommendScrollRef.current;
 
-        // Tolerancia de subpíxel para pantallas de alta densidad (Retina)
         const canScrollLeft = scrollLeft > 2;
         const canScrollRight = scrollLeft + clientWidth < scrollWidth - 2;
 
-        setScrollStatus({ left: canScrollLeft, right: canScrollRight });
-    };
+        setScrollStatus(prev =>
+            prev.left === canScrollLeft && prev.right === canScrollRight
+                ? prev
+                : { left: canScrollLeft, right: canScrollRight }
+        );
+    }, []);
 
-    const scrollRecommend = (dir: 'left' | 'right') => {
+    const scrollRecommend = useCallback((dir: 'left' | 'right') => {
         if (recommendScrollRef.current) {
             const container = recommendScrollRef.current;
-            // Desplaza exactamente el ancho visible para una navegación fluida
             const scrollAmount = container.clientWidth * 0.75;
             container.scrollBy({
                 left: dir === 'left' ? -scrollAmount : scrollAmount,
                 behavior: 'smooth'
             });
         }
-    };
+    }, []);
 
     useEffect(() => {
-        // Delay micro-optimizado para esperar que el DOM pinte los productos antes de calcular el scroll
+        if (!isOpen || !isCrossSellReady) return;
         const timer = setTimeout(() => {
             checkScrollStatus();
-        }, 200);
+        }, 120);
 
         window.addEventListener('resize', checkScrollStatus);
         return () => {
             clearTimeout(timer);
             window.removeEventListener('resize', checkScrollStatus);
         };
-    }, [recommendedProducts]);
+    }, [isOpen, isCrossSellReady, recommendedProducts, checkScrollStatus]);
 
     const recommendedMaskStyle = useMemo(() => {
         const fadeWidth = '32px';
@@ -356,23 +377,21 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         return { WebkitMaskImage: `linear-gradient(to right, ${leftMask}, ${rightMask})`, maskImage: `linear-gradient(to right, ${leftMask}, ${rightMask})` };
     }, [scrollStatus]);
 
-
     // --- 🚀 MOTOR MATEMÁTICO PRINCIPAL ---
     const totalItemsCount = useMemo(() => items.reduce((acc, item) => acc + item.quantity, 0), [items])
 
     const fiscalProfile = storeConfig?.fiscal_profile || 'informal';
     const isStrictTax = fiscalProfile === 'ordinary' || fiscalProfile === 'special';
 
-    // Tu código refactorizado actual:
     const cartEngine = useMemo(() => {
-        // Añadimos 'wholesale' al final
         return calculateCartEngine(items, promotions, isStrictTax, wholesale);
-    }, [items, promotions, isStrictTax, wholesale]); // No olvides poner wholesale en las dependencias
+    }, [items, promotions, isStrictTax, wholesale]);
 
     const { wholesaleDiscountList, wholesaleDiscountCash } = cartEngine;
 
-    // 💎 MOTOR DE AGRUPACIÓN DE BOLSA: Consolida combos en un solo bloque visual indivisible
+    // 💎 MOTOR DE AGRUPACIÓN DE BOLSA (Cortocircuitado cuando !isOpen y O(1) sin items.find)
     const displayGroups = useMemo(() => {
+        if (!isOpen) return [];
         const groups: Array<
             | { type: 'single'; item: any }
             | {
@@ -390,8 +409,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         const bundleMap = new Map<string, any[]>();
 
         cartEngine.processedItems.forEach((processedItem: any) => {
-            const originalItem = items.find(i => i.id === processedItem.id);
-            const bundleInstanceId = originalItem?.bundleInstanceId || processedItem.bundleInstanceId;
+            const bundleInstanceId = processedItem.bundleInstanceId;
 
             if (bundleInstanceId) {
                 if (!bundleMap.has(bundleInstanceId)) {
@@ -399,7 +417,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                 }
                 bundleMap.get(bundleInstanceId)!.push({
                     ...processedItem,
-                    original: originalItem
+                    original: processedItem
                 });
             } else {
                 groups.push({
@@ -409,25 +427,23 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
             }
         });
 
-        // Insertamos los combos consolidados con cálculo estricto de la cantidad de paquetes pedidos
         bundleMap.forEach((bundleItems, bundleInstanceId) => {
             const first = bundleItems[0];
-            const bundleName = first.original?.bundleName || first.bundleName || 'Combo Especial';
+            const bundleName = first.bundleName || 'Combo Especial';
 
-            // 💎 RATIO REAL: La cantidad del combo es (unidades_en_carrito / unidades_por_combo)
-            const ratio = Number(first.original?.bundleItemRatio || 1);
+            const ratio = Number(first.bundleItemRatio || 1);
             const bundleQuantity = Math.max(1, Math.round(first.quantity / ratio));
 
             const totalFinalPrice = bundleItems.reduce((acc, it) => acc + (it.finalListPrice * it.quantity), 0);
             const totalListPrice = bundleItems.reduce((acc, it) => acc + (it.listPrice * it.quantity), 0);
-            const maxStock = Math.min(...bundleItems.map(it => Math.floor((it.maxStock ?? 9999) / (it.original?.bundleItemRatio || 1))));
+            const maxStock = Math.min(...bundleItems.map(it => Math.floor((it.maxStock ?? 9999) / (it.bundleItemRatio || 1))));
 
             groups.push({
                 type: 'bundle',
                 bundleInstanceId,
                 bundleName,
                 items: bundleItems,
-                quantity: bundleQuantity, // 🚀 Muestra 1 en el stepper (no 5)
+                quantity: bundleQuantity,
                 totalFinalPrice,
                 totalListPrice,
                 maxStock: Math.max(1, maxStock)
@@ -435,45 +451,34 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
         });
 
         return groups;
-    }, [cartEngine.processedItems, items]);
+    }, [isOpen, cartEngine.processedItems]);
 
-    // 👇 AÑADE ESTA LÍNEA AQUÍ 👇
-    // Restauramos el booleano estrictamente para que la UI sepa cuándo pintar la barra verde
-    // 1. Calculamos el volumen REAL elegible para la barra global (Aislamiento Estricto)
     const globalEligibleCount = items.reduce((acc, item) => {
         return !item.productWholesaleActive ? acc + item.quantity : acc;
     }, 0);
 
-    // 2. El booleano ahora lee el conteo aislado, no el conteo sucio total
     const isWholesaleActive = wholesale.active && globalEligibleCount >= wholesale.min_items;
 
-
-    // 🚀 FIX: Definición de Affiliate devuelta a la vida
     const affiliate = storeConfig?.affiliate_config || { active: false, buyer_discount_pct: 0 };
     const isAffiliateActive = affiliate.active && affiliateCode;
     const affiliateDiscountList = isAffiliateActive ? (cartEngine.finalBsModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
     const affiliateDiscountCash = isAffiliateActive ? (cartEngine.finalCashModeUSD * (affiliate.buyer_discount_pct / 100)) : 0;
 
     // --- 🚀 LÓGICA DE IMPUESTOS PÚBLICOS (SENIAT) ---
-
     const taxPct = storeConfig?.default_tax_percentage || 16;
 
-    // CÁLCULO DE IVA PROPORCIONAL
-    // Determinamos cuánto descuento total se aplicó para bajar la base imponible
     const totalDiscountsList = wholesaleDiscountList + affiliateDiscountList;
     const discountMultiplier = cartEngine.totalListNominal > 0
         ? (1 - (totalDiscountsList / cartEngine.totalListNominal))
         : 1;
 
-    // 🚀 FIX DEFINITIVO: Recuperamos isTaxExempt cruzando con el estado original de Zustand
-    // Esto evita que el error de cartLogic.ts afecte el cálculo.
+    // 🚀 O(1) DIRECTO: processedItem ya conserva isTaxExempt del ítem original
     const safeTaxableSubtotalList = useMemo(() => {
         return cartEngine.processedItems.reduce((acc: number, processedItem: any) => {
-            const originalItem = items.find(i => i.id === processedItem.id);
-            const isExempt = originalItem?.isTaxExempt === true;
+            const isExempt = processedItem?.isTaxExempt === true;
             return isExempt ? acc : acc + (processedItem.finalListPrice * processedItem.quantity);
         }, 0);
-    }, [cartEngine.processedItems, items]);
+    }, [cartEngine.processedItems]);
 
     // El IVA se calcula solo sobre los productos gravables, ajustados por los descuentos
     const step1TaxAmountUSD = isStrictTax
@@ -1132,9 +1137,8 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                             // =========================================================
                                                             // CASO B: PRODUCTO INDIVIDUAL SUELTO (REGULAR)
                                                             // =========================================================
-                                                            const item = group.item;
-                                                            const originalItem = items.find(i => i.id === item.id);
-                                                            const isExempt = originalItem?.isTaxExempt === true;
+                                                         const item = group.item;
+                                                            const isExempt = item?.isTaxExempt === true;
 
                                                             return (
                                                                 <motion.div
@@ -1238,7 +1242,7 @@ export default function FloatingCheckout({ rates, currency, phone, storeName, st
                                                     </AnimatePresence>
                                                 </div>
                                                 {/* CROSS-SELLING (Geometría Elástica y Aislamiento de Hover por Grupo Nominado) */}
-                                                {recommendedProducts.length > 0 && !isRestaurant && (
+                                                {isCrossSellReady && recommendedProducts.length > 0 && !isRestaurant && (
                                                     <div className={`mt-8 border-t p-5 md:px-6 border-[var(--store-border)]/30 pt-8 pb-4 bg-[var(--store-surface)]`}>
                                                         {activeTheme.layout?.card_style === 'brutalist' ? (
                                                             <div className="flex items-end justify-between mb-5 border-b border-[var(--store-border)]/30 pb-3">

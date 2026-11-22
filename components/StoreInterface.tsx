@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react'
 import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock, Gift } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
@@ -106,8 +106,8 @@ const PromoCountdown = ({ expiresAt, color, variant = 'standard' }: { expiresAt:
   )
 }
 
-// 🚀 MICRO-COMPONENTE AISLADO: HUD Central (Zero React Overhead en la tienda)
-const CartHUDIndicator = () => {
+// 🚀 MICRO-COMPONENTE AISLADO: HUD Central (120 FPS GPU Transform + Opacity, Zero Animated Filter Blur)
+const CartHUDIndicator = memo(() => {
   const [hudData, setHudData] = useState({ visible: false, quantity: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -115,7 +115,7 @@ const CartHUDIndicator = () => {
     const handleHUD = (e: any) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setHudData({ visible: true, quantity: e.detail.quantity });
-      timeoutRef.current = setTimeout(() => setHudData({ visible: false, quantity: 0 }), 1500);
+      timeoutRef.current = setTimeout(() => setHudData({ visible: false, quantity: 0 }), 1400);
     };
     document.addEventListener('showCartHUD', handleHUD);
     return () => document.removeEventListener('showCartHUD', handleHUD);
@@ -125,28 +125,75 @@ const CartHUDIndicator = () => {
     <AnimatePresence>
       {hudData.visible && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-          exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          initial={{ opacity: 0, scale: 0.84 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ type: "spring", damping: 24, stiffness: 340 }}
           onClick={() => {
-            // 🚀 HUD TÁCTIL: Abre la bolsa y destruye el popup inmediatamente
             document.dispatchEvent(new CustomEvent('toggleCartDrawer'));
             setHudData({ visible: false, quantity: 0 });
           }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-auto cursor-pointer hover:scale-105 active:scale-95 flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/90 backdrop-blur-2xl rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/20 transition-all"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999999] pointer-events-auto cursor-pointer hover:scale-105 active:scale-95 flex flex-col items-center justify-center w-36 h-36 bg-[var(--store-primary)]/95 backdrop-blur-md rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[0_24px_48px_rgba(0,0,0,0.35)] border border-white/20 transform-gpu"
         >
-          <svg className="w-14 h-14 text-[var(--store-primary-text)] mb-2 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }} d="M20 6L9 17l-5-5" />
+          <svg className="w-14 h-14 text-[var(--store-primary-text)] mb-2 drop-shadow-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <motion.path initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }} d="M20 6L9 17l-5-5" />
           </svg>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, type: "spring", damping: 15 }} className="bg-white/20 px-3 py-1 rounded-full border border-white/10">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, type: "spring", damping: 18 }} className="bg-white/20 px-3 py-1 rounded-full border border-white/10">
             <span className="text-[var(--store-primary-text)] font-black text-xs tracking-widest tabular-nums">+{hudData.quantity} UND</span>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
-};
+});
+CartHUDIndicator.displayName = 'CartHUDIndicator';
+
+// 🚀 MICRO-COMPONENTE AISLADO: Reloj de Campaña Flash (Evita re-renderizar toda la tienda cada 1s)
+const FlashCampaignBanner = memo(({ isBoutiqueMode, expQuery }: { isBoutiqueMode: boolean; expQuery: string | null }) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!expQuery) return;
+    const targetTime = parseInt(expQuery, 10);
+
+    const updateTimer = () => {
+      const distance = targetTime - Date.now();
+      if (distance <= 0) {
+        setIsExpired(true);
+        setTimeLeft('00:00:00');
+        return;
+      }
+      const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [expQuery]);
+
+  return (
+    <AnimatePresence>
+      {isBoutiqueMode && expQuery && !isExpired && timeLeft && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="bg-neutral-950 text-white px-4 py-2.5 flex items-center justify-center gap-3 overflow-hidden"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Venta Flash expira en:</span>
+          <span className="font-mono font-black text-sm tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
+            {timeLeft}
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+});
+FlashCampaignBanner.displayName = 'FlashCampaignBanner';
 
 
 
@@ -390,68 +437,36 @@ export default function StoreInterface({ store: initialStore, products: initialP
     }, 60)
   }
 
-  // 🚀 ESTADOS DEL RELOJ FLASH
+ // 🚀 ESTADO DE MONTAJE SEGURO
   const [isMounted, setIsMounted] = useState(false)
-  const [timeLeft, setTimeLeft] = useState<string | null>(null)
-  const [isExpired, setIsExpired] = useState(false)
-
   useEffect(() => {
     setIsMounted(true);
-    if (!expQuery) return;
-
-    const targetTime = parseInt(expQuery, 10);
-
-    const updateTimer = () => {
-      const now = Date.now();
-      const distance = targetTime - now;
-
-      if (distance <= 0) {
-        setIsExpired(true);
-        setTimeLeft('00:00:00');
-        return;
-      }
-
-      const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((distance % (1000 * 60)) / 1000);
-      setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [expQuery]);
-
-
+  }, []);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
-  // Ajusta 'storeData.theme' o 'storeData.isDark' según la estructura real de tu objeto
   const isDarkTheme = store?.theme === "dark" || store?.isDark === true;
   const [activePromo, setActivePromo] = useState<any>(null)
   const [featuredScrollStatus, setFeaturedScrollStatus] = useState({ left: false, right: true })
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  // 🚀 El selectedCategory arranca en el pasillo (si existe) o en 'Todos'
-  // 🚀 Inicialización Inteligente: Prioriza Pasillo VIP, si no, usa el atajo silencioso 'cat'
   const [selectedCategory, setSelectedCategory] = useState(() => {
     const initialCat = pasilloQuery || catQuery
     return initialCat ? (initialCat.charAt(0).toUpperCase() + initialCat.slice(1).toLowerCase()) : 'Todos'
   })
 
-
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isFoodModalOpen, setIsFoodModalOpen] = useState(false) // 🚀 NUEVO ESTADO PARA COMIDA
+  const [isFoodModalOpen, setIsFoodModalOpen] = useState(false)
   const [selectedProductForModal, setSelectedProductForModal] = useState<any>(null)
   const [isStickyVisible, setIsStickyVisible] = useState(true)
-  const lastScrollYRef = useRef(0) // 🚀 CERO RE-RENDERS EN SCROLL
-  const forceHeaderVisibleRef = useRef(0) // 🚀 NUEVO: Escudo magnético anti-scroll
+  const lastScrollYRef = useRef(0)
+  const forceHeaderVisibleRef = useRef(0)
   const [isRateModalOpen, setIsRateModalOpen] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1) // 🚀 NUEVO ESTADO DE PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc'>('featured')
-  const [isMobile, setIsMobile] = useState(true) // 🚀 NUEVO ESTADO RESPONSIVO
+  const [isMobile, setIsMobile] = useState(true)
   const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [showPromoModal, setShowPromoModal] = useState(false)
 
@@ -459,34 +474,26 @@ export default function StoreInterface({ store: initialStore, products: initialP
   const showTaxInCatalog = store?.show_tax_in_catalog === true && store?.fiscal_profile !== 'informal';
   const taxPercentage = store?.default_tax_percentage || 16;
 
-
-
-
-
-  // 🚀 2. REEMPLAZA LA FUNCIÓN CON ESTA NUEVA LÓGICA:
-  const exitBoutiqueMode = () => {
-    // Reemplazamos la URL usando el pathname actual, eliminando el query param de forma segura
+  const exitBoutiqueMode = useCallback(() => {
     router.replace(pathname, { scroll: false })
     setIsBoutiqueMode(false)
     setSelectedCategory('Todos')
     setSearch('')
-  }
+  }, [router, pathname])
 
   // 2. REFS DE CONTROL DEL DOM
   const carouselRef = useRef<HTMLDivElement>(null)
   const isCarouselPausedRef = useRef(false)
   const featuredCarouselRef = useRef<HTMLDivElement>(null)
   const categoryScrollRef = useRef<HTMLDivElement>(null)
-  const catalogTopRef = useRef<HTMLDivElement>(null) // 🚀 NUEVA REFERENCIA DE ANCLAJE
+  const catalogTopRef = useRef<HTMLDivElement>(null)
 
-  // 3. HOOKS DE PAQUETES EXTERNOS / ANIMACIÓN
+  // 3. HOOKS DE PAQUETES EXTERNOS / SELECTORES ATÓMICOS DE ZUSTAND
   const supabase = useMemo(() => getSupabase(), [])
-  // 🚀 OPTIMIZACIÓN: El componente padre solo se re-renderizará si cambian los ítems o el historial.
-  const items = useCart(state => state.items)
+  const totalItems = useCart(state => state.items.reduce((acc, i) => acc + i.quantity, 0))
   const orderHistory = useCart(state => state.orderHistory)
-  const addItem = useCart(state => state.addItem) // 🚀 Solución al error TS2304
+  const addItem = useCart(state => state.addItem)
 
-  // Estado del Toast Minimalista para Enlaces de Regalo (?add=ID)
   const [giftNotification, setGiftNotification] = useState<{
     show: boolean;
     type: 'success' | 'exhausted';
@@ -494,24 +501,30 @@ export default function StoreInterface({ store: initialStore, products: initialP
     description: string;
   } | null>(null);
   const cartControls = useAnimation()
-  const badgeControls = useAnimation()
 
-  // 4. MEMOS Y CONSTANTES DE DERIVACIÓN (Usando ? por seguridad si store es nulo)
-  const totalItems = items.reduce((acc, i) => acc + i.quantity, 0)
-  const hasItems = items.length > 0
+  // 4. MEMOS Y CONSTANTES DE DERIVACIÓN
+  const hasItems = totalItems > 0
   const isEur = store?.currency_type === 'eur'
   const activeRate = isEur ? Number(rates?.eur_rate || 0) : Number(rates?.usd_rate || 0)
+  const normalizedRates = useMemo(() => ({
+    usd: Number(rates?.usd_rate || 0),
+    eur: Number(rates?.eur_rate || 0)
+  }), [rates?.usd_rate, rates?.eur_rate])
 
-  // 5. MÉTODOS DE AYUDA Y AUXILIARES
-  const checkFeaturedScrollStatus = () => {
+  // 5. MÉTODOS DE AYUDA Y AUXILIARES (CON GUARDIÁN DE IGUALDAD EN SCROLL)
+  const checkFeaturedScrollStatus = useCallback(() => {
     if (!featuredCarouselRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = featuredCarouselRef.current;
     const canScrollLeft = scrollLeft > 4;
     const canScrollRight = scrollLeft + clientWidth < scrollWidth - 4;
-    setFeaturedScrollStatus({ left: canScrollLeft, right: canScrollRight });
-  }
+    setFeaturedScrollStatus(prev =>
+      prev.left === canScrollLeft && prev.right === canScrollRight
+        ? prev
+        : { left: canScrollLeft, right: canScrollRight }
+    );
+  }, []);
 
-  const scrollFeatured = (dir: 'left' | 'right') => {
+  const scrollFeatured = useCallback((dir: 'left' | 'right') => {
     if (featuredCarouselRef.current) {
       const container = featuredCarouselRef.current;
       const scrollAmount = container.clientWidth * 0.75;
@@ -520,9 +533,9 @@ export default function StoreInterface({ store: initialStore, products: initialP
         behavior: 'smooth'
       });
     }
-  }
+  }, []);
 
-  const scrollCategories = (direction: 'left' | 'right') => {
+  const scrollCategories = useCallback((direction: 'left' | 'right') => {
     if (!categoryScrollRef.current) return;
     const container = categoryScrollRef.current;
     const scrollAmount = (container.clientWidth * 0.6) || 300;
@@ -530,7 +543,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
     });
-  }
+  }, []);
 
   const normalizeCategory = (cat: string) => {
     if (!cat) return ""
@@ -646,14 +659,13 @@ export default function StoreInterface({ store: initialStore, products: initialP
   }, [products, debouncedSearch, selectedCategory, selectedCollectionData, selectedPromoData, displayPromotions, sortBy]);
 
 
-  // 🚀 INTERCEPTOR NATIVO: ENLACE MÁGICO (?add=ID)
+// 🚀 INTERCEPTOR NATIVO: ENLACE MÁGICO (?add=ID)
   useEffect(() => {
     const magicProductId = searchParams?.get('add');
     if (magicProductId && products && products.length > 0 && isMounted) {
       const giftProduct = products.find((p) => String(p.id) === String(magicProductId));
 
       if (giftProduct) {
-        // 1. Verificación de existencias
         const hasVariants = giftProduct.product_variants && giftProduct.product_variants.length > 0;
         const totalStock = hasVariants
           ? giftProduct.product_variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0)
@@ -667,33 +679,27 @@ export default function StoreInterface({ store: initialStore, products: initialP
             description: 'Las unidades de este regalo se han agotado.',
           });
         } else {
-          // 2. Prevenir duplicados si el usuario recarga
-          const alreadyInCart = items.some((i) => String(i.productId) === String(giftProduct.id));
+          const currentCartItems = useCart.getState().items;
+          const alreadyInCart = currentCartItems.some((i) => String(i.productId) === String(giftProduct.id));
 
           if (!alreadyInCart) {
-            // Inyección limpia a Zustand
             addItem(giftProduct, null, 1);
-
-            // Disparar la Notificación Minimalista
             setGiftNotification({
               show: true,
               type: 'success',
               title: 'Regalo Añadido a tu Bolsa',
               description: giftProduct.name,
             });
-
-            // Disparar HUD háptico
             document.dispatchEvent(new CustomEvent('showCartHUD', { detail: { quantity: 1 } }));
           }
         }
       }
 
-      // Limpieza silenciosa de URL: Retiramos el parámetro ?add sin recargar
       const url = new URL(window.location.href);
       url.searchParams.delete('add');
       window.history.replaceState({}, '', url.toString());
     }
-  }, [searchParams, products, isMounted, items, addItem]);
+  }, [searchParams, products, isMounted, addItem]);
 
   // Auto-cierre de la notificación flotante tras 4.5 segundos
   useEffect(() => {
@@ -1002,75 +1008,72 @@ export default function StoreInterface({ store: initialStore, products: initialP
     handleCategoryScroll();
   }, []);
 
-  const handleOpenProduct = (product: any) => {
-    // 🚀 ENRUTADOR INTELIGENTE: Si la tienda es FoodTech O si el producto tiene modificadores asignados
+ const handleOpenProduct = useCallback((product: any) => {
     if (store?.store_type === 'restaurant' || (product.product_modifier_groups && product.product_modifier_groups.length > 0)) {
-
-      // Aplanamos la data de Supabase para que ProductFoodModal la consuma limpiamente
       const foodProduct = {
         ...product,
         modifier_groups: product.product_modifier_groups
           ?.map((pmg: any) => pmg.modifier_groups)
-          .filter(Boolean) || [] // Filtramos nulos
+          .filter(Boolean) || []
       };
-
       setSelectedProductForModal(foodProduct);
       setIsFoodModalOpen(true);
     } else {
-      // Comportamiento Clásico (Ropa, Tecnología)
       setSelectedProductForModal(product);
       setIsModalOpen(true);
     }
-  }
+  }, [store?.store_type]);
 
-  const getProductPricing = (product: any) => {
+  const getProductPricing = useCallback((product: any) => {
     const cashPrice = Number(product.usd_cash_price || 0)
     const markup = Number(product.usd_penalty || 0)
     const listPrice = cashPrice + markup
     const priceInBs = listPrice * activeRate
     const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
     return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
-  }
-
-
+  }, [activeRate]);
 
   // 🚀 DETECCIÓN INFALIBLE V2: Superposición de estados (Base de Datos + Motor de Luminancia)
   const isStoreDark = useMemo(() => {
-    // 1. Validamos si hay una bandera explícita de modo oscuro en la BD original
     if (store?.theme === "dark" || store?.isDark === true) return true;
-
-    // 2. Si no la hay, analizamos matemáticamente el color hexadecimal inyectado
     try {
       const rawBg = activeTheme.colors?.background || '#ffffff';
-
-      // Control de errores por si el usuario guardó palabras en lugar de HEX
       if (rawBg.toLowerCase() === 'black' || rawBg.includes('0, 0, 0')) return true;
-
       const bgHex = rawBg.replace('#', '');
       const r = parseInt(bgHex.length === 3 ? bgHex[0] + bgHex[0] : bgHex.substring(0, 2), 16);
       const g = parseInt(bgHex.length === 3 ? bgHex[1] + bgHex[1] : bgHex.substring(2, 4), 16);
       const b = parseInt(bgHex.length === 3 ? bgHex[2] + bgHex[2] : bgHex.substring(4, 6), 16);
-
       if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
-        return (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Menor a 128 = Fondo oscuro
+        return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
       }
     } catch (e) { }
-
-    return false; // Por defecto es claro
+    return false;
   }, [store, activeTheme]);
 
-  // Estado para controlar si el scroll ha avanzado hacia la derecha (activando la máscara izquierda)
   const [isScrolledLeft, setIsScrolledLeft] = useState(false);
 
-  // Función atada al evento onScroll del contenedor
-  const handleCategoryScroll = () => {
+  const handleCategoryScroll = useCallback(() => {
     if (categoryScrollRef.current) {
-      // Si scrollLeft es mayor a 0, significa que nos hemos desplazado
-      setIsScrolledLeft(categoryScrollRef.current.scrollLeft > 0);
+      const nextScrolled = categoryScrollRef.current.scrollLeft > 0;
+      setIsScrolledLeft(prev => (prev === nextScrolled ? prev : nextScrolled));
     }
-  };
+  }, []);
 
-  // 🚀 ESTA ES LA LÍNEA QUE SE HABÍA BORRADO:
+  const handleHeaderSelectCategory = useCallback((cat: string) => {
+    setSearch('');
+    setDebouncedSearch('');
+    setSelectedCategory(cat);
+    setCurrentPage(1);
+  }, []);
+
+  const handleProfileClick = useCallback(() => {
+    if (currentUser) {
+      router.push(getTenantHref('/passport', store.slug));
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  }, [currentUser, router, store?.slug]);
+
   const dynamicMask = "linear-gradient(to right, " + (isScrolledLeft ? 'transparent' : '#000') + " 0%, #000 40px, #000 calc(100% - 40px), transparent 100%)";
 
   // ==========================================
@@ -1331,39 +1334,21 @@ export default function StoreInterface({ store: initialStore, products: initialP
         )}
       </AnimatePresence>
 
-      {/* 2. BANNER DE CAMPAÑA FLASH */}
-      <AnimatePresence>
-        {isMounted && isBoutiqueMode && expQuery && !isExpired && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="bg-neutral-950 text-white px-4 py-2.5 flex items-center justify-center gap-3 overflow-hidden"
-          >
-            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Venta Flash expira en:</span>
-            <span className="font-mono font-black text-sm tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
-              {timeLeft}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    {/* 2. BANNER DE CAMPAÑA FLASH AISLADO */}
+      <FlashCampaignBanner isBoutiqueMode={isBoutiqueMode} expQuery={expQuery || null} />
 
       <StoreHeader
         layoutStyle={activeTheme.layout?.header_style || 'classic'}
         store={store}
-        products={products} // 🚀 Extracción determinista de portadas de categoría
-        promotions={displayPromotions} // 🚀 INYECTADO PARA BENTO GRID
+        products={products}
+        promotions={displayPromotions}
         activeRate={activeRate}
         isEur={isEur}
         search={search}
         setSearch={setSearch}
         categories={categories}
         selectedCategory={selectedCategory}
-        setSelectedCategory={(cat: string) => {
-          setSearch('');
-          setDebouncedSearch('');
-          setSelectedCategory(cat);
-          setCurrentPage(1);
-        }}
+        setSelectedCategory={handleHeaderSelectCategory}
         isBoutiqueMode={isBoutiqueMode}
         exitBoutiqueMode={exitBoutiqueMode}
         currentUser={currentUser}
@@ -1379,7 +1364,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
         handleCategoryScroll={handleCategoryScroll}
         dynamicMask={dynamicMask}
         scrollCategories={scrollCategories}
-        onProfileClick={() => currentUser ? router.push(getTenantHref('/passport', store.slug)) : setIsAuthModalOpen(true)}
+        onProfileClick={handleProfileClick}
       />
 
 
@@ -2047,28 +2032,28 @@ export default function StoreInterface({ store: initialStore, products: initialP
         )}
       </AnimatePresence>
 
-      <FloatingCheckout
-        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+    <FloatingCheckout
+        rates={normalizedRates}
         currency={isEur ? 'eur' : 'usd'}
         phone={store.phone || '584120000000'}
         storeName={store.name}
         storeId={store.id}
-        storeConfig={{ ...store, theme_config: activeTheme }}
+        storeConfig={store}
         products={products}
         promotions={displayPromotions}
         affiliateCode={affiliateCode}
         favoriteIds={favoriteIds}
-        campaignContext={campaignContext} // 👈 INYECTA ESTA LÍNEA
+        campaignContext={campaignContext}
       />
       <ProductModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         product={selectedProductForModal}
         currency={isEur ? 'eur' : 'usd'}
-        rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
+        rates={normalizedRates}
         promotions={displayPromotions}
         activePromoContext={activePromo}
-        storeConfig={{ ...store, theme_config: activeTheme }}
+        storeConfig={store}
         isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
       />
 
