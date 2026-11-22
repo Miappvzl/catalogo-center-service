@@ -767,7 +767,7 @@ function ProductCardComponent({
             {penalty > 0 && !isOutOfStock ? (
               <div className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-medium text-[var(--store-incentive)] leading-none truncate">
                 <Flame size={11} className="text-[var(--store-incentive)] fill-[var(--store-incentive)] shrink-0" />
-                <span className="truncate">Paga {formatUSD(cashPrice)} Cancela en Divisas</span>
+                <span className="truncate">Paga {formatUSD(cashPrice)} en Divisas</span>
               </div>
             ) : showTaxIndicator && isTaxable ? (
               <div className="inline-flex items-center gap-1 text-[8px] md:text-[9px] font-mono text-[var(--store-surface-text)] leading-none truncate">
