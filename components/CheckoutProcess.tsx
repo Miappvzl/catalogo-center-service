@@ -594,31 +594,69 @@ const handleSendOtp = async () => {
         return () => clearTimeout(timer);
     }, [clientData, storeId, isQuickLinkMode]);
 
-    // 🚀 FASE 2: PERSISTENCIA ANTI-FRUSTRACIÓN (Guarda en caché en tiempo real)
-    useEffect(() => {
-        sessionStorage.setItem(`pz_checkout_${storeId}`, JSON.stringify(clientData));
-    }, [clientData, storeId]);
-    // 🚀 NUEVO: LECTOR DEL PERFIL FISCAL (Gatekeeper de Negocio)
+   // 🚀 LECTOR DEL PERFIL FISCAL (Clasificación Contributiva: informal | ordinary | special)
     const fiscalProfile = storeConfig?.fiscal_profile || "informal";
     const isStrictTax =
         fiscalProfile === "ordinary" || fiscalProfile === "special";
 
-    // 🚀 LÓGICA DETERMINISTA: Si es estricto, aplicamos IVA y asumimos 'invoice'.
-    // Si no lo es, 0% de IVA y asumimos 'note'. El cliente ya no decide.
-    const [documentType, setDocumentType] = useState<"invoice" | "note">(
+    const [documentType] = useState<"invoice" | "note">(
         isStrictTax ? "invoice" : "note",
     );
-    const [applyTax, setApplyTax] = useState<boolean>(isStrictTax);
+    const [applyTax] = useState<boolean>(isStrictTax);
 
-    // 🚀 NUEVO ESTADO: Para preguntar si el cliente quiere RIF en su factura (Solo visible en modo estricto)
-    const [wantsFiscalData, setWantsFiscalData] = useState<boolean>(false);
-
-    // 🚀 NUEVO: Evaluador de Carrito Mixto (O(N) optimizado)
+    // 🚀 Evaluador de Carrito Mixto (O(N) optimizado)
     const needsShipping = useMemo(() => {
         return items.some(item => item.requiresShipping !== false);
     }, [items]);
 
     const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<string>("");
+
+    // 🛡️ BLINDAJE LOGÍSTICO: Garantiza que deliveryType y pickup jamás queden en un estado huérfano
+    useEffect(() => {
+        if (isFoodTech || !needsShipping) return;
+
+        const hasPickup = Boolean(shipping.methods?.pickup);
+        const hasDelivery = Boolean(shipping.methods?.delivery);
+        const hasCourier = Boolean(
+            shipping.methods?.mrw || shipping.methods?.zoom || shipping.methods?.tealca
+        );
+
+        setClientData((prev) => {
+            let nextType = prev.deliveryType;
+
+            // Si el método actual no está activo en la tienda, saltar al primer método activo
+            if (nextType === "pickup" && !hasPickup) {
+                if (hasDelivery) nextType = "local_delivery";
+                else if (hasCourier) nextType = "courier";
+            } else if (nextType === "local_delivery" && !hasDelivery) {
+                if (hasPickup) nextType = "pickup";
+                else if (hasCourier) nextType = "courier";
+            } else if (nextType === "courier" && !hasCourier) {
+                if (hasPickup) nextType = "pickup";
+                else if (hasDelivery) nextType = "local_delivery";
+            }
+
+            // Si está en pickup y aún no hay dirección seleccionada, auto-seleccionar la principal si existe
+            let nextAddress = prev.addressDetail;
+            if (nextType === "pickup" && !nextAddress) {
+                const locations: string[] = [
+                    ...(shipping.main_address ? [shipping.main_address] : []),
+                    ...(Array.isArray(shipping.pickup_locations) ? shipping.pickup_locations : []),
+                ].filter(Boolean);
+
+                if (locations.length === 1) {
+                    nextAddress = locations[0];
+                } else if (locations.length === 0) {
+                    nextAddress = "Retiro en Tienda";
+                }
+            }
+
+            if (nextType !== prev.deliveryType || nextAddress !== prev.addressDetail) {
+                return { ...prev, deliveryType: nextType, addressDetail: nextAddress };
+            }
+            return prev;
+        });
+    }, [isFoodTech, needsShipping, shipping]);
     // 🚀 CÁLCULO ADAPTATIVO (RADAR INTELIGENTE VS LISTA MANUAL CLÁSICA)
     const deliveryCost = useMemo(() => {
         if (clientData.deliveryType === "local_delivery") {
@@ -997,11 +1035,11 @@ switch (pm) {
     }, [isFullyCoveredByCredit]);
 
 
-
- // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
+// --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
     const handleCheckout = async () => {
-        // 🚀 1. VALIDACIÓN SEGÚN CLASIFICACIÓN CONTRIBUTIVA (Ordinario/Especial vs Informal)
+        // 🚀 1. VALIDACIÓN ESTRICTA SEGÚN CLASIFICACIÓN CONTRIBUTIVA Y MODALIDAD DE ENTREGA
         const newErrors: Record<string, string> = {};
+
         if (!clientData.name || clientData.name.trim().length < 2) {
             newErrors.name = isStrictTax
                 ? "El nombre completo o razón social es obligatorio"
@@ -1012,51 +1050,79 @@ switch (pm) {
             newErrors.phone = "Ingresa un número de WhatsApp válido";
         }
 
-        // Solo exigimos RIF y Dirección Fiscal si la tienda es Contribuyente Ordinario o Especial
-        if (isStrictTax) {
-            const normalizedIdentity = (clientData.identityCard || "").trim().toUpperCase();
-            if (!normalizedIdentity || !/^[VJEGP]-\d{5,10}$/.test(normalizedIdentity)) {
-                newErrors.identityCard = "Ingresa una Cédula o RIF válido (ej: V-12345678 o J-123456789)";
-            }
+        // Validación de Cédula/RIF: Obligatoria en Contribuyente Ordinario/Especial O si eligió Envío Nacional por Agencia
+        const requiresIdentityCard =
+            isStrictTax || (needsShipping && clientData.deliveryType === "courier");
 
+        if (requiresIdentityCard) {
+            const rawDigits = (clientData.identityCard || "").replace(/[^0-9]/g, "");
+            if (rawDigits.length < 5) {
+                newErrors.identityCard = isStrictTax
+                    ? "Ingresa una Cédula o RIF válido (ej: 12345678)"
+                    : "La Cédula es obligatoria para envíos por agencia";
+            }
+        }
+
+        // Validación de Dirección Fiscal: ÚNICAMENTE si la tienda es Contribuyente Ordinario o Especial
+        if (isStrictTax) {
             if (!clientData.fiscalAddress || clientData.fiscalAddress.trim().length < 5) {
                 newErrors.fiscalAddress = "Ingresa tu dirección fiscal o dirección de habitación";
             }
         }
 
-        if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
-            newErrors.payment = "Selecciona un método de pago";
-        }
         if (!storeHoursStatus.isOpen) {
             feedback.alert('Local Fuera de Servicio', `En este momento no se reciben pedidos. ${storeHoursStatus.detailLabel}.`, 'info');
             return;
         }
 
         if (needsShipping) {
-            if (clientData.deliveryType === "pickup" && !clientData.addressDetail) newErrors.pickup = "Selecciona un punto de retiro";
-            if (clientData.deliveryType === "courier") {
-                if (!clientData.courier) newErrors.courier = "Selecciona una agencia";
-                if (!clientData.state) newErrors.state = "Requerido";
-                if (!clientData.city) newErrors.city = "Requerido";
-                if (!clientData.addressDetail) newErrors.addressDetail = "Requerido";
-                if (!clientData.identityCard) newErrors.identityCard = "Requerido para envíos";
-            }
-            if (clientData.deliveryType === "local_delivery") {
-                if (!customerCoords) {
-                    newErrors.deliveryMap = "Ubica tu dirección en el mapa interactivo";
-                } else if (deliveryResolution.status === 'out_of_coverage') {
-                    newErrors.deliveryMap = "Tu ubicación está fuera del rango de cobertura";
+            if (clientData.deliveryType === "pickup") {
+                const availablePickupLocations = [
+                    ...(shipping.main_address ? [shipping.main_address] : []),
+                    ...(Array.isArray(shipping.pickup_locations) ? shipping.pickup_locations : []),
+                ].filter(Boolean);
+
+                if (availablePickupLocations.length > 0 && !clientData.addressDetail) {
+                    newErrors.pickup = "Selecciona un punto de retiro";
                 }
-                if (!clientData.addressDetail && !addressLine) {
+            }
+
+            if (clientData.deliveryType === "courier") {
+                if (!clientData.courier) newErrors.courier = "Selecciona una agencia de envío";
+                if (!clientData.state || !clientData.state.trim()) newErrors.state = "Ingresa el Estado";
+                if (!clientData.city || !clientData.city.trim()) newErrors.city = "Ingresa la Ciudad";
+                if (!clientData.addressDetail || !clientData.addressDetail.trim()) {
+                    newErrors.addressDetail = "Ingresa la dirección o agencia destino";
+                }
+            }
+
+            if (clientData.deliveryType === "local_delivery") {
+                const isRadarActive =
+                    deliveryConfig.mode === "radar" && Boolean(deliveryConfig.store_location);
+
+                if (isRadarActive) {
+                    if (!customerCoords) {
+                        newErrors.deliveryMap = "Ubica tu dirección en el mapa interactivo";
+                    } else if (deliveryResolution.status === "out_of_coverage") {
+                        newErrors.deliveryMap = "Tu ubicación está fuera del rango de cobertura";
+                    }
+                } else {
+                    const manualZones = storeConfig?.shipping_config?.delivery_zones || [];
+                    if (manualZones.length > 0 && !selectedDeliveryZone) {
+                        newErrors.deliveryZone = "Selecciona tu zona de entrega";
+                    }
+                }
+
+                if (!clientData.addressDetail?.trim() && !addressLine?.trim()) {
                     newErrors.addressDetail = "Ingresa tu calle, edificio o número de casa";
                 }
-                if (!clientData.reference && !referencePoint) {
+                if (!clientData.reference?.trim() && !referencePoint?.trim()) {
                     newErrors.reference = "El punto de referencia es obligatorio para el repartidor";
                 }
             }
         }
 
-        if (splitPayments.length === 0 && appliedCreditUSD === 0) {
+        if (splitPayments.length === 0 && appliedCreditUSD === 0 && grandTotalUSD > 0) {
             newErrors.payment = "Selecciona un método de pago";
         }
 
@@ -1080,16 +1146,17 @@ switch (pm) {
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40);
 
             const firstErrorKey = Object.keys(newErrors)[0];
+            const firstErrorMessage = newErrors[firstErrorKey];
             const errorElement = document.getElementById(`field-${firstErrorKey}`);
 
             if (errorElement) {
                 errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                feedback.toast.warning('Dato requerido', firstErrorMessage);
             } else {
-                feedback.alert('Faltan Datos', 'Revisa que todos los campos obligatorios marcados en rojo estén completos.', 'warning');
+                feedback.alert('Dato requerido', firstErrorMessage || 'Revisa los campos marcados en rojo.', 'warning');
             }
             return;
         }
-
         setErrors({}); // Limpiamos errores
         if (!isPaidInFull && grandTotalUSD > 0) {
             feedback.alert('Saldo Pendiente', 'Debes cubrir el 100% del monto total de la orden para finalizar.', 'warning');
@@ -1703,8 +1770,8 @@ switch (pm) {
                         </AnimatePresence>
                     </div>
 
-                 {/* 2. Cédula o RIF con Desplegable y Línea Vertical Flotante (Idéntico a PhoneInput) */}
-                    {isStrictTax &&
+               {/* 2. Cédula o RIF con Desplegable y Línea Vertical Flotante (Visible si es Fiscal o si requiere Envío por Agencia) */}
+                    {(isStrictTax || (needsShipping && clientData.deliveryType === "courier")) &&
                         (() => {
                             const DNI_OPTIONS = [
                                 { code: "V", label: "Venezolano / Natural" },
@@ -1725,7 +1792,7 @@ switch (pm) {
                                 const cleaned = newDigits.replace(/[^0-9]/g, "").slice(0, 10);
                                 setClientData({
                                     ...clientData,
-                                    identityCard: cleaned ? `${newPrefix}-${cleaned}` : `${newPrefix}-`,
+                                    identityCard: cleaned ? `${newPrefix}-${cleaned}` : "",
                                 });
                                 if (errors.identityCard) {
                                     setErrors((prev) => ({ ...prev, identityCard: "" }));
@@ -1762,7 +1829,7 @@ switch (pm) {
                                             />
                                         </button>
 
-                                        {/* Línea Vertical Suspendida (No toca la línea inferior gracias a h-4 + self-center + py-3 del padre) */}
+                                        {/* Línea Vertical Suspendida */}
                                         <span
                                             aria-hidden="true"
                                             className="h-4 w-[1.5px] bg-[var(--store-text-main)]/25 mx-3.5 self-center shrink-0"
@@ -1778,7 +1845,11 @@ switch (pm) {
                                                 updateIdentity(activePrefix, e.target.value)
                                             }
                                             className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-bold tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70"
-                                            placeholder="Cédula o RIF (ej: 12345678) *"
+                                            placeholder={
+                                                isStrictTax
+                                                    ? "Cédula o RIF (ej: 12345678) *"
+                                                    : "Cédula para envío por agencia *"
+                                            }
                                         />
                                     </div>
 
@@ -3443,17 +3514,16 @@ switch (pm) {
                             </AnimatePresence>
                         </div>
 
-                        {/* 🚀 MICRO-NUDGE DE ERROR VIVO (Aparece si falta algún dato) */}
+                     {/* 🚀 MICRO-NUDGE DE ERROR VIVO CON MENSAJE ESPECÍFICO */}
                         <AnimatePresence>
-                            {/* 🚀 ARQUITECTURA: filter(Boolean) destruye strings vacíos y undefineds fantasma */}
                             {Object.values(errors).filter(Boolean).length > 0 && (
                                 <motion.span
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
-                                    className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase"
+                                    className="text-[9px] font-bold text-red-500 mt-2 tracking-wide uppercase text-right md:text-center line-clamp-1"
                                 >
-                                    falta rellenar datos
+                                    {Object.values(errors).filter(Boolean)[0]}
                                 </motion.span>
                             )}
                         </AnimatePresence>
