@@ -1049,22 +1049,13 @@ switch (pm) {
         if (!clientData.phone || clientData.phone.replace(/\D/g, "").length < 10) {
             newErrors.phone = "Ingresa un número de WhatsApp válido";
         }
-
-        // Validación de Cédula/RIF: Obligatoria en Contribuyente Ordinario/Especial O si eligió Envío Nacional por Agencia
-        const requiresIdentityCard =
-            isStrictTax || (needsShipping && clientData.deliveryType === "courier");
-
-        if (requiresIdentityCard) {
+// 1.A. Si es Contribuyente Ordinario/Especial, Cédula/RIF y Dirección Fiscal se validan arriba
+        if (isStrictTax) {
             const rawDigits = (clientData.identityCard || "").replace(/[^0-9]/g, "");
             if (rawDigits.length < 5) {
-                newErrors.identityCard = isStrictTax
-                    ? "Ingresa una Cédula o RIF válido (ej: 12345678)"
-                    : "La Cédula es obligatoria para envíos por agencia";
+                newErrors.identityCard = "Ingresa una Cédula o RIF válido (ej: 12345678)";
             }
-        }
 
-        // Validación de Dirección Fiscal: ÚNICAMENTE si la tienda es Contribuyente Ordinario o Especial
-        if (isStrictTax) {
             if (!clientData.fiscalAddress || clientData.fiscalAddress.trim().length < 5) {
                 newErrors.fiscalAddress = "Ingresa tu dirección fiscal o dirección de habitación";
             }
@@ -1093,6 +1084,13 @@ switch (pm) {
                 if (!clientData.city || !clientData.city.trim()) newErrors.city = "Ingresa la Ciudad";
                 if (!clientData.addressDetail || !clientData.addressDetail.trim()) {
                     newErrors.addressDetail = "Ingresa la dirección o agencia destino";
+                }
+                // 1.B. Si es Tienda Informal, la Cédula se valida aquí abajo justo después de Dirección exacta
+                if (!isStrictTax) {
+                    const rawDigits = (clientData.identityCard || "").replace(/[^0-9]/g, "");
+                    if (rawDigits.length < 5) {
+                        newErrors.identityCard = "Ingresa tu Cédula para el envío por agencia";
+                    }
                 }
             }
 
@@ -1770,8 +1768,8 @@ switch (pm) {
                         </AnimatePresence>
                     </div>
 
-               {/* 2. Cédula o RIF con Desplegable y Línea Vertical Flotante (Visible si es Fiscal o si requiere Envío por Agencia) */}
-                    {(isStrictTax || (needsShipping && clientData.deliveryType === "courier")) &&
+            {/* 2. Cédula o RIF Superior (Visible ÚNICAMENTE cuando la tienda es Contribuyente Ordinario o Especial) */}
+                    {isStrictTax &&
                         (() => {
                             const DNI_OPTIONS = [
                                 { code: "V", label: "Venezolano / Natural" },
@@ -2430,12 +2428,197 @@ switch (pm) {
                                                     if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                                 }}
                                                 className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                                placeholder="Dirección exacta *"
+                                                placeholder="Dirección exacta o agencia destino *"
                                             />
                                             <AnimatePresence>
                                                 {errors.addressDetail && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="text-red-500 text-[10px] font-bold mt-1.5 px-1">{errors.addressDetail}</motion.p>}
                                             </AnimatePresence>
                                         </div>
+
+                                        {/* 🚀 Cédula justo debajo de Dirección exacta (Solo en tiendas Informales, ya que las Fiscales la piden arriba) */}
+                                        {!isStrictTax &&
+                                            (() => {
+                                                const DNI_OPTIONS = [
+                                                    { code: "V", label: "Venezolano / Natural" },
+                                                    { code: "J", label: "Jurídico (RIF)" },
+                                                    { code: "E", label: "Extranjero" },
+                                                    { code: "G", label: "Gubernamental" },
+                                                    { code: "P", label: "Pasaporte" },
+                                                ];
+                                                const rawId = clientData.identityCard || "";
+                                                const prefixMatch = rawId.match(/^([VJEGP])-/i);
+                                                const activePrefix = prefixMatch
+                                                    ? prefixMatch[1].toUpperCase()
+                                                    : "V";
+                                                const activeDigits = rawId
+                                                    .replace(/^[VJEGPvjegp][-]?/i, "")
+                                                    .replace(/[^0-9]/g, "")
+                                                    .slice(0, 10);
+
+                                                const updateIdentity = (
+                                                    newPrefix: string,
+                                                    newDigits: string
+                                                ) => {
+                                                    const cleaned = newDigits
+                                                        .replace(/[^0-9]/g, "")
+                                                        .slice(0, 10);
+                                                    setClientData({
+                                                        ...clientData,
+                                                        identityCard: cleaned
+                                                            ? `${newPrefix}-${cleaned}`
+                                                            : "",
+                                                    });
+                                                    if (errors.identityCard) {
+                                                        setErrors((prev) => ({
+                                                            ...prev,
+                                                            identityCard: "",
+                                                        }));
+                                                    }
+                                                };
+
+                                                return (
+                                                    <div
+                                                        id="field-identityCard"
+                                                        ref={dniDropdownRef}
+                                                        className="w-full relative"
+                                                    >
+                                                        <div
+                                                            className={`w-full flex items-center border-0 border-b py-3 transition-colors ${
+                                                                errors.identityCard
+                                                                    ? "border-red-500"
+                                                                    : "border-[var(--store-text-main)] focus-within:border-[var(--store-primary)]"
+                                                            }`}
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setIsDniDropdownOpen(
+                                                                        (prev) => !prev
+                                                                    )
+                                                                }
+                                                                className="flex items-center gap-1.5 bg-transparent border-0 p-0 text-base font-bold text-[var(--store-text-main)] outline-none select-none cursor-pointer shrink-0"
+                                                            >
+                                                                <span>{activePrefix}</span>
+                                                                <ChevronDown
+                                                                    size={14}
+                                                                    strokeWidth={2.2}
+                                                                    className={`text-[var(--store-surface-text)] transition-transform duration-200 ${
+                                                                        isDniDropdownOpen
+                                                                            ? "rotate-180"
+                                                                            : ""
+                                                                    }`}
+                                                                />
+                                                            </button>
+
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="h-4 w-[1.5px] bg-[var(--store-text-main)]/25 mx-3.5 self-center shrink-0"
+                                                            />
+
+                                                            <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                maxLength={10}
+                                                                value={activeDigits}
+                                                                onChange={(e) =>
+                                                                    updateIdentity(
+                                                                        activePrefix,
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-bold tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]"
+                                                                placeholder="Cédula de Identidad (Para envío) *"
+                                                            />
+                                                        </div>
+
+                                                        <AnimatePresence>
+                                                            {isDniDropdownOpen && (
+                                                                <motion.div
+                                                                    initial={{
+                                                                        opacity: 0,
+                                                                        y: 6,
+                                                                        scale: 0.98,
+                                                                    }}
+                                                                    animate={{
+                                                                        opacity: 1,
+                                                                        y: 0,
+                                                                        scale: 1,
+                                                                    }}
+                                                                    exit={{
+                                                                        opacity: 0,
+                                                                        y: 6,
+                                                                        scale: 0.98,
+                                                                    }}
+                                                                    transition={{ duration: 0.15 }}
+                                                                    className="absolute left-0 top-full mt-1.5 w-52 bg-[var(--store-surface)] border border-[var(--store-border)] rounded-xl p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] z-50"
+                                                                >
+                                                                    {DNI_OPTIONS.map((opt) => {
+                                                                        const isSelected =
+                                                                            activePrefix ===
+                                                                            opt.code;
+                                                                        return (
+                                                                            <button
+                                                                                key={opt.code}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    updateIdentity(
+                                                                                        opt.code,
+                                                                                        activeDigits
+                                                                                    );
+                                                                                    setIsDniDropdownOpen(
+                                                                                        false
+                                                                                    );
+                                                                                }}
+                                                                                className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                                                                    isSelected
+                                                                                        ? "bg-[var(--store-text-main)] text-[var(--store-surface)] font-bold"
+                                                                                        : "text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/5 font-medium"
+                                                                                }`}
+                                                                            >
+                                                                                <div className="flex items-center gap-2.5">
+                                                                                    <span className="font-mono font-bold w-3.5">
+                                                                                        {opt.code}
+                                                                                    </span>
+                                                                                    <span className="opacity-85">
+                                                                                        {opt.label}
+                                                                                    </span>
+                                                                                </div>
+                                                                                {isSelected && (
+                                                                                    <Check
+                                                                                        size={13}
+                                                                                    />
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+
+                                                        <AnimatePresence>
+                                                            {errors.identityCard && (
+                                                                <motion.p
+                                                                    initial={{
+                                                                        opacity: 0,
+                                                                        height: 0,
+                                                                    }}
+                                                                    animate={{
+                                                                        opacity: 1,
+                                                                        height: "auto",
+                                                                    }}
+                                                                    exit={{
+                                                                        opacity: 0,
+                                                                        height: 0,
+                                                                    }}
+                                                                    className="text-red-500 text-[10px] font-bold mt-1.5 px-1"
+                                                                >
+                                                                    {errors.identityCard}
+                                                                </motion.p>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                );
+                                            })()}
                                     </div>
                                 )}
                             </div>
