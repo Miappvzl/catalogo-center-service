@@ -282,7 +282,7 @@ function ProductCardComponent({
             {product.category || 'Colección'}
           </span>
 
-          <h3 className="text-[13px] md:text-[14px] font-normal text-[var(--store-text-main)] leading-snug mb-3 font-heading line-clamp-2 tracking-wide">
+          <h3 className="text-[15px] md:text-[16px] font-normal text-[var(--store-text-main)] leading-snug mb-3 font-heading line-clamp-2 tracking-wide">
             {product.name}
           </h3>
 
