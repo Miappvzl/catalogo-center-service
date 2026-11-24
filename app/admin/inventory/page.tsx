@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode, ArrowUpDown, ChevronDown, Check, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -12,8 +12,18 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import { Zain } from 'next/font/google'
 import TaxCatalogToggle from '@/components/admin/TaxCatalogToggle'
 import { getVariantSwatchStyle } from '@/utils/ColorUtils'
-import { deleteStoreDemoProducts } from '@/app/admin/orders/action';
-import { Trash2 } from 'lucide-react'; // (Verifica que Trash2 esté importado de 'lucide-react')
+import { deleteStoreDemoProducts } from '@/app/admin/orders/action'
+import { formatUSD } from '@/utils/currency'
+
+type InventorySortOption = 'recent' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc';
+
+const INVENTORY_SORT_OPTIONS: { value: InventorySortOption; label: string; shortLabel: string }[] = [
+    { value: 'recent', label: 'Más recientes', shortLabel: 'Recientes' },
+    { value: 'price_asc', label: 'Precio: menor a mayor', shortLabel: 'Menor precio' },
+    { value: 'price_desc', label: 'Precio: mayor a menor', shortLabel: 'Mayor precio' },
+    { value: 'stock_asc', label: 'Stock: menor a mayor', shortLabel: 'Menor stock' },
+    { value: 'stock_desc', label: 'Stock: mayor a menor', shortLabel: 'Mayor stock' },
+];
 
 interface InventoryItem {
     rowId: string;
@@ -27,11 +37,14 @@ interface InventoryItem {
     size: string;
     sku: string | null;
     stock: number;
+    status: 'active' | 'draft';
+    cashPrice: number;
+    listPrice: number;
     isTaxExempt: boolean;
     isFeatured: boolean;
     displayOrder: number;
     requiresShipping: boolean;
-    hasModifiers?: boolean; // 🚀 NUEVO: Detector gastronómico
+    hasModifiers?: boolean;
 }
 
 export default function InventoryPage() {
@@ -196,11 +209,36 @@ export default function InventoryPage() {
         }
     }
 
-    const [filterStatus, setFilterStatus] = useState('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'low' | 'out'>('all')
+    const [sortBy, setSortBy] = useState<InventorySortOption>('recent')
+    const [isSortOpen, setIsSortOpen] = useState(false)
+    const sortDropdownRef = useRef<HTMLDivElement>(null)
+
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
     const [fiscalProfile, setFiscalProfile] = useState<string | null>(null)
     const [showTaxInCatalog, setShowTaxInCatalog] = useState(false)
+
+    // Cierre automático del menú de ordenamiento al hacer clic fuera o presionar Escape
+    useEffect(() => {
+        if (!isSortOpen) return
+        const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+            if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
+                setIsSortOpen(false)
+            }
+        }
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsSortOpen(false)
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('touchstart', handleClickOutside)
+        document.addEventListener('keydown', handleKeyDown)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('touchstart', handleClickOutside)
+            document.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [isSortOpen])
 
     useEffect(() => {
         const fetchInventory = async () => {
@@ -224,7 +262,11 @@ export default function InventoryPage() {
                     setDemoProductIds(store.onboarding_missions.demo_product_ids.map(String));
                 }
 
-                const { data: products, error } = await supabase.from('products').select('id, name, image_url, category, stock, sku, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)').eq('store_id', store.id).order('created_at', { ascending: false })
+                const { data: products } = await supabase
+                    .from('products')
+                    .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
+                    .eq('store_id', store.id)
+                    .order('created_at', { ascending: false })
 
                 const flatInventory: InventoryItem[] = []
 
@@ -233,9 +275,19 @@ export default function InventoryPage() {
                     const isFeat = prod.is_featured || false
                     const dOrder = prod.display_order || 0
                     const reqShipping = prod.requires_shipping ?? true
+                    const prodStatus: 'active' | 'draft' = prod.status === 'draft' ? 'draft' : 'active'
+                    const baseCash = Number(prod.usd_cash_price || 0)
+                    const basePenalty = Number(prod.usd_penalty || 0)
 
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
+                            const vCash = variant.override_usd_price !== null && variant.override_usd_price !== undefined
+                                ? Number(variant.override_usd_price)
+                                : baseCash
+                            const vPenalty = variant.override_usd_penalty !== null && variant.override_usd_penalty !== undefined
+                                ? Number(variant.override_usd_penalty)
+                                : basePenalty
+
                             flatInventory.push({
                                 rowId: variant.id,
                                 productId: prod.id,
@@ -246,8 +298,11 @@ export default function InventoryPage() {
                                 color: variant.color_name,
                                 hex: variant.color_hex,
                                 size: variant.size,
-                                sku: variant.sku || null,
+                                sku: variant.sku || prod.sku || null,
                                 stock: variant.stock,
+                                status: prodStatus,
+                                cashPrice: vCash,
+                                listPrice: vCash + vPenalty,
                                 isTaxExempt: isExempt,
                                 isFeatured: isFeat,
                                 displayOrder: dOrder,
@@ -267,11 +322,14 @@ export default function InventoryPage() {
                             size: 'U',
                             sku: prod.sku || null,
                             stock: prod.stock || 0,
+                            status: prodStatus,
+                            cashPrice: baseCash,
+                            listPrice: baseCash + basePenalty,
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
                             displayOrder: dOrder,
                             requiresShipping: reqShipping,
-                            hasModifiers: Boolean(prod.product_modifier_groups && prod.product_modifier_groups.length > 0) // 🚀 DETECCIÓN EN VIVO
+                            hasModifiers: Boolean(prod.product_modifier_groups && prod.product_modifier_groups.length > 0)
                         })
                     }
                 })
@@ -396,17 +454,78 @@ export default function InventoryPage() {
         }
     }
 
-    const filteredItems = useMemo(() => {
-        return items.filter(item => {
-            const textMatch = item.name.toLowerCase().includes(search.toLowerCase()) || item.color.toLowerCase().includes(search.toLowerCase()) || item.size.toLowerCase().includes(search.toLowerCase())
-            let statusMatch = true
-            if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3
-            if (filterStatus === 'out') statusMatch = item.stock === 0
-            return textMatch && statusMatch
-        })
-    }, [items, search, filterStatus])
+  const [visibilityModalTarget, setVisibilityModalTarget] = useState<InventoryItem | null>(null)
+    const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false)
 
-    const stats = useMemo(() => ({ total: items.length, low: items.filter(i => i.stock > 0 && i.stock <= 3).length, out: items.filter(i => i.stock === 0).length }), [items])
+    const confirmToggleProductStatus = async () => {
+        if (!visibilityModalTarget) return;
+        const { productId, status: currentStatus } = visibilityModalTarget;
+        const newStatus: 'active' | 'draft' = currentStatus === 'active' ? 'draft' : 'active';
+
+        setIsUpdatingVisibility(true);
+        try {
+            const { error } = await supabase.from('products').update({ status: newStatus }).eq('id', productId);
+            if (error) throw error;
+
+            setItems(prev => prev.map(item => item.productId === productId ? { ...item, status: newStatus } : item));
+            await revalidateStoreCache();
+
+            setVisibilityModalTarget(null);
+
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2200,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
+            });
+            Toast.fire({
+                icon: 'success',
+                title: newStatus === 'active' ? 'Producto publicado en la Vitrina' : 'Producto ocultado en Borradores'
+            });
+        } catch (error) {
+            Swal.fire({ title: 'Error', text: 'No se pudo cambiar la visibilidad del producto.', icon: 'error', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } });
+        } finally {
+            setIsUpdatingVisibility(false);
+        }
+    };
+
+    const filteredItems = useMemo(() => {
+        const term = search.toLowerCase().trim();
+
+        const baseFiltered = items.filter(item => {
+            const textMatch =
+                !term ||
+                item.name.toLowerCase().includes(term) ||
+                item.color.toLowerCase().includes(term) ||
+                item.size.toLowerCase().includes(term) ||
+                (item.sku && item.sku.toLowerCase().includes(term)) ||
+                (item.category && item.category.toLowerCase().includes(term));
+
+            let statusMatch = true;
+            if (filterStatus === 'active') statusMatch = item.status === 'active';
+            else if (filterStatus === 'draft') statusMatch = item.status === 'draft';
+            else if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3;
+            else if (filterStatus === 'out') statusMatch = item.stock === 0;
+
+            return textMatch && statusMatch;
+        });
+
+        if (sortBy === 'recent') return baseFiltered;
+
+        return [...baseFiltered].sort((a, b) => {
+            if (sortBy === 'price_asc') return a.listPrice - b.listPrice;
+            if (sortBy === 'price_desc') return b.listPrice - a.listPrice;
+            if (sortBy === 'stock_asc') return a.stock - b.stock;
+            if (sortBy === 'stock_desc') return b.stock - a.stock;
+            return 0;
+        });
+    }, [items, search, filterStatus, sortBy]);
+
+    const stats = useMemo(() => ({
+        total: items.length,
+        active: items.filter(i => i.status === 'active').length,
+        draft: items.filter(i => i.status === 'draft').length,
+        low: items.filter(i => i.stock > 0 && i.stock <= 3).length,
+        out: items.filter(i => i.stock === 0).length
+    }), [items]);
 
     // SENSOR DE SCROLL HORIZONTAL
     const tableScrollRef = useRef<HTMLDivElement>(null)
@@ -481,66 +600,164 @@ export default function InventoryPage() {
                         />
                     )}
 
-                    {/* BARRA DE CONTROLES */}
-                    <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center w-full">
+{/* BARRA DE CONTROLES (Arquitectura de 2 Niveles sin Amontonamiento Horizontal) */}
+                    <div className="flex flex-col gap-3 w-full">
 
-                        {/* Filtros Estilo "Pill" (Clean Look) */}
-                        <div className="flex bg-neutral-100/50 p-1 rounded-lg border border-neutral-200/50 overflow-x-auto no-scrollbar w-full md:w-auto max-w-full shrink-0">
-                            {[
-                                { id: 'all', label: 'Todo el Catálogo' },
-                                { id: 'low', label: 'Atención Requerida' },
-                                { id: 'out', label: 'Agotados' }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setFilterStatus(tab.id)}
-                                    className={`shrink-0 px-3.5 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap ${filterStatus === tab.id
-                                        ? 'bg-white text-neutral-900 shadow-xs border border-neutral-200/50'
-                                        : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-neutral-50/50'
-                                        }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
+                        {/* NIVEL 1: Pestañas de Visibilidad (Vitrina vs Borrador) y Salud de Stock + Acciones Rápidas */}
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+                            <div className="flex bg-neutral-100/70 p-1 rounded-xl border border-neutral-200/60 overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full shrink-0 gap-0.5">
+                                {[
+                                    { id: 'all', label: 'Todo', count: stats.total },
+                                    { id: 'active', label: 'En Vitrina', count: stats.active },
+                                    { id: 'draft', label: 'Borradores (Ocultos)', count: stats.draft },
+                                    { id: 'low', label: 'Stock Bajo', count: stats.low },
+                                    { id: 'out', label: 'Agotados', count: stats.out }
+                                ].map(tab => {
+                                    const isActive = filterStatus === tab.id;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setFilterStatus(tab.id as any)}
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${
+                                                isActive
+                                                    ? 'bg-white text-neutral-950 shadow-2xs border border-neutral-200/60'
+                                                    : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-white/50'
+                                            }`}
+                                        >
+                                            <span>{tab.label}</span>
+                                            <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${
+                                                isActive
+                                                    ? 'bg-neutral-900 text-white font-bold'
+                                                    : 'bg-neutral-200/60 text-neutral-600'
+                                            }`}>
+                                                {tab.count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
+                            <div className="flex items-center gap-2 shrink-0">
+                                {!isRestaurant && (
+                                    <Link
+                                        href="/admin/inventory/skus"
+                                        className="flex-1 sm:flex-initial bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
+                                    >
+                                        <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+                                        <span>Matriz de SKUs</span>
+                                    </Link>
+                                )}
+
+                                {items.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={openReorderModal}
+                                        className="flex-1 sm:flex-initial bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-2xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                                    >
+                                        <Zap size={13} className="fill-white" />
+                                        <span>Merchandising</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Buscador Integrado */}
-                        <div className="relative group w-full md:flex-1 shrink-0">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors" size={15} />
-                            <input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder={isRestaurant ? "Filtrar por plato, ingrediente o categoría..." : "Filtrar por nombre del artículo, talla o color..."}
-                                className="w-full bg-white border-b-2 border-neutral-100  shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-10 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-300 transition-all"
-                            />
-                        </div>
+                        {/* NIVEL 2: Buscador Omnicanal + Selector Desplegable de Ordenamiento (Precio / Stock / Recientes) */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full">
+                            <div className="relative group flex-1 min-w-0">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-neutral-900 transition-colors" size={15} />
+                                <input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder={isRestaurant ? "Filtrar por plato, categoría o SKU..." : "Filtrar por nombre del artículo, SKU, categoría, talla o color..."}
+                                    className="w-full bg-white border border-neutral-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.01)] rounded-xl pl-9 pr-9 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900 transition-all"
+                                />
+                                {search && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearch('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
 
-                        {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
-                        <div className="flex items-center gap-2 shrink-0">
-                            {/* BOTÓN MATRIZ DE SKUs */}
-                            {!isRestaurant && (
-                                <Link
-                                    href="/admin/inventory/skus"
-                                    className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
-                                >
-                                    <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
-                                    <span>Matriz de SKUs</span>
-                                    <span className="bg-neutral-950 text-white text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                                        NUEVO
-                                    </span>
-                                </Link>
-                            )}
+                            {/* SELECTOR DESPLEGABLE DE ORDENAMIENTO (Precio menor/mayor, Stock, Recientes) */}
+                            <div ref={sortDropdownRef} className="relative shrink-0 z-20">
+                                {(() => {
+                                    const activeSort = INVENTORY_SORT_OPTIONS.find(o => o.value === sortBy) || INVENTORY_SORT_OPTIONS[0];
+                                    const isCustomSort = sortBy !== 'recent';
 
+                                    return (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsSortOpen(prev => !prev)}
+                                                className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${
+                                                    isCustomSort || isSortOpen
+                                                        ? 'border-neutral-900 text-neutral-950'
+                                                        : 'border-neutral-200/60 hover:border-neutral-400 text-neutral-700'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <ArrowUpDown size={13} className={isCustomSort ? 'text-neutral-950' : 'text-neutral-400'} />
+                                                    <span className="text-neutral-400 font-normal">Ordenar:</span>
+                                                    <span className="font-semibold text-neutral-900 whitespace-nowrap">
+                                                        {activeSort.label}
+                                                    </span>
+                                                </div>
+                                                <ChevronDown
+                                                    size={14}
+                                                    className={`text-neutral-400 transition-transform duration-200 ${isSortOpen ? 'rotate-180 text-neutral-900' : ''}`}
+                                                />
+                                            </button>
 
-                            {/* BOTÓN ORGANIZAR ESCAPARATE */}
-                            {items.length > 1 && (
-                                <button
-                                    onClick={openReorderModal}
-                                    className="bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                                >
-                                    <Zap size={13} className="fill-white" /> <span>Merchandising</span>
-                                </button>
-                            )}
+                                            <AnimatePresence>
+                                                {isSortOpen && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                                                        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                                                        className="absolute right-0 mt-1.5 w-full sm:w-56 bg-white border border-neutral-200/80 rounded-xl p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] z-30"
+                                                    >
+                                                        <div className="px-2.5 py-1.5 border-b border-neutral-100 mb-1">
+                                                            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+                                                                Criterio de Orden
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {INVENTORY_SORT_OPTIONS.map(option => {
+                                                                const isSelected = sortBy === option.value;
+                                                                return (
+                                                                    <button
+                                                                        key={option.value}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSortBy(option.value);
+                                                                            setIsSortOpen(false);
+                                                                        }}
+                                                                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                                                            isSelected
+                                                                                ? 'bg-neutral-950 text-white font-semibold'
+                                                                                : 'text-neutral-700 hover:bg-neutral-100/80 font-medium'
+                                                                        }`}
+                                                                    >
+                                                                        <span>{option.label}</span>
+                                                                        {isSelected && <Check size={13} strokeWidth={2.5} />}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
                     </div>
                     {/* TABLA ELITE (Executive Cleanlook) */}
@@ -627,8 +844,25 @@ export default function InventoryPage() {
                                                                         <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
                                                                     </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">{item.category}</p>
+                                                                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                                                        {/* Precio Unitario Tabular para Verificación de Ordenamiento */}
+                                                                        <span className="font-mono text-[11px] font-bold text-neutral-900 tabular-nums leading-none">
+                                                                            {formatUSD(item.listPrice)}
+                                                                        </span>
+
+                                                                        {item.category && (
+                                                                            <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">
+                                                                                · {item.category}
+                                                                            </p>
+                                                                        )}
+
+                                                                        {/* Badge de Borrador si está oculto */}
+                                                                        {item.status === 'draft' && (
+                                                                            <span className="inline-flex items-center gap-1 font-mono text-[8.5px] font-bold uppercase tracking-wider bg-neutral-200/80 text-neutral-700 px-1.5 py-0.5 rounded leading-none">
+                                                                                <EyeOff size={9} /> Borrador
+                                                                            </span>
+                                                                        )}
+
                                                                         {/* SKU Badge en Desktop */}
                                                                         {item.sku ? (
                                                                             <span className="hidden md:inline-flex items-center font-mono text-[9px] font-bold tabular-nums uppercase tracking-widest bg-neutral-100/90 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.2 rounded leading-none">
@@ -641,8 +875,7 @@ export default function InventoryPage() {
                                                                         )}
                                                                     </div>
 
-
-                                                                  {/* Variantes & SKU en Móvil */}
+                                                                    {/* Variantes & SKU en Móvil */}
                                                                     {!isRestaurant ? (
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
                                                                             {!item.variantId ? (
@@ -695,7 +928,8 @@ export default function InventoryPage() {
                                                                 </div>
                                                             </Link>
                                                         </td>
-<td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
+
+                                                        <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
                                                             {!item.variantId ? (
                                                                 <span className="px-2 py-1 rounded bg-neutral-50 border border-neutral-200/50 text-[10px] font-mono font-medium text-neutral-400">
                                                                     Producto Único
@@ -724,12 +958,9 @@ export default function InventoryPage() {
                                                             )}
                                                         </td>
 
-                                                        {/* 👇 INMEDIATAMENTE DESPUÉS VIENE GESTIÓN RÁPIDA (STOCK) */}
+                                                        {/* GESTIÓN RÁPIDA (STOCK, VISIBILIDAD, IVA, LOGÍSTICA) */}
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             <div className="flex flex-col items-center justify-center gap-1.5">
-                                                     
-
-                                                                {/* STOCK INPUT (Telemetría) */}
                                                                 <div className="flex items-center gap-1.5">
                                                                     <input
                                                                         type="text"
@@ -754,7 +985,24 @@ export default function InventoryPage() {
                                                                     )}
                                                                 </div>
 
-                                                                {/* BOTÓN DE EXENCIÓN FISCAL (Muted Emerald) */}
+                                                              {/* GATILLO CON MODAL DE CONFIRMACIÓN (En Vitrina vs Borrador Oculto) */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setVisibilityModalTarget(item)}
+                                                                    className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                                                                        item.status === 'active'
+                                                                            ? 'bg-white border-neutral-200/70 text-neutral-700 hover:border-neutral-400'
+                                                                            : 'bg-neutral-200/70 border-neutral-300/80 text-neutral-600 hover:bg-neutral-300/70'
+                                                                    }`}
+                                                                    title="Cambiar visibilidad del producto"
+                                                                >
+                                                                    {item.status === 'active' ? (
+                                                                        <><Eye size={10} /> Vitrina</>
+                                                                    ) : (
+                                                                        <><EyeOff size={10} /> Borrador</>
+                                                                    )}
+                                                                </button>
+
                                                                 {fiscalProfile !== 'informal' && (
                                                                     <button
                                                                         onClick={() => toggleTaxExempt(item.productId, item.isTaxExempt)}
@@ -766,8 +1014,6 @@ export default function InventoryPage() {
                                                                     </button>
                                                                 )}
 
-
-                                                                {/* BOTÓN LOGÍSTICO (SOLO RETAIL) */}
                                                                 {!isRestaurant && (
                                                                     <button
                                                                         onClick={() => toggleRequiresShipping(item.productId, item.requiresShipping)}
@@ -831,6 +1077,153 @@ export default function InventoryPage() {
                                 )}
                 </div>
             </div>
+
+{/* MODAL EJECUTIVO DE CONFIRMACIÓN DE VISIBILIDAD (VITRINA ⇄ BORRADOR) */}
+            <AnimatePresence>
+                {visibilityModalTarget && (() => {
+                    const isCurrentlyActive = visibilityModalTarget.status === 'active';
+                    const siblingRows = items.filter(i => i.productId === visibilityModalTarget.productId);
+                    const totalProductStock = siblingRows.reduce((acc, r) => acc + (Number(r.stock) || 0), 0);
+                    const variantCount = siblingRows.length;
+
+                    return (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-neutral-900/35 backdrop-blur-xs"
+                                onClick={() => !isUpdatingVisibility && setVisibilityModalTarget(null)}
+                            />
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                                animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 420, damping: 30 } }}
+                                exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.16 } }}
+                                className="relative bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-neutral-200/70 z-10"
+                            >
+                                {/* Cabecera */}
+                                <div className="p-5 pb-4 border-b border-neutral-100 flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${
+                                            isCurrentlyActive
+                                                ? 'bg-neutral-100 border-neutral-200/80 text-neutral-800'
+                                                : 'bg-emerald-50 border-emerald-200/60 text-emerald-700'
+                                        }`}>
+                                            {isCurrentlyActive ? <EyeOff size={17} /> : <Eye size={17} />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-sm text-neutral-900 tracking-tight leading-snug">
+                                                {isCurrentlyActive ? '¿Ocultar producto en Borradores?' : '¿Publicar producto en la Vitrina?'}
+                                            </h3>
+                                            <p className="text-[10px] font-mono font-semibold uppercase tracking-wider text-neutral-400 mt-0.5">
+                                                {isCurrentlyActive ? 'Pasará de Vitrina a Oculto' : 'Pasará de Borrador a Público'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        disabled={isUpdatingVisibility}
+                                        onClick={() => setVisibilityModalTarget(null)}
+                                        className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+                                    >
+                                        <X size={15} strokeWidth={2.5} />
+                                    </button>
+                                </div>
+
+                                {/* Cuerpo del Modal */}
+                                <div className="p-5 space-y-4">
+                                    {/* Ficha Resumen del Producto */}
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50/80 border border-neutral-200/60">
+                                        <div className="w-11 h-11 rounded-lg bg-white border border-neutral-200/60 overflow-hidden shrink-0 relative">
+                                            {visibilityModalTarget.image ? (
+                                                <Image src={getOptimizedUrl(visibilityModalTarget.image)} alt={visibilityModalTarget.name} fill sizes="44px" className="object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-neutral-300"><Package size={16} /></div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-bold text-xs text-neutral-900 truncate">{visibilityModalTarget.name}</p>
+                                            <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-neutral-500">
+                                                <span className="font-bold text-neutral-800">{formatUSD(visibilityModalTarget.listPrice)}</span>
+                                                <span>·</span>
+                                                <span>Stock total: <strong className="text-neutral-800">{totalProductStock} und</strong></span>
+                                                {variantCount > 1 && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>{variantCount} variantes</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Explicación Clara del Cambio */}
+                                    <div className="text-xs text-neutral-600 leading-relaxed space-y-2">
+                                        {isCurrentlyActive ? (
+                                            <p>
+                                                Al pasar a <strong className="text-neutral-900">Borrador (Oculto)</strong>, este artículo {variantCount > 1 ? `y sus ${variantCount} variantes dejarán` : 'dejará'} de mostrarse a los clientes en tu tienda pública. Su inventario, precios y fotos se mantendrán guardados para cuando decidas volver a activarlo.
+                                            </p>
+                                        ) : (
+                                            <p>
+                                                Al pasar a <strong className="text-neutral-900">En Vitrina</strong>, este artículo {variantCount > 1 ? `y sus ${variantCount} variantes serán` : 'será'} visible de inmediato para todos los clientes que visiten tu catálogo y podrá ser agregado al carrito.
+                                            </p>
+                                        )}
+
+                                        {/* Aviso Defensivo si intenta publicar a vitrina un producto sin stock o con precio $0 */}
+                                        {!isCurrentlyActive && (totalProductStock <= 0 || visibilityModalTarget.listPrice <= 0) && (
+                                            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50/80 border border-amber-200/60 text-[11px] text-amber-800 mt-2">
+                                                <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                                <span>
+                                                    {visibilityModalTarget.listPrice <= 0
+                                                        ? 'Atención: Este artículo tiene un precio de $0,00. Verifica su precio antes de publicarlo.'
+                                                        : 'Nota: Este artículo tiene 0 unidades disponibles, por lo que se mostrará como "Agotado" en la vitrina.'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer de Acción */}
+                                <div className="px-5 py-4 bg-neutral-50/70 border-t border-neutral-100 flex items-center justify-end gap-2.5">
+                                    <button
+                                        type="button"
+                                        disabled={isUpdatingVisibility}
+                                        onClick={() => setVisibilityModalTarget(null)}
+                                        className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50 transition-colors cursor-pointer disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        disabled={isUpdatingVisibility}
+                                        onClick={confirmToggleProductStatus}
+                                        className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98] disabled:opacity-50 ${
+                                            isCurrentlyActive
+                                                ? 'bg-neutral-950 hover:bg-black'
+                                                : 'bg-emerald-600 hover:bg-emerald-700'
+                                        }`}
+                                    >
+                                        {isUpdatingVisibility ? (
+                                            <Loader2 size={13} className="animate-spin" />
+                                        ) : isCurrentlyActive ? (
+                                            <EyeOff size={13} />
+                                        ) : (
+                                            <Eye size={13} />
+                                        )}
+                                        <span>
+                                            {isCurrentlyActive ? 'Sí, ocultar en Borrador' : 'Sí, publicar en Vitrina'}
+                                        </span>
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    );
+                })()}
+            </AnimatePresence>
+
 
             {/* MODAL DE REORDENAMIENTO (VISUAL MERCHANDISING) */}
             <AnimatePresence>
