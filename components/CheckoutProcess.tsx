@@ -76,7 +76,8 @@ interface PaymentBlock {
     currency: "usd" | "ves";
     isHardCurrency: boolean;
     receiptFile: File | null;
-    receipt_url?: string; // 🚀 AÑADE ESTA LÍNEA
+    receipt_url?: string;
+    reference?: string;
 }
 
 const BrandLogos = {
@@ -189,7 +190,7 @@ export default function CheckoutProcess({
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);const [supabase] = useState(() => getSupabase());
+    }, []); const [supabase] = useState(() => getSupabase());
     const [pfOriginBank, setPfOriginBank] = useState('');
     const [pfOriginPhone, setPfOriginPhone] = useState('');
     const [pfReference, setPfReference] = useState('');
@@ -268,7 +269,7 @@ export default function CheckoutProcess({
 
     // 🚀 LECTOR DE POLÍTICA DE ENVÍO
     const nationalShippingLabel = shipping.national_shipping_is_free ? "(Envío Gratis)" : "(Cobro en Destino)";
-const paymentKeysMap: { [key: string]: string } = {
+    const paymentKeysMap: { [key: string]: string } = {
         Transferencia: "transferencia",
         "Pago Móvil": "pago_movil",
         "Pago Móvil Automatizado": "skylink", // 🚀 Mapeo a Skylink
@@ -290,20 +291,20 @@ const paymentKeysMap: { [key: string]: string } = {
         "PayPal"
     ];
 
-const activePaymentMethods = useMemo(() => {
+    const activePaymentMethods = useMemo(() => {
         const active = [];
-       if (payments.skylink?.active && storeConfig?.slug === 'theo') {
+        if (payments.skylink?.active && storeConfig?.slug === 'theo') {
             active.push("Pago Móvil Automatizado");
-       }
+        }
         if (payments.transferencia?.active) active.push("Transferencia");
         if (payments.pago_movil?.active) active.push("Pago Móvil");
         if (payments.zelle?.active) active.push("Zelle");
-        
- // 💎 RESTAURADO: Binance disponible para cualquier tienda que lo tenga activo
+
+        // 💎 RESTAURADO: Binance disponible para cualquier tienda que lo tenga activo
         if (payments.binance?.active) {
             active.push("Binance");
         }
-        
+
         if (payments.zinli?.active) active.push("Zinli");
         if (payments.wally?.active) active.push("WallyTech");
         if (payments.cash?.active) active.push("Efectivo");
@@ -345,7 +346,7 @@ const activePaymentMethods = useMemo(() => {
 
 
 
-const handleSendOtp = async () => {
+    const handleSendOtp = async () => {
         if (!changeEmail || !changeEmail.includes('@')) {
             return feedback.alert('Correo Inválido', 'Ingresa una dirección de correo válida para proteger tu saldo.', 'warning');
         }
@@ -392,7 +393,7 @@ const handleSendOtp = async () => {
                     setAvailableCredit(Number(creditRes.data.balance_usd));
                 }
 
-            if (customerRes.data) {
+                if (customerRes.data) {
                     const cust = customerRes.data;
                     const details = cust.shipping_details || {};
 
@@ -453,8 +454,8 @@ const handleSendOtp = async () => {
             return `${left} ${".".repeat(dotsCount)} ${right}\n`;
         };
 
-    const ticketHeader = isQuickLinkMode 
-            ? `*TICKET DE COBRO RÁPIDO #${orderNum}*` 
+        const ticketHeader = isQuickLinkMode
+            ? `*TICKET DE COBRO RÁPIDO #${orderNum}*`
             : `*TICKET DE ORDEN #${orderNum}*`;
         let msg = `${ticketHeader}\n============================\n\n`;
 
@@ -465,7 +466,7 @@ const handleSendOtp = async () => {
         if (isStrictTax && clientData.fiscalAddress) msg += `DIR. FISCAL: ${clientData.fiscalAddress}\n`;
         msg += `\n`;
 
-    msg += `*DETALLE DE COMPRA*\n`;
+        msg += `*DETALLE DE COMPRA*\n`;
         cartEngine.processedItems.forEach((item: any) => {
             // Buscamos el ítem original del carrito para extraer modificadores y metadatos de combo
             const originalItem = items.find(i => i.id === item.id);
@@ -585,7 +586,7 @@ const handleSendOtp = async () => {
         isHydratedStorageRef.current = true;
     }, [storeId, isQuickLinkMode]);
 
-   // 3. Persistencia anti-frustración unificada y con debounce (Cero bloqueo del Main Thread al teclear)
+    // 3. Persistencia anti-frustración unificada y con debounce (Cero bloqueo del Main Thread al teclear)
     useEffect(() => {
         if (!isHydratedStorageRef.current || isQuickLinkMode) return;
         const timer = setTimeout(() => {
@@ -594,7 +595,7 @@ const handleSendOtp = async () => {
         return () => clearTimeout(timer);
     }, [clientData, storeId, isQuickLinkMode]);
 
-   // 🚀 LECTOR DEL PERFIL FISCAL (Clasificación Contributiva: informal | ordinary | special)
+    // 🚀 LECTOR DEL PERFIL FISCAL (Clasificación Contributiva: informal | ordinary | special)
     const fiscalProfile = storeConfig?.fiscal_profile || "informal";
     const isStrictTax =
         fiscalProfile === "ordinary" || fiscalProfile === "special";
@@ -712,7 +713,7 @@ const handleSendOtp = async () => {
     const subtotalForTip = netListWithoutDelivery;
     const tipAmountUSD = isFoodTech ? Number((subtotalForTip * (tipPercentage / 100)).toFixed(2)) : 0;
 
-  // 🚀 CÁLCULO O(1) DIRECTO: processedItem ya porta isTaxExempt desde cartLogic.ts
+    // 🚀 CÁLCULO O(1) DIRECTO: processedItem ya porta isTaxExempt desde cartLogic.ts
     const safeTaxableSubtotalList = useMemo(() => {
         return cartEngine.processedItems.reduce((acc: number, processedItem: any) => {
             const isExempt = processedItem?.isTaxExempt === true;
@@ -778,7 +779,7 @@ const handleSendOtp = async () => {
         }, [splitPayments, fxMultiplier, activeRate]);
 
 
-  const missingReceipts = splitPayments.some(
+    const missingReceipts = splitPayments.some(
         (p) =>
             receiptConfig.strict_mode &&
             p.method !== "Efectivo" &&
@@ -840,7 +841,7 @@ const handleSendOtp = async () => {
         // 1. Calculamos el límite exacto según la moneda seleccionada
         const maxAllowed = isHard ? remainingCashUSD : remainingBs;
 
-      // 2. Escudo Anti-Sobrepago
+        // 2. Escudo Anti-Sobrepago
         if (amount > maxAllowed + 0.01) {
             feedback.alert(
                 'Monto Excedido',
@@ -869,7 +870,7 @@ const handleSendOtp = async () => {
     const removePaymentBlock = (id: string) =>
         setSplitPayments(splitPayments.filter((p) => p.id !== id));
 
-   const handleAttachReceipt = (id: string, file: File | null) => {
+    const handleAttachReceipt = (id: string, file: File | null) => {
         if (file) {
             if (!file.type.startsWith("image/")) {
                 return feedback.alert('Formato Inválido', 'Por seguridad, solo se permiten capturas en formato JPG, PNG o WEBP.', 'warning');
@@ -878,9 +879,16 @@ const handleSendOtp = async () => {
                 return feedback.alert('Archivo Muy Pesado', 'El comprobante no debe superar los 5MB de tamaño.', 'warning');
             }
         }
-        
+
         setSplitPayments(
             splitPayments.map((p) => (p.id === id ? { ...p, receiptFile: file } : p)),
+        );
+    };
+
+    const handleReferenceChange = (id: string, referenceValue: string) => {
+        const cleanRef = referenceValue.replace(/[<>]/g, "").slice(0, 20);
+        setSplitPayments((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, reference: cleanRef } : p))
         );
     };
 
@@ -911,7 +919,7 @@ const handleSendOtp = async () => {
             "bg-[var(--store-text-main)] text-[var(--store-surface)] border-2 border-[var(--store-text-main)] rounded-xl  scale-[1.02] transition-all duration-150 font-black active:scale-[0.98]";
         const baseIdle =
             "bg-[var(--store-surface)] text-[var(--store-text-main)] border-2 border-[var(--store-text-main)]/30 hover:border-[var(--store-text-main)]/60 hover:bg-[var(--store-text-main)]/[0.02] rounded-xl shadow-none transition-all duration-150 font-bold active:scale-[0.98]";
-switch (pm) {
+        switch (pm) {
             case "Pago Móvil Automatizado":
                 return {
                     icon: Zap,
@@ -1035,7 +1043,7 @@ switch (pm) {
     }, [isFullyCoveredByCredit]);
 
 
-// --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
+    // --- PROCESAR ORDEN A BASE DE DATOS (CON CENTINELA ZERO-TRUST) ---
     const handleCheckout = async () => {
         // 🚀 1. VALIDACIÓN ESTRICTA SEGÚN CLASIFICACIÓN CONTRIBUTIVA Y MODALIDAD DE ENTREGA
         const newErrors: Record<string, string> = {};
@@ -1049,7 +1057,7 @@ switch (pm) {
         if (!clientData.phone || clientData.phone.replace(/\D/g, "").length < 10) {
             newErrors.phone = "Ingresa un número de WhatsApp válido";
         }
-// 1.A. Si es Contribuyente Ordinario/Especial, Cédula/RIF y Dirección Fiscal se validan arriba
+        // 1.A. Si es Contribuyente Ordinario/Especial, Cédula/RIF y Dirección Fiscal se validan arriba
         if (isStrictTax) {
             const rawDigits = (clientData.identityCard || "").replace(/[^0-9]/g, "");
             if (rawDigits.length < 5) {
@@ -1219,6 +1227,7 @@ switch (pm) {
                         amount_bs: p.currency === "ves" ? p.amount : Number((p.amount * activeRate).toFixed(2)),
                         currency: p.currency,
                         receipt_url: p.receipt_url || receiptPublicUrl,
+                        reference: p.reference?.trim() || null,
                     };
                 }),
             );
@@ -1279,7 +1288,8 @@ switch (pm) {
                     amount_usd: appliedCreditUSD,
                     amount_bs: appliedCreditUSD * activeRate,
                     currency: "usd",
-                    receipt_url: "Vuelto Virtual (Sistema)"
+                    receipt_url: "Vuelto Virtual (Sistema)",
+                    reference: null,
                 });
             }
             const finalPaymentMethod = uploadedPayments.length === 1 ? uploadedPayments[0].method : "Mixto";
@@ -1295,7 +1305,7 @@ switch (pm) {
             else if (rawFulfillment === 'dine_in') strictFulfillmentType = 'dine_in';
             else if (rawFulfillment === 'pickup') strictFulfillmentType = 'pickup';
 
-      // 🚀 DISPARADOR SKYLINK PAY (AUTOMATIZADO)
+            // 🚀 DISPARADOR SKYLINK PAY (AUTOMATIZADO)
             if (finalPaymentMethod === "Pago Móvil Automatizado") {
                 const initRes = await fetch('/api/checkout/skylink/init', {
                     method: 'POST',
@@ -1316,10 +1326,10 @@ switch (pm) {
                             subtotal_usd: Number(totalListUSD_base.toFixed(2)),
                             discount_amount: Number((wholesaleDiscountList + cartEngine.listPromoDiscounts + (affiliateDiscountList || 0)).toFixed(2)),
                         },
-                      items: items.map(item => {
+                        items: items.map(item => {
                             const enrichedVariant = item.bundleName
-                                ? (item.variantInfo && item.variantInfo !== 'N/A' 
-                                    ? `${item.variantInfo} • [Combo: ${item.bundleName}]` 
+                                ? (item.variantInfo && item.variantInfo !== 'N/A'
+                                    ? `${item.variantInfo} • [Combo: ${item.bundleName}]`
                                     : `[Combo: ${item.bundleName}]`)
                                 : item.variantInfo;
 
@@ -1354,7 +1364,7 @@ switch (pm) {
                         token: initData.token,
                         slug: storeConfig?.slug
                     }));
-                } catch {}
+                } catch { }
 
                 // Redirección oficial a la pasarela segura de Skylink
                 window.location.href = initData.url;
@@ -1409,9 +1419,9 @@ switch (pm) {
                         total_bs: Number(grandTotalBs.toFixed(2)),
                         exchange_rate: activeRate,
                         currency_type: currency,
-                       status: "pending",
+                        status: "pending",
                         source: isQuickLinkMode ? 'quick_link' : 'web', // 🚀 Trazabilidad del canal de origen
-                         payment_method: finalPaymentMethod,
+                        payment_method: finalPaymentMethod,
                         split_payments: uploadedPayments,
                         shipping_method: rawFulfillment,
                         fulfillment_type: strictFulfillmentType, // 🚀 Inyección Saneada
@@ -1428,7 +1438,7 @@ switch (pm) {
                         tax_amount_usd: Number(taxAmountListUSD.toFixed(2)),
                         promo_discount_usd: Number(cartEngine.listPromoDiscounts.toFixed(2)),
                         wholesale_discount_usd: Number(wholesaleDiscountList.toFixed(2)),
-                     affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
+                        affiliate_discount_usd: Number((affiliateDiscountList || 0).toFixed(2)),
                         fx_savings_usd: Number(actualFxSavings.toFixed(2)),
                         customer_dni:
                             isStrictTax || clientData.deliveryType === "courier"
@@ -1439,9 +1449,9 @@ switch (pm) {
                             : null,
                         shipping_details: isStrictTax
                             ? {
-                                  ...structuredShippingDetails,
-                                  fiscalAddress: clientData.fiscalAddress.trim(),
-                              }
+                                ...structuredShippingDetails,
+                                fiscalAddress: clientData.fiscalAddress.trim(),
+                            }
                             : structuredShippingDetails,
                     }).select().single();
                 if (orderError) throw new Error("Interrupción de red al registrar pedido. Reintenta.");
@@ -1489,8 +1499,8 @@ switch (pm) {
 
             await fetch("/api/web-push/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeId, orderNumber: order.order_number, totalUsd: grandTotalUSD.toFixed(2), customerName: clientData.name }) }).catch(() => { });
 
-            const ticketHeader = isQuickLinkMode 
-                ? `*COBRO RÁPIDO #${order.order_number}*` 
+            const ticketHeader = isQuickLinkMode
+                ? `*COBRO RÁPIDO #${order.order_number}*`
                 : `*PEDIDO #${order.order_number}*`;
             let message = `${ticketHeader}\n------------------------\n*Cliente:* ${clientData.name}\n`;
             if (isStrictTax && clientData.identityCard) {
@@ -1501,7 +1511,7 @@ switch (pm) {
                 message += `*Dir. Fiscal:* ${clientData.fiscalAddress.trim()}\n`;
             }
             message += `\n*DETALLE DEL PEDIDO:*\n`;
-         // 💎 AGRUPACIÓN JERÁRQUICA: Combos consolidados vs Productos Sueltos
+            // 💎 AGRUPACIÓN JERÁRQUICA: Combos consolidados vs Productos Sueltos
             const bundleMap = new Map<string, any[]>();
             const looseItems: any[] = [];
 
@@ -1517,11 +1527,11 @@ switch (pm) {
                 }
             });
 
-       // 1. Renderizado de Combos (Árbol Limpio con Cálculo Estricto de Paquetes)
+            // 1. Renderizado de Combos (Árbol Limpio con Cálculo Estricto de Paquetes)
             bundleMap.forEach((bundleEntries) => {
                 const first = bundleEntries[0];
                 const bundleName = first.originalItem?.bundleName || first.item.bundleName || 'Combo Especial';
-                
+
                 // 💎 CÁLCULO EXACTO: La cantidad de combos pedidos es (unidades_totales / ratio_por_combo)
                 const ratio = Number(first.originalItem?.bundleItemRatio || first.item.bundleItemRatio || 1);
                 const comboQty = Math.max(1, Math.round(first.item.quantity / ratio));
@@ -1533,8 +1543,8 @@ switch (pm) {
                     const isLast = idx === bundleEntries.length - 1;
                     const branch = isLast ? '   └' : '   ├';
                     const skuText = entry.item.sku ? `[${entry.item.sku.toUpperCase()}] ` : '';
-                    const varText = entry.item.variantInfo && entry.item.variantInfo !== 'N/A' && !entry.item.variantInfo.includes('Combo') 
-                        ? ` (${entry.item.variantInfo})` 
+                    const varText = entry.item.variantInfo && entry.item.variantInfo !== 'N/A' && !entry.item.variantInfo.includes('Combo')
+                        ? ` (${entry.item.variantInfo})`
                         : '';
 
                     const totalComponentQty = entry.item.quantity;
@@ -1559,8 +1569,8 @@ switch (pm) {
             // 2. Renderizado de Productos Sueltos
             looseItems.forEach(({ item, originalItem }) => {
                 const isFoodItem = originalItem && originalItem.foodModifiers && originalItem.foodModifiers.length > 0;
-                const priceText = item.finalListPrice < item.listPrice 
-                    ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*` 
+                const priceText = item.finalListPrice < item.listPrice
+                    ? `~($${item.listPrice.toFixed(2)})~ *$${item.finalListPrice.toFixed(2)}*`
                     : `($${item.finalListPrice.toFixed(2)})`;
                 const skuText = item.sku ? `[${item.sku.toUpperCase()}] ` : '';
 
@@ -1597,7 +1607,8 @@ switch (pm) {
             message += `------------------------\n*TOTAL FINAL APLICADO: $${grandTotalUSD.toFixed(2)}*\n`;
             message += uploadedPayments.length > 1 ? `\n*PAGOS (MIXTO):*\n` : `\n*MÉTODO DE PAGO:*\n`;
             uploadedPayments.forEach((p: any) => {
-                message += `✔️ ${p.method}: ${p.currency === "usd" ? "$" + p.amount_usd.toFixed(2) : "Bs " + p.amount_bs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}\n`;
+                const refSuffix = p.reference ? ` (Ref: #${p.reference})` : "";
+                message += `✔️ ${p.method}: ${p.currency === "usd" ? "$" + p.amount_usd.toFixed(2) : "Bs " + p.amount_bs.toLocaleString("es-VE", { maximumFractionDigits: 2 })}${refSuffix}\n`;
                 if (p.receipt_url) message += `   🔗 Comprobante: ${p.receipt_url}\n`;
             });
             message += `\n*LOGÍSTICA:*\nEnvío: ${deliveryInfoFull}\n`;
@@ -1643,7 +1654,7 @@ switch (pm) {
             setCheckoutState('success');
             if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 50, 20]);
 
-          setTimeout(() => {
+            setTimeout(() => {
                 onSuccess(order.order_number, waLink, order.id);
             }, 600);
 
@@ -1725,7 +1736,7 @@ switch (pm) {
             className="checkout-typography-lock flex flex-col h-full w-full overflow-hidden bg-[var(--store-surface)] antialiased"
         >
             <div className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative no-scrollbar px-6 md:px-10 py-8 space-y-12 pb-16">
-             {/* 🚀 DATOS DEL CLIENTE ADAPTADOS A LA CLASIFICACIÓN CONTRIBUTIVA */}
+                {/* 🚀 DATOS DEL CLIENTE ADAPTADOS A LA CLASIFICACIÓN CONTRIBUTIVA */}
                 <div className="space-y-6">
                     <h2 className="text-[10px] font-black text-[var(--store-surface-text)] uppercase tracking-widest border-b border-[var(--store-border)] pb-3">
                         {isStrictTax ? "Datos de Facturación" : "Datos del Cliente"}
@@ -1743,11 +1754,10 @@ switch (pm) {
                                 });
                                 if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
                             }}
-                            className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-bold outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${
-                                errors.name
+                            className={`w-full bg-transparent border-0 border-b-2 py-3 text-base font-normal outline-none focus:ring-0 focus:shadow-none transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.name
                                     ? "border-red-500 text-red-600 focus:border-red-500"
                                     : "border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
-                            }`}
+                                }`}
                             placeholder={
                                 isStrictTax
                                     ? "Nombre completo o Razón Social *"
@@ -1768,7 +1778,7 @@ switch (pm) {
                         </AnimatePresence>
                     </div>
 
-            {/* 2. Cédula o RIF Superior (Visible ÚNICAMENTE cuando la tienda es Contribuyente Ordinario o Especial) */}
+                    {/* 2. Cédula o RIF Superior (Visible ÚNICAMENTE cuando la tienda es Contribuyente Ordinario o Especial) */}
                     {isStrictTax &&
                         (() => {
                             const DNI_OPTIONS = [
@@ -1803,13 +1813,12 @@ switch (pm) {
                                     ref={dniDropdownRef}
                                     className="w-full relative"
                                 >
-                                    {/* Contenedor con SOLO línea inferior (border-b-2) y py-3 para despegar la barra vertical de la base */}
+                                   
                                     <div
-                                        className={`w-full flex items-center border-0 border-b-2 py-3 transition-colors ${
-                                            errors.identityCard
+                                        className={`w-full flex items-center border-0 border-b-2 py-3 transition-colors ${errors.identityCard
                                                 ? "border-red-500"
                                                 : "border-[var(--store-text-main)]/30 focus-within:border-[var(--store-text-main)]"
-                                        }`}
+                                            }`}
                                     >
                                         {/* Desplegador Izquierdo: Letra + Chevron (Sin fondo ni bordes) */}
                                         <button
@@ -1821,9 +1830,8 @@ switch (pm) {
                                             <ChevronDown
                                                 size={14}
                                                 strokeWidth={2.2}
-                                                className={`text-[var(--store-surface-text)] transition-transform duration-200 ${
-                                                    isDniDropdownOpen ? "rotate-180" : ""
-                                                }`}
+                                                className={`text-[var(--store-surface-text)] transition-transform duration-200 ${isDniDropdownOpen ? "rotate-180" : ""
+                                                    }`}
                                             />
                                         </button>
 
@@ -1842,7 +1850,7 @@ switch (pm) {
                                             onChange={(e) =>
                                                 updateIdentity(activePrefix, e.target.value)
                                             }
-                                            className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-bold tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70"
+                                            className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-normal tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70"
                                             placeholder={
                                                 isStrictTax
                                                     ? "Cédula o RIF (ej: 12345678) *"
@@ -1871,11 +1879,10 @@ switch (pm) {
                                                                 updateIdentity(opt.code, activeDigits);
                                                                 setIsDniDropdownOpen(false);
                                                             }}
-                                                            className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                                                isSelected
+                                                            className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
                                                                     ? "bg-[var(--store-text-main)] text-[var(--store-surface)] font-bold"
                                                                     : "text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/5 font-medium"
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <div className="flex items-center gap-2.5">
                                                                 <span className="font-mono font-bold w-3.5">
@@ -1940,12 +1947,11 @@ switch (pm) {
                                         setErrors((prev) => ({ ...prev, fiscalAddress: "" }));
                                     }
                                 }}
-                                className={`w-full bg-transparent border-0 border-b-2 py-2.5 text-sm sm:text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/65 ${
-                                    errors.fiscalAddress
+                                className={`w-full bg-transparent border-0 border-b-2 py-2.5 text-sm sm:text-base font-normal outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/65 ${errors.fiscalAddress
                                         ? "border-red-500 text-red-600 focus:border-red-500"
                                         : "border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-text-main)]"
-                                }`}
-                                placeholder="Ej: Av. Bolívar, Edif. Centro, Valencia (o tu dirección de habitación)"
+                                    }`}
+                                placeholder="Ej: Av. Bolívar, Edif. Centro, Valencia"
                             />
                             <AnimatePresence>
                                 {errors.fiscalAddress && (
@@ -2042,8 +2048,8 @@ switch (pm) {
                                                 setErrors(prev => ({ ...prev, pickup: "" }));
                                             }}
                                             className={`relative cursor-pointer p-4 md:p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "local_delivery"
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                    : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
                                                 }`}
                                         >
                                             <Truck size={20} className={clientData.deliveryType === "local_delivery" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -2073,8 +2079,8 @@ switch (pm) {
                                                 }));
                                             }}
                                             className={`relative cursor-pointer p-5 rounded-xl transition-all flex items-start gap-4 ${clientData.deliveryType === "pickup"
-                                                    ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
-                                                    : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
+                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04]"
+                                                : "border-2 border-[var(--store-text-main)]/30  bg-[var(--store-surface)] hover:border-[var(--store-text-main)]/60"
                                                 }`}
                                         >
                                             <Store size={20} className={clientData.deliveryType === "pickup" ? "text-[var(--store-text-main)]" : "text-[var(--store-surface-text)]"} />
@@ -2278,8 +2284,8 @@ switch (pm) {
                                                             if (errors.deliveryZone) setErrors(prev => ({ ...prev, deliveryZone: "" }));
                                                         }}
                                                         className={`flex justify-between items-center px-4 py-3.5 rounded-xl transition-all duration-150 font-bold ${isSelected
-                                                                ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
-                                                                : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
+                                                            ? "border-2 border-[var(--store-text-main)] bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]"
+                                                            : "border-2 border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-surface-text)] hover:border-[var(--store-text-main)]/60 hover:text-[var(--store-text-main)]"
                                                             }`}
                                                     >
                                                         <span className="text-xs sm:text-sm">{zone.name}</span>
@@ -2304,7 +2310,7 @@ switch (pm) {
                                                 setAddressLine(val);
                                                 if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                             }}
-                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                             placeholder="Avenida, Calle, Edificio / Casa, Piso o Nro *"
                                         />
                                         <AnimatePresence>
@@ -2326,8 +2332,8 @@ switch (pm) {
                                                 setReferencePoint(val);
                                                 if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
                                             }}
-                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
-                                            placeholder="Punto de referencia obligatorio (ej: portón negro frente a la panadería) *"
+                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            placeholder="Punto de referencia (ej: portón negro frente a la panadería) *"
                                         />
                                         <AnimatePresence>
                                             {errors.reference && (
@@ -2382,8 +2388,8 @@ switch (pm) {
                                         })}
                                     </div>
                                 </div>
-                            
-                                  {clientData.courier && (
+
+                                {clientData.courier && (
                                     <div className="space-y-6 animate-in fade-in pt-2">
                                         <div className="grid grid-cols-2 gap-6">
                                             <div id="field-state" className="w-full relative">
@@ -2394,7 +2400,7 @@ switch (pm) {
                                                         setClientData({ ...clientData, state: e.target.value.replace(/[<>]/g, "") });
                                                         if (errors.state) setErrors(prev => ({ ...prev, state: "" }));
                                                     }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70 ${errors.state ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                     placeholder="Estado *"
                                                 />
                                                 <AnimatePresence>
@@ -2410,7 +2416,7 @@ switch (pm) {
                                                         setClientData({ ...clientData, city: e.target.value.replace(/[<>]/g, "") });
                                                         if (errors.city) setErrors(prev => ({ ...prev, city: "" }));
                                                     }}
-                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                    className={`w-full bg-transparent border-0 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70 ${errors.city ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                     placeholder="Ciudad *"
                                                 />
                                                 <AnimatePresence>
@@ -2427,7 +2433,7 @@ switch (pm) {
                                                     setClientData({ ...clientData, addressDetail: e.target.value.replace(/[<>]/g, "") });
                                                     if (errors.addressDetail) setErrors(prev => ({ ...prev, addressDetail: "" }));
                                                 }}
-                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-bold outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                                className={`w-full bg-transparent border-0 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none border-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70 ${errors.addressDetail ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)] text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                                 placeholder="Dirección exacta o agencia destino *"
                                             />
                                             <AnimatePresence>
@@ -2483,11 +2489,10 @@ switch (pm) {
                                                         className="w-full relative"
                                                     >
                                                         <div
-                                                            className={`w-full flex items-center border-0 border-b py-3 transition-colors ${
-                                                                errors.identityCard
+                                                            className={`w-full flex items-center border-0 border-b py-3 transition-colors ${errors.identityCard
                                                                     ? "border-red-500"
                                                                     : "border-[var(--store-text-main)] focus-within:border-[var(--store-primary)]"
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <button
                                                                 type="button"
@@ -2502,11 +2507,10 @@ switch (pm) {
                                                                 <ChevronDown
                                                                     size={14}
                                                                     strokeWidth={2.2}
-                                                                    className={`text-[var(--store-surface-text)] transition-transform duration-200 ${
-                                                                        isDniDropdownOpen
+                                                                    className={`text-[var(--store-surface-text)] transition-transform duration-200 ${isDniDropdownOpen
                                                                             ? "rotate-180"
                                                                             : ""
-                                                                    }`}
+                                                                        }`}
                                                                 />
                                                             </button>
 
@@ -2526,7 +2530,7 @@ switch (pm) {
                                                                         e.target.value
                                                                     )
                                                                 }
-                                                                className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-bold tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]"
+                                                                className="flex-1 min-w-0 bg-transparent border-0 p-0 text-base font-normal tabular-nums outline-none focus:ring-0 focus:shadow-none text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/70"
                                                                 placeholder="Cédula de Identidad (Para envío) *"
                                                             />
                                                         </div>
@@ -2569,11 +2573,10 @@ switch (pm) {
                                                                                         false
                                                                                     );
                                                                                 }}
-                                                                                className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                                                                    isSelected
+                                                                                className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
                                                                                         ? "bg-[var(--store-text-main)] text-[var(--store-surface)] font-bold"
                                                                                         : "text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/5 font-medium"
-                                                                                }`}
+                                                                                    }`}
                                                                             >
                                                                                 <div className="flex items-center gap-2.5">
                                                                                     <span className="font-mono font-bold w-3.5">
@@ -2744,7 +2747,7 @@ switch (pm) {
                                             })}
                                         </span>
                                     </div>
-                                   <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4 font-mono">
+                                    <span className="text-sm font-medium text-[var(--store-surface-text)] mt-4 font-mono">
                                         Ref: {formatUSD(remainingListUSD)}
                                     </span>
 
@@ -2954,7 +2957,7 @@ switch (pm) {
                                                                 Transfiere desde tu banco y tu orden se aprobará en segundos.
                                                             </p>
                                                         </div>
-                                              
+
                                                     ) : (activePaymentInput === "Binance" && storeConfig?.slug === 'theo') ? (
                                                         <div className="mt-4 animate-in fade-in zoom-in-95 duration-300">
                                                             <BinanceGateway
@@ -3119,7 +3122,22 @@ switch (pm) {
                                                                     </div>
 
                                                                     {canUploadReceipt && singlePaymentBlock && (
-                                                                        <div className="pt-2">
+                                                                        <div className="pt-2 space-y-4">
+                                                                            {/* 🚀 CAMPO ULTRALIGERO DE REFERENCIA BANCARIA (Conciliación en 2s para redes móviles lentas) */}
+                                                                            <div className="w-full">
+                                                                                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] block mb-1.5">
+                                                                                    Nro. de Referencia / Confirmación (Últimos 4 a 6 dígitos)
+                                                                                </label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    maxLength={20}
+                                                                                    value={singlePaymentBlock.reference || ""}
+                                                                                    onChange={(e) => handleReferenceChange(singlePaymentBlock.id, e.target.value)}
+                                                                                    placeholder="Ej: 482910"
+                                                                                    className="w-full bg-transparent border-0 border-b-2 border-[var(--store-text-main)]/30 focus:border-[var(--store-text-main)] py-2.5 text-sm font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)]/60 outline-none transition-colors rounded-none"
+                                                                                />
+                                                                            </div>
+
                                                                             {!singlePaymentBlock.receiptFile ? (
                                                                                 <div className="relative">
                                                                                     <input
@@ -3400,8 +3418,8 @@ switch (pm) {
                                                                                     type="button"
                                                                                     onClick={() => handleCopy(copyAllText, 'all')}
                                                                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${copiedKey === 'all'
-                                                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                            : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                        ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                        : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
                                                                                         }`}
                                                                                 >
                                                                                     {copiedKey === 'all' ? <Check size={11} strokeWidth={3} /> : <Copy size={11} strokeWidth={2} />}
@@ -3426,8 +3444,8 @@ switch (pm) {
                                                                                         type="button"
                                                                                         onClick={() => handleCopy(rawNumericAmount, 'amount')}
                                                                                         className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${copiedKey === 'amount'
-                                                                                                ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                            ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                            : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
                                                                                             }`}
                                                                                         title="Copiar monto exacto"
                                                                                     >
@@ -3461,8 +3479,8 @@ switch (pm) {
                                                                                                 type="button"
                                                                                                 onClick={() => handleCopy(item.textToCopy, `item-${idx}`)}
                                                                                                 className={`p-2 rounded-2xl border transition-all shrink-0 flex items-center justify-center active:scale-90 ${isItemCopied
-                                                                                                        ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
-                                                                                                        : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
+                                                                                                    ? 'bg-[var(--store-text-main)] text-[var(--store-surface)] border-[var(--store-text-main)]'
+                                                                                                    : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-text-main)]/60'
                                                                                                     }`}
                                                                                                 title={`Copiar ${item.label || 'dato'}`}
                                                                                             >
@@ -3497,7 +3515,7 @@ switch (pm) {
                     </h2>
 
                     <div className="flex flex-col gap-3">
-                     {/* 1. Subtotal Base (Precio de Lista Nominal) */}
+                        {/* 1. Subtotal Base (Precio de Lista Nominal) */}
                         <div className="flex justify-between items-center text-sm font-medium text-[var(--store-surface-text)]">
                             <span>Subtotal (Precio de Lista)</span>
                             <span className={`font-mono ${cartEngine.listPromoDiscounts > 0 || wholesaleDiscountList > 0 ? "line-through decoration-[var(--store-border)]" : ""}`}>
@@ -3605,7 +3623,7 @@ switch (pm) {
             <div className="bg-[var(--store-surface)]/95 backdrop-blur-xl px-5 md:px-8 py-4 shrink-0 z-50 border-t border-[var(--store-border)]/30 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="flex items-center gap-5">
                     {/* Total a la izquierda con jerarquía de moneda adaptativa */}
-                   <div
+                    <div
                         className="flex flex-col shrink-0"
                         style={{ fontFamily: 'var(--font-inter), system-ui, -apple-system, sans-serif' }}
                     >
@@ -3665,17 +3683,17 @@ switch (pm) {
                                             <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Upload size={16} className="mb-0.5" /> Adjunta Recibos
                                             </motion.div>
-                                      ) : activePaymentInput === "Pago Móvil Automatizado" ? (
+                                        ) : activePaymentInput === "Pago Móvil Automatizado" ? (
                                             <motion.div key="skylink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Zap size={16} className="mb-0.5" /> Continuar a Pago Móvil
                                             </motion.div>
-                                   ) : activePaymentInput === "Pago Flash" ? (
+                                        ) : activePaymentInput === "Pago Flash" ? (
                                             <motion.div key="f" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
                                                 <Zap size={16} className="mb-0.5" /> Continuar a Pago Flash
                                             </motion.div>
                                         ) : (
                                             <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 whitespace-nowrap">
-                                                {grandTotalUSD === 0 ? <GiftIcon size={16} className="mb-0.5" /> : <MessageCircle size={16} className="mb-0.5" />} 
+                                                {grandTotalUSD === 0 ? <GiftIcon size={16} className="mb-0.5" /> : <MessageCircle size={16} className="mb-0.5" />}
                                                 {grandTotalUSD === 0 ? "Reclamar Regalo" : "Enviar Pedido"}
                                             </motion.div>
                                         )}
@@ -3697,7 +3715,7 @@ switch (pm) {
                             </AnimatePresence>
                         </div>
 
-                     {/* 🚀 MICRO-NUDGE DE ERROR VIVO CON MENSAJE ESPECÍFICO */}
+                        {/* 🚀 MICRO-NUDGE DE ERROR VIVO CON MENSAJE ESPECÍFICO */}
                         <AnimatePresence>
                             {Object.values(errors).filter(Boolean).length > 0 && (
                                 <motion.span
@@ -3797,7 +3815,7 @@ switch (pm) {
                                                 {isVerifying ? <Loader2 size={16} className="animate-spin text-white" /> : 'Confirmar Pago'}
                                             </button>
                                         </div>
-                                  </motion.div>
+                                    </motion.div>
                                 )}
                             </AnimatePresence>
                         </motion.div>

@@ -67,15 +67,11 @@ export default function CatalogToolbar({
         }
     }, [isOpen])
 
-    // Título conciso que jamás se corta con "..." en 375px
+   // Título agnóstico y editorial (Funciona en cualquier industria sin sesgo de nicho)
     const sectionTitle = isAllCategories
         ? isLuxury
             ? 'Colección'
-            : isBrutalist
-              ? 'Archivo'
-              : isIndustrial
-                ? 'Inventario'
-                : 'Catálogo'
+            : 'Catálogo'
         : selectedCategory
 
     return (

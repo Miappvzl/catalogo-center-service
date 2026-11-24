@@ -313,7 +313,7 @@ export default function PhoneInput({
                     placeholder={dynamicPlaceholder}
                     className={`flex-1 min-w-0 bg-transparent border-0 focus:border-0 py-3 pl-3 font-mono tabular-nums outline-none focus:outline-none focus:ring-0 focus:shadow-none shadow-none rounded-none placeholder:font-sans ${
                         variant === "underline"
-                            ? "text-base font-bold placeholder:font-bold placeholder:text-[var(--store-surface-text,#71717a)]/70"
+                            ? "text-base font-bold placeholder:font-normal placeholder:text-[var(--store-surface-text,#71717a)]/70"
                             : "text-sm font-medium placeholder:font-normal placeholder:text-neutral-400/70"
                     } ${
                         error ? "text-red-600" : "text-[var(--store-text-main,#09090b)]"

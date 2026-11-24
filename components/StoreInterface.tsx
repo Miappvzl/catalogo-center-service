@@ -1,7 +1,11 @@
 'use client'
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react'
-import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock, Gift } from 'lucide-react'
+import { Search, SearchX, ShoppingBag, X, Plus, ImageIcon, ShoppingCart, LayoutGrid, ShieldCheck, Zap, Circle, ArrowUpRight, Tag, FileText, ArrowRight, Receipt, ChevronRight, ChevronLeft, UserCircle, Sparkles, Clock, Gift, MapPin, CreditCard, Truck, MessageCircle, Store } from 'lucide-react'
+import { Icon } from '@iconify/react'
+import { MrwIcon } from '@/components/ui/icons/MrwIcon'
+import { ZoomIcon } from '@/components/ui/icons/ZoomIcon'
+import { TealcaIcon } from '@/components/ui/icons/TealcaIcon'
 import { useCart } from '@/app/store/useCart'
 import { normalizeThemeConfig, generateCssVariables } from '@/utils/themeAdapter'
 import Link from 'next/link'
@@ -1449,21 +1453,18 @@ export default function StoreInterface({ store: initialStore, products: initialP
             </div>
           )}
 
-          {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
+        {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
           {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
             <section className="mb-14 animate-in fade-in">
-              {/* Encabezado Editorial Dinámico */}
               <div className="flex items-end justify-between mb-5 px-1">
                 <div className="flex flex-col text-left">
-
                   <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
                     }`}>
-                    {activeTheme.template_id === 'hardware_dense' ? 'Kits Disponibles' : 'Colecciones Destacadas'}
+                    Colecciones Destacadas
                   </h2>
                 </div>
               </div>
 
-              {/* Carrusel Editorial en Proporción Vertical 3:4 */}
               <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
                 {collections.map((col: any, idx: number) => (
                   <CollectionCard
@@ -1493,15 +1494,14 @@ export default function StoreInterface({ store: initialStore, products: initialP
             </section>
           )}
 
-
-          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido) */}
+          {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido - Agnóstico) */}
           {featuredProducts.length > 0 && !debouncedSearch && !isBoutiqueMode && (
             <section id="bestsellers-section" className="mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className={`flex items-end justify-between mb-6 px-1 ${activeTheme.layout?.card_style === 'dense_hardware' ? ' pb-2' : ''}`}>
+              <div className={`flex items-end justify-between mb-6 px-1 ${activeTheme.layout?.card_style === 'dense_hardware' ? 'pb-2' : ''}`}>
                 {activeTheme.layout?.card_style === 'dense_hardware' ? (
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Stock de Alta Rotación</span>
-                    <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--store-text-main)] uppercase">Top Ventas</h2>
+                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Selección Destacada</span>
+                    <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-[var(--store-text-main)] uppercase">Lo más vendido</h2>
                   </div>
                 ) : (
                   <div>
@@ -1622,37 +1622,34 @@ export default function StoreInterface({ store: initialStore, products: initialP
             />
           )}
 
-          {/* 🚀 ENRUTADOR DE ESTADO (VACÍO VS CATÁLOGO) */}
+       {/* 🚀 ENRUTADOR DE ESTADO (VACÍO VS CATÁLOGO - 100% AGNÓSTICO) */}
           {standardProducts.length === 0 ? (
             <div className="w-full min-h-[40vh] flex flex-col items-center justify-center py-16 px-4 animate-in fade-in zoom-in-95 duration-500">
               {activeTheme.layout?.card_style === 'brutalist' ? (
-                /* 🏴‍☠️ Empty State: Brutalist */
-                <div className="flex flex-col items-center text-center p-8 md:p-12 border-2 border-[var(--store-border)] shadow-[8px_8px_0px_#000] bg-[var(--store-surface)] max-w-lg w-full mx-auto">
+                <div className="flex flex-col items-center text-center p-8 md:p-12 border-2 border-[var(--store-border)] shadow-[var(--shadow-ui)] bg-[var(--store-surface)] max-w-lg w-full mx-auto">
                   <SearchX size={48} strokeWidth={1.5} className="mb-4 text-[var(--store-text-main)]" />
-                  <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">0 RESULTADOS</h3>
-                  <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO HAY COINCIDENCIAS PARA &quot;{debouncedSearch}&quot;</p>
-                  <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border-2 border-[var(--store-primary)] hover:bg-[var(--store-bg)] hover:text-[var(--store-text-main)] hover:border-[var(--store-border)] transition-all shadow-[4px_4px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                  <h3 className="font-mono font-black text-2xl uppercase mb-2 text-[var(--store-text-main)]">SIN RESULTADOS</h3>
+                  <p className="font-mono text-xs uppercase text-[var(--store-surface-text)] mb-8">NO ENCONTRAMOS COINCIDENCIAS PARA &quot;{debouncedSearch}&quot;</p>
+                  <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="px-6 py-3 bg-[var(--store-primary)] text-[var(--store-primary-text)] font-mono font-black text-xs uppercase tracking-widest border border-[var(--store-primary)] hover:opacity-90 transition-all active:scale-95">
                     VER TODO EL CATÁLOGO
                   </button>
                 </div>
               ) : activeTheme.layout?.card_style === 'editorial' ? (
-                /* 💎 Empty State: Minimal Luxury */
                 <div className="flex flex-col items-center text-center p-8 max-w-lg w-full mx-auto">
                   <SearchX size={32} strokeWidth={1} className="mb-6 text-[var(--store-surface-text)] opacity-50" />
                   <h3 className="font-heading text-2xl md:text-3xl mb-3 text-[var(--store-text-main)]">Sin resultados</h3>
-                  <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No encontramos piezas que coincidan con tu búsqueda actual.</p>
+                  <p className="font-sans text-sm text-[var(--store-surface-text)] mb-8">No encontramos artículos que coincidan con tu búsqueda actual.</p>
                   <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="border-b border-[var(--store-text-main)] pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                    Ver todas las piezas
+                    Ver todo el catálogo
                   </button>
                 </div>
               ) : (
-                /* 🌟 Empty State: Universal & Food */
                 <div className="flex flex-col items-center text-center p-8 md:p-12 bg-[var(--store-surface)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] max-w-lg w-full mx-auto">
-                  <div className="bg-[var(--store-bg)] p-4 rounded-full mb-5 border border-[var(--store-border)]/50 shadow-sm">
+                  <div className="bg-[var(--store-bg)] p-4 rounded-full mb-5 border border-[var(--store-border)]/50 shadow-2xs">
                     <SearchX size={28} strokeWidth={1.5} className="text-[var(--store-text-main)] opacity-70" />
                   </div>
                   <h3 className="font-black text-xl text-[var(--store-text-main)] mb-2">No encontramos lo que buscas</h3>
-                  <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otras palabras o explora todas nuestras categorías.</p>
+                  <p className="text-sm font-medium text-[var(--store-surface-text)] mb-8">Intenta con otros términos o explora todas las categorías disponibles.</p>
                   <button onClick={() => { setSearch(''); setDebouncedSearch(''); setSelectedCategory('Todos'); }} className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-8 py-3.5 rounded-[var(--radius-btn)] font-bold text-sm shadow-[var(--shadow-ui)] active:scale-95 transition-transform border border-[var(--store-border)]">
                     Ver todo el catálogo
                   </button>
@@ -1672,10 +1669,9 @@ export default function StoreInterface({ store: initialStore, products: initialP
             </div>
           )}
 
-          {/* 🚀 CONTROLES DE PAGINACIÓN PREMIUM (Estilo Clean UI Cero Sombras) */}
+          {/* 🚀 CONTROLES DE PAGINACIÓN PREMIUM */}
           {totalPages > 1 && (
             <div className="mt-14 mb-4 flex items-center justify-center gap-1.5 md:gap-2">
-              {/* Botón Anterior */}
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -1685,7 +1681,6 @@ export default function StoreInterface({ store: initialStore, products: initialP
                 <span className="hidden md:inline">Ant</span>
               </button>
 
-              {/* Números de Página Inteligentes */}
               <div className="flex items-center gap-1 md:gap-1.5">
                 {getPaginationRange().map((page, idx) => (
                   page === "..." ? (
@@ -1705,11 +1700,10 @@ export default function StoreInterface({ store: initialStore, products: initialP
                 ))}
               </div>
 
-              {/* Botón Siguiente */}
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)]  text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
+                className="p-2 md:px-4 md:py-2 flex items-center justify-center rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] text-[11px] md:text-xs font-bold tracking-widest uppercase transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-95"
               >
                 <span className="hidden md:inline">Sig</span>
                 <ChevronRight size={16} strokeWidth={2.5} className="md:ml-1" />
@@ -1718,18 +1712,17 @@ export default function StoreInterface({ store: initialStore, products: initialP
           )}
 
           {/* ========================================== */}
-          {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Polimórfico) */}
+          {/* 🚀 COMPONENTE: BOTTOM NAVIGATION GRID (Polimórfico y 100% Agnóstico) */}
           {/* ========================================== */}
           {explorableCategories.length > 0 && (
             <div className="mt-8 md:mt-12 pt-8 border-t border-[var(--store-border)]/40 w-full animate-in fade-in duration-500">
 
               {activeTheme.layout?.card_style === 'dense_hardware' ? (
-                /* 🛠️ TEMA 2 (INDUSTRIAL): Directorio de Partes */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1 border-b border-[var(--store-border)] pb-3">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Directorio de Inventario</span>
-                      <h3 className="text-lg md:text-xl font-black tracking-tight text-[var(--store-text-main)] uppercase">Categorías Técnicas</h3>
+                      <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-1">Directorio del Catálogo</span>
+                      <h3 className="text-lg md:text-xl font-black tracking-tight text-[var(--store-text-main)] uppercase">Explorar Categorías</h3>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
@@ -1737,7 +1730,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
                       <button key={cat.name} onClick={() => handleExploreCategory(cat.name)} className="group flex items-center gap-3 p-3 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] hover:border-[var(--store-primary)] transition-all active:scale-[0.98] text-left shadow-[var(--shadow-ui)] rounded-[var(--radius-card)]">
                         {cat.coverUrl && !cat.useSolidColor ? (
                           <div className="w-12 h-12 shrink-0 relative bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 overflow-hidden rounded-[var(--radius-btn)]">
-                            <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="48px" className="object-cover grayscale group-hover:grayscale-0 transition-all duration-300" loading="lazy" />
+                            <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="48px" className="object-cover transition-all duration-300" loading="lazy" />
                           </div>
                         ) : (
                           <div className="w-12 h-12 shrink-0 bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 flex items-center justify-center rounded-[var(--radius-btn)]">
@@ -1746,7 +1739,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
                         )}
                         <div className="flex flex-col min-w-0 flex-1">
                           <span className="font-bold text-xs text-[var(--store-text-main)] uppercase tracking-wide truncate group-hover:text-[var(--store-primary)] transition-colors">{cat.name}</span>
-                          <span className="font-mono text-[10px] text-[var(--store-surface-text)] mt-0.5">{cat.count} ITEMS</span>
+                          <span className="font-mono text-[10px] text-[var(--store-surface-text)] mt-0.5">{cat.count} {cat.count === 1 ? 'ARTÍCULO' : 'ARTÍCULOS'}</span>
                         </div>
                         <ChevronRight size={16} className="text-[var(--store-surface-text)] group-hover:text-[var(--store-primary)] shrink-0 transition-colors" />
                       </button>
@@ -1754,12 +1747,11 @@ export default function StoreInterface({ store: initialStore, products: initialP
                   </div>
                 </>
               ) : activeTheme.layout?.card_style === 'editorial' ? (
-                /* 💎 TEMA 3 (LUXURY): Lookbook Editorial */
                 <>
                   <div className="flex flex-col items-center text-center mb-8 md:mb-10 px-1">
                     <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] mb-2">Descubrir</span>
                     <h3 className="text-2xl md:text-4xl font-black tracking-tight text-[var(--store-text-main)] font-heading">
-                      Explorar Colecciones
+                      Explorar Categorías
                     </h3>
                   </div>
                   <div className="flex gap-4 ml-2 md:gap-6 overflow-x-auto no-scrollbar pb-8 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
@@ -1770,22 +1762,23 @@ export default function StoreInterface({ store: initialStore, products: initialP
                         ) : (
                           <div className="absolute inset-0 bg-[var(--store-surface)]" />
                         )}
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-700" />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors duration-700" />
                         <div className="relative z-10 p-6 w-full flex flex-col items-center">
                           <span className="block font-heading font-black text-white text-2xl md:text-3xl tracking-wide mb-2 drop-shadow-md">{cat.name}</span>
-                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/90 border-b border-white/40 pb-1">Ver {cat.count} piezas</span>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/90 border-b border-white/40 pb-1">
+                            Ver {cat.count} {cat.count === 1 ? 'artículo' : 'artículos'}
+                          </span>
                         </div>
                       </button>
                     ))}
                   </div>
                 </>
               ) : activeTheme.layout?.card_style === 'brutalist' ? (
-                /* 🏴‍☠️ TEMA 4 (STREETWEAR): Lookbook Urbano Contemporáneo */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-6 px-1 border-b border-[var(--store-border)]/40 pb-3">
                     <div className="flex flex-col">
-                      <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-wider mb-0.5">// ARCHIVE DIRECTORY</span>
-                      <h3 className="text-base md:text-lg font-black tracking-tight text-[var(--store-text-main)] uppercase">Categorías Oficiales</h3>
+                      <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-wider mb-0.5">// DIRECTORIO</span>
+                      <h3 className="text-base md:text-lg font-black tracking-tight text-[var(--store-text-main)] uppercase">Explorar Categorías</h3>
                     </div>
                   </div>
                   <div className="flex gap-3 ml-2 md:gap-4 overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
@@ -1793,28 +1786,25 @@ export default function StoreInterface({ store: initialStore, products: initialP
                       <button
                         key={cat.name}
                         onClick={() => handleExploreCategory(cat.name)}
-                        className="group relative shrink-0 w-[150px] md:w-[190px] aspect-[4/5] rounded-[var(--radius-card)] border border-[var(--store-border)]/60 overflow-hidden snap-start flex flex-col justify-between p-3.5 text-left active:scale-[0.98] transition-all duration-300 bg-[var(--store-surface)] hover:border-[var(--store-text-main)] shadow-sm"
+                        className="group relative shrink-0 w-[150px] md:w-[190px] aspect-[4/5] rounded-[var(--radius-card)] border border-[var(--store-border)]/60 overflow-hidden snap-start flex flex-col justify-between p-3.5 text-left active:scale-[0.98] transition-all duration-300 bg-[var(--store-surface)] hover:border-[var(--store-text-main)] shadow-2xs"
                       >
                         {!cat.useSolidColor && cat.coverUrl ? (
                           <Image src={getOptimizedUrl(cat.coverUrl)} alt={cat.name} fill sizes="200px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" loading="lazy" />
                         ) : (
                           <div className="absolute inset-0 bg-[var(--store-surface)]" />
                         )}
-                        {/* Gradiente cinemático oscuro */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent pointer-events-none" />
 
-                        {/* Micro Índice Superior */}
                         <span className="relative z-10 text-[9px] font-mono font-bold text-white/70 uppercase tracking-widest">
                           {(idx + 1).toString().padStart(2, '0')} //
                         </span>
 
-                        {/* Detalle Inferior */}
                         <div className="relative z-10 w-full">
                           <span className="block font-bold tracking-tight text-white text-sm md:text-base leading-tight uppercase truncate">
                             {cat.name}
                           </span>
                           <span className="text-[9px] font-mono text-white/70 uppercase tracking-wider block mt-1">
-                            {cat.count} {cat.count === 1 ? 'Pieza' : 'Piezas'}
+                            {cat.count} {cat.count === 1 ? 'Artículo' : 'Artículos'}
                           </span>
                         </div>
                       </button>
@@ -1822,7 +1812,6 @@ export default function StoreInterface({ store: initialStore, products: initialP
                   </div>
                 </>
               ) : (
-                /* 🌟 TEMA 1 (UNIVERSAL): Carrusel Lifestyle B2C */
                 <>
                   <div className="flex items-center justify-between mb-4 md:mb-5 px-1">
                     <h3 className="text-sm md:text-base font-medium tracking-tight text-[var(--store-text-main)] uppercase">Explora más categorías</h3>
@@ -1834,7 +1823,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
                         {!cat.useSolidColor && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />}
                         <div className="relative z-10 p-3 md:p-4 w-full">
                           <span className={`block font-medium tracking-tight leading-none line-clamp-1 ${cat.useSolidColor ? 'text-[var(--store-primary-text)] text-lg md:text-xl' : 'text-white text-base md:text-lg'}`}>{cat.name}</span>
-                          <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>{cat.count} Productos</span>
+                          <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1.5 opacity-90 ${cat.useSolidColor ? 'text-[var(--store-primary-text)]/80' : 'text-gray-300'}`}>{cat.count} {cat.count === 1 ? 'Artículo' : 'Artículos'}</span>
                         </div>
                       </button>
                     ))}
@@ -1846,10 +1835,6 @@ export default function StoreInterface({ store: initialStore, products: initialP
 
         </>
 
-
-
-
-
         {/* 🚀 MODAL CLEAN LOOK DE AFILIADO */}
         <AnimatePresence>
           {showPromoModal && affiliateCode && (
@@ -1859,17 +1844,17 @@ export default function StoreInterface({ store: initialStore, products: initialP
               exit={{ opacity: 0, y: -20 }}
               className="fixed top-4 left-0 right-0 z-[100] flex justify-center px-4 pointer-events-none"
             >
-              <div className="bg-[#1a1a1a] text-white px-5 py-4 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] flex items-center gap-4 max-w-sm w-full pointer-events-auto border border-gray-800">
-                <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-full shrink-0">
+              <div className="bg-[var(--store-surface)] text-[var(--store-text-main)] px-5 py-4 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] flex items-center gap-4 max-w-sm w-full pointer-events-auto">
+                <div className="bg-[var(--store-incentive)]/15 text-[var(--store-incentive)] p-2 rounded-full shrink-0">
                   <Tag size={20} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Beneficio Desbloqueado</p>
+                  <p className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest mb-0.5">Beneficio Activado</p>
                   <p className="text-sm font-black leading-tight">
-                    Descuento activado gracias a <span className="text-emerald-400">{affiliateCode.toUpperCase()}</span>
+                    Descuento aplicado con el código <span className="text-[var(--store-incentive)]">{affiliateCode.toUpperCase()}</span>
                   </p>
                 </div>
-                <button onClick={() => setShowPromoModal(false)} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                <button onClick={() => setShowPromoModal(false)} className="text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors shrink-0">
                   <X size={16} />
                 </button>
               </div>
@@ -1878,6 +1863,203 @@ export default function StoreInterface({ store: initialStore, products: initialP
         </AnimatePresence>
 
       </main>
+
+    {/* ========================================================================= */}
+      {/* 💎 FOOTER ARQUITECTÓNICO ABIERTO (Cero Cajas, Logos Reales & Hilos Finos) */}
+      {/* ========================================================================= */}
+      {(() => {
+        const sc = store?.shipping_config || {};
+        const sm = sc.methods || {};
+        const pc = store?.payment_config || {};
+        const isFormalTax = store?.fiscal_profile && store.fiscal_profile !== 'informal';
+        const isMonoTheme = activeTheme.layout?.card_style === 'brutalist' || activeTheme.layout?.card_style === 'dense_hardware';
+        const isLuxuryTheme = activeTheme.layout?.card_style === 'editorial';
+
+        // 1. Métodos de Pago Activos con su Logo Oficial de Checkout
+        const activePayments: { label: string; icon: string }[] = [];
+        if (pc.pago_movil?.active || pc.skylink?.active || pc.pago_flash?.active) {
+          activePayments.push({ label: 'Pago Móvil', icon: 'fluent:phone-checkmark-24-regular' });
+        }
+        if (pc.zelle?.active) activePayments.push({ label: 'Zelle', icon: 'simple-icons:zelle' });
+        if (pc.binance?.active) activePayments.push({ label: 'Binance', icon: 'simple-icons:binance' });
+        if (pc.cash?.active) activePayments.push({ label: 'Efectivo', icon: 'bi:cash' });
+        if (pc.transferencia?.active) activePayments.push({ label: 'Transferencia', icon: 'ph:bank-bold' });
+        if (pc.zinli?.active) activePayments.push({ label: 'Zinli', icon: 'mdi:wallet-bifold' });
+        if (pc.wally?.active) activePayments.push({ label: 'Wally', icon: 'solar:wallet-bold' });
+        if (pc.paypal?.active) activePayments.push({ label: 'PayPal', icon: 'simple-icons:paypal' });
+
+     // 2. Opciones de Entrega Activas (Lectura resiliente en .methods y raíz)
+        const hasPickup = Boolean(sm.pickup ?? sc.pickup);
+        const hasLocalDelivery = Boolean(sm.delivery ?? sc.delivery);
+        const hasMrw = Boolean(sm.mrw ?? sm.MRW ?? sc.mrw ?? sc.MRW);
+        const hasZoom = Boolean(sm.zoom ?? sm.ZOOM ?? sc.zoom ?? sc.ZOOM);
+        const hasTealca = Boolean(sm.tealca ?? sm.TEALCA ?? sc.tealca ?? sc.TEALCA);
+        const hasAnyShipping = hasPickup || hasLocalDelivery || hasMrw || hasZoom || hasTealca;
+
+        const physicalAddress = sc.main_address?.trim() || (Array.isArray(sc.pickup_locations) && sc.pickup_locations[0]?.trim()) || (isFormalTax ? store?.fiscal_address?.trim() : '');
+        const cleanPhone = (store?.phone || '').replace(/\D/g, '');
+        const hasAnyRealFooterData = activePayments.length > 0 || hasAnyShipping || Boolean(physicalAddress) || Boolean(cleanPhone) || Boolean(isFormalTax && (store?.legal_name || store?.legal_id));
+
+        if (!hasAnyRealFooterData) return null;
+
+        return (
+          <footer className="w-full border-t border-[var(--store-border)]/40 mt-12">
+            <div className="max-w-[1500px] mx-auto px-4 md:px-8">
+              <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-[var(--store-border)]/35">
+
+                {/* COLUMNA 1: IDENTIDAD, TASA INFORMANTE SUBRAYADA, UBICACIÓN Y CONTACTO */}
+                <div className="md:col-span-5 py-8 md:py-10 md:pr-8 space-y-4">
+                  <div className="flex items-center flex-wrap gap-3">
+                    <span className={`text-base md:text-lg font-bold tracking-tight text-[var(--store-text-main)] ${
+                      isLuxuryTheme ? 'font-heading font-normal text-xl' : isMonoTheme ? 'font-mono uppercase' : ''
+                    }`}>
+                      {store?.name}
+                    </span>
+
+                    <span className="h-3.5 w-px bg-[var(--store-border)]/70" />
+
+                    <button
+                      type="button"
+                      onClick={() => setIsRateModalOpen(true)}
+                      className="inline-flex items-baseline gap-1.5 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors cursor-pointer group"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wider">
+                        {isEur ? 'Tasa EUR' : 'Tasa BCV'}
+                      </span>
+                      <span className="font-mono font-bold text-xs text-[var(--store-text-main)] tabular-nums border-b border-[var(--store-text-main)]/35 group-hover:border-[var(--store-text-main)] pb-[1px] leading-none transition-colors">
+                        Bs. {Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(activeRate)}
+                      </span>
+                    </button>
+                  </div>
+
+                  {physicalAddress && (
+                    <div className="flex items-start gap-2 text-xs text-[var(--store-surface-text)] leading-relaxed max-w-md">
+                      <MapPin size={14} strokeWidth={1.75} className="shrink-0 mt-0.5 text-[var(--store-text-main)] opacity-80" />
+                      <span>{physicalAddress}</span>
+                    </div>
+                  )}
+
+                  {isFormalTax && (store?.legal_name || store?.legal_id) && (
+                    <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-[var(--store-surface-text)] ${isMonoTheme ? 'font-mono' : ''}`}>
+                      {store?.legal_name && <span className="font-medium text-[var(--store-text-main)]">{store.legal_name}</span>}
+                      {store?.legal_name && store?.legal_id && <span className="opacity-40">·</span>}
+                      {store?.legal_id && <span className="font-mono">RIF: {store.legal_id}</span>}
+                    </div>
+                  )}
+
+                  {cleanPhone && (
+                    <div className="pt-1">
+                      <a
+                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hola, vengo de su catálogo web (${store?.name}) y quisiera realizar una consulta.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-2 text-xs font-semibold text-[var(--store-text-main)] hover:opacity-75 transition-opacity group ${
+                          isMonoTheme ? 'font-mono text-[11px] uppercase tracking-wider' : ''
+                        }`}
+                      >
+                        <MessageCircle size={14} strokeWidth={2} className="shrink-0" />
+                        <span className="border-b border-[var(--store-text-main)]/35 group-hover:border-[var(--store-text-main)] pb-0.5 transition-colors">
+                          Atención al cliente por WhatsApp
+                        </span>
+                        <ArrowUpRight size={13} className="text-[var(--store-surface-text)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* COLUMNA 2: ENVÍOS Y ENTREGAS (Wordmarks SVG Forzados & Contraste Adaptativo) */}
+                {hasAnyShipping && (
+                  <div className="md:col-span-3 py-8 md:py-10 md:px-8 space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)]">
+                        Envíos y Entregas
+                      </span>
+                      {sc.national_shipping_is_free && (hasMrw || hasZoom || hasTealca) && (
+                        <span className="text-[10px] font-mono font-bold text-[var(--store-incentive)] border-b border-[var(--store-incentive)]/40 pb-[1px]">
+                          Envío Gratis
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                      {hasPickup && (
+                        <div className={`inline-flex items-center gap-2 text-xs font-medium text-[var(--store-text-main)] ${isMonoTheme ? 'font-mono text-[11px]' : ''}`}>
+                          <Store size={16} strokeWidth={1.75} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                          <span>Retiro en tienda</span>
+                        </div>
+                      )}
+
+                      {hasLocalDelivery && (
+                        <div className={`inline-flex items-center gap-2 text-xs font-medium text-[var(--store-text-main)] ${isMonoTheme ? 'font-mono text-[11px]' : ''}`}>
+                          <Truck size={16} strokeWidth={1.75} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                          <span>Delivery local</span>
+                        </div>
+                      )}
+
+                      {hasMrw && (
+                        <div
+                          className={`h-6 w-[68px] flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block ${
+                            isStoreDark ? 'brightness-125 contrast-125' : ''
+                          }`}
+                          title="Envíos por MRW"
+                        >
+                          <MrwIcon className="h-full w-full object-contain" />
+                        </div>
+                      )}
+
+                      {hasZoom && (
+                        <div
+                          className={`h-6 w-[68px] flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block ${
+                            isStoreDark ? 'brightness-125 contrast-125' : ''
+                          }`}
+                          title="Envíos por Zoom"
+                        >
+                          <ZoomIcon className="h-full w-full object-contain" />
+                        </div>
+                      )}
+
+                      {hasTealca && (
+                        <div
+                          className={`h-6 w-[68px] flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block ${
+                            isStoreDark ? 'brightness-125 contrast-125' : ''
+                          }`}
+                          title="Envíos por Tealca"
+                        >
+                          <TealcaIcon className="h-full w-full object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* COLUMNA 3: MÉTODOS DE PAGO (Logos Reales de Checkout, Sin Cajas) */}
+                {activePayments.length > 0 && (
+                  <div className={`${hasAnyShipping ? 'md:col-span-4' : 'md:col-span-7'} py-8 md:py-10 md:pl-8 space-y-4`}>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)] block">
+                      Métodos de Pago
+                    </span>
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3.5">
+                      {activePayments.map((pm) => (
+                        <div
+                          key={pm.label}
+                          className={`inline-flex items-center gap-2 text-xs font-medium text-[var(--store-text-main)] ${
+                            isMonoTheme ? 'font-mono text-[11px]' : ''
+                          }`}
+                        >
+                          <Icon icon={pm.icon} width={16} height={16} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                          <span>{pm.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </footer>
+        );
+      })()}
 
       {/* 🚀 VIRAL LOOP 2: EL NUDGE DE ÉXITO (Brutalist Structural Grid - Auto-Ticker Mobile & UTM Optimized) */}
       <div className="mt-16 pb-24 pt-8 w-full flex justify-center relative z-20 border-t border-[var(--store-border)]/40">

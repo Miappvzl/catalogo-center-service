@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { X, ShoppingBag, Truck, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowDownRight, ChevronDown, ShoppingCart } from 'lucide-react'
+import { X, ShoppingBag, Truck, Store, AlertCircle, Loader2, Check, ChevronLeft, ChevronRight, Minus, Plus, Tag, Sparkles, Flame, Zap, MessageCircle, Heart, Eye, Receipt, ArrowDownRight, ChevronDown, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/app/store/useCart'
 import Image from 'next/image'
 import { AnimatePresence, motion, useAnimation, Variants, useMotionValue, animate } from 'framer-motion'
@@ -9,6 +9,10 @@ import { getOptimizedUrl } from '@/utils/cdn'
 import { normalizeThemeConfig } from '@/utils/themeAdapter'
 import { getVariantSwatchStyle } from '@/utils/ColorUtils'
 import { formatUSD, formatVES } from '@/utils/currency'
+import { Icon } from '@iconify/react'
+import { MrwIcon } from '@/components/ui/icons/MrwIcon'
+import { ZoomIcon } from '@/components/ui/icons/ZoomIcon'
+import { TealcaIcon } from '@/components/ui/icons/TealcaIcon'
 
 // 🚀 VISOR INMERSIVO HÍBRIDO (Drag Nativo en Desktop, Multi-Touch Pinch en Móvil & Doble Tap)
 interface LightboxViewerProps {
@@ -839,30 +843,422 @@ Mi duda es la siguiente: `;
     }
 
 
+
     const isCompletelyOutOfStock = variants.length > 0
         ? variants.every(v => (v.stock || 0) <= 0)
         : (product?.stock || 0) <= 0;
 
-// 🚀 NUEVO: Evaluación arquitectónica temprana del tipo de variante
+    // 🚀 EVALUACIÓN ARQUITECTÓNICA UNIVERSAL DE VARIANTES (Cero Sesgo de Nicho)
     const isModelOption = availableColors.length > 0 &&
         (!availableColors[0].hex || availableColors[0].hex === 'transparent' || availableColors[0].hex === '#transparent');
 
-    // 💎 DETECTOR 1D (SOLO TALLAS): True si solo existe 1 grupo sin color visual llamado "Talla", "Estándar", "Único" o vacío
     const isSingleSizeOnlyGroup = availableColors.length === 1 && isModelOption &&
         ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar', ''].includes((availableColors[0].name || '').trim().toLowerCase());
 
-    // 💎 VISIBILIDAD DE TALLAS: Se muestra si hay múltiples tallas, o si es modo "Solo Tallas" (incluso si queda 1 sola talla como "30")
     const shouldShowSizeSelector = availableSizes.length > 1 || (
         isSingleSizeOnlyGroup &&
         availableSizes.length === 1 &&
         !['única', 'unica'].includes((availableSizes[0]?.size || '').trim().toLowerCase())
     );
 
-    // 🚀 NUEVO: Variable reactiva para el texto del botón (Corregido para Modelos/Opciones y Solo Tallas)
+    const isRestaurantStore = storeConfig?.store_type === 'restaurant';
+
     const buttonText = isCompletelyOutOfStock ? 'Agotado'
-        : (variants.length > 0 && !selectedColor) ? (isModelOption ? 'Escoge modelo/opción' : 'Elige un Color')
-            : (variants.length > 0 && !selectedSize) ? 'Elige una Talla'
+        : (variants.length > 0 && !selectedColor) ? (isModelOption ? 'Selecciona una opción' : 'Elige un color')
+            : (variants.length > 0 && !selectedSize) ? (isRestaurantStore ? 'Elige tamaño' : 'Elige una talla')
                 : 'Agregar';
+
+   // 💎 1. MOTOR DE LOGÍSTICA DE 2 NIVELES (SLA Personalizado del Comerciante + Canales Reales con SVGs)
+    const realLogisticsInfo = useMemo(() => {
+        if (isCompletelyOutOfStock || storeConfig?.shipping_config?.show_badge === false) return null;
+        if (product?.requires_shipping === false) return null;
+
+        const sc = storeConfig?.shipping_config || {};
+        const sm = sc.methods || {};
+
+        // Nivel 1: Condición / Tiempo de despacho editado por el comerciante (Por Producto > Global)
+        const customTitle = product?.shipping_badge_title?.trim() || sc.global_badge_title?.trim() || null;
+        const customDesc = product?.shipping_badge_desc?.trim() || sc.global_badge_desc?.trim() || null;
+
+        // Nivel 2: Modalidades y Agencias Reales Activas (Tolerante a .methods y raíz)
+        const hasPickup = Boolean(sm.pickup ?? sc.pickup);
+        const hasLocalDelivery = Boolean(sm.delivery ?? sc.delivery);
+        const hasMrw = Boolean(sm.mrw ?? sm.MRW ?? sc.mrw ?? sc.MRW);
+        const hasZoom = Boolean(sm.zoom ?? sm.ZOOM ?? sc.zoom ?? sc.ZOOM);
+        const hasTealca = Boolean(sm.tealca ?? sm.TEALCA ?? sc.tealca ?? sc.TEALCA);
+        const hasNationalCouriers = hasMrw || hasZoom || hasTealca;
+        const isFreeNational = Boolean(sc.national_shipping_is_free && hasNationalCouriers);
+        const hasAnyActiveChannel = hasPickup || hasLocalDelivery || hasNationalCouriers;
+
+        if (!customTitle && !customDesc && !hasAnyActiveChannel) return null;
+
+        return {
+            customTitle,
+            customDesc,
+            hasPickup,
+            hasLocalDelivery,
+            hasMrw,
+            hasZoom,
+            hasTealca,
+            isFreeNational,
+            hasAnyActiveChannel
+        };
+    }, [isCompletelyOutOfStock, product?.requires_shipping, product?.shipping_badge_title, product?.shipping_badge_desc, storeConfig?.shipping_config]);
+
+    // 💎 RENDERIZADOR EDITORIAL DE LOGÍSTICA (Sin cajas redundantes, con Hilos Finos y Wordmarks SVG)
+    const renderUnifiedShippingContent = (isMono: boolean = false) => {
+        if (!realLogisticsInfo) return null;
+        const {
+            customTitle,
+            customDesc,
+            hasPickup,
+            hasLocalDelivery,
+            hasMrw,
+            hasZoom,
+            hasTealca,
+            isFreeNational,
+            hasAnyActiveChannel
+        } = realLogisticsInfo;
+
+        return (
+            <div className="pt-3 pb-2 space-y-3.5">
+                {/* NIVEL 1: Condición / Tiempo de Despacho (Editado por la tienda o en el producto) */}
+                {(customTitle || customDesc) && (
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-0.5">
+                            {customTitle && (
+                                <span className={`text-xs font-bold uppercase tracking-wider text-[var(--store-text-main)] ${isMono ? 'font-mono' : ''}`}>
+                                    {customTitle}
+                                </span>
+                            )}
+                            {customDesc && (
+                                <span className={`text-xs text-[var(--store-surface-text)] leading-relaxed ${isMono ? 'font-mono text-[11px]' : ''}`}>
+                                    {customDesc}
+                                </span>
+                            )}
+                        </div>
+                        {isFreeNational && (
+                            <span className="text-[10px] font-mono font-bold text-[var(--store-incentive)] border-b border-[var(--store-incentive)]/40 pb-[1px] shrink-0">
+                                Envío Gratis
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {/* NIVEL 2: Canales y Agencias Oficiales Habilitadas en la Tienda (Con SVGs Reales, Sin Cajas) */}
+                {hasAnyActiveChannel && (
+                    <div className={`${(customTitle || customDesc) ? 'pt-3 border-t border-[var(--store-border)]/35' : ''} space-y-2.5`}>
+                        <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)] ${isMono ? 'font-mono' : ''}`}>
+                                Canales disponibles
+                            </span>
+                            {isFreeNational && !customTitle && !customDesc && (
+                                <span className="text-[10px] font-mono font-bold text-[var(--store-incentive)] border-b border-[var(--store-incentive)]/40 pb-[1px]">
+                                    Envío Gratis
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                            {hasPickup && (
+                                <div className={`inline-flex items-center gap-1.5 text-xs font-medium text-[var(--store-text-main)] ${isMono ? 'font-mono text-[11px]' : ''}`}>
+                                    <Store size={15} strokeWidth={1.75} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                                    <span>Retiro en tienda</span>
+                                </div>
+                            )}
+
+                            {hasLocalDelivery && (
+                                <div className={`inline-flex items-center gap-1.5 text-xs font-medium text-[var(--store-text-main)] ${isMono ? 'font-mono text-[11px]' : ''}`}>
+                                    <Truck size={15} strokeWidth={1.75} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                                    <span>Delivery local</span>
+                                </div>
+                            )}
+
+                            {hasMrw && (
+                                <div className="h-5 w-14 flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block" title="Envíos por MRW">
+                                    <MrwIcon className="h-full w-full object-contain" />
+                                </div>
+                            )}
+
+                            {hasZoom && (
+                                <div className="h-5 w-14 flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block" title="Envíos por Zoom">
+                                    <ZoomIcon className="h-full w-full object-contain" />
+                                </div>
+                            )}
+
+                            {hasTealca && (
+                                <div className="h-5 w-14 flex items-center justify-start shrink-0 text-[var(--store-text-main)] [&_svg]:h-full [&_svg]:w-full [&_svg]:block" title="Envíos por Tealca">
+                                    <TealcaIcon className="h-full w-full object-contain" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+ // 💎 2. MOTOR DE MÉTODOS DE PAGO REALES CON SUS LOGOS OFICIALES (Cero Cajas de Botón)
+    const activePaymentMethodsList = useMemo(() => {
+        const pc = storeConfig?.payment_config || {};
+        const list: { label: string; icon: string }[] = [];
+        if (pc.pago_movil?.active || pc.skylink?.active || pc.pago_flash?.active) {
+            list.push({ label: 'Pago Móvil', icon: 'fluent:phone-checkmark-24-regular' });
+        }
+        if (pc.zelle?.active) list.push({ label: 'Zelle', icon: 'simple-icons:zelle' });
+        if (pc.binance?.active) list.push({ label: 'Binance', icon: 'simple-icons:binance' });
+        if (pc.cash?.active) list.push({ label: 'Efectivo', icon: 'bi:cash' });
+        if (pc.transferencia?.active) list.push({ label: 'Transferencia', icon: 'ph:bank-bold' });
+        if (pc.zinli?.active) list.push({ label: 'Zinli', icon: 'mdi:wallet-bifold' });
+        if (pc.wally?.active) list.push({ label: 'Wally', icon: 'solar:wallet-bold' });
+        if (pc.paypal?.active) list.push({ label: 'PayPal', icon: 'simple-icons:paypal' });
+        return list;
+    }, [storeConfig?.payment_config]);
+
+    // 💎 3. GATILLO TÁCTICO 1-TAP PARA PRECIO MAYORISTA CON VALIDACIÓN DEFENSIVA DE STOCK
+    const [wholesaleNotice, setWholesaleNotice] = useState<string | null>(null);
+    const wholesaleNoticeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        setWholesaleNotice(null);
+    }, [selectedColor, selectedSize, activeProductKey]);
+
+    const triggerWholesaleNotice = (msg: string) => {
+        if (wholesaleNoticeTimerRef.current) clearTimeout(wholesaleNoticeTimerRef.current);
+        setWholesaleNotice(msg);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([10, 25, 10]);
+        wholesaleNoticeTimerRef.current = setTimeout(() => {
+            setWholesaleNotice(null);
+        }, 4200);
+    };
+
+    const hasWholesaleOffer = Boolean(
+        product?.wholesale_active &&
+        Number(product?.wholesale_min_qty) > 0 &&
+        Number(product?.wholesale_discount_pct) > 0 &&
+        !isCompletelyOutOfStock
+    );
+
+    const handleApplyWholesaleQty = () => {
+        if (!hasWholesaleOffer) return;
+        const targetMin = Number(product.wholesale_min_qty);
+
+        if (variants.length > 0) {
+            const totalAvailableAcrossVariants = variants.reduce((acc, v) => acc + Math.max(0, Number(v.stock) || 0), 0);
+            if (totalAvailableAcrossVariants < targetMin) {
+                triggerWholesaleNotice(
+                    `Inventario insuficiente para compra al mayor (quedan ${totalAvailableAcrossVariants} und. disponibles de ${targetMin} requeridas).`
+                );
+                return;
+            }
+
+            if (!selectedColor || !selectedSize) {
+                const missingLabel = !selectedColor
+                    ? (isModelOption ? 'una opción' : 'un color')
+                    : (isRestaurantStore ? 'un tamaño' : 'una talla');
+                setErrorShake(!selectedColor ? 'color' : 'size');
+                if (!selectedColor) {
+                    colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    sizeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                triggerWholesaleNotice(
+                    `Selecciona primero ${missingLabel} para verificar si cuenta con las ${targetMin} unidades al mayor.`
+                );
+                return;
+            }
+
+            if (currentMaxStock < targetMin) {
+                triggerWholesaleNotice(
+                    `Esta variante solo cuenta con ${currentMaxStock} ${currentMaxStock === 1 ? 'unidad disponible' : 'unidades disponibles'} (mínimo requerido al mayor: ${targetMin} und).`
+                );
+                return;
+            }
+        } else {
+            const simpleStock = Number(product?.stock || 0);
+            if (simpleStock < targetMin) {
+                triggerWholesaleNotice(
+                    `Este artículo solo cuenta con ${simpleStock} ${simpleStock === 1 ? 'unidad disponible' : 'unidades disponibles'} (mínimo requerido al mayor: ${targetMin} und).`
+                );
+                return;
+            }
+        }
+
+        setWholesaleNotice(null);
+        setQuantity(targetMin);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(15);
+    };
+
+    // 💎 4. COMPONENTE POLIMÓRFICO: COMPARADOR MAYORISTA DE 2 COLUMNAS (Cero Saltos de Línea)
+    const renderWholesaleMatrix = (styleVariant: 'editorial' | 'brutalist' | 'modular_tech' | 'food_menu' | 'universal') => {
+        if (!hasWholesaleOffer) return null;
+
+        const minQty = Number(product.wholesale_min_qty);
+        const discountPct = Number(product.wholesale_discount_pct);
+        const baseUnit = pricing.isPromo ? pricing.compareAt : pricing.listPrice;
+        const wholesaleUnit = baseUnit * (1 - discountPct / 100);
+        const isWholesaleApplied = quantity >= minQty;
+
+        const isSharp = styleVariant === 'brutalist';
+        const isMinimal = styleVariant === 'editorial';
+
+        return (
+            <div className="space-y-2">
+                <div
+                    className={`grid grid-cols-2 divide-x divide-[var(--store-border)]/60 overflow-hidden border-[length:var(--border-width-ui)] border-[var(--store-border)] bg-[var(--store-bg)] ${
+                        isSharp || isMinimal ? 'rounded-none' : 'rounded-[var(--radius-card)]'
+                    }`}
+                >
+                    {/* Celda Izquierda: Precio Unitario / Detal */}
+                    <div className="p-3.5 flex flex-col justify-between gap-1.5 bg-[var(--store-surface)]/40 min-w-0">
+                        <span className={`text-[10px] font-medium text-[var(--store-surface-text)] whitespace-nowrap truncate ${isSharp ? 'font-mono uppercase' : ''}`}>
+                            1 a {minQty - 1} und
+                        </span>
+                        <div className="flex items-baseline gap-1 whitespace-nowrap">
+                            <span className={`text-base md:text-lg font-bold text-[var(--store-text-main)] tabular-nums tracking-tight leading-none ${isSharp ? 'font-mono' : ''}`}>
+                                {formatUSD(baseUnit)}
+                            </span>
+                            <span className="text-[10px] text-[var(--store-surface-text)] font-normal">
+                                c/u
+                            </span>
+                        </div>
+                        <span className={`text-[10px] text-[var(--store-surface-text)]/80 whitespace-nowrap truncate ${isSharp ? 'font-mono' : ''}`}>
+                            Precio unitario
+                        </span>
+                    </div>
+
+                    {/* Celda Derecha: Al Mayor (Interactiva 1-Tap) */}
+                    <button
+                        type="button"
+                        onClick={handleApplyWholesaleQty}
+                        className={`p-3.5 flex flex-col justify-between gap-1.5 text-left transition-colors cursor-pointer min-w-0 active:scale-[0.99] ${
+                            isWholesaleApplied
+                                ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)]'
+                                : 'bg-[var(--store-surface)] text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.03]'
+                        }`}
+                    >
+                        <div className="w-full flex items-center justify-between gap-1.5 whitespace-nowrap">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider truncate ${
+                                isWholesaleApplied ? 'text-[var(--store-primary-text)]/90' : 'text-[var(--store-text-main)]'
+                            } ${isSharp ? 'font-mono' : ''}`}>
+                                Al Mayor ({minQty}+)
+                            </span>
+                            <span
+                                className={`text-[10px] font-mono font-black tracking-tight shrink-0 ${
+                                    isWholesaleApplied ? 'text-[var(--store-primary-text)]' : 'text-[var(--store-incentive)]'
+                                }`}
+                            >
+                                -{discountPct}%
+                            </span>
+                        </div>
+
+                        <div className="flex items-baseline gap-1 whitespace-nowrap">
+                            <span className={`text-base md:text-lg font-black tabular-nums tracking-tight leading-none ${isSharp ? 'font-mono' : ''}`}>
+                                {formatUSD(wholesaleUnit)}
+                            </span>
+                            <span className={`text-[10px] font-normal ${
+                                isWholesaleApplied ? 'text-[var(--store-primary-text)]/80' : 'text-[var(--store-surface-text)]'
+                            }`}>
+                                c/u
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 whitespace-nowrap">
+                            <span className={`text-[10px] font-semibold tracking-tight truncate ${
+                                isWholesaleApplied
+                                    ? 'text-[var(--store-primary-text)]'
+                                    : 'text-[var(--store-text-main)] underline decoration-[var(--store-border)] underline-offset-4'
+                            } ${isSharp ? 'font-mono' : ''}`}>
+                                {isWholesaleApplied ? '✓ Tarifa aplicada' : `Aplicar ${minQty} und →`}
+                            </span>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Aviso Sutil y Discreto de Inventario / Variante */}
+                <AnimatePresence>
+                    {wholesaleNotice && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex items-start gap-2 px-1 pt-0.5 text-[11px] text-[var(--store-surface-text)] leading-snug"
+                        >
+                            <AlertCircle size={13} className="text-[var(--store-text-main)] shrink-0 mt-0.5" />
+                            <span>{wholesaleNotice}</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        );
+    };
+
+    // 💎 5. COMPONENTE POLIMÓRFICO: PÍLDORA DE PRECIO EXACTO EN DIVISAS
+    const renderForeignCurrencyIncentive = (styleVariant: 'editorial' | 'brutalist' | 'modular_tech' | 'food_menu' | 'universal') => {
+        if (!pricing.hasDiscount || pricing.exactSavings <= 0 || isCompletelyOutOfStock) return null;
+
+        const isSharp = styleVariant === 'brutalist';
+        const isMinimal = styleVariant === 'editorial';
+
+        return (
+            <div
+                className={`mt-3 inline-flex items-center flex-wrap gap-2 px-3 py-2 border transition-colors w-fit ${
+                    isSharp ? 'rounded-none font-mono' : isMinimal ? 'rounded-none' : 'rounded-[var(--radius-btn)]'
+                }`}
+                style={{
+                    backgroundColor: 'color-mix(in srgb, var(--store-incentive) 10%, var(--store-surface))',
+                    borderColor: 'color-mix(in srgb, var(--store-incentive) 30%, var(--store-border))',
+                    color: 'var(--store-incentive)'
+                }}
+            >
+                <div className="flex items-center gap-1.5">
+                    <Flame size={13} className="fill-current shrink-0" />
+                    <span className="text-[11px] font-bold tracking-wide">
+                        En divisas: <strong className="font-black tabular-nums">{formatUSD(pricing.cashPrice)}</strong>
+                    </span>
+                </div>
+                <span
+                    className={`text-[9px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 ${
+                        isSharp || isMinimal ? 'rounded-none' : 'rounded-full'
+                    }`}
+                    style={{
+                        backgroundColor: 'color-mix(in srgb, var(--store-incentive) 18%, transparent)',
+                        color: 'var(--store-incentive)'
+                    }}
+                >
+                    Ahorras {formatUSD(pricing.exactSavings)}
+                </span>
+            </div>
+        );
+    };
+
+    // 💎 6. COMPONENTE POLIMÓRFICO: MÉTODOS DE PAGO CON LOGOS REALES (Sin Cajas de Botón)
+    const renderRealPaymentPills = (isMono: boolean = false) => {
+        if (activePaymentMethodsList.length === 0) return null;
+        return (
+            <div className="pt-4 border-t border-[var(--store-border)]/30">
+                <span className={`text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)] block mb-3 ${isMono ? 'font-mono' : ''}`}>
+                    Métodos de pago aceptados
+                </span>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+                    {activePaymentMethodsList.map((pm) => (
+                        <div
+                            key={pm.label}
+                            className={`inline-flex items-center gap-1.5 text-xs font-medium text-[var(--store-text-main)] ${
+                                isMono ? 'font-mono text-[11px]' : ''
+                            }`}
+                        >
+                            <Icon icon={pm.icon} width={15} height={15} className="text-[var(--store-text-main)] opacity-85 shrink-0" />
+                            <span>{pm.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const resolvedCategoryLabel = product?.category?.trim() || storeConfig?.name || 'Catálogo';
 
     // =========================================================================
     // 💎 VARIANTE: TEMA 3 (MINIMAL LUXURY MODAL)
@@ -893,7 +1289,7 @@ Mi duda es la siguiente: `;
 
                                         <div className="w-full flex-1 p-6 md:p-12 flex items-center justify-center min-h-[350px] md:min-h-0">
                                             <div
-                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in  rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] border border-[var(--store-border)]/20"
+                                                className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] border border-[var(--store-border)]/20"
                                                 style={{
                                                     aspectRatio: aspectRatioValue, maxHeight: '100%',
                                                     backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
@@ -907,34 +1303,37 @@ Mi duda es la siguiente: `;
                                                     <>
                                                         <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.03]' : ''}`} />
 
-                                                        {/* LUPA LÁSER */}
                                                         {zoomData.show && (
                                                             <div className="hidden md:block absolute pointer-events-none bg-[var(--store-text-main)]/5 border border-white/60 backdrop-blur-[1px] shadow-sm z-20 rounded-md" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <span className="text-4xl font-heading text-[var(--store-border)]">Preziso</span>
+                                                    <span className="text-2xl font-heading text-[var(--store-border)]">{storeConfig?.name || 'Catálogo'}</span>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* Tira de Película... */}
                                         {currentGallery.length > 1 && (
                                             <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/30 flex gap-2.5 p-2.5 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0 bg-[var(--store-bg)]/40">
                                                 {currentGallery.map((img, idx) => (
                                                     <button key={`thumb-${idx}`} onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }} className={`relative h-full aspect-[4/5] rounded-md overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 ${idx === galleryIndex ? 'ring-1 ring-offset-2 ring-[var(--store-text-main)] opacity-100' : 'opacity-40 hover:opacity-100'}`}>
-                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                        <Image src={getOptimizedUrl(img)} alt={`Miniatura ${idx + 1}`} fill sizes="80px" className="object-cover" />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
+
                                     {/* 2. DETALLES EDITORIALES */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-bg)]">
-                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar pb-6 md:pb-[120px]">
+                                        <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-7 no-scrollbar pb-6 md:pb-[120px]">
                                             <div className="text-center md:text-left">
-                                                <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] leading-none mb-3 block">{product?.category || 'Boutique'}</span>
-                                                <h2 className="text-2xl md:text-4xl font-heading text-[var(--store-text-main)] leading-tight mb-4">{product?.name}</h2>
+                                                <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-[0.25em] leading-none mb-3 block">
+                                                    {resolvedCategoryLabel}
+                                                </span>
+                                                <h2 className="text-2xl md:text-4xl font-heading text-[var(--store-text-main)] leading-tight mb-4">
+                                                    {product?.name}
+                                                </h2>
 
                                                 {pricing.promoBadgeText && (
                                                     <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[9px] uppercase tracking-[0.15em] font-bold">
@@ -942,46 +1341,41 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
 
-                                               <div className="flex items-baseline justify-center md:justify-start gap-3 mt-2">
-                                                    {pricing.isPromo && <span className="text-sm md:text-base text-[var(--store-surface-text)] line-through decoration-[0.5px]">{formatUSD(pricing.compareAt)}</span>}
-                                                    <span className={`text-2xl md:text-3xl font-medium tracking-wide ${pricing.isPromo ? 'text-red-800' : 'text-[var(--store-text-main)]'}`}>{formatUSD(pricing.listPrice)}</span>
-                                                    <span className="text-xs text-[var(--store-surface-text)] font-medium">{formatVES(pricing.priceInBs)}</span>
+                                                <div className="flex items-baseline justify-center md:justify-start gap-3 mt-2">
+                                                    {pricing.isPromo && (
+                                                        <span className="text-sm md:text-base text-[var(--store-surface-text)] line-through decoration-[0.5px]">
+                                                            {formatUSD(pricing.compareAt)}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-2xl md:text-3xl font-medium tracking-wide ${pricing.isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+                                                        {formatUSD(pricing.listPrice)}
+                                                    </span>
+                                                    <span className="text-xs text-[var(--store-surface-text)] font-medium tabular-nums">
+                                                        {formatVES(pricing.priceInBs)}
+                                                    </span>
                                                 </div>
 
-                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <div className="mt-3 text-[10px] font-bold tracking-widest uppercase text-[var(--store-text-main)]/70 flex items-center justify-center md:justify-start gap-1.5">
-                                                        <Flame size={12} /> Ahorra {formatUSD(pricing.exactSavings)} en USD
-                                                    </div>
-                                                )}
+                                                <div className="flex justify-center md:justify-start">
+                                                    {renderForeignCurrencyIncentive('editorial')}
+                                                </div>
+
                                                 {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
                                                     <div className="mt-2 text-[9px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] flex items-center justify-center md:justify-start gap-1">
-                                                        <Receipt size={10} /> + ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA
+                                                        <Receipt size={10} /> + {formatUSD(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100))} IVA
                                                     </div>
                                                 )}
-                                                {isCompletelyOutOfStock && (
-                                                    <div className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-red-800">Agotado Temporalmente</div>
-                                                )}
 
-                                                <button onClick={handleInquiryWhatsApp} className="mt-6 mx-auto md:mx-0 w-fit text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center gap-2 border-b border-transparent hover:border-[var(--store-text-main)] pb-0.5">
-                                                    <MessageCircle size={14} strokeWidth={1.5} /> Asesoría Personalizada
-                                                </button>
+                                                {isCompletelyOutOfStock && (
+                                                    <div className="mt-4 inline-block px-3 py-1 bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase tracking-[0.2em]">
+                                                        Agotado
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {/* B2B Matrix */}
-                                            {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
-                                                <div className="border-y border-[var(--store-border)]/30 py-4">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Al Detalle (1-{product.wholesale_min_qty - 1})</span>
-                                                        <span className="text-xs font-medium text-[var(--store-text-main)]">${(pricing.isPromo ? pricing.compareAt : pricing.listPrice).toFixed(2)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-text-main)] font-bold flex items-center gap-1"><Zap size={10} /> Al Mayor ({product.wholesale_min_qty}+)</span>
-                                                        <span className="text-sm font-bold text-[var(--store-text-main)]">${((pricing.isPromo ? pricing.compareAt : pricing.listPrice) * (1 - product.wholesale_discount_pct / 100)).toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* Matriz B2B Interactiva 1-Tap */}
+                                            {renderWholesaleMatrix('editorial')}
 
-                                          {/* Variantes */}
+                                            {/* Variantes */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-6">
                                                     {!isSingleSizeOnlyGroup && (
@@ -993,12 +1387,12 @@ Mi duda es la siguiente: `;
                                                         >
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                                    {isModelOption ? 'Modelo' : 'Color'} <strong className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor || ''}</strong>
+                                                                    {isModelOption ? 'Opción' : 'Color'} <strong className="text-[var(--store-text-main)] font-bold ml-1">{selectedColor || ''}</strong>
                                                                 </span>
                                                                 {!selectedColor && (
-                                                                    <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 2 }} className="font-heading italic text-[11px] text-[var(--store-text-main)] tracking-wider">
-                                                                        * Requerido
-                                                                    </motion.span>
+                                                                    <span className="font-heading italic text-[11px] text-[var(--store-text-main)] tracking-wider">
+                                                                        * Seleccionar
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                             <div className="flex flex-wrap gap-4">
@@ -1015,11 +1409,11 @@ Mi duda es la siguiente: `;
                                                                             }
                                                                         }}
                                                                         disabled={!c.isAvailable}
-                                                                        className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-70 hover:opacity-100' : '')}`}
+                                                                        className={`relative flex items-center justify-center transition-all ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? `w-7 h-7 rounded-full ring-1 ring-offset-2 ${selectedColor === c.name ? 'ring-[var(--store-text-main)]' : 'ring-[var(--store-border)] hover:ring-[var(--store-text-main)]'}` : `text-xs font-medium pb-1 border-b ${selectedColor === c.name ? 'border-[var(--store-text-main)] text-[var(--store-text-main)]' : 'border-transparent text-[var(--store-surface-text)] hover:text-[var(--store-text-main)]'}`} ${!c.isAvailable ? 'opacity-30 cursor-not-allowed' : (!selectedColor ? 'opacity-75 hover:opacity-100' : '')}`}
                                                                         style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                     >
                                                                         {(!c.hex || c.hex === 'transparent' || c.hex === '#transparent') && c.name}
-                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                        {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-[var(--store-badge-discount-bg)] top-1/2 -rotate-45" />}
                                                                     </button>
                                                                 ))}
                                                             </div>
@@ -1029,11 +1423,11 @@ Mi duda es la siguiente: `;
                                                     {shouldShowSizeSelector && (
                                                         <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className="scroll-mt-24">
                                                             <div className="flex justify-between items-end mb-3">
-                                                                <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Talla</span>
-                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[9px] text-[var(--store-surface-text)]">Quedan {currentMaxStock}</span>}
+                                                                <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--store-surface-text)]">Talla / Medida</span>
+                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[9px] text-[var(--store-surface-text)]">{currentMaxStock} disponibles</span>}
                                                             </div>
                                                             {!selectedColor ? (
-                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona un color primero</div>
+                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Elige {isModelOption ? 'una opción' : 'un color'} primero</div>
                                                             ) : (
                                                                 <div className="flex flex-wrap gap-4">
                                                                     {availableSizes.map((v, idx) => (
@@ -1053,8 +1447,8 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                            {/* Acordeones / Desplegados */}
-                                            <div className="mt-8">
+                                            {/* Acordeones Basados en Datos Reales */}
+                                            <div className="mt-6">
                                                 {product?.description && (
                                                     <div className="border-t border-[var(--store-border)]/30 py-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
@@ -1075,33 +1469,40 @@ Mi duda es la siguiente: `;
                                                         )}
                                                     </div>
                                                 )}
-                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+
+                                             {realLogisticsInfo && (
                                                     <div className="border-y border-[var(--store-border)]/30 py-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
                                                             <div>
-                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">Envío & Entregas</span>
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className="text-xs font-bold text-[var(--store-text-main)]">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}</span>
-                                                                    <span className="text-xs text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}</span>
-                                                                </div>
+                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-1">Envío y Entrega</span>
+                                                                {renderUnifiedShippingContent(false)}
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity">
-                                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Envío & Entregas</span>
+                                                                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Envío y Entrega</span>
                                                                     <motion.div animate={{ rotate: isShippingOpen ? -135 : 0 }}><ArrowDownRight size={14} strokeWidth={1.5} /></motion.div>
                                                                 </button>
                                                                 <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                    <div className="pt-4 flex flex-col gap-1">
-                                                                        <span className="text-xs font-bold text-[var(--store-text-main)]">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}</span>
-                                                                        <span className="text-xs text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}</span>
-                                                                    </div>
+                                                                    {renderUnifiedShippingContent(false)}
                                                                 </motion.div>
                                                             </>
                                                         )}
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Métodos de Pago Reales */}
+                                            {renderRealPaymentPills(false)}
+
+                                            {/* Botón de Asesoría Directa por WhatsApp */}
+                                            <button
+                                                type="button"
+                                                onClick={handleInquiryWhatsApp}
+                                                className="w-full py-3 px-4 border border-[var(--store-border)] text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--store-text-main)] hover:bg-[var(--store-surface)] transition-colors flex items-center justify-center gap-2 active:scale-[0.99]"
+                                            >
+                                                <MessageCircle size={14} strokeWidth={1.5} /> Consultar sobre este artículo por WhatsApp
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1117,11 +1518,12 @@ Mi duda es la siguiente: `;
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
+
                                 <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center justify-between px-3 py-3.5 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] w-28 shrink-0 bg-[var(--store-surface)]">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Minus size={14} strokeWidth={1.5} /></button>
-                                        <span className="text-xs font-medium text-[var(--store-text-main)]">{quantity}</span>
+                                        <span className="text-xs font-medium text-[var(--store-text-main)] tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] disabled:opacity-30 active:scale-90"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
                                     <motion.button
@@ -1136,16 +1538,13 @@ Mi duda es la siguiente: `;
                                     </motion.button>
                                 </div>
                             </motion.div>
-                        </div >
-                    )
-                    }
-                </AnimatePresence >
+                        </div>
+                    )}
+                </AnimatePresence>
 
-                {/* LIGHTBOX AISLADO */}
-                < LightboxViewer
+                <LightboxViewer
                     isOpen={isLightboxOpen}
-                    onClose={() => setIsLightboxOpen(false)
-                    }
+                    onClose={() => setIsLightboxOpen(false)}
                     images={currentGallery}
                     currentIndex={lightboxIndex}
                     setIndex={setLightboxIndex}
@@ -1156,7 +1555,7 @@ Mi duda es la siguiente: `;
     }
 
     // =========================================================================
-    // 🏴‍☠️ VARIANTE: TEMA 4 (TECHNICAL LUXURY STREETWEAR MODAL)
+    // 🏴‍☠️ VARIANTE: TEMA 4 (BRUTALIST / ARCHITECTURAL MODAL)
     // =========================================================================
     if (activeTheme.layout?.card_style === 'brutalist') {
         return (
@@ -1179,7 +1578,6 @@ Mi duda es la siguiente: `;
                                 exit="exit"
                                 className={`relative bg-[var(--store-bg)] w-full md:w-[600px] lg:w-[800px] h-[100dvh] max-h-[100dvh] md:h-full flex flex-col md:flex-row overflow-hidden shadow-2xl md:border-l border-[var(--store-border)]/30 will-change-transform transition-opacity duration-200 ${isHiding ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                             >
-                                {/* Botón de Cerrar (Clean Look) */}
                                 <button
                                     onClick={onClose}
                                     className="absolute top-4 right-4 z-50 p-2.5 rounded-full hover:bg-black/5 transition-colors text-[var(--store-text-main)] active:scale-95"
@@ -1187,7 +1585,6 @@ Mi duda es la siguiente: `;
                                     <X size={20} strokeWidth={1.5} />
                                 </button>
 
-                                {/* Botón de Favorito */}
                                 <button
                                     onClick={(e) => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('toggleFavorite', { detail: product })); }}
                                     className={`absolute top-4 left-4 z-50 p-2.5 rounded-full transition-colors active:scale-95 ${isFavorite ? 'text-[var(--store-action-favorite)]' : 'text-[var(--store-text-main)] hover:text-[var(--store-action-favorite)] hover:bg-black/5'}`}
@@ -1197,11 +1594,10 @@ Mi duda es la siguiente: `;
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. VISOR DE PASARELA (Filmstrip Layout) */}
+                                    {/* 1. VISOR DE IMAGEN (Filmstrip Layout) */}
                                     <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-surface)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/20">
 
                                         <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
-                                            {/* 🚀 WRAPPER ESTRICTO (Altura garantizada en móvil) */}
                                             <div
                                                 className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-[var(--radius-card)] border border-[var(--store-border)]/40"
                                                 style={{
@@ -1215,20 +1611,18 @@ Mi duda es la siguiente: `;
                                             >
                                                 {currentGallery.length > 0 ? (
                                                     <>
-                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Streetwear'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-2' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Producto'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-2' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.02]' : ''}`} />
 
-                                                        {/* 🚀 CRISTAL LÁSER (Centrado exacto con mouseX/Y) */}
                                                         {zoomData.show && (
                                                             <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/30 backdrop-blur-[2px] shadow-sm z-20" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <span className="text-4xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ NO_MEDIA ]</span>
+                                                    <span className="text-2xl font-mono font-medium tracking-widest text-[var(--store-border)]">[ SIN IMAGEN ]</span>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* TIRA DE PELÍCULA */}
                                         {currentGallery.length > 1 && (
                                             <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/20 bg-[var(--store-bg)] flex gap-2.5 p-2.5 md:p-3.5 overflow-x-auto no-scrollbar snap-x shrink-0">
                                                 {currentGallery.map((img, idx) => (
@@ -1237,34 +1631,42 @@ Mi duda es la siguiente: `;
                                                         onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
                                                         className={`relative h-full aspect-[4/5] rounded-[var(--radius-btn)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border ${idx === galleryIndex ? 'border-[var(--store-text-main)] opacity-100 shadow-sm' : 'border-transparent opacity-40 hover:opacity-100 hover:border-[var(--store-border)]'}`}
                                                     >
-                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                        <Image src={getOptimizedUrl(img)} alt={`Miniatura ${idx + 1}`} fill sizes="80px" className="object-cover" />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* 2. DETALLES TÉCNICOS (Jerarquía Escaneable & Alta Conversión) */}
+                                    {/* 2. DETALLES ESTRUCTURALES */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
                                             <div>
-                                                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--store-surface-text)] block mb-1.5">
-                                                    // {product?.category || 'COLECCIÓN'}
-                                                </span>
+                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                    <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--store-surface-text)] block">
+                                                        // {resolvedCategoryLabel}
+                                                    </span>
+                                                    {product?.sku && (
+                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                            REF: {product.sku}
+                                                        </span>
+                                                    )}
+                                                </div>
+
                                                 <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold uppercase tracking-tight text-[var(--store-text-main)] font-sans leading-tight mb-2.5">
                                                     {product?.name}
                                                 </h2>
 
                                                 {pricing.promoBadgeText && (
-                                                    <div className="mt-1 mb-2 inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-mono font-bold uppercase tracking-wider rounded">
+                                                    <div className="mt-1 mb-2 inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[10px] font-mono font-bold uppercase tracking-wider">
                                                         <Tag size={12} /> {pricing.promoBadgeText}
                                                     </div>
                                                 )}
 
-                                                {/* Bloque Financiero Compacto */}
+                                                {/* Bloque Financiero */}
                                                 <div className="mt-3 pt-3 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
-                                                  <div className="flex items-baseline gap-2.5 flex-wrap">
-                                                        <span className="text-3xl md:text-4xl font-black font-mono text-[var(--store-text-main)] leading-none tracking-tight">
+                                                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                                                        <span className={`text-3xl md:text-4xl font-black font-mono leading-none tracking-tight ${pricing.isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                                                             {formatUSD(pricing.listPrice)}
                                                         </span>
                                                         {pricing.isPromo && (
@@ -1277,22 +1679,26 @@ Mi duda es la siguiente: `;
                                                         {formatVES(pricing.priceInBs)}
                                                     </span>
 
-                                                    {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--store-incentive)]/10 text-[var(--store-incentive)] text-[10px] font-mono font-bold uppercase tracking-wider w-fit">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
-                                                            <span>USD Cash: {formatUSD(pricing.cashPrice)}</span>
-                                                        </div>
+                                                    {renderForeignCurrencyIncentive('brutalist')}
+
+                                                    {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
+                                                        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-surface-text)] mt-1.5">
+                                                            + {formatUSD(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100))} IVA ({storeConfig?.default_tax_percentage || 16}%)
+                                                        </span>
                                                     )}
 
                                                     {isCompletelyOutOfStock && (
-                                                        <div className="mt-3 text-[10px] font-mono font-bold uppercase tracking-widest text-white bg-neutral-900 px-3 py-1.5 rounded w-fit">
+                                                        <div className="mt-3 text-[10px] font-mono font-bold uppercase tracking-widest bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] px-3 py-1.5 w-fit">
                                                             [ AGOTADO ]
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
 
-                                        {/* Selector de Variantes Minimalista/Técnico */}
+                                            {/* Matriz B2B Interactiva 1-Tap */}
+                                            {renderWholesaleMatrix('brutalist')}
+
+                                            {/* Selector de Variantes */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-6 pt-6 border-t border-[var(--store-border)]/20">
                                                     {!isSingleSizeOnlyGroup && (
@@ -1304,13 +1710,8 @@ Mi duda es la siguiente: `;
                                                         >
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
-                                                                    {isModelOption ? 'CONFIG:' : 'COLOR:'} <strong className="text-[var(--store-text-main)] font-medium">{selectedColor || 'PENDIENTE'}</strong>
+                                                                    {isModelOption ? 'OPCIÓN:' : 'COLOR:'} <strong className="text-[var(--store-text-main)] font-bold">{selectedColor || 'SELECCIONAR'}</strong>
                                                                 </span>
-                                                                {!selectedColor && (
-                                                                    <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--store-text-main)]">
-                                                                        [ SELECT ]_
-                                                                    </motion.span>
-                                                                )}
                                                             </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {availableColors.map((c: any) => (
@@ -1322,6 +1723,7 @@ Mi duda es la siguiente: `;
                                                                                 const sizes = variants.filter(v => v.color_name === c.name);
                                                                                 if (sizes.length === 1) setSelectedSize(sizes[0].size);
                                                                                 else setSelectedSize(null);
+                                                                                setErrorShake(null);
                                                                             }
                                                                         }}
                                                                         disabled={!c.isAvailable}
@@ -1335,12 +1737,12 @@ Mi duda es la siguiente: `;
                                                                         {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
                                                                             <>
                                                                                 {selectedColor === c.name && <Check size={14} className="text-white mix-blend-difference" strokeWidth={3} />}
-                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-45" />}
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-[var(--store-badge-discount-bg)] top-1/2 -rotate-45" />}
                                                                             </>
                                                                         ) : (
                                                                             <>
                                                                                 <span>{c.name}</span>
-                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-red-500 top-1/2 -rotate-[20deg]" />}
+                                                                                {!c.isAvailable && <div className="absolute inset-0 w-full h-[1px] bg-[var(--store-badge-discount-bg)] top-1/2 -rotate-[20deg]" />}
                                                                             </>
                                                                         )}
                                                                     </button>
@@ -1356,14 +1758,21 @@ Mi duda es la siguiente: `;
                                                             transition={{ duration: 0.4 }}
                                                             className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-border)] p-3 -mx-3' : 'border border-transparent'}`}
                                                         >
-                                                            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)] block mb-3">
-                                                                TALLA: <strong className="text-[var(--store-text-main)] font-medium">{selectedSize || 'PENDIENTE'}</strong>
-                                                            </span>
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--store-surface-text)]">
+                                                                    TALLA / MEDIDA: <strong className="text-[var(--store-text-main)] font-bold">{selectedSize || 'SELECCIONAR'}</strong>
+                                                                </span>
+                                                                {selectedSize && currentMaxStock > 0 && (
+                                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)]">
+                                                                        [{currentMaxStock} DISP]
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {availableSizes.map((v, idx) => (
                                                                     <button
                                                                         key={v.id || v.size || `brutalist-size-${idx}`}
-                                                                        onClick={() => { if (v.stock > 0) setSelectedSize(v.size); }}
+                                                                        onClick={() => { if (v.stock > 0) { setSelectedSize(v.size); setErrorShake(null); } }}
                                                                         disabled={v.stock <= 0}
                                                                         className={`min-w-[3rem] px-4 py-2 border text-[10px] font-mono uppercase tracking-widest transition-all ${selectedSize === v.size ? 'border-[var(--store-text-main)] bg-[var(--store-text-main)] text-[var(--store-bg)]' : 'border-[var(--store-border)]/50 bg-transparent text-[var(--store-text-main)] hover:border-[var(--store-text-main)]'} ${v.stock <= 0 ? 'opacity-30 cursor-not-allowed line-through' : ''}`}
                                                                     >
@@ -1375,23 +1784,23 @@ Mi duda es la siguiente: `;
                                                     )}
                                                 </div>
                                             )}
-                                            {/* 🚀 ACORDEÓN / DESPLEGADO TÉCNICO */}
-                                            <div className="mt-8 space-y-2">
-                                                {/* Descripción */}
+
+                                            {/* Acordeón / Desplegado Basado en Datos Reales */}
+                                            <div className="mt-6 space-y-2">
                                                 {product?.description && (
                                                     <div className="border-t border-[var(--store-border)]/20 pt-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
                                                             <div>
                                                                 <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // DETALLES
+                                                                    // DESCRIPCIÓN
                                                                 </span>
                                                                 <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line">{product.description}</p>
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setIsDescriptionOpen(!isDescriptionOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                    <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// DETALLES</span>
-                                                                    <span className="text-[12px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                    <span className="text-[11px] font-mono uppercase tracking-[0.2em]">// DESCRIPCIÓN</span>
+                                                                    <span className="text-[11px] font-mono font-medium">{isDescriptionOpen ? '[ - ]' : '[ + ]'}</span>
                                                                 </button>
                                                                 <motion.div initial={false} animate={{ height: isDescriptionOpen ? "auto" : 0, opacity: isDescriptionOpen ? 1 : 0 }} className="overflow-hidden">
                                                                     <p className="text-xs text-[var(--store-surface-text)] font-sans tracking-wide leading-relaxed whitespace-pre-line pt-2 pb-4">{product.description}</p>
@@ -1401,30 +1810,23 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
 
-                                                {/* Envío */}
-                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                               {realLogisticsInfo && (
                                                     <div className="border-t border-[var(--store-border)]/20 pt-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
                                                             <div>
-                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-3">
-                                                                // ENVÍO
+                                                                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--store-text-main)] block mb-1">
+                                                                    // ENVÍO Y ENTREGA
                                                                 </span>
-                                                                <div className="flex flex-col gap-1 px-3 border-l border-[var(--store-text-main)]/30">
-                                                                    <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
-                                                                    <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
-                                                                </div>
+                                                                {renderUnifiedShippingContent(true)}
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between text-[var(--store-text-main)] hover:opacity-70 transition-opacity py-2">
-                                                                    <span className="text-[12px] font-mono uppercase tracking-[0.2em]">// ENVÍO</span>
-                                                                    <span className="text-[12px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
+                                                                    <span className="text-[11px] font-mono uppercase tracking-[0.2em]">// ENVÍO Y ENTREGA</span>
+                                                                    <span className="text-[11px] font-mono font-medium">{isShippingOpen ? '[ - ]' : '[ + ]'}</span>
                                                                 </button>
                                                                 <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                    <div className="flex flex-col gap-1 pt-2 pb-4 px-3 border-l border-[var(--store-text-main)]/30">
-                                                                        <span className="text-[11px] font-medium text-[var(--store-text-main)] uppercase tracking-wider">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'AVAILABLE'}</span>
-                                                                        <span className="text-[9px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || '2-7 DAYS DELIVERY'}</span>
-                                                                    </div>
+                                                                    {renderUnifiedShippingContent(true)}
                                                                 </motion.div>
                                                             </>
                                                         )}
@@ -1432,6 +1834,17 @@ Mi duda es la siguiente: `;
                                                 )}
                                             </div>
 
+                                            {/* Métodos de Pago Reales */}
+                                            {renderRealPaymentPills(true)}
+
+                                            {/* Consulta Directa WhatsApp */}
+                                            <button
+                                                type="button"
+                                                onClick={handleInquiryWhatsApp}
+                                                className="w-full py-3 px-4 border border-[var(--store-border)] font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--store-text-main)] hover:bg-[var(--store-surface)] transition-colors flex items-center justify-center gap-2 active:scale-[0.99]"
+                                            >
+                                                <MessageCircle size={14} strokeWidth={1.8} /> [ CONSULTAR POR WHATSAPP ]
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1447,41 +1860,39 @@ Mi duda es la siguiente: `;
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
+
                                 <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-bg)]/90 backdrop-blur-xl border-t border-[var(--store-border)]/20 z-50 flex items-center gap-4">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center gap-4 border border-[var(--store-border)]/50 px-4 py-2.5 rounded-[var(--radius-btn)] h-12 bg-transparent mt-1">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Minus size={14} strokeWidth={1.5} /></button>
-                                        <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center">{quantity}</span>
+                                        <span className="font-mono text-[var(--store-text-main)] text-xs w-6 text-center tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="text-[var(--store-text-main)] hover:opacity-50 transition-opacity disabled:opacity-20"><Plus size={14} strokeWidth={1.5} /></button>
                                     </div>
 
-                                  {/* 🚀 BOTÓN DINÁMICO BRUTALIST CON FEEDBACK DE ESTADO */}
                                     <motion.button
                                         whileTap={!isCompletelyOutOfStock && (variants.length === 0 || (selectedColor && selectedSize)) ? { scale: 0.98 } : {}}
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
-                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 ${
+                                        className={`flex-1 h-12 rounded-[var(--radius-btn)] font-mono text-[10px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all mt-1 ${
                                             isCompletelyOutOfStock 
-                                                ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] cursor-not-allowed border border-[var(--store-border)]/50' 
+                                                ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed' 
                                                 : (variants.length > 0 && (!selectedColor || !selectedSize))
-                                                    ? 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)]'
-                                                    : 'bg-[var(--store-text-main)] text-[var(--store-bg)] hover:opacity-90'
+                                                    ? 'bg-[var(--store-surface)] text-[var(--store-text-main)] border border-[var(--store-border)]'
+                                                    : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] hover:opacity-90'
                                         }`}
                                     >
                                         {isAdding ? (
                                             <Loader2 size={16} className="animate-spin" />
                                         ) : (
-                                            <>[ {buttonText === 'Agregar' ? '+ LLEVAR' : buttonText.toUpperCase()} ]</>
+                                            <>[ {buttonText === 'Agregar' ? '+ AÑADIR A LA BOLSA' : buttonText.toUpperCase()} ]</>
                                         )}
                                     </motion.button>
                                 </div>
                             </motion.div>
                         </div>
                     )}
-
                 </AnimatePresence>
 
-                {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
                 <LightboxViewer
                     isOpen={isLightboxOpen}
                     onClose={() => setIsLightboxOpen(false)}
@@ -1495,8 +1906,8 @@ Mi duda es la siguiente: `;
     }
 
     // =========================================================================
-    // 🍔 VARIANTE: TEMA 5 (BISTRO & FAST FOOD APP MODAL)
-
+    // 🍔 VARIANTE: TEMA 5 (ROUNDED SOFT APP MODAL - AGNÓSTICO)
+    // =========================================================================
     if (activeTheme.layout?.card_style === 'food_menu') {
         return (
             <>
@@ -1520,20 +1931,17 @@ Mi duda es la siguiente: `;
                             >
                                 <button
                                     onClick={onClose}
-                                    className="absolute top-4 right-4 z-50 p-2.5 bg-white/90 rounded-full shadow-md text-neutral-800 hover:bg-white active:scale-90 transition-all"
+                                    className="absolute top-4 right-4 z-50 p-2.5 bg-[var(--store-surface)]/90 border border-[var(--store-border)]/50 rounded-full shadow-sm text-[var(--store-text-main)] hover:bg-[var(--store-surface)] active:scale-90 transition-all"
                                 >
                                     <X size={18} strokeWidth={2.5} />
                                 </button>
 
-
-
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[110px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. VISOR DE IMÁGENES (Beauty & Skincare Filmstrip) */}
+                                    {/* 1. VISOR DE IMÁGENES */}
                                     <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-bg)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/30">
 
                                         <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
-                                            {/* 🚀 EL TOPE MATEMÁTICO INVISIBLE (Tight Wrapper) */}
                                             <div
                                                 className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] border border-[var(--store-border)]/20"
                                                 style={{
@@ -1549,63 +1957,57 @@ Mi duda es la siguiente: `;
                                                     <>
                                                         <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || 'Producto'} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${!zoomData.show ? 'group-hover:scale-[1.03]' : ''}`} />
 
-                                                        {/* 🚀 CRISTAL LÁSER: Centrado exacto con translate(-50%, -50%) */}
                                                         {zoomData.show && (
                                                             <div className="hidden md:block absolute pointer-events-none bg-white/10 border border-white/40 rounded-full backdrop-blur-[1.5px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] z-20" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <span className="text-4xl font-bold text-[var(--store-border)]">✨</span>
+                                                    <span className="text-2xl font-bold text-[var(--store-border)]">{storeConfig?.name || 'Catálogo'}</span>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* Tira de Película... */}
                                         {currentGallery.length > 1 && (
                                             <div className="w-full h-[80px] md:h-[100px] border-t border-[var(--store-border)]/30 bg-[var(--store-surface)]/50 flex gap-2.5 p-2.5 md:p-3 overflow-x-auto no-scrollbar snap-x shrink-0">
                                                 {currentGallery.map((img, idx) => (
                                                     <button key={`thumb-${idx}`} onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }} className={`relative h-full aspect-square rounded-[16px] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-2 ${idx === galleryIndex ? 'border-[var(--store-primary)] shadow-sm opacity-100' : 'border-transparent opacity-50 hover:opacity-100 hover:border-[var(--store-border)]'}`}>
-                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                        <Image src={getOptimizedUrl(img)} alt={`Miniatura ${idx + 1}`} fill sizes="80px" className="object-cover" />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* 2. DETALLE GASTRONÓMICO */}
+                                    {/* 2. DETALLES DEL PRODUCTO */}
                                     <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col bg-[var(--store-surface)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[130px]">
                                             <div>
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--store-primary)] block mb-1">
-                                                    {product?.category || 'Especialidad'}
+                                                    {resolvedCategoryLabel}
                                                 </span>
                                                 <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] font-heading leading-tight tracking-tight">
                                                     {product?.name}
                                                 </h2>
 
-                                             <div className="flex items-baseline gap-3 mt-3">
+                                                <div className="flex items-baseline gap-3 mt-3">
                                                     {pricing.isPromo && (
                                                         <span className="text-sm font-bold text-[var(--store-surface-text)] line-through">
                                                             {formatUSD(pricing.compareAt)}
                                                         </span>
                                                     )}
-                                                    <span className="text-3xl font-black font-price text-[var(--store-text-main)] leading-none">
+                                                    <span className={`text-3xl font-black font-price leading-none ${pricing.isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                                                         {formatUSD(pricing.listPrice)}
                                                     </span>
-                                                    <span className="text-xs font-mono font-bold text-[var(--store-surface-text)]">
+                                                    <span className="text-xs font-mono font-bold text-[var(--store-surface-text)] tabular-nums">
                                                         {formatVES(pricing.priceInBs)}
                                                     </span>
                                                 </div>
 
-                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-[var(--store-incentive)]">
-                                                        <div className="bg-[var(--store-incentive)]/10 p-1 rounded-full">
-                                                            <Flame size={12} className="fill-current shrink-0" />
-                                                        </div>
-                                                        Paga en USD y ahorra {formatUSD(pricing.exactSavings)}
-                                                    </div>
-                                                )}
+                                                {renderForeignCurrencyIncentive('food_menu')}
                                             </div>
+
+                                            {/* Matriz B2B Interactiva 1-Tap */}
+                                            {renderWholesaleMatrix('food_menu')}
 
                                             {/* Opciones / Variantes en Píldoras */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
@@ -1615,40 +2017,42 @@ Mi duda es la siguiente: `;
                                                     transition={{ duration: 0.4 }}
                                                     className={`space-y-4 pt-4 border-t border-[var(--store-border)]/40 p-3 -mx-3 rounded-2xl transition-colors duration-300 ${!selectedColor ? 'bg-[var(--store-primary)]/5' : 'bg-transparent'}`}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
-                                                            Elige tu opción
-                                                        </span>
-                                                        {!selectedColor && (
-                                                            <span className="text-[10px] font-bold text-[var(--store-primary)] tracking-wide animate-pulse">
-                                                                Requerido *
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {availableColors.map((c: any, idx: number) => (
-                                                            <motion.button
-                                                                animate={!selectedColor ? { y: [0, -3, 0] } : {}}
-                                                                transition={{ repeat: Infinity, duration: 1.5, delay: idx * 0.1 }}
-                                                                key={c.name}
-                                                                onClick={() => {
-                                                                    if (c.isAvailable) {
-                                                                        setSelectedColor(c.name);
-                                                                        const sizes = variants.filter(v => v.color_name === c.name);
-                                                                        if (sizes.length === 1) setSelectedSize(sizes[0].size);
-                                                                        else setSelectedSize(null);
-                                                                    }
-                                                                }}
-                                                                disabled={!c.isAvailable}
-                                                                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'}`}
-                                                            >
-                                                                {c.name}
-                                                            </motion.button>
-                                                        ))}
-                                                    </div>
+                                                    {!isSingleSizeOnlyGroup && (
+                                                        <>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
+                                                                    {isModelOption ? 'Elige tu opción' : 'Color'}
+                                                                </span>
+                                                                {!selectedColor && (
+                                                                    <span className="text-[10px] font-bold text-[var(--store-primary)] tracking-wide">
+                                                                        Seleccionar *
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {availableColors.map((c: any) => (
+                                                                    <button
+                                                                        key={c.name}
+                                                                        onClick={() => {
+                                                                            if (c.isAvailable) {
+                                                                                setSelectedColor(c.name);
+                                                                                const sizes = variants.filter(v => v.color_name === c.name);
+                                                                                if (sizes.length === 1) setSelectedSize(sizes[0].size);
+                                                                                else setSelectedSize(null);
+                                                                                setErrorShake(null);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!c.isAvailable}
+                                                                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-sm scale-105' : 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]/60 hover:border-[var(--store-primary)]'} ${!c.isAvailable ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
+                                                                    >
+                                                                        {c.name}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
 
-                                                    {/* 🚀 TALLAS / PORCIONES GASTRONÓMICAS */}
-                                                    {availableSizes.length > 1 && (
+                                                    {shouldShowSizeSelector && (
                                                         <motion.div
                                                             ref={sizeSectionRef}
                                                             animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0] } : {}}
@@ -1657,16 +2061,16 @@ Mi duda es la siguiente: `;
                                                         >
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">
-                                                                    Tamaño / Porción
+                                                                    {isRestaurantStore ? 'Tamaño / Porción' : 'Talla / Presentación'}
                                                                 </span>
                                                                 {selectedSize && currentMaxStock > 0 && (
                                                                     <span className="text-[10px] font-bold text-[var(--store-surface-text)]">
-                                                                        Disp: {currentMaxStock}
+                                                                        {currentMaxStock} disponibles
                                                                     </span>
                                                                 )}
                                                             </div>
                                                             {!selectedColor ? (
-                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona tu opción primero</div>
+                                                                <div className="text-[10px] text-[var(--store-surface-text)] italic">Selecciona una opción primero</div>
                                                             ) : (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {availableSizes.map((v, idx) => {
@@ -1689,8 +2093,8 @@ Mi duda es la siguiente: `;
                                                 </motion.div>
                                             )}
 
-                                            {/* 🚀 ACORDEÓN / DESPLEGADO GASTRONÓMICO */}
-                                            <div className="mt-8 space-y-2">
+                                            {/* Acordeón / Desplegado Basado en Datos Reales */}
+                                            <div className="mt-6 space-y-2">
                                                 {product?.description && (
                                                     <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
@@ -1712,29 +2116,25 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
 
-                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                              {realLogisticsInfo && (
                                                     <div className="bg-[var(--store-bg)] rounded-2xl p-1 border border-[var(--store-border)]/40">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
-                                                            <div className="p-4 flex items-center gap-3">
-                                                                <div className="bg-[var(--store-surface)] p-2.5 rounded-full shadow-sm shrink-0 text-[var(--store-primary)]"><Truck size={16} /></div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
-                                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
-                                                                </div>
+                                                            <div className="p-4">
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)] block mb-1">Envío y Entrega</span>
+                                                                {renderUnifiedShippingContent(false)}
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <button onClick={() => setIsShippingOpen(!isShippingOpen)} className="w-full flex items-center justify-between p-4 text-[var(--store-text-main)] hover:bg-[var(--store-surface)] rounded-xl transition-colors">
                                                                     <div className="flex items-center gap-2">
                                                                         <Truck size={14} className="text-[var(--store-primary)]" />
-                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Delivery & Retiro</span>
+                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Envío y Entrega</span>
                                                                     </div>
                                                                     <motion.div animate={{ rotate: isShippingOpen ? 180 : 0 }} className="bg-[var(--store-surface)] p-1 rounded-full shadow-sm"><ChevronDown size={14} /></motion.div>
                                                                 </button>
                                                                 <motion.div initial={false} animate={{ height: isShippingOpen ? "auto" : 0, opacity: isShippingOpen ? 1 : 0 }} className="overflow-hidden">
-                                                                    <div className="px-4 pb-4 pt-1 flex flex-col gap-1">
-                                                                        <span className="text-xs font-black text-[var(--store-text-main)] uppercase tracking-wide">{product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Delivery Disponible'}</span>
-                                                                        <span className="text-[11px] font-medium text-[var(--store-surface-text)]">{product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo estimado: 30-45 min'}</span>
+                                                                    <div className="px-4 pb-3">
+                                                                        {renderUnifiedShippingContent(false)}
                                                                     </div>
                                                                 </motion.div>
                                                             </>
@@ -1742,26 +2142,37 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Métodos de Pago Reales */}
+                                            {renderRealPaymentPills(false)}
+
+                                            <button
+                                                type="button"
+                                                onClick={handleInquiryWhatsApp}
+                                                className="w-full py-2.5 text-[11px] font-bold uppercase tracking-wider text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
+                                            >
+                                                <MessageCircle size={14} /> Consultar sobre este artículo
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                {/* 🚀 PANEL DE PROYECCIÓN FLOTANTE (Beauty) */}
+
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
                                             initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.25, ease: "easeOut" }}
                                             className="hidden md:block absolute top-6 right-6 w-[280px] h-[380px] z-[100] bg-[var(--store-bg)] pointer-events-none overflow-hidden border border-[var(--store-border)]/50 rounded-[32px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.18)]"
                                         >
-                                            {/* 🚀 LECTURA DEL MOTOR OVERDRIVE (bgX y bgY) */}
                                             <div className="w-full h-full" style={{ backgroundImage: `url(${getOptimizedUrl(currentGallery[galleryIndex])})`, backgroundPosition: `${zoomData.bgX}% ${zoomData.bgY}%`, backgroundSize: '300%', backgroundRepeat: 'no-repeat' }} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
+
                                 <div className="absolute bottom-0 left-0 right-0 md:left-auto md:w-1/2 w-full p-4 md:p-6 bg-[var(--store-surface)]/95 backdrop-blur-xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center bg-[var(--store-bg)] rounded-full p-1 border border-[var(--store-border)]/60">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Minus size={15} strokeWidth={2.5} /></button>
-                                        <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] ">{quantity}</span>
+                                        <span className="font-black text-sm w-7 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-surface)] disabled:opacity-30 active:scale-90 transition-all"><Plus size={15} strokeWidth={2.5} /></button>
                                     </div>
                                     <motion.button
@@ -1773,14 +2184,11 @@ Mi duda es la siguiente: `;
                                         {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={18} strokeWidth={3} /> {buttonText === 'Agregar' ? 'AGREGAR AL PEDIDO' : buttonText}</>}
                                     </motion.button>
                                 </div>
-
                             </motion.div>
                         </div>
                     )}
-
                 </AnimatePresence>
 
-                {/* 🚀 LIGHTBOX AISLADO (Cero colisión de Presence) */}
                 <LightboxViewer
                     isOpen={isLightboxOpen}
                     onClose={() => setIsLightboxOpen(false)}
@@ -1794,11 +2202,9 @@ Mi duda es la siguiente: `;
     }
 
     // =========================================================================
-    // 💻 VARIANTE: TEMA 6 (MODULAR TECH / BENTO GRID MODAL)
+    // 💻 VARIANTE: TEMA 6 (MODULAR TECH / BENTO GRID MODAL - AGNÓSTICO)
     // =========================================================================
     if (activeTheme.layout?.card_style === 'modular_tech') {
-
-        // 🚀 THE SPEC-SHEET PARSER: Transforma texto con "X: Y" en una cuadrícula técnica
         const rawDescription = product?.description || '';
         const specLines = rawDescription.split('\n').filter((l: string) => l.trim() !== '');
         const hasSpecs = specLines.some((l: string) => l.includes(':'));
@@ -1821,11 +2227,10 @@ Mi duda es la siguiente: `;
 
                                 <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[100px] md:pb-0 no-scrollbar">
 
-                                    {/* 1. STUDIO GALLERY (Filmstrip Layout) */}
+                                    {/* 1. STUDIO GALLERY */}
                                     <div className="w-full md:w-[45%] h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-surface)]/30 border-b md:border-b-0 md:border-r border-[var(--store-border)]/40">
 
                                         <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
-                                            {/* 🚀 WRAPPER ESTRICTO */}
                                             <div
                                                 className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in rounded-xl border border-[var(--store-border)]/20 shadow-xs"
                                                 style={{
@@ -1839,15 +2244,14 @@ Mi duda es la siguiente: `;
                                             >
                                                 {currentGallery.length > 0 ? (
                                                     <>
-                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Device"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
+                                                        <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
 
-                                                        {/* 🚀 CRISTAL LÁSER */}
                                                         {zoomData.show && (
                                                             <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 shadow-sm z-20 rounded-xl" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <span className="text-sm font-bold text-[var(--store-surface-text)]">Sin imagen</span>
+                                                    <span className="text-sm font-bold text-[var(--store-surface-text)]">{storeConfig?.name || 'Catálogo'}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -1860,23 +2264,39 @@ Mi duda es la siguiente: `;
                                                         onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
                                                         className={`relative h-full aspect-square rounded-[var(--radius-card)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-2 ${idx === galleryIndex ? 'border-[var(--store-text-main)] shadow-sm opacity-100' : 'border-transparent opacity-50 hover:opacity-100 bg-white/50'}`}
                                                     >
-                                                        <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-contain p-1.5" />
+                                                        <Image src={getOptimizedUrl(img)} alt={`Miniatura ${idx + 1}`} fill sizes="80px" className="object-contain p-1.5" />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    {/* 2. SPEC SHEET PANEL */}
+
+                                    {/* 2. PANEL DE DETALLES */}
                                     <div className="w-full h-auto md:h-full md:w-[55%] flex flex-col relative bg-[var(--store-bg)]">
                                         <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-10 space-y-6 no-scrollbar pb-6 md:pb-[140px]">
 
-                                            {/* Header del Producto */}
                                             <div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-wider">{product?.category || 'Hardware'}</span>
-                                                    {isCompletelyOutOfStock && <span className="bg-neutral-800 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded shadow-sm">Agotado</span>}
+                                                <div className="flex items-center justify-between gap-2 mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-wider">
+                                                            {resolvedCategoryLabel}
+                                                        </span>
+                                                        {isCompletelyOutOfStock && (
+                                                            <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase px-2 py-0.5 rounded shadow-xs">
+                                                                Agotado
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {product?.sku && (
+                                                        <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]">
+                                                            REF: {product.sku}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight mb-4">{product?.name}</h2>
+
+                                                <h2 className="text-2xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight mb-4">
+                                                    {product?.name}
+                                                </h2>
 
                                                 {pricing.promoBadgeText && (
                                                     <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-badge-discount-bg)]/10 text-[var(--store-badge-discount-bg)] rounded-md border border-[var(--store-badge-discount-bg)]/20 text-[10px] font-bold tracking-wide">
@@ -1885,34 +2305,43 @@ Mi duda es la siguiente: `;
                                                 )}
 
                                                 <div className="flex items-baseline gap-3">
-                                                    <span className="text-4xl font-black text-[var(--store-text-main)] leading-none tracking-tighter">${pricing.listPrice.toFixed(2)}</span>
-                                                    {pricing.isPromo && <span className="text-sm font-medium text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">${pricing.compareAt.toFixed(2)}</span>}
-                                                </div>
-                                                <div className="mt-1 flex items-center justify-between border-b border-[var(--store-border)]/40 pb-5">
-                                                    <span className="text-xs font-medium text-[var(--store-surface-text)] tabular-nums tracking-wide">Bs {pricing.priceInBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                                                    {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
-                                                        <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">+ ${(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100)).toFixed(2)} IVA</span>
+                                                    <span className={`text-4xl font-black leading-none tracking-tighter ${pricing.isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+                                                        {formatUSD(pricing.listPrice)}
+                                                    </span>
+                                                    {pricing.isPromo && (
+                                                        <span className="text-sm font-medium text-[var(--store-surface-text)] line-through decoration-[var(--store-border)]">
+                                                            {formatUSD(pricing.compareAt)}
+                                                        </span>
                                                     )}
                                                 </div>
 
-                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <div className="mt-4 flex items-center gap-2 p-3 bg-[var(--store-incentive)]/5 border border-[var(--store-incentive)]/20 rounded-xl text-[var(--store-incentive)] text-[11px] font-bold shadow-sm">
-                                                        <Zap size={14} className="fill-[var(--store-incentive)] shrink-0" />
-                                                        Ahorro de ${pricing.exactSavings.toFixed(2)} USD aplicable pagando en divisa.
-                                                    </div>
-                                                )}
+                                                <div className="mt-1.5 flex items-center justify-between border-b border-[var(--store-border)]/40 pb-4">
+                                                    <span className="text-xs font-medium text-[var(--store-surface-text)] tabular-nums tracking-wide">
+                                                        {formatVES(pricing.priceInBs)}
+                                                    </span>
+                                                    {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
+                                                        <span className="text-[9px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
+                                                            + {formatUSD(pricing.listPrice * ((storeConfig?.default_tax_percentage || 16) / 100))} IVA
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {renderForeignCurrencyIncentive('modular_tech')}
                                             </div>
 
-                                         {/* Selector de Variantes (Botones Capacitivos Sólidos) */}
+                                            {/* Matriz B2B Interactiva 1-Tap */}
+                                            {renderWholesaleMatrix('modular_tech')}
+
+                                            {/* Selector de Variantes Universal */}
                                             {!loading && variants.length > 0 && !isCompletelyOutOfStock && (
                                                 <div className="space-y-5">
                                                     {!isSingleSizeOnlyGroup && (
                                                         <motion.div ref={colorSectionRef} animate={errorShake === 'color' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
                                                             <div className="flex items-center justify-between mb-3">
                                                                 <span className="text-xs font-bold text-[var(--store-text-main)]">
-                                                                    {isModelOption ? 'Configuración' : 'Color'} <span className="text-[var(--store-surface-text)] font-medium ml-1">{selectedColor}</span>
+                                                                    {isModelOption ? 'Opción' : 'Color'} <span className="text-[var(--store-surface-text)] font-medium ml-1">{selectedColor}</span>
                                                                 </span>
-                                                                {!selectedColor && <span className="text-[10px] font-bold text-[var(--store-primary)] animate-pulse">Requerido</span>}
+                                                                {!selectedColor && <span className="text-[10px] font-bold text-[var(--store-primary)]">Seleccionar</span>}
                                                             </div>
                                                             <div className="flex flex-wrap gap-2.5">
                                                                 {availableColors.map((c: any) => (
@@ -1932,11 +2361,11 @@ Mi duda es la siguiente: `;
                                                     {shouldShowSizeSelector && (
                                                         <motion.div ref={sizeSectionRef} animate={errorShake === 'size' ? { x: [-5, 5, -5, 5, 0] } : {}} className={`transition-colors duration-300 ${!selectedSize && selectedColor ? 'border border-dashed border-[var(--store-primary)]/50 bg-[var(--store-primary)]/5 p-4 rounded-2xl -mx-4' : ''}`}>
                                                             <div className="flex justify-between items-center mb-3">
-                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{isSingleSizeOnlyGroup ? 'Talla / Medida' : 'Especificación'}</span>
-                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[10px] font-medium text-[var(--store-surface-text)]">Stock: {currentMaxStock}</span>}
+                                                                <span className="text-xs font-bold text-[var(--store-text-main)]">{isSingleSizeOnlyGroup ? 'Talla / Medida' : 'Variante / Medida'}</span>
+                                                                {selectedSize && currentMaxStock > 0 && <span className="text-[10px] font-medium text-[var(--store-surface-text)]">Disponibles: {currentMaxStock}</span>}
                                                             </div>
                                                             {!selectedColor ? (
-                                                                <div className="text-xs text-[var(--store-surface-text)] flex items-center gap-2 bg-[var(--store-surface)] p-3 rounded-lg border border-[var(--store-border)]/40"><AlertCircle size={14} /> Selecciona la configuración primero</div>
+                                                                <div className="text-xs text-[var(--store-surface-text)] flex items-center gap-2 bg-[var(--store-surface)] p-3 rounded-lg border border-[var(--store-border)]/40"><AlertCircle size={14} /> Selecciona una opción primero</div>
                                                             ) : (
                                                                 <div className="flex flex-wrap gap-2.5">
                                                                     {availableSizes.map((v) => (
@@ -1956,13 +2385,15 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                            {/* 🚀 THE SPEC-SHEET PARSER (Lista Limpia sin Cajas) */}
+                                            {/* Descripción / Detalles Estructurados */}
                                             {rawDescription && (
-                                                <div className="mt-8 pt-8 border-t border-[var(--store-border)]/30">
-                                                    <h3 className="text-xl md:text-2xl font-black tracking-tight text-[var(--store-text-main)] mb-6">Especificaciones.</h3>
+                                                <div className="mt-6 pt-6 border-t border-[var(--store-border)]/30">
+                                                    <h3 className="text-base md:text-lg font-black tracking-tight text-[var(--store-text-main)] mb-4">
+                                                        Detalles del producto
+                                                    </h3>
 
                                                     {hasSpecs ? (
-                                                        <div className="flex flex-col gap-4">
+                                                        <div className="flex flex-col gap-3">
                                                             {specLines.map((line: string, i: number) => {
                                                                 const separatorIdx = line.indexOf(':');
                                                                 if (separatorIdx !== -1) {
@@ -1972,47 +2403,52 @@ Mi duda es la siguiente: `;
                                                                         <div key={i} className="flex items-start gap-3">
                                                                             <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
                                                                             <div className="flex flex-col sm:flex-row sm:items-start sm:gap-2 flex-1">
-                                                                                <span className="text-sm font-bold text-[var(--store-text-main)]">{key}:</span>
-                                                                                <span className="text-sm font-medium text-[var(--store-surface-text)]">{val}</span>
+                                                                                <span className="text-xs md:text-sm font-bold text-[var(--store-text-main)]">{key}:</span>
+                                                                                <span className="text-xs md:text-sm font-medium text-[var(--store-surface-text)]">{val}</span>
                                                                             </div>
                                                                         </div>
                                                                     );
                                                                 }
-                                                                // Línea sin dos puntos (párrafo normal)
                                                                 return (
                                                                     <div key={i} className="flex items-start gap-3">
                                                                         <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
-                                                                        <span className="text-sm font-medium text-[var(--store-surface-text)] leading-relaxed">{line}</span>
+                                                                        <span className="text-xs md:text-sm font-medium text-[var(--store-surface-text)] leading-relaxed">{line}</span>
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">
+                                                        <p className="text-xs md:text-sm text-[var(--store-surface-text)] leading-relaxed whitespace-pre-line">
                                                             {rawDescription}
                                                         </p>
                                                     )}
                                                 </div>
                                             )}
 
-                                            {/* Bento Logística (Dinámico desde Base de Datos) */}
-                                            {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
-                                                <div className="mt-6 bg-[var(--store-surface)] border border-[var(--store-border)]/60 p-4 md:p-5 rounded-2xl flex flex-col gap-2 shadow-sm">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Truck size={16} className="text-[var(--store-primary)]" />
-                                                        <span className="text-xs md:text-sm font-bold text-[var(--store-text-main)]">
-                                                            {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-[11px] font-medium text-[var(--store-surface-text)] leading-snug">
-                                                        {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
+                                            {/* Bento Logística Basada en Datos Reales */}
+                                            {realLogisticsInfo && (
+                                                <div className="mt-4 pt-4 border-t border-[var(--store-border)]/30">
+                                                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)] block mb-1">
+                                                        Envío y Entrega
                                                     </span>
+                                                    {renderUnifiedShippingContent(false)}
                                                 </div>
                                             )}
+                                            {/* Métodos de Pago Reales */}
+                                            {renderRealPaymentPills(false)}
+
+                                            {/* Botón de Consulta Directa WhatsApp */}
+                                            <button
+                                                type="button"
+                                                onClick={handleInquiryWhatsApp}
+                                                className="w-full py-3 px-4 rounded-xl bg-[var(--store-surface)] border border-[var(--store-border)]/70 text-[11px] font-bold uppercase tracking-wider text-[var(--store-text-main)] hover:border-[var(--store-text-main)]/40 transition-colors flex items-center justify-center gap-2 active:scale-[0.99]"
+                                            >
+                                                <MessageCircle size={15} /> Consultar disponibilidad o dudas por WhatsApp
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                {/* 3. PROYECCIÓN DESKTOP & FIXED CHECKOUT BAR */}
+
                                 <AnimatePresence>
                                     {zoomData.show && currentGallery.length > 0 && (
                                         <motion.div
@@ -2023,7 +2459,8 @@ Mi duda es la siguiente: `;
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/80 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
+
+                                <div className="absolute bottom-0 left-0 right-0 md:left-auto md:right-0 md:w-[55%] w-full p-4 md:p-6 bg-[var(--store-bg)]/85 backdrop-blur-2xl border-t border-[var(--store-border)]/40 z-50 flex items-center gap-3">
                                     <StockNudge show={showStockNudge} max={currentMaxStock} />
                                     <div className="flex items-center rounded-[var(--radius-btn)] p-1 border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0 bg-[var(--store-surface)]">
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:bg-[var(--store-bg)] disabled:opacity-30 transition-colors active:scale-95"><Minus size={16} strokeWidth={2} /></button>
@@ -2036,7 +2473,7 @@ Mi duda es la siguiente: `;
                                         disabled={isCompletelyOutOfStock || isAdding}
                                         className={`flex-1 h-12 rounded-[var(--radius-btn)] font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 relative overflow-hidden ${isCompletelyOutOfStock ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] cursor-not-allowed shadow-none border-transparent' : (variants.length > 0 && (!selectedColor || !selectedSize)) ? 'bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] text-[var(--store-text-main)]' : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--shadow-ui)] hover:opacity-90 border border-transparent'}`}
                                     >
-                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingCart size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR' : buttonText}</>}
+                                        {isAdding ? <Loader2 size={16} className="animate-spin" /> : <><ShoppingCart size={16} strokeWidth={2.5} /> {buttonText === 'Agregar' ? 'AÑADIR A LA BOLSA' : buttonText}</>}
                                     </motion.button>
                                 </div>
                             </motion.div>
@@ -2044,7 +2481,6 @@ Mi duda es la siguiente: `;
                     )}
                 </AnimatePresence>
 
-                {/* LIGHTBOX AISLADO */}
                 <LightboxViewer
                     isOpen={isLightboxOpen}
                     onClose={() => setIsLightboxOpen(false)}
@@ -2057,16 +2493,14 @@ Mi duda es la siguiente: `;
         );
     }
 
-
     // =========================================================================
-    // 🌟 VARIANTE: TEMA 1 (STANDARD / UNIVERSAL PREZISO MODAL)
+    // 🌟 VARIANTE: TEMA 1 & 2 (STANDARD / UNIVERSAL & DENSE HARDWARE MODAL)
     // =========================================================================
     return (
         <>
             <AnimatePresence>
                 {isOpen && (
                     <div key="modal-universal-portal" className="fixed inset-0 z-60 flex items-end md:items-stretch justify-end">
-                        {/* 🚀 Fondo con cierre habilitado al hacer clic afuera */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
@@ -2103,13 +2537,12 @@ Mi duda es la siguiente: `;
                             {/* SCROLL CONTAINER */}
                             <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row pb-[140px] md:pb-0 no-scrollbar">
 
-                                {/* 1. IMAGEN (Filmstrip Layout) */}
+                                {/* 1. IMAGEN */}
                                 <div className="w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 bg-[var(--store-bg)] border-b md:border-b-0 md:border-r border-[var(--store-border)]/30">
 
                                     <div className="w-full flex-1 p-6 md:p-10 flex items-center justify-center min-h-[350px] md:min-h-0">
-                                        {/* 🚀 WRAPPER ESTRICTO */}
                                         <div
-                                            className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in  border border-[var(--store-border)]/20 rounded-[var(--radius-card)] shadow-[var(--shadow-ui)]"
+                                            className="relative w-full h-auto flex items-center justify-center group overflow-hidden cursor-zoom-in border border-[var(--store-border)]/20 rounded-[var(--radius-card)] shadow-[var(--shadow-ui)]"
                                             style={{
                                                 aspectRatio: aspectRatioValue, maxHeight: '100%',
                                                 backgroundColor: activeTheme.layout?.card_media?.bg_color || 'var(--store-surface)'
@@ -2123,13 +2556,12 @@ Mi duda es la siguiente: `;
                                                 <>
                                                     <Image id="modal-main-image" src={getOptimizedUrl(currentGallery[galleryIndex])} alt={product?.name || "Producto"} fill sizes="(max-width: 768px) 100vw, 50vw" className={`object-${isContainFit ? 'contain p-4' : 'cover'} transition-transform duration-700 ease-out ${!zoomData.show ? 'group-hover:scale-105' : ''}`} />
 
-                                                    {/* 🚀 CRISTAL LÁSER */}
                                                     {zoomData.show && (
                                                         <div className="hidden md:block absolute pointer-events-none bg-black/5 border border-white/40 backdrop-blur-[2px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-20 rounded-xl" style={{ width: '24%', height: '24%', left: `${zoomData.mouseX}%`, top: `${zoomData.mouseY}%`, transform: 'translate(-50%, -50%)' }} />
                                                     )}
                                                 </>
                                             ) : (
-                                                <span className="text-4xl font-black text-[var(--store-border)]">P.</span>
+                                                <span className="text-2xl font-black text-[var(--store-border)]">{storeConfig?.name || 'Catálogo'}</span>
                                             )}
                                         </div>
                                     </div>
@@ -2142,7 +2574,7 @@ Mi duda es la siguiente: `;
                                                     onClick={(e) => { e.stopPropagation(); setGalleryIndex(idx); }}
                                                     className={`relative h-full aspect-square rounded-[var(--radius-card)] overflow-hidden shrink-0 snap-start transition-all duration-300 active:scale-95 border-[length:var(--border-width-ui)] ${idx === galleryIndex ? 'border-[var(--store-primary)] shadow-[var(--shadow-ui)] opacity-100' : 'border-[var(--store-border)]/40 opacity-50 hover:opacity-100 hover:border-[var(--store-primary)]/50'}`}
                                                 >
-                                                    <Image src={getOptimizedUrl(img)} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                                                    <Image src={getOptimizedUrl(img)} alt={`Miniatura ${idx + 1}`} fill sizes="80px" className="object-cover" />
                                                 </button>
                                             ))}
                                         </div>
@@ -2151,10 +2583,22 @@ Mi duda es la siguiente: `;
 
                                 {/* 2. DETALLES */}
                                 <div className="w-full h-auto md:h-full md:w-1/2 flex flex-col relative bg-[var(--store-surface)]">
-                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar pb-6 md:pb-[140px]">
+                                    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar pb-6 md:pb-[140px]">
                                         <div>
-                                            <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none mb-2 block">{product?.category || 'General'}</span>
-                                            <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">{product?.name}</h2>
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest leading-none block">
+                                                    {resolvedCategoryLabel}
+                                                </span>
+                                                {product?.sku && (
+                                                    <span className="text-[10px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-wider">
+                                                        REF: {product.sku}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <h2 className="text-xl md:text-3xl font-black text-[var(--store-text-main)] leading-tight tracking-tight">
+                                                {product?.name}
+                                            </h2>
 
                                             <AnimatePresence>
                                                 {pricing.promoBadgeText && (
@@ -2164,40 +2608,36 @@ Mi duda es la siguiente: `;
                                                         exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
                                                         className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--store-primary)]/10 text-[var(--store-text-main)]/85 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-primary)]/20 shadow-[var(--shadow-ui)] text-xs font-black tracking-wide transition-all origin-bottom"
                                                     >
-                                                        <Tag size={14} className="text-[var(--store-main-text)]/85 shrink-0" /> {pricing.promoBadgeText}
+                                                        <Tag size={14} className="shrink-0" /> {pricing.promoBadgeText}
                                                     </motion.div>
                                                 )}
                                             </AnimatePresence>
 
-                                            <div className="flex flex-wrap gap-1.5 mt-3">
-                                                {(pricing.hasDiscount && pricing.exactSavings > 0 && !isCompletelyOutOfStock) && (
-                                                    <span className="text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2.5 py-1.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] text-[11px] font-bold tracking-wide flex items-center gap-1.5">
-                                                        <Flame size={14} className="text-[var(--store-incentive)]" />
-                                                        Ahorra ${pricing.exactSavings.toFixed(2)} pagando en USD
-                                                    </span>
-                                                )}
-                                                {isCompletelyOutOfStock && (
-                                                    <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-badge-soldout-bg)] shadow-[var(--shadow-ui)] flex items-center">
-                                                        Agotado Temporalmente
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                         <div className="flex items-end gap-3 md:gap-4 mt-6">
+                                            <div className="flex items-end gap-3 md:gap-4 mt-5">
                                                 <div className="flex flex-col">
                                                     {pricing.isPromo && (
                                                         <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] line-through decoration-[var(--store-border)] mb-0.5">
                                                             {formatUSD(pricing.compareAt)}
                                                         </span>
                                                     )}
-                                                    <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-red-600' : 'text-[var(--store-text-main)]'}`}>
+                                                    <span className={`text-4xl md:text-[40px] font-black tracking-tighter leading-none transition-colors ${pricing.isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                                                         {formatUSD(pricing.listPrice)}
                                                     </span>
                                                 </div>
-                                                <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1">
+                                                <span className="text-sm md:text-base font-bold text-[var(--store-surface-text)] mb-1 tabular-nums">
                                                     {formatVES(pricing.priceInBs)}
                                                 </span>
                                             </div>
+
+                                            {renderForeignCurrencyIncentive('universal')}
+
+                                            {isCompletelyOutOfStock && (
+                                                <div className="mt-3">
+                                                    <span className="inline-flex bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-badge-soldout-bg)] shadow-[var(--shadow-ui)]">
+                                                        Agotado
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             {storeConfig?.show_tax_in_catalog && storeConfig?.fiscal_profile !== 'informal' && !product?.is_tax_exempt && (
                                                 <div className="mt-3">
@@ -2207,25 +2647,10 @@ Mi duda es la siguiente: `;
                                                 </div>
                                             )}
 
-                                            {(product?.wholesale_active && product?.wholesale_min_qty > 0 && product?.wholesale_discount_pct > 0) && (
-                                                <div className="mt-6 border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-ui)] overflow-hidden bg-[var(--store-bg)]">
-                                                    <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--store-border)]/50 bg-[var(--store-surface)]/50">
-                                                        <span className="text-[11px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                            Al Detalle (1 a {product.wholesale_min_qty - 1} und)
-                                                        </span>
-                                                        <span className="text-sm font-black text-[var(--store-surface-text)]">
-                                                            ${(pricing.isPromo ? pricing.compareAt : pricing.listPrice).toFixed(2)} c/u
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center px-4 py-3 bg-[#1b1b1b] text-white">
-                                                        <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-white/90">
-                                                            <Zap size={13} className="fill-white" />
-                                                            Al Mayor ({product.wholesale_min_qty}+ und)
-                                                        </span>
-                                                        <span className="text-base font-black text-white">
-                                                            ${((pricing.isPromo ? pricing.compareAt : pricing.listPrice) * (1 - product.wholesale_discount_pct / 100)).toFixed(2)} c/u
-                                                        </span>
-                                                    </div>
+                                            {/* Matriz B2B Interactiva 1-Tap (100% Variables CSS Dinámicas) */}
+                                            {hasWholesaleOffer && (
+                                                <div className="mt-5">
+                                                    {renderWholesaleMatrix('universal')}
                                                 </div>
                                             )}
                                         </div>
@@ -2237,22 +2662,22 @@ Mi duda es la siguiente: `;
                                             </div>
                                         ) : (
                                             <div className="space-y-6 pb-4">
-                                               {variants.length > 0 && !isCompletelyOutOfStock && (
+                                                {variants.length > 0 && !isCompletelyOutOfStock && (
                                                     <>
                                                         {!isSingleSizeOnlyGroup && (
                                                             <motion.div
                                                                 ref={colorSectionRef}
                                                                 animate={errorShake === 'color' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-red-500 bg-red-50/50' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
+                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'color' ? 'border-[var(--store-badge-discount-bg)] bg-[var(--store-badge-discount-bg)]/5' : (!selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
                                                             >
                                                                 <div className="flex justify-between items-center">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                                                            1. {isModelOption ? 'Modelo / Opción' : 'Color'}
+                                                                            1. {isModelOption ? 'Opción' : 'Color'}
                                                                         </span>
                                                                         {!selectedColor && (
                                                                             <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--store-primary)] bg-[var(--store-primary)]/10 px-2 py-0.5 rounded-full border border-[var(--store-primary)]/20">
-                                                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] animate-pulse" />
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
                                                                                 Seleccionar
                                                                             </span>
                                                                         )}
@@ -2276,19 +2701,19 @@ Mi duda es la siguiente: `;
                                                                             className={`transition-all relative flex items-center justify-center overflow-hidden ${c.hex && c.hex !== 'transparent' && c.hex !== '#transparent'
                                                                                 ? `w-10 h-10 rounded-full border ${selectedColor === c.name ? 'border ring-[var(--store-primary)] border-[var(--store-primary)] ring-offset-2 scale-110' : 'border-2 active:scale-110 hover:scale-105 border-[var(--store-border)]'}`
                                                                                 : `px-4 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] ${selectedColor === c.name ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]' : 'bg-[var(--store-surface)] text-[var(--store-surface-text)] border-[var(--store-border)] hover:border-[var(--store-primary)]'}`
-                                                                                } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30 animate-pulse' : '')}`}
+                                                                                } ${!c.isAvailable ? 'opacity-30 cursor-not-allowed grayscale' : (!selectedColor ? 'ring-2 ring-[var(--store-primary)]/30' : '')}`}
                                                                             style={c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? getVariantSwatchStyle(c.hex) : {}}
                                                                             title={!c.isAvailable ? 'Agotado' : c.name}
                                                                         >
                                                                             {c.hex && c.hex !== 'transparent' && c.hex !== '#transparent' ? (
                                                                                 <>
                                                                                     {selectedColor === c.name && <Check size={16} className="text-white/80 mix-blend-difference" strokeWidth={3} />}
-                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-45" />}
+                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-[var(--store-badge-discount-bg)] top-1/2 -rotate-45" />}
                                                                                 </>
                                                                             ) : (
                                                                                 <>
                                                                                     <span>{c.name}</span>
-                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-red-500 top-1/2 -rotate-20" />}
+                                                                                    {!c.isAvailable && <div className="absolute inset-0 w-full h-px bg-[var(--store-badge-discount-bg)] top-1/2 -rotate-20" />}
                                                                                 </>
                                                                             )}
                                                                         </button>
@@ -2301,15 +2726,15 @@ Mi duda es la siguiente: `;
                                                             <motion.div
                                                                 ref={sizeSectionRef}
                                                                 animate={errorShake === 'size' ? { x: [-8, 8, -8, 8, 0], transition: { duration: 0.4 } } : {}}
-                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'size' ? 'border-red-500 bg-red-50/50' : (!selectedSize && selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
+                                                                className={`space-y-3 p-3 -mx-3 rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] transition-colors duration-300 ${errorShake === 'size' ? 'border-[var(--store-badge-discount-bg)] bg-[var(--store-badge-discount-bg)]/5' : (!selectedSize && selectedColor ? 'border-[var(--store-primary)]/30 bg-[var(--store-primary)]/5' : 'border-transparent')}`}
                                                             >
                                                                 <div className="flex justify-between items-end">
                                                                     <span className="text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest block">
-                                                                        {isSingleSizeOnlyGroup ? 'Selecciona tu Talla' : '2. Talla'}
+                                                                        {isSingleSizeOnlyGroup ? 'Selecciona tu Talla / Medida' : '2. Talla / Medida'}
                                                                     </span>
                                                                     {selectedSize && currentMaxStock > 0 && (
                                                                         <span className="text-[10px] font-bold text-[var(--store-incentive)] bg-[var(--store-incentive)]/10 px-2 py-0.5 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] border-[var(--store-incentive)]/20">
-                                                                            Quedan {currentMaxStock} und.
+                                                                            {currentMaxStock} disponibles
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -2330,7 +2755,7 @@ Mi duda es la siguiente: `;
                                                                                     className={`relative min-w-12 px-3 py-2.5 rounded-[var(--radius-btn)] text-xs font-bold border-[length:var(--border-width-ui)] shadow-[var(--shadow-ui)] transition-all overflow-hidden ${selectedSize === v.size
                                                                                         ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[var(--store-primary)]'
                                                                                         : isOutOfStock
-                                                                                            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border-[var(--store-border)] cursor-not-allowed opacity-60'
+                                                                                            ? 'bg-[var(--store-bg)] text-[var(--store-surface-text)] border-[var(--store-border)] cursor-not-allowed opacity-60 line-through'
                                                                                             : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[var(--store-border)] hover:border-[var(--store-primary)]'
                                                                                         }`}
                                                                                 >
@@ -2345,7 +2770,7 @@ Mi duda es la siguiente: `;
                                                     </>
                                                 )}
 
-                                                {/* Acordeones / Desplegados */}
+                                                {/* Acordeones / Desplegados Basados en Datos Reales */}
                                                 {product?.description && (
                                                     <div className="border-t border-[var(--store-border)]/40 mt-6 pt-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
@@ -2393,27 +2818,15 @@ Mi duda es la siguiente: `;
                                                     </div>
                                                 )}
 
-                                                {(!isCompletelyOutOfStock && storeConfig?.shipping_config?.show_badge !== false) && (
+                                          {realLogisticsInfo && (
                                                     <div className="border-t border-[var(--store-border)]/40 pt-4">
                                                         {activeTheme.shapes.info_layout === 'expanded' ? (
                                                             <div>
-                                                                <div className="flex items-center gap-2.5 mb-3">
+                                                                <div className="flex items-center gap-2.5 mb-1">
                                                                     <Truck size={16} className="text-[var(--store-surface-text)]" />
-                                                                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Envío</span>
+                                                                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--store-text-main)]">Envío y Entrega</span>
                                                                 </div>
-                                                                <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mb-4">
-                                                                    <div className="bg-[var(--store-surface)] p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0">
-                                                                        <Truck size={14} className="text-[var(--store-text-main)]" />
-                                                                    </div>
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
-                                                                            {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
-                                                                        </span>
-                                                                        <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
-                                                                            {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
+                                                                {renderUnifiedShippingContent(activeTheme.layout?.card_style === 'dense_hardware')}
                                                             </div>
                                                         ) : (
                                                             <>
@@ -2424,7 +2837,7 @@ Mi duda es la siguiente: `;
                                                                 >
                                                                     <div className="flex items-center gap-2.5">
                                                                         <Truck size={16} className="text-[var(--store-surface-text)] transition-colors" />
-                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Envío</span>
+                                                                        <span className="text-[11px] font-black uppercase tracking-wider">Envío y Entrega</span>
                                                                     </div>
                                                                     <motion.div
                                                                         animate={{ rotate: isShippingOpen ? (activeTheme.layout?.card_style === 'dense_hardware' ? 180 : 45) : 0 }}
@@ -2441,24 +2854,15 @@ Mi duda es la siguiente: `;
                                                                     transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
                                                                     className="overflow-hidden"
                                                                 >
-                                                                    <div className="flex items-center gap-3 p-4 bg-[var(--store-bg)] rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 shadow-[var(--shadow-ui)] mt-2 mb-4">
-                                                                        <div className="bg-[var(--store-surface)] p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] border-[var(--store-border)] shadow-[var(--shadow-ui)] shrink-0">
-                                                                            <Truck size={14} className="text-[var(--store-text-main)]" />
-                                                                        </div>
-                                                                        <div className="flex flex-col min-w-0">
-                                                                            <span className="text-[11px] font-bold text-[var(--store-text-main)] uppercase tracking-wide truncate">
-                                                                                {product?.shipping_badge_title || storeConfig?.shipping_config?.global_badge_title || 'Bajo Pedido'}
-                                                                            </span>
-                                                                            <span className="text-[11px] font-medium text-[var(--store-surface-text)] truncate">
-                                                                                {product?.shipping_badge_desc || storeConfig?.shipping_config?.global_badge_desc || 'Tiempo de entrega: de 2 a 7 días hábiles'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
+                                                                    {renderUnifiedShippingContent(activeTheme.layout?.card_style === 'dense_hardware')}
                                                                 </motion.div>
                                                             </>
                                                         )}
                                                     </div>
                                                 )}
+
+                                                {/* Métodos de Pago Reales */}
+                                                {renderRealPaymentPills(activeTheme.layout?.card_style === 'dense_hardware')}
                                             </div>
                                         )}
                                     </div>
@@ -2484,7 +2888,7 @@ Mi duda es la siguiente: `;
                                         <button onClick={decreaseQty} disabled={isCompletelyOutOfStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Minus size={16} strokeWidth={2.5} />
                                         </button>
-                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)]">{quantity}</span>
+                                        <span className="font-bold text-sm w-8 text-center text-[var(--store-text-main)] tabular-nums">{quantity}</span>
                                         <button onClick={increaseQty} disabled={isCompletelyOutOfStock || (variants.length > 0 && !selectedSize)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:border-[var(--store-primary)] transition-all disabled:opacity-50">
                                             <Plus size={16} strokeWidth={2.5} />
                                         </button>
@@ -2495,7 +2899,7 @@ Mi duda es la siguiente: `;
                                         onClick={handleAddToCart}
                                         disabled={isCompletelyOutOfStock || isAdding}
                                         className={`flex-1 rounded-[var(--radius-btn)] border border-[var(--store-border)] shadow-[var(--shadow-ui)] font-bold uppercase tracking-widest text-xs transition-colors flex items-center justify-center h-12 relative overflow-hidden ${isCompletelyOutOfStock
-                                            ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
+                                            ? 'bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] border-transparent'
                                             : (variants.length > 0 && (!selectedColor || !selectedSize))
                                                 ? 'bg-[var(--store-bg)] text-[var(--store-text-main)] border border-[var(--store-border)]'
                                                 : 'bg-[var(--store-primary)] text-[var(--store-primary-text)] shadow-[var(--store-primary)]/20'
@@ -2534,7 +2938,7 @@ Mi duda es la siguiente: `;
                                     onClick={handleInquiryWhatsApp}
                                     className="w-full py-2 text-[11px] font-bold uppercase tracking-widest text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors flex items-center justify-center gap-1.5"
                                 >
-                                    <MessageCircle size={14} /> Tengo una duda sobre este artículo
+                                    <MessageCircle size={14} /> Consultar sobre este artículo por WhatsApp
                                 </button>
                             </div>
                         </motion.div>
@@ -2542,7 +2946,6 @@ Mi duda es la siguiente: `;
                 )}
             </AnimatePresence>
 
-            {/* LIGHTBOX AISLADO */}
             <LightboxViewer
                 isOpen={isLightboxOpen}
                 onClose={() => setIsLightboxOpen(false)}
