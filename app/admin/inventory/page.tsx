@@ -209,7 +209,7 @@ export default function InventoryPage() {
         }
     }
 
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'low' | 'out'>('all')
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'low' | 'out'>('all')
     const [sortBy, setSortBy] = useState<InventorySortOption>('recent')
     const [isSortOpen, setIsSortOpen] = useState(false)
     const sortDropdownRef = useRef<HTMLDivElement>(null)
@@ -364,13 +364,13 @@ export default function InventoryPage() {
             setItems(prev => prev.map(item => item.rowId === row.rowId ? { ...item, stock: newStock } : item))
             await revalidateStoreCache()
 
-          if (newStock <= 3 && storeId) {
+            if (newStock <= 3 && storeId) {
                 const isGenericColor = !row.color || ['talla', 'tallas', 'medida', 'medidas', 'único', 'unico', 'estándar', 'estandar'].includes(row.color.trim().toLowerCase());
                 const isGenericSize = !row.size || ['única', 'unica', 'u'].includes(row.size.trim().toLowerCase());
                 const cleanVariantName = !row.variantId ? null
                     : (isGenericColor && !isGenericSize) ? `Talla ${row.size}`
-                    : (!isGenericColor && isGenericSize) ? row.color
-                    : `${row.color} / Talla ${row.size}`;
+                        : (!isGenericColor && isGenericSize) ? row.color
+                            : `${row.color} / Talla ${row.size}`;
 
                 checkAndTriggerStockAlert({
                     storeId,
@@ -454,7 +454,7 @@ export default function InventoryPage() {
         }
     }
 
-  const [visibilityModalTarget, setVisibilityModalTarget] = useState<InventoryItem | null>(null)
+    const [visibilityModalTarget, setVisibilityModalTarget] = useState<InventoryItem | null>(null)
     const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false)
 
     const confirmToggleProductStatus = async () => {
@@ -600,7 +600,7 @@ export default function InventoryPage() {
                         />
                     )}
 
-{/* BARRA DE CONTROLES (Arquitectura de 2 Niveles sin Amontonamiento Horizontal) */}
+                    {/* BARRA DE CONTROLES (Arquitectura de 2 Niveles sin Amontonamiento Horizontal) */}
                     <div className="flex flex-col gap-3 w-full">
 
                         {/* NIVEL 1: Pestañas de Visibilidad (Vitrina vs Borrador) y Salud de Stock + Acciones Rápidas */}
@@ -619,18 +619,16 @@ export default function InventoryPage() {
                                             key={tab.id}
                                             type="button"
                                             onClick={() => setFilterStatus(tab.id as any)}
-                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${
-                                                isActive
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${isActive
                                                     ? 'bg-white text-neutral-950 shadow-2xs border border-neutral-200/60'
                                                     : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-white/50'
-                                            }`}
+                                                }`}
                                         >
                                             <span>{tab.label}</span>
-                                            <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${
-                                                isActive
+                                            <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${isActive
                                                     ? 'bg-neutral-900 text-white font-bold'
                                                     : 'bg-neutral-200/60 text-neutral-600'
-                                            }`}>
+                                                }`}>
                                                 {tab.count}
                                             </span>
                                         </button>
@@ -695,11 +693,10 @@ export default function InventoryPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setIsSortOpen(prev => !prev)}
-                                                className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${
-                                                    isCustomSort || isSortOpen
+                                                className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${isCustomSort || isSortOpen
                                                         ? 'border-neutral-900 text-neutral-950'
                                                         : 'border-neutral-200/60 hover:border-neutral-400 text-neutral-700'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <ArrowUpDown size={13} className={isCustomSort ? 'text-neutral-950' : 'text-neutral-400'} />
@@ -739,11 +736,10 @@ export default function InventoryPage() {
                                                                             setSortBy(option.value);
                                                                             setIsSortOpen(false);
                                                                         }}
-                                                                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                                                            isSelected
+                                                                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
                                                                                 ? 'bg-neutral-950 text-white font-semibold'
                                                                                 : 'text-neutral-700 hover:bg-neutral-100/80 font-medium'
-                                                                        }`}
+                                                                            }`}
                                                                     >
                                                                         <span>{option.label}</span>
                                                                         {isSelected && <Check size={13} strokeWidth={2.5} />}
@@ -844,7 +840,7 @@ export default function InventoryPage() {
                                                                         <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
                                                                     </div>
-                                                                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                                                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
                                                                         {/* Precio Unitario Tabular para Verificación de Ordenamiento */}
                                                                         <span className="font-mono text-[11px] font-bold text-neutral-900 tabular-nums leading-none">
                                                                             {formatUSD(item.listPrice)}
@@ -985,15 +981,14 @@ export default function InventoryPage() {
                                                                     )}
                                                                 </div>
 
-                                                              {/* GATILLO CON MODAL DE CONFIRMACIÓN (En Vitrina vs Borrador Oculto) */}
+                                                                {/* GATILLO CON MODAL DE CONFIRMACIÓN (En Vitrina vs Borrador Oculto) */}
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setVisibilityModalTarget(item)}
-                                                                    className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                                                                        item.status === 'active'
+                                                                    className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${item.status === 'active'
                                                                             ? 'bg-white border-neutral-200/70 text-neutral-700 hover:border-neutral-400'
                                                                             : 'bg-neutral-200/70 border-neutral-300/80 text-neutral-600 hover:bg-neutral-300/70'
-                                                                    }`}
+                                                                        }`}
                                                                     title="Cambiar visibilidad del producto"
                                                                 >
                                                                     {item.status === 'active' ? (
@@ -1061,24 +1056,24 @@ export default function InventoryPage() {
                             </div>
                         )}
                     </div>
-                       {/* 🚀 ENLACE EDITORIAL: LIMPIEZA DE PRODUCTOS DEL TUTORIAL AL PIE DE LA TABLA */}
-                                {hasDemoProducts && !loading && (
-                                    <div className="px-4 md:px-6 py-3.5 border-t border-t-[#d3cdcdfc]  flex items-center justify-center sm:justify-end bg-neutral-50/40">
-                                        <button
-                                            type="button"
-                                            onClick={handleCleanDemoProducts}
-                                            disabled={isCleaningDemos}
-                                            className="text-[11px] font-normal text-neutral-400 hover:text-rose-600 underline underline-offset-4 decoration-neutral-300 hover:decoration-rose-400 transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                        >
-                                            {isCleaningDemos && <Loader2 size={12} className="animate-spin text-rose-500" />}
-                                            <span>Limpiar productos de prueba del tutorial ({detectedDemoIds.length})</span>
-                                        </button>
-                                    </div>
-                                )}
+                    {/* 🚀 ENLACE EDITORIAL: LIMPIEZA DE PRODUCTOS DEL TUTORIAL AL PIE DE LA TABLA */}
+                    {hasDemoProducts && !loading && (
+                        <div className="px-4 md:px-6 py-3.5 border-t border-t-[#d3cdcdfc]  flex items-center justify-center sm:justify-end bg-neutral-50/40">
+                            <button
+                                type="button"
+                                onClick={handleCleanDemoProducts}
+                                disabled={isCleaningDemos}
+                                className="text-[11px] font-normal text-neutral-400 hover:text-rose-600 underline underline-offset-4 decoration-neutral-300 hover:decoration-rose-400 transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                {isCleaningDemos && <Loader2 size={12} className="animate-spin text-rose-500" />}
+                                <span>Limpiar productos de prueba del tutorial ({detectedDemoIds.length})</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-{/* MODAL EJECUTIVO DE CONFIRMACIÓN DE VISIBILIDAD (VITRINA ⇄ BORRADOR) */}
+            {/* MODAL EJECUTIVO DE CONFIRMACIÓN DE VISIBILIDAD (VITRINA ⇄ BORRADOR) */}
             <AnimatePresence>
                 {visibilityModalTarget && (() => {
                     const isCurrentlyActive = visibilityModalTarget.status === 'active';
@@ -1105,11 +1100,10 @@ export default function InventoryPage() {
                                 {/* Cabecera */}
                                 <div className="p-5 pb-4 border-b border-neutral-100 flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-2.5">
-                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${
-                                            isCurrentlyActive
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${isCurrentlyActive
                                                 ? 'bg-neutral-100 border-neutral-200/80 text-neutral-800'
                                                 : 'bg-emerald-50 border-emerald-200/60 text-emerald-700'
-                                        }`}>
+                                            }`}>
                                             {isCurrentlyActive ? <EyeOff size={17} /> : <Eye size={17} />}
                                         </div>
                                         <div>
@@ -1200,11 +1194,10 @@ export default function InventoryPage() {
                                         type="button"
                                         disabled={isUpdatingVisibility}
                                         onClick={confirmToggleProductStatus}
-                                        className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98] disabled:opacity-50 ${
-                                            isCurrentlyActive
+                                        className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98] disabled:opacity-50 ${isCurrentlyActive
                                                 ? 'bg-neutral-950 hover:bg-black'
                                                 : 'bg-emerald-600 hover:bg-emerald-700'
-                                        }`}
+                                            }`}
                                     >
                                         {isUpdatingVisibility ? (
                                             <Loader2 size={13} className="animate-spin" />
