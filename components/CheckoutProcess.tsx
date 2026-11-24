@@ -2332,7 +2332,7 @@ export default function CheckoutProcess({
                                                 setReferencePoint(val);
                                                 if (errors.reference) setErrors(prev => ({ ...prev, reference: "" }));
                                             }}
-                                            className={`w-full bg-transparent border-b-2 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
+                                            className={`w-full bg-transparent  border-b-2 border-b py-3 text-base font-normal outline-none focus:ring-0 transition-colors rounded-none placeholder:text-[var(--store-surface-text)]/70 ${errors.reference ? 'border-red-500 text-red-600 focus:border-red-500' : 'border-[var(--store-text-main)]/30 text-[var(--store-text-main)] focus:border-[var(--store-primary)]'}`}
                                             placeholder="Punto de referencia (ej: portón negro frente a la panadería) *"
                                         />
                                         <AnimatePresence>
