@@ -445,7 +445,7 @@ function ProductCardComponent({
               
               </div>
             )}
-            <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight ">
+            <h3 className="text-[.8rem] md:text-[1.1rem] font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight ">
               {product.name}
             </h3>
             {availableSizesPreview.length > 0 && (
@@ -458,7 +458,7 @@ function ProductCardComponent({
           <div className="mt-2.5 pt-2 border-t border-[var(--store-border)]/40 flex flex-col gap-1">
             <div className="flex items-baseline gap-1.5 flex-wrap">
               {isPromo && (
-                <span className="text-[10px] font-mono text-[var(--store-surface-text)] line-through">
+                <span className="text-[11px] font-mono text-[var(--store-surface-text)] line-through">
                   {formatUSD(activeCompareAt)}
                 </span>
               )}
@@ -467,7 +467,7 @@ function ProductCardComponent({
               </span>
             </div>
 
-            <span className="text-[10px] font-mono font-semibold text-[var(--store-surface-text)] leading-none tabular-nums">
+            <span className="text-[11px] font-mono font-semibold text-[var(--store-surface-text)] leading-none tabular-nums">
               {formatVES(pricing.priceInBs)}
             </span>
 
