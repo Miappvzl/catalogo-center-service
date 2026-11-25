@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode, ArrowUpDown, ChevronDown, Check, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode, ArrowUpDown, ChevronDown, Check, Eye, EyeOff, Trash2, Tag, ArrowUp } from 'lucide-react'
 import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -16,6 +16,7 @@ import { deleteStoreDemoProducts } from '@/app/admin/orders/action'
 import { formatUSD } from '@/utils/currency'
 
 type InventorySortOption = 'recent' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc';
+type InventoryFilterStatus = 'all' | 'active' | 'draft' | 'featured' | 'discounted' | 'low' | 'out';
 
 const INVENTORY_SORT_OPTIONS: { value: InventorySortOption; label: string; shortLabel: string }[] = [
     { value: 'recent', label: 'Más recientes', shortLabel: 'Recientes' },
@@ -40,13 +41,15 @@ interface InventoryItem {
     status: 'active' | 'draft';
     cashPrice: number;
     listPrice: number;
+    compareAtPrice: number | null;
+    hasActiveDiscount: boolean;
+    discountLabel: string | null;
     isTaxExempt: boolean;
     isFeatured: boolean;
     displayOrder: number;
     requiresShipping: boolean;
     hasModifiers?: boolean;
 }
-
 export default function InventoryPage() {
     const supabase = getSupabase()
     const [loading, setLoading] = useState(true)
@@ -208,8 +211,7 @@ export default function InventoryPage() {
             setIsSavingOrder(false)
         }
     }
-
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'low' | 'out'>('all')
+    const [filterStatus, setFilterStatus] = useState<InventoryFilterStatus>('all')
     const [sortBy, setSortBy] = useState<InventorySortOption>('recent')
     const [isSortOpen, setIsSortOpen] = useState(false)
     const sortDropdownRef = useRef<HTMLDivElement>(null)
@@ -219,7 +221,6 @@ export default function InventoryPage() {
     const [fiscalProfile, setFiscalProfile] = useState<string | null>(null)
     const [showTaxInCatalog, setShowTaxInCatalog] = useState(false)
 
-    // Cierre automático del menú de ordenamiento al hacer clic fuera o presionar Escape
     useEffect(() => {
         if (!isSortOpen) return
         const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -262,15 +263,43 @@ export default function InventoryPage() {
                     setDemoProductIds(store.onboarding_missions.demo_product_ids.map(String));
                 }
 
-                const { data: products } = await supabase
-                    .from('products')
-                    .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
-                    .eq('store_id', store.id)
-                    .order('created_at', { ascending: false })
+                // 🚀 CONSULTA PARALELA (0ms extra): Productos con compare_at_usd + Campañas Promocionales Activas
+                const [productsRes, promosRes] = await Promise.all([
+                    supabase
+                        .from('products')
+                        .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, compare_at_usd, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
+                        .eq('store_id', store.id)
+                        .order('created_at', { ascending: false }),
+                    supabase
+                        .from('promotions')
+                        .select('id, title, is_active, expires_at, linked_products, promo_type, discount_percentage, bogo_buy, bogo_pay')
+                        .eq('store_id', store.id)
+                        .eq('is_active', true)
+                ]);
+
+                const products = productsRes.data || [];
+                const nowMs = Date.now();
+                const activePromos = (promosRes.data || []).filter((p: any) => {
+                    if (!p.is_active) return false;
+                    if (p.expires_at && new Date(p.expires_at).getTime() <= nowMs) return false;
+                    return (p.promo_type === 'percentage' && Number(p.discount_percentage) > 0) ||
+                        (p.promo_type === 'bogo' && Number(p.bogo_buy) > 0);
+                });
+
+                // Mapa O(1) de descuentos por campaña activa para cada producto
+                const productPromoLabelMap = new Map<string, string>();
+                activePromos.forEach((p: any) => {
+                    const label = p.promo_type === 'percentage'
+                        ? `-${Number(p.discount_percentage)}% (${p.title})`
+                        : `${p.bogo_buy}x${p.bogo_pay} (${p.title})`;
+                    (p.linked_products || []).forEach((pid: any) => {
+                        productPromoLabelMap.set(String(pid), label);
+                    });
+                });
 
                 const flatInventory: InventoryItem[] = []
 
-                products?.forEach((prod: any) => {
+                products.forEach((prod: any) => {
                     const isExempt = prod.is_tax_exempt || false
                     const isFeat = prod.is_featured || false
                     const dOrder = prod.display_order || 0
@@ -278,6 +307,8 @@ export default function InventoryPage() {
                     const prodStatus: 'active' | 'draft' = prod.status === 'draft' ? 'draft' : 'active'
                     const baseCash = Number(prod.usd_cash_price || 0)
                     const basePenalty = Number(prod.usd_penalty || 0)
+                    const baseCompareAt = Number(prod.compare_at_usd || 0)
+                    const campaignLabel = productPromoLabelMap.get(String(prod.id)) || null
 
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
@@ -287,6 +318,15 @@ export default function InventoryPage() {
                             const vPenalty = variant.override_usd_penalty !== null && variant.override_usd_penalty !== undefined
                                 ? Number(variant.override_usd_penalty)
                                 : basePenalty
+                            const vCompareAt = variant.override_compare_at_usd !== null && variant.override_compare_at_usd !== undefined
+                                ? Number(variant.override_compare_at_usd)
+                                : baseCompareAt
+
+                            const vListPrice = vCash + vPenalty
+                            const hasCompareDiscount = vCompareAt > vListPrice && vListPrice > 0
+                            const comparePct = hasCompareDiscount ? Math.round(((vCompareAt - vListPrice) / vCompareAt) * 100) : 0
+                            const hasActiveDiscount = hasCompareDiscount || Boolean(campaignLabel)
+                            const discountLabel = campaignLabel || (hasCompareDiscount ? `-${comparePct}%` : null)
 
                             flatInventory.push({
                                 rowId: variant.id,
@@ -302,7 +342,10 @@ export default function InventoryPage() {
                                 stock: variant.stock,
                                 status: prodStatus,
                                 cashPrice: vCash,
-                                listPrice: vCash + vPenalty,
+                                listPrice: vListPrice,
+                                compareAtPrice: hasCompareDiscount ? vCompareAt : null,
+                                hasActiveDiscount,
+                                discountLabel,
                                 isTaxExempt: isExempt,
                                 isFeatured: isFeat,
                                 displayOrder: dOrder,
@@ -310,6 +353,12 @@ export default function InventoryPage() {
                             })
                         })
                     } else {
+                        const pListPrice = baseCash + basePenalty
+                        const hasCompareDiscount = baseCompareAt > pListPrice && pListPrice > 0
+                        const comparePct = hasCompareDiscount ? Math.round(((baseCompareAt - pListPrice) / baseCompareAt) * 100) : 0
+                        const hasActiveDiscount = hasCompareDiscount || Boolean(campaignLabel)
+                        const discountLabel = campaignLabel || (hasCompareDiscount ? `-${comparePct}%` : null)
+
                         flatInventory.push({
                             rowId: prod.id,
                             productId: prod.id,
@@ -324,7 +373,10 @@ export default function InventoryPage() {
                             stock: prod.stock || 0,
                             status: prodStatus,
                             cashPrice: baseCash,
-                            listPrice: baseCash + basePenalty,
+                            listPrice: pListPrice,
+                            compareAtPrice: hasCompareDiscount ? baseCompareAt : null,
+                            hasActiveDiscount,
+                            discountLabel,
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
                             displayOrder: dOrder,
@@ -502,6 +554,8 @@ export default function InventoryPage() {
             let statusMatch = true;
             if (filterStatus === 'active') statusMatch = item.status === 'active';
             else if (filterStatus === 'draft') statusMatch = item.status === 'draft';
+            else if (filterStatus === 'featured') statusMatch = item.isFeatured === true;
+            else if (filterStatus === 'discounted') statusMatch = item.hasActiveDiscount === true;
             else if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3;
             else if (filterStatus === 'out') statusMatch = item.stock === 0;
 
@@ -523,20 +577,32 @@ export default function InventoryPage() {
         total: items.length,
         active: items.filter(i => i.status === 'active').length,
         draft: items.filter(i => i.status === 'draft').length,
+        featured: items.filter(i => i.isFeatured).length,
+        discounted: items.filter(i => i.hasActiveDiscount).length,
         low: items.filter(i => i.stock > 0 && i.stock <= 3).length,
         out: items.filter(i => i.stock === 0).length
     }), [items]);
 
-    // SENSOR DE SCROLL HORIZONTAL
+  // 1. SENSOR DE SCROLL HORIZONTAL DE LA TABLA (Activa la miniatura flotante a 120 FPS vía atributo DOM sin re-renderizar filas)
     const tableScrollRef = useRef<HTMLDivElement>(null)
     const [isScrolledToEnd, setIsScrolledToEnd] = useState(false)
     const [isScrollable, setIsScrollable] = useState(false)
 
     const checkScroll = () => {
-        if (tableScrollRef.current) {
-            const { scrollLeft, scrollWidth, clientWidth } = tableScrollRef.current
-            setIsScrollable(scrollWidth > clientWidth)
-            setIsScrolledToEnd(Math.ceil(scrollLeft + clientWidth) >= scrollWidth - 5)
+        const el = tableScrollRef.current
+        if (!el) return
+        const { scrollLeft, scrollWidth, clientWidth } = el
+        const canScroll = scrollWidth > clientWidth
+        const atEnd = Math.ceil(scrollLeft + clientWidth) >= scrollWidth - 5
+
+        setIsScrollable(prev => (prev === canScroll ? prev : canScroll))
+        setIsScrolledToEnd(prev => (prev === atEnd ? prev : atEnd))
+
+        // 🚀 ATRIBUTO DOM DIRECTO: Muestra la miniatura flotante en el instante exacto en que la 1ra columna se oculta (scrollLeft >= 145px)
+        const isFirstColHidden = scrollLeft >= 145
+        const currentAttr = el.getAttribute('data-first-col-hidden') === 'true'
+        if (currentAttr !== isFirstColHidden) {
+            el.setAttribute('data-first-col-hidden', isFirstColHidden ? 'true' : 'false')
         }
     }
 
@@ -548,37 +614,99 @@ export default function InventoryPage() {
         }
     }
 
+    // 2. SENSOR DE DESVANECIDO LATERAL DEL RIEL DE FILTROS (Mobile & Desktop)
+    const filterRailRef = useRef<HTMLDivElement>(null)
+    const [filterMaskState, setFilterMaskState] = useState<'none' | 'left' | 'right' | 'both'>('none')
+
+    const checkFilterRailScroll = () => {
+        const el = filterRailRef.current
+        if (!el) return
+        const { scrollLeft, scrollWidth, clientWidth } = el
+        const canLeft = scrollLeft > 6
+        const canRight = Math.ceil(scrollLeft + clientWidth) < scrollWidth - 6
+        const nextMask = canLeft && canRight ? 'both' : canLeft ? 'left' : canRight ? 'right' : 'none'
+        setFilterMaskState(prev => (prev === nextMask ? prev : nextMask))
+    }
+
+    const filterRailMaskStyle = useMemo((): React.CSSProperties => {
+        if (filterMaskState === 'none') return {}
+        const leftStop = filterMaskState === 'left' || filterMaskState === 'both' ? 'transparent 0px, #000 28px' : '#000 0px'
+        const rightStop = filterMaskState === 'right' || filterMaskState === 'both' ? '#000 calc(100% - 28px), transparent 100%' : '#000 100%'
+        const gradient = `linear-gradient(to right, ${leftStop}, ${rightStop})`
+        return { WebkitMaskImage: gradient, maskImage: gradient }
+    }, [filterMaskState])
+
     useEffect(() => {
         checkScroll()
-        window.addEventListener('resize', checkScroll)
-        return () => window.removeEventListener('resize', checkScroll)
+        checkFilterRailScroll()
+        const handleResize = () => {
+            checkScroll()
+            checkFilterRailScroll()
+        }
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
     }, [filteredItems])
+
+    // 3. SENSOR DE SCROLL VERTICAL PARA BOTÓN "VOLVER ARRIBA" (0 Re-renders durante el scroll)
+    const [showScrollTop, setShowScrollTop] = useState(false)
+
+    useEffect(() => {
+        let ticking = false
+        const handleWindowScroll = () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const shouldShow = window.scrollY > 450
+                    setShowScrollTop(prev => (prev === shouldShow ? prev : shouldShow))
+                    ticking = false
+                })
+                ticking = true
+            }
+        }
+        window.addEventListener('scroll', handleWindowScroll, { passive: true })
+        return () => window.removeEventListener('scroll', handleWindowScroll)
+    }, [])
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
 
     return (
         <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
 
-            {/* HEADER STICKY (Cleanlook) */}
-            <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-4 flex justify-between items-center transition-all">
-                <div className="flex items-center gap-3.5">
+         {/* HEADER STICKY (Con Acción "Ordenar Vitrina" integrada en la esquina en Mobile) */}
+            <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-3.5 md:py-4 flex justify-between items-center gap-3 transition-all">
+                <div className="flex items-center gap-3 min-w-0">
                     <Link href="/admin" className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs active:scale-[0.98]">
                         <ArrowLeft size={16} className="text-neutral-500 hover:text-neutral-900" />
                     </Link>
-                    <div>
-                        <h1 className="font-bold text-base tracking-tight leading-none text-neutral-900">Control de Inventario</h1>
-                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono">Stock, Impuestos y Logística</p>
+                    <div className="min-w-0">
+                        <h1 className="font-bold text-sm sm:text-base tracking-tight leading-none text-neutral-900 truncate">Control de Inventario</h1>
+                        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mt-1 font-mono truncate">Stock, Impuestos y Logística</p>
                     </div>
                 </div>
 
-                {/* KPI CHIPS (Muted & Borderless style) */}
-                <div className="hidden md:flex gap-2.5">
-                    <div className="px-3.5 py-1.5 bg-white/80  rounded-lg flex items-center gap-2.5">
+                {/* BOTÓN ORDENAR VITRINA EN MOBILE (Esquina Superior Derecha) */}
+                {items.length > 1 && (
+                    <button
+                        type="button"
+                        onClick={openReorderModal}
+                        className="md:hidden bg-neutral-950 text-white px-3 py-2 rounded-xl text-[11px] font-semibold shadow-2xs hover:bg-black active:scale-[0.97] transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                        <GripVertical size={13} className="text-neutral-300" />
+                        <span>Ordenar Vitrina</span>
+                    </button>
+                )}
+
+                {/* KPI CHIPS (Desktop) */}
+                <div className="hidden md:flex gap-2.5 shrink-0">
+                    <div className="px-3.5 py-1.5 bg-white/80 rounded-lg flex items-center gap-2.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-xs font-bold text-rose-700 font-mono">{stats.out}</span>
                             <span className="text-[9px] font-semibold text-rose-600/80 uppercase tracking-wider">Agotados</span>
                         </div>
                     </div>
-                    <div className="px-3.5 py-1.5 bg-white/80  rounded-lg flex items-center gap-2.5">
+                    <div className="px-3.5 py-1.5 bg-white/80 rounded-lg flex items-center gap-2.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-xs font-bold text-amber-700 font-mono">{stats.low}</span>
@@ -600,69 +728,11 @@ export default function InventoryPage() {
                         />
                     )}
 
-                    {/* BARRA DE CONTROLES (Arquitectura de 2 Niveles sin Amontonamiento Horizontal) */}
+                 {/* BARRA DE CONTROLES (Buscador/Acciones Arriba + Riel de Filtros con Desvanecido Lateral Abajo) */}
                     <div className="flex flex-col gap-3 w-full">
 
-                        {/* NIVEL 1: Pestañas de Visibilidad (Vitrina vs Borrador) y Salud de Stock + Acciones Rápidas */}
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
-                            <div className="flex bg-neutral-100/70 p-1 rounded-xl border border-neutral-200/60 overflow-x-auto no-scrollbar w-full lg:w-auto max-w-full shrink-0 gap-0.5">
-                                {[
-                                    { id: 'all', label: 'Todo', count: stats.total },
-                                    { id: 'active', label: 'En Vitrina', count: stats.active },
-                                    { id: 'draft', label: 'Borradores (Ocultos)', count: stats.draft },
-                                    { id: 'low', label: 'Stock Bajo', count: stats.low },
-                                    { id: 'out', label: 'Agotados', count: stats.out }
-                                ].map(tab => {
-                                    const isActive = filterStatus === tab.id;
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            type="button"
-                                            onClick={() => setFilterStatus(tab.id as any)}
-                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${isActive
-                                                    ? 'bg-white text-neutral-950 shadow-2xs border border-neutral-200/60'
-                                                    : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-white/50'
-                                                }`}
-                                        >
-                                            <span>{tab.label}</span>
-                                            <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${isActive
-                                                    ? 'bg-neutral-900 text-white font-bold'
-                                                    : 'bg-neutral-200/60 text-neutral-600'
-                                                }`}>
-                                                {tab.count}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* ACCIONES RÁPIDAS DE CATÁLOGO */}
-                            <div className="flex items-center gap-2 shrink-0">
-                                {!isRestaurant && (
-                                    <Link
-                                        href="/admin/inventory/skus"
-                                        className="flex-1 sm:flex-initial bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
-                                    >
-                                        <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
-                                        <span>Matriz de SKUs</span>
-                                    </Link>
-                                )}
-
-                                {items.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={openReorderModal}
-                                        className="flex-1 sm:flex-initial bg-neutral-950 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-2xs hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                                    >
-                                        <Zap size={13} className="fill-white" />
-                                        <span>Merchandising</span>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* NIVEL 2: Buscador Omnicanal + Selector Desplegable de Ordenamiento (Precio / Stock / Recientes) */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full">
+                        {/* NIVEL 1: Buscador Omnicanal + Selector de Ordenamiento + Acciones */}
+                        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 w-full">
                             <div className="relative group flex-1 min-w-0">
                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-neutral-900 transition-colors" size={15} />
                                 <input
@@ -682,77 +752,159 @@ export default function InventoryPage() {
                                 )}
                             </div>
 
-                            {/* SELECTOR DESPLEGABLE DE ORDENAMIENTO (Precio menor/mayor, Stock, Recientes) */}
-                            <div ref={sortDropdownRef} className="relative shrink-0 z-20">
-                                {(() => {
-                                    const activeSort = INVENTORY_SORT_OPTIONS.find(o => o.value === sortBy) || INVENTORY_SORT_OPTIONS[0];
-                                    const isCustomSort = sortBy !== 'recent';
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+                                {/* SELECTOR DESPLEGABLE DE ORDENAMIENTO */}
+                                <div ref={sortDropdownRef} className="relative flex-1 sm:flex-initial shrink-0 z-20">
+                                    {(() => {
+                                        const activeSort = INVENTORY_SORT_OPTIONS.find(o => o.value === sortBy) || INVENTORY_SORT_OPTIONS[0];
+                                        const isCustomSort = sortBy !== 'recent';
 
-                                    return (
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsSortOpen(prev => !prev)}
-                                                className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${isCustomSort || isSortOpen
-                                                        ? 'border-neutral-900 text-neutral-950'
-                                                        : 'border-neutral-200/60 hover:border-neutral-400 text-neutral-700'
+                                        return (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsSortOpen(prev => !prev)}
+                                                    className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${
+                                                        isCustomSort || isSortOpen
+                                                            ? 'border-neutral-900 text-neutral-950'
+                                                            : 'border-neutral-200/60 hover:border-neutral-400 text-neutral-700'
                                                     }`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <ArrowUpDown size={13} className={isCustomSort ? 'text-neutral-950' : 'text-neutral-400'} />
-                                                    <span className="text-neutral-400 font-normal">Ordenar:</span>
-                                                    <span className="font-semibold text-neutral-900 whitespace-nowrap">
-                                                        {activeSort.label}
-                                                    </span>
-                                                </div>
-                                                <ChevronDown
-                                                    size={14}
-                                                    className={`text-neutral-400 transition-transform duration-200 ${isSortOpen ? 'rotate-180 text-neutral-900' : ''}`}
-                                                />
-                                            </button>
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <ArrowUpDown size={13} className={isCustomSort ? 'text-neutral-950' : 'text-neutral-400'} />
+                                                        <span className="text-neutral-400 font-normal hidden sm:inline">Ordenar:</span>
+                                                        <span className="font-semibold text-neutral-900 whitespace-nowrap">
+                                                            {activeSort.label}
+                                                        </span>
+                                                    </div>
+                                                    <ChevronDown
+                                                        size={14}
+                                                        className={`text-neutral-400 transition-transform duration-200 ${isSortOpen ? 'rotate-180 text-neutral-900' : ''}`}
+                                                    />
+                                                </button>
 
-                                            <AnimatePresence>
-                                                {isSortOpen && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                                                        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                                                        className="absolute right-0 mt-1.5 w-full sm:w-56 bg-white border border-neutral-200/80 rounded-xl p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] z-30"
-                                                    >
-                                                        <div className="px-2.5 py-1.5 border-b border-neutral-100 mb-1">
-                                                            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-                                                                Criterio de Orden
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex flex-col gap-0.5">
-                                                            {INVENTORY_SORT_OPTIONS.map(option => {
-                                                                const isSelected = sortBy === option.value;
-                                                                return (
-                                                                    <button
-                                                                        key={option.value}
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setSortBy(option.value);
-                                                                            setIsSortOpen(false);
-                                                                        }}
-                                                                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
-                                                                                ? 'bg-neutral-950 text-white font-semibold'
-                                                                                : 'text-neutral-700 hover:bg-neutral-100/80 font-medium'
+                                                <AnimatePresence>
+                                                    {isSortOpen && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                                                            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                                                            className="absolute right-0 mt-1.5 w-full sm:w-56 bg-white border border-neutral-200/80 rounded-xl p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] z-30"
+                                                        >
+                                                            <div className="px-2.5 py-1.5 border-b border-neutral-100 mb-1">
+                                                                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+                                                                    Criterio de Orden
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                {INVENTORY_SORT_OPTIONS.map(option => {
+                                                                    const isSelected = sortBy === option.value;
+                                                                    return (
+                                                                        <button
+                                                                            key={option.value}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setSortBy(option.value);
+                                                                                setIsSortOpen(false);
+                                                                            }}
+                                                                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                                                                isSelected
+                                                                                    ? 'bg-neutral-950 text-white font-semibold'
+                                                                                    : 'text-neutral-700 hover:bg-neutral-100/80 font-medium'
                                                                             }`}
-                                                                    >
-                                                                        <span>{option.label}</span>
-                                                                        {isSelected && <Check size={13} strokeWidth={2.5} />}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </>
+                                                                        >
+                                                                            <span>{option.label}</span>
+                                                                            {isSelected && <Check size={13} strokeWidth={2.5} />}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+
+                                {!isRestaurant && (
+                                    <Link
+                                        href="/admin/inventory/skus"
+                                        className="bg-white border border-neutral-200/60 hover:border-neutral-900 text-neutral-800 hover:text-neutral-950 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs transition-all min-h-[38px] flex items-center justify-center gap-2 whitespace-nowrap group active:scale-[0.98]"
+                                    >
+                                        <Barcode size={14} className="text-neutral-500 group-hover:text-neutral-950 transition-colors" />
+                                        <span>Matriz de SKUs</span>
+                                    </Link>
+                                )}
+
+                                {/* En Desktop vive aquí; en Mobile ya está en la esquina superior del Header */}
+                                {items.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={openReorderModal}
+                                        className="hidden md:flex bg-neutral-950 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-2xs hover:bg-black active:scale-[0.98] transition-all min-h-[38px] items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                                    >
+                                        <GripVertical size={13} className="text-neutral-300" />
+                                        <span>Ordenar Vitrina</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* NIVEL 2: Riel de 7 Filtros con Desvanecido Lateral Inteligente (Mobile y Desktop) */}
+                        <div className="relative w-full bg-neutral-100/70 p-1 rounded-xl border border-neutral-200/60 overflow-hidden">
+                            <div
+                                ref={filterRailRef}
+                                onScroll={checkFilterRailScroll}
+                                style={filterRailMaskStyle}
+                                className="flex overflow-x-auto no-scrollbar w-full gap-1 items-center"
+                            >
+                                {[
+                                    { id: 'all', label: 'Todo', count: stats.total, icon: null },
+                                    { id: 'active', label: 'En Vitrina', count: stats.active, icon: Eye },
+                                    { id: 'draft', label: 'Borradores', count: stats.draft, icon: EyeOff },
+                                    { id: 'featured', label: 'Lo Más Vendido', count: stats.featured, icon: Star },
+                                    { id: 'discounted', label: 'Con Descuento', count: stats.discounted, icon: Tag },
+                                    { id: 'low', label: 'Stock Bajo', count: stats.low, icon: null },
+                                    { id: 'out', label: 'Agotados', count: stats.out, icon: null }
+                                ].map(tab => {
+                                    const isActive = filterStatus === tab.id;
+                                    const TabIcon = tab.icon;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setFilterStatus(tab.id as InventoryFilterStatus)}
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${
+                                                isActive
+                                                    ? 'bg-white text-neutral-950 shadow-2xs border border-neutral-200/60'
+                                                    : 'text-neutral-500 hover:text-neutral-900 border border-transparent hover:bg-white/50'
+                                            }`}
+                                        >
+                                            {TabIcon && (
+                                                <TabIcon
+                                                    size={11}
+                                                    className={
+                                                        tab.id === 'featured' && isActive
+                                                            ? 'text-amber-500 fill-amber-500'
+                                                            : tab.id === 'discounted' && isActive
+                                                              ? 'text-emerald-600'
+                                                              : 'opacity-70'
+                                                    }
+                                                />
+                                            )}
+                                            <span>{tab.label}</span>
+                                            <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${
+                                                isActive
+                                                    ? 'bg-neutral-900 text-white font-bold'
+                                                    : 'bg-neutral-200/60 text-neutral-600'
+                                            }`}>
+                                                {tab.count}
+                                            </span>
+                                        </button>
                                     );
-                                })()}
+                                })}
                             </div>
                         </div>
                     </div>
@@ -782,14 +934,18 @@ export default function InventoryPage() {
                                 </div>
 
                                 <div
+                        
                                     ref={tableScrollRef}
                                     onScroll={checkScroll}
-                                    className="overflow-x-auto w-full max-w-full no-scrollbar relative z-0"
+                                    data-first-col-hidden="false"
+                                    className="group/table overflow-x-auto w-full max-w-full no-scrollbar relative z-0"
                                 >
                                     <table className="w-full text-left border-collapse min-w-[700px]">
                                         <thead className="bg-neutral-50/50 border-b border-neutral-200/50 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
                                             <tr>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5">{isRestaurant ? 'Plato / Menú' : 'Producto'}</th>
+                                                {/* Columna Ancla 0px para la Miniatura Flotante */}
+                                                <th className="sticky left-0 z-20 w-0 p-0 border-0" aria-hidden="true" />
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 hidden md:table-cell">{isRestaurant ? 'Personalización' : 'Variante'}</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Gestión Rápida</th>
                                                 <th className="px-4 py-3 md:px-6 md:py-3.5 text-center">Exhibición</th>
@@ -819,8 +975,6 @@ export default function InventoryPage() {
                                                 return (
                                                     <tr key={item.rowId} className="group hover:bg-neutral-50/40 transition-colors">
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
-                                                            {/* PORTAL FRONTAL: Enlace directo al editor */}
-
                                                             <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
                                                                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 relative transition-colors group-hover/portal:border-neutral-300">
                                                                     {item.image ? (
@@ -841,10 +995,22 @@ export default function InventoryPage() {
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                                                                        {/* Precio Unitario Tabular para Verificación de Ordenamiento */}
-                                                                        <span className="font-mono text-[11px] font-bold text-neutral-900 tabular-nums leading-none">
-                                                                            {formatUSD(item.listPrice)}
-                                                                        </span>
+                                                                        <div className="inline-flex items-baseline gap-1.5">
+                                                                            <span className="font-mono text-[11px] font-bold text-neutral-900 tabular-nums leading-none">
+                                                                                {formatUSD(item.listPrice)}
+                                                                            </span>
+                                                                            {item.compareAtPrice && item.compareAtPrice > item.listPrice && (
+                                                                                <span className="font-mono text-[9.5px] text-neutral-400 line-through tabular-nums leading-none">
+                                                                                    {formatUSD(item.compareAtPrice)}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {item.hasActiveDiscount && item.discountLabel && (
+                                                                            <span className="inline-flex items-center gap-1 font-mono text-[8.5px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-1.5 py-0.5 rounded leading-none">
+                                                                                <Tag size={8.5} /> {item.discountLabel}
+                                                                            </span>
+                                                                        )}
 
                                                                         {item.category && (
                                                                             <p className="text-[9px] text-neutral-400 uppercase tracking-wider font-semibold hidden md:block">
@@ -852,14 +1018,12 @@ export default function InventoryPage() {
                                                                             </p>
                                                                         )}
 
-                                                                        {/* Badge de Borrador si está oculto */}
                                                                         {item.status === 'draft' && (
                                                                             <span className="inline-flex items-center gap-1 font-mono text-[8.5px] font-bold uppercase tracking-wider bg-neutral-200/80 text-neutral-700 px-1.5 py-0.5 rounded leading-none">
                                                                                 <EyeOff size={9} /> Borrador
                                                                             </span>
                                                                         )}
 
-                                                                        {/* SKU Badge en Desktop */}
                                                                         {item.sku ? (
                                                                             <span className="hidden md:inline-flex items-center font-mono text-[9px] font-bold tabular-nums uppercase tracking-widest bg-neutral-100/90 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.2 rounded leading-none">
                                                                                 {item.sku}
@@ -871,7 +1035,6 @@ export default function InventoryPage() {
                                                                         )}
                                                                     </div>
 
-                                                                    {/* Variantes & SKU en Móvil */}
                                                                     {!isRestaurant ? (
                                                                         <div className="flex flex-wrap items-center gap-1.5 mt-1 md:hidden">
                                                                             {!item.variantId ? (
@@ -923,6 +1086,52 @@ export default function InventoryPage() {
                                                                     )}
                                                                 </div>
                                                             </Link>
+                                                        </td>
+
+                                                        {/* 🚀 CELDA ANCLA STICKY (0px): Renderiza la Miniatura Flotante en cuanto la 1ra columna sale de vista */}
+                                                        <td className="sticky left-0 z-20 w-0 p-0 border-0 align-middle">
+                                                            <div className="relative flex items-center">
+                                                                <Link
+                                                                    href={`/admin/product/edit/${item.productId}`}
+                                                                    prefetch={false}
+                                                                    title={`${item.name}${item.variantId ? ` (${item.color} / ${item.size})` : ''}`}
+                                                                    className="ml-2 flex items-center gap-1.5 p-1 pr-2 rounded-xl bg-white/95 backdrop-blur-md border border-neutral-200/90 shadow-[0_6px_18px_rgba(0,0,0,0.09)] opacity-0 -translate-x-3 scale-90 pointer-events-none group-data-[first-col-hidden=true]/table:opacity-100 group-data-[first-col-hidden=true]/table:translate-x-0 group-data-[first-col-hidden=true]/table:scale-100 group-data-[first-col-hidden=true]/table:pointer-events-auto transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] transform-gpu"
+                                                                >
+                                                                    <div className="w-8 h-8 rounded-lg bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 relative">
+                                                                        {item.image ? (
+                                                                            <Image
+                                                                                src={getOptimizedUrl(item.image)}
+                                                                                alt={item.name}
+                                                                                fill
+                                                                                sizes="32px"
+                                                                                className="object-cover"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center text-neutral-300">
+                                                                                <Package size={12} />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col min-w-0 max-w-[64px]">
+                                                                        <span className="font-bold text-[10px] text-neutral-900 truncate leading-tight">
+                                                                            {item.name}
+                                                                        </span>
+                                                                        <div className="flex items-center gap-1 mt-0.5">
+                                                                            {item.variantId && item.hex && item.hex !== 'transparent' && item.hex !== '#transparent' && (
+                                                                                <span
+                                                                                    className="w-2 h-2 rounded-full border border-neutral-300 shrink-0"
+                                                                                    style={getVariantSwatchStyle(item.hex)}
+                                                                                />
+                                                                            )}
+                                                                            <span className="font-mono text-[8.5px] font-semibold text-neutral-500 truncate leading-none">
+                                                                                {item.variantId && item.size && !['única', 'unica', 'u'].includes(item.size.trim().toLowerCase())
+                                                                                    ? item.size
+                                                                                    : formatUSD(item.listPrice)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </Link>
+                                                            </div>
                                                         </td>
 
                                                         <td className="px-4 py-3 md:px-6 md:py-4 hidden md:table-cell align-middle">
@@ -986,8 +1195,8 @@ export default function InventoryPage() {
                                                                     type="button"
                                                                     onClick={() => setVisibilityModalTarget(item)}
                                                                     className={`flex items-center justify-center gap-1 px-2 py-0.5 w-[84px] rounded text-[8px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${item.status === 'active'
-                                                                            ? 'bg-white border-neutral-200/70 text-neutral-700 hover:border-neutral-400'
-                                                                            : 'bg-neutral-200/70 border-neutral-300/80 text-neutral-600 hover:bg-neutral-300/70'
+                                                                        ? 'bg-white border-neutral-200/70 text-neutral-700 hover:border-neutral-400'
+                                                                        : 'bg-neutral-200/70 border-neutral-300/80 text-neutral-600 hover:bg-neutral-300/70'
                                                                         }`}
                                                                     title="Cambiar visibilidad del producto"
                                                                 >
@@ -1101,8 +1310,8 @@ export default function InventoryPage() {
                                 <div className="p-5 pb-4 border-b border-neutral-100 flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-2.5">
                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${isCurrentlyActive
-                                                ? 'bg-neutral-100 border-neutral-200/80 text-neutral-800'
-                                                : 'bg-emerald-50 border-emerald-200/60 text-emerald-700'
+                                            ? 'bg-neutral-100 border-neutral-200/80 text-neutral-800'
+                                            : 'bg-emerald-50 border-emerald-200/60 text-emerald-700'
                                             }`}>
                                             {isCurrentlyActive ? <EyeOff size={17} /> : <Eye size={17} />}
                                         </div>
@@ -1195,8 +1404,8 @@ export default function InventoryPage() {
                                         disabled={isUpdatingVisibility}
                                         onClick={confirmToggleProductStatus}
                                         className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98] disabled:opacity-50 ${isCurrentlyActive
-                                                ? 'bg-neutral-950 hover:bg-black'
-                                                : 'bg-emerald-600 hover:bg-emerald-700'
+                                            ? 'bg-neutral-950 hover:bg-black'
+                                            : 'bg-emerald-600 hover:bg-emerald-700'
                                             }`}
                                     >
                                         {isUpdatingVisibility ? (
@@ -1242,11 +1451,11 @@ export default function InventoryPage() {
                             {/* Cabecera del Modal */}
                             <div className="p-5 md:p-6 bg-white border-b border-neutral-200/50 flex justify-between items-center shrink-0">
                                 <div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Zap size={14} className="fill-neutral-900 text-neutral-900" />
-                                        <h3 className="font-bold text-sm md:text-base text-neutral-900 tracking-tight">Visual Merchandising</h3>
+                                <div className="flex items-center gap-1.5">
+                                        <GripVertical size={15} className="text-neutral-900" />
+                                        <h3 className="font-bold text-sm md:text-base text-neutral-900 tracking-tight">Ordenar Vitrina</h3>
                                     </div>
-                                    <p className="text-[10px] font-semibold text-neutral-400 mt-1 uppercase tracking-wider font-mono">Arrastre las filas o toque el # para fijar posición</p>
+                                    <p className="text-[10px] font-semibold text-neutral-400 mt-1 uppercase tracking-wider font-mono">Arrastra los artículos o toca el # para elegir en qué orden se ven en tu tienda</p>
                                 </div>
                                 <button
                                     onClick={() => setIsReordering(false)}
@@ -1334,6 +1543,25 @@ export default function InventoryPage() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+          </AnimatePresence>
+
+            {/* 🚀 BOTÓN FLOTANTE DISCRETO: VOLVER ARRIBA (Aparece tras 450px de scroll vertical) */}
+            <AnimatePresence>
+                {showScrollTop && !isReordering && !visibilityModalTarget && (
+                    <motion.button
+                        type="button"
+                        onClick={scrollToTop}
+                        initial={{ opacity: 0, scale: 0.8, y: 12 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 12 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        aria-label="Volver al principio"
+                        title="Volver arriba"
+                        className="fixed bottom-6 right-5 md:bottom-8 md:right-8 z-40 w-10 h-10 rounded-full bg-neutral-950/90 hover:bg-black text-white backdrop-blur-md border border-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center cursor-pointer active:scale-90 transition-colors"
+                    >
+                        <ArrowUp size={16} strokeWidth={2.2} />
+                    </motion.button>
                 )}
             </AnimatePresence>
         </div>
