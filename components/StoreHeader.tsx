@@ -222,20 +222,20 @@ const buildRealStoreAnnouncements = (store: any): { icon: any; text: string }[] 
     const pc = store?.payment_config || {};
     const wc = store?.wholesale_config || {};
 
-    // 1. Logística Nacional Real
+   // 1. Logística Nacional Real (Uno a uno por cada entidad de envío)
     const couriers: string[] = [];
     if (methods.mrw) couriers.push('MRW');
     if (methods.zoom) couriers.push('Zoom');
     if (methods.tealca) couriers.push('Tealca');
 
-    if (couriers.length > 0) {
+    couriers.forEach((courier) => {
         items.push({
             icon: Truck,
             text: sc.national_shipping_is_free
-                ? `Envío Nacional Gratis (${couriers.join(' · ')})`
-                : `Envíos Nacionales vía ${couriers.join(' · ')}`
+                ? `Envío Nacional Gratis vía ${courier}`
+                : `Envíos Nacionales vía ${courier}`
         });
-    }
+    });
 
     // 2. Logística Local Real
     if (methods.delivery && methods.pickup) {
@@ -280,8 +280,22 @@ const buildRealStoreAnnouncements = (store: any): { icon: any; text: string }[] 
     return items;
 };
 
-// 🚀 MICRO-COMPONENTE AISLADO: Ticker Classic Alimentado por Datos Reales
-const ClassicTrustTicker = memo(({ announcements }: { announcements: { icon: any; text: string }[] }) => {
+
+
+// 🚀 MICRO-COMPONENTE AISLADO: Ticker Vertical (Arriba -> Abajo) Alimentado por Datos Reales
+const ClassicTrustTicker = memo(({
+    announcements,
+    centered = true,
+    showIcon = true,
+    iconSize = 13,
+    className = ''
+}: {
+    announcements: { icon: any; text: string }[];
+    centered?: boolean;
+    showIcon?: boolean;
+    iconSize?: number;
+    className?: string;
+}) => {
     const [tickerIndex, setTickerIndex] = useState(0);
     const safeList = announcements.length > 0 ? announcements : [{ icon: ShieldCheck, text: 'Catálogo Oficial' }];
 
@@ -289,7 +303,7 @@ const ClassicTrustTicker = memo(({ announcements }: { announcements: { icon: any
         if (safeList.length <= 1) return;
         const interval = setInterval(() => {
             setTickerIndex((prev) => (prev + 1) % safeList.length);
-        }, 3500);
+        }, 3000);
         return () => clearInterval(interval);
     }, [safeList.length]);
 
@@ -297,18 +311,22 @@ const ClassicTrustTicker = memo(({ announcements }: { announcements: { icon: any
     const ActiveIcon = currentItem.icon;
 
     return (
-        <div className="flex-1 flex justify-start md:justify-center items-center overflow-hidden h-[18px] relative">
+        <div
+            className={`flex-1 min-w-0 flex items-center overflow-hidden h-[18px] relative ${
+                centered ? 'justify-start md:justify-center' : 'justify-start'
+            } ${className}`}
+        >
             <AnimatePresence mode="wait">
                 <motion.div
                     key={tickerIndex % safeList.length}
-                    initial={{ y: -15, opacity: 0 }}
+                    initial={{ y: -16, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 15, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
-                    className="flex items-center gap-1.5 whitespace-nowrap absolute"
+                    exit={{ y: 16, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex items-center gap-1.5 min-w-0 max-w-full"
                 >
-                    <ActiveIcon size={13} strokeWidth={2.5} />
-                    <span>{currentItem.text}</span>
+                    {showIcon && <ActiveIcon size={iconSize} strokeWidth={2.25} className="shrink-0" />}
+                    <span className="truncate">{currentItem.text}</span>
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -741,81 +759,269 @@ const MobileMenu = () => {
         );
     }
 
-    return (
-        <AnimatePresence>
-            {isMobileMenuOpen && (
-                <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="md:hidden border-b border-[var(--store-border)] bg-[var(--store-bg)]/98 backdrop-blur-xl overflow-hidden shadow-xl"
-                >
-                    <div className="flex flex-col px-5 py-4 max-h-[60vh] overflow-y-auto overscroll-contain no-scrollbar">
-                        {props.orderHistory && props.orderHistory.length > 0 && (
-                            <button
-                                onClick={() => { setIsMobileMenuOpen(false); props.setIsHistoryModalOpen(true); }}
-                                className="flex items-center justify-between p-3 rounded-lg bg-[var(--store-surface)] border border-[var(--store-border)] text-[var(--store-text-main)] mb-3 active:scale-[0.99] transition-all"
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] animate-pulse" />
-                                    <span className="font-mono text-xs font-bold uppercase tracking-wider">Mis Pedidos</span>
+    if (props.layoutStyle === 'pill_nav') {
+        return (
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <div className="fixed inset-0 z-[100] md:hidden flex justify-end">
+                        {/* Backdrop suave */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="fixed inset-0 bg-black/30 backdrop-blur-[3px]"
+                        />
+
+                        {/* Drawer Lateral Beauty (Soft & Tactile) */}
+                        <motion.aside
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                            className="relative z-10 w-[85vw] max-w-[350px] h-[100dvh] bg-[var(--store-bg)]/95 backdrop-blur-2xl border-l border-[var(--store-border)]/40 rounded-l-[28px] flex flex-col justify-between shadow-2xl overflow-hidden"
+                        >
+                            {/* Cabecera orgánica con botón circular */}
+                            <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-[var(--store-border)]/30 shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--store-surface-text)]">
+                                        Colecciones
+                                    </span>
                                 </div>
-                                <span className="font-mono text-[10px] font-bold text-[var(--store-surface-text)] uppercase tracking-widest">
-                                    {props.orderHistory.length} Registrados →
-                                </span>
-                            </button>
-                        )}
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/50 flex items-center justify-center text-[var(--store-text-main)] hover:opacity-75 active:scale-90 transition-all"
+                                >
+                                    <X size={15} strokeWidth={1.5} />
+                                </button>
+                            </div>
 
-                        <div className="flex items-center justify-between pb-2 mb-1 border-b border-[var(--store-border)]/40">
-                            <span className="text-[9px] font-mono font-bold text-[var(--store-surface-text)] uppercase tracking-[0.2em]">
-                                CATEGORÍAS DE LA TIENDA
-                            </span>
-                            <span className="text-[9px] font-mono text-[var(--store-surface-text)] opacity-70">
-                                [{props.categories.length}]
-                            </span>
-                        </div>
+                            {/* Lista de Categorías estilo Pill / Boutique */}
+                            <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar px-4 py-4">
+                                <div className="flex flex-col gap-1.5">
+                                    {props.categories.map((cat) => {
+                                        const isActive = props.selectedCategory === cat;
+                                        return (
+                                            <button
+                                                key={cat}
+                                                onClick={() => {
+                                                    props.setSelectedCategory(cat);
+                                                    setIsMobileMenuOpen(false);
+                                                }}
+                                                className={`w-full px-4 py-3 rounded-full flex items-center justify-between text-left transition-all duration-200 active:scale-[0.98] ${
+                                                    isActive
+                                                        ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] font-semibold shadow-xs'
+                                                        : 'text-[var(--store-text-main)] hover:bg-[var(--store-surface)] font-medium'
+                                                }`}
+                                            >
+                                                <span className="text-sm tracking-wide truncate pr-3">
+                                                    {cat}
+                                                </span>
 
-                        <div className="flex flex-col divide-y divide-[var(--store-border)]/20">
-                            {props.categories.map((cat, idx) => {
-                                const isActive = props.selectedCategory === cat;
-                                return (
+                                                <ChevronRight
+                                                    size={15}
+                                                    strokeWidth={1.75}
+                                                    className={`shrink-0 transition-transform duration-200 ${
+                                                        isActive
+                                                            ? 'text-[var(--store-primary-text)] translate-x-0.5'
+                                                            : 'text-[var(--store-surface-text)]/50'
+                                                    }`}
+                                                />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Pie de Utilidades en Cápsulas Suaves */}
+                            <div className="p-5 border-t border-[var(--store-border)]/30 bg-[var(--store-surface)]/40 flex flex-col gap-3 shrink-0">
+                                {props.orderHistory && props.orderHistory.length > 0 && (
                                     <button
-                                        key={cat}
                                         onClick={() => {
-                                            props.setSelectedCategory(cat);
                                             setIsMobileMenuOpen(false);
+                                            props.setIsHistoryModalOpen(true);
                                         }}
-                                        className={`flex items-center justify-between py-3 px-2 rounded-md transition-colors active:scale-[0.99] group text-left ${isActive
-                                            ? 'bg-[var(--store-text-main)]/[0.04] text-[var(--store-text-main)]'
-                                            : 'text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] hover:bg-[var(--store-text-main)]/[0.02]'
-                                            }`}
+                                        className="w-full px-4 py-2.5 rounded-full bg-[var(--store-bg)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/60 flex items-center justify-between text-left active:scale-[0.98] transition-all shadow-2xs"
                                     >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <span className="font-mono text-[9px] text-[var(--store-surface-text)] opacity-40 shrink-0">
-                                                {(idx + 1).toString().padStart(2, '0')} //
-                                            </span>
-                                            <span className={`text-sm truncate tracking-tight ${isActive ? 'font-bold text-[var(--store-text-main)]' : 'font-medium'}`}>
-                                                {cat}
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)]" />
+                                            <span className="text-xs font-semibold text-[var(--store-text-main)]">
+                                                Mis Pedidos
                                             </span>
                                         </div>
-
-                                        {isActive ? (
-                                            <span className="flex items-center gap-1.5 font-mono text-[8.5px] font-bold uppercase tracking-widest text-[var(--store-text-main)] shrink-0">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)]" />
-                                                ACTIVO
-                                            </span>
-                                        ) : (
-                                            <span className="font-mono text-[10px] text-[var(--store-surface-text)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                                →
-                                            </span>
-                                        )}
+                                        <span className="text-[11px] font-medium text-[var(--store-surface-text)] flex items-center gap-1">
+                                            {props.orderHistory.length} <ChevronRight size={13} />
+                                        </span>
                                     </button>
-                                );
-                            })}
-                        </div>
+                                )}
+
+                                <div className="flex items-center justify-between px-1 pt-0.5">
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            props.onProfileClick();
+                                        }}
+                                        className="flex items-center gap-2 text-xs font-semibold text-[var(--store-text-main)] hover:opacity-75 active:scale-95 transition-all"
+                                    >
+                                        <UserCircle size={17} strokeWidth={1.5} />
+                                        <span>Mi Cuenta</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            props.setIsRateModalOpen(true);
+                                        }}
+                                        className="px-3 py-1 rounded-full bg-[var(--store-bg)] border border-[var(--store-border)]/50 text-[10px] font-semibold text-[var(--store-surface-text)] active:scale-95 transition-transform"
+                                    >
+                                        {props.isEur ? 'EUR' : 'BCV'} • Bs.{' '}
+                                        {Intl.NumberFormat('es-VE', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        }).format(props.activeRate)}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.aside>
                     </div>
-                </motion.div>
+                )}
+            </AnimatePresence>
+        );
+    }
+
+ return (
+        <AnimatePresence>
+            {isMobileMenuOpen && (
+                <div className="fixed inset-0 z-[100] md:hidden flex justify-end">
+                    {/* Backdrop sutil con desenfoque */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
+                    />
+
+                    {/* Panel Lateral Suizo / Editorial */}
+                    <motion.aside
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                        className="relative z-10 w-[84vw] max-w-[360px] h-[100dvh] bg-[var(--store-bg)] border-l border-[var(--store-border)]/40 flex flex-col justify-between shadow-2xl overflow-hidden"
+                    >
+                        {/* Cabecera Reticular Suiza */}
+                        <div className="px-6 py-5 flex items-center justify-between border-b border-[var(--store-border)]/30 shrink-0">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--store-surface-text)]">
+                                Índice
+                            </span>
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors active:scale-95"
+                            >
+                                Cerrar <X size={15} strokeWidth={1.25} />
+                            </button>
+                        </div>
+
+                        {/* Directorio Editorial de Categorías */}
+                        <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar px-6 py-2">
+                            <div className="flex flex-col divide-y divide-[var(--store-border)]/20">
+                                {props.categories.map((cat, idx) => {
+                                    const isActive = props.selectedCategory === cat;
+                                    return (
+                                        <button
+                                            key={cat}
+                                            onClick={() => {
+                                                props.setSelectedCategory(cat);
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            className="group py-4 flex items-baseline justify-between text-left transition-opacity active:opacity-60"
+                                        >
+                                            <div className="flex items-baseline gap-4 min-w-0 pr-3">
+                                                <span
+                                                    className={`font-mono text-[10px] tabular-nums shrink-0 transition-colors ${
+                                                        isActive
+                                                            ? 'text-[var(--store-primary)] font-bold'
+                                                            : 'text-[var(--store-surface-text)]/50 group-hover:text-[var(--store-text-main)]'
+                                                    }`}
+                                                >
+                                                    {(idx + 1).toString().padStart(2, '0')}
+                                                </span>
+                                                <span
+                                                    className={`text-lg tracking-tight truncate transition-colors ${
+                                                        isActive
+                                                            ? 'font-bold text-[var(--store-text-main)]'
+                                                            : 'font-normal text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
+                                                    }`}
+                                                >
+                                                    {cat}
+                                                </span>
+                                            </div>
+
+                                            {/* Indicador minimalista sin ruido textual */}
+                                            {isActive ? (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0 self-center" />
+                                            ) : (
+                                                <ArrowRight
+                                                    size={14}
+                                                    strokeWidth={1.25}
+                                                    className="text-[var(--store-surface-text)] opacity-0 -translate-x-2 group-hover:opacity-60 group-hover:translate-x-0 transition-all duration-200 shrink-0 self-center"
+                                                />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Pie de Utilidades (Mis Pedidos y Cuenta) */}
+                        <div className="px-6 py-5 border-t border-[var(--store-border)]/30 bg-[var(--store-surface)]/30 flex flex-col gap-3.5 shrink-0">
+                            {props.orderHistory && props.orderHistory.length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        setIsMobileMenuOpen(false);
+                                        props.setIsHistoryModalOpen(true);
+                                    }}
+                                    className="w-full flex items-center justify-between pb-3.5 border-b border-[var(--store-border)]/20 text-left group active:opacity-70 transition-opacity"
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)]" />
+                                        <span className="text-xs font-medium tracking-tight text-[var(--store-text-main)]">
+                                            Mis Pedidos
+                                        </span>
+                                    </div>
+                                    <span className="font-mono text-[10px] tabular-nums text-[var(--store-surface-text)] flex items-center gap-1">
+                                        {props.orderHistory.length} <ArrowRight size={11} strokeWidth={1.5} />
+                                    </span>
+                                </button>
+                            )}
+
+                            <div className="flex items-center justify-between text-[11px] text-[var(--store-surface-text)]">
+                                <button
+                                    onClick={() => {
+                                        setIsMobileMenuOpen(false);
+                                        props.onProfileClick();
+                                    }}
+                                    className="font-medium text-[var(--store-text-main)] hover:opacity-70 transition-opacity flex items-center gap-2"
+                                >
+                                    <UserCircle size={15} strokeWidth={1.5} />
+                                    <span>Mi Cuenta</span>
+                                </button>
+
+                                <span className="font-mono text-[10px] tabular-nums opacity-75">
+                                    {props.isEur ? 'EUR' : 'BCV'} Bs.{' '}
+                                    {Intl.NumberFormat('es-VE', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    }).format(props.activeRate)}
+                                </span>
+                            </div>
+                        </div>
+                    </motion.aside>
+                </div>
             )}
         </AnimatePresence>
     );
@@ -969,20 +1175,14 @@ function StoreHeader(props: StoreHeaderProps) {
                 {/* 1. ENCABEZADO STICKY (Datos Reales de Logística y Pagos) */}
                 <div className={`sticky top-0 z-40 bg-[var(--store-bg)] border-b-[length:var(--border-width-ui)] border-[var(--store-border)] transition-transform duration-300 will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
 
-                    <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]/40 px-4 md:px-8 py-2 flex justify-between items-center text-[10px] font-mono">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="hidden sm:flex items-center gap-2.5 font-bold text-[var(--store-text-main)] truncate">
-                                {realAnnouncements.slice(0, 2).map((ann, idx) => (
-                                    <React.Fragment key={idx}>
-                                        {idx > 0 && <span className="text-[var(--store-border)]">|</span>}
-                                        <span className="truncate">{ann.text}</span>
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                            <div className="sm:hidden flex items-center gap-1.5 font-bold text-[var(--store-text-main)] truncate">
-                                <span className="w-1.5 h-1.5 bg-[var(--store-primary)] shrink-0"></span>
-                                <span className="truncate">{realAnnouncements[0]?.text}</span>
-                            </div>
+                   <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]/40 px-4 md:px-8 py-2 flex justify-between items-center gap-3 text-[10px] font-mono">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 font-bold text-[var(--store-text-main)]">
+                            <span className="w-1.5 h-1.5 bg-[var(--store-primary)] shrink-0" />
+                            <ClassicTrustTicker
+                                announcements={realAnnouncements}
+                                centered={false}
+                                showIcon={false}
+                            />
                         </div>
                         <RateBlock />
                     </div>
@@ -996,8 +1196,9 @@ function StoreHeader(props: StoreHeaderProps) {
                         <div className="block md:hidden w-full">{renderSearchBlock(true)}</div>
                         <div className="pt-1 hidden md:block"><CategoriesBlock /></div>
                     </div>
-                    <MobileMenu />
+                   
                 </div>
+                 <MobileMenu />
 
                 {/* 2. HERO BANNER INDUSTRIAL */}
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
@@ -1047,9 +1248,14 @@ function StoreHeader(props: StoreHeaderProps) {
             <>
                 <div className={`fixed top-0 left-0 right-0 z-40 bg-[var(--store-bg)]/80 backdrop-blur-md border-b-[length:var(--border-width-ui)] border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
 
-                    {/* Top Bar Elegante Alimentada por Datos Reales */}
-                    <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] px-4 md:px-8 py-1.5 flex justify-center md:justify-between items-center text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
-                        <span className="hidden md:block opacity-90 truncate">{realAnnouncements[0]?.text}</span>
+                  {/* Top Bar Elegante con Ticker Vertical */}
+                    <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] px-4 md:px-8 py-1.5 flex justify-between items-center gap-4 text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
+                        <ClassicTrustTicker
+                            announcements={realAnnouncements}
+                            centered={false}
+                            showIcon={false}
+                            className="opacity-90"
+                        />
                         <div className="flex items-center gap-2 opacity-90 shrink-0">
                             <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                         </div>
@@ -1285,16 +1491,19 @@ function StoreHeader(props: StoreHeaderProps) {
                     storeType={props.store.store_type}
                 />
 
-                <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between border-b border-[var(--store-border)]/40 text-xs font-bold">
-                    <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between gap-3 border-b border-[var(--store-border)]/40 text-xs font-bold">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         {props.store?.store_type === 'restaurant' ? (
                             <StoreScheduleBadge storeHours={props.store.store_hours} storeType={props.store.store_type} />
                         ) : (
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--store-text-main)] truncate">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1 text-[10px] font-bold text-[var(--store-text-main)]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
-                                <span className="uppercase tracking-wider font-mono text-[9px] text-[var(--store-surface-text)] truncate">
-                                    {realAnnouncements[0]?.text}
-                                </span>
+                                <ClassicTrustTicker
+                                    announcements={realAnnouncements}
+                                    centered={false}
+                                    showIcon={false}
+                                    className="uppercase tracking-wider font-mono text-[9px] text-[var(--store-surface-text)]"
+                                />
                             </div>
                         )}
                     </div>
@@ -1341,11 +1550,14 @@ function StoreHeader(props: StoreHeaderProps) {
                             </div>
                         </div>
 
-                        <div className="pt-1">
+                       <div className="pt-1">
                             <CategoriesBlock />
                         </div>
                     </div>
                 </div>
+
+                {/* 👇 AGREGA ESTA LÍNEA AQUÍ */}
+                <MobileMenu />
 
                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
                     <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
@@ -1381,19 +1593,16 @@ function StoreHeader(props: StoreHeaderProps) {
 
         return (
             <>
-                {/* 1. TOP BAR UTILITARIA (Datos Reales del Comercio) */}
-                <div className="hidden md:flex items-center justify-between px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
-                    <div className="flex items-center gap-6 opacity-90">
-                        {realAnnouncements.slice(0, 2).map((ann, idx) => {
-                            const IconComp = ann.icon;
-                            return (
-                                <span key={idx} className="flex items-center gap-1.5">
-                                    <IconComp size={12} /> {ann.text}
-                                </span>
-                            );
-                        })}
-                    </div>
-                    <div className="opacity-90">
+               {/* 1. TOP BAR UTILITARIA CON TICKER VERTICAL */}
+                <div className="hidden md:flex items-center justify-between gap-6 px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
+                    <ClassicTrustTicker
+                        announcements={realAnnouncements}
+                        centered={false}
+                        showIcon={true}
+                        iconSize={12}
+                        className="opacity-90"
+                    />
+                    <div className="opacity-90 shrink-0">
                         <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                     </div>
                 </div>
@@ -1637,22 +1846,30 @@ function StoreHeader(props: StoreHeaderProps) {
                 storeType={props.store.store_type}
             />
 
-            {/* 1. TOP BAR PRIMARIA (Ticker Dinámico Alimentado por Datos Reales) */}
-            <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 md:px-8 py-2 flex items-center justify-between text-[9px] md:text-[10px] font-bold uppercase tracking-widest z-50 relative">
-                <div className="hidden md:block flex-1"></div>
+           {/* 1. TOP BAR PRIMARIA (Ticker Dinámico Alimentado por Datos Reales) */}
+            <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-3.5 md:px-8 py-2 flex items-center justify-between gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider md:tracking-widest z-50 relative">
+                <div className="hidden md:block md:flex-1"></div>
 
-                <ClassicTrustTicker announcements={realAnnouncements} />
+                <ClassicTrustTicker
+                    announcements={realAnnouncements}
+                    className="md:flex-[2]"
+                />
 
-                <div className="flex-1 flex justify-end shrink-0 pl-3">
-                    <button onClick={() => props.setIsRateModalOpen(true)} className="flex items-center gap-2 hover:opacity-70 transition-opacity active:scale-95 group">
-                        <span className="hidden sm:block opacity-80">{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}</span>
-                        <span className="sm:hidden opacity-80">{props.isEur ? 'EUR' : 'BCV'}</span>
-                        <div className="h-3 w-px bg-[var(--store-primary-text)]/40"></div>
+                <div className="shrink-0 md:flex-1 flex justify-end pl-2">
+                    <button
+                        onClick={() => props.setIsRateModalOpen(true)}
+                        className="flex items-center gap-1.5 md:gap-2 hover:opacity-70 transition-opacity active:scale-95 group tracking-normal"
+                    >
+                        <span className="hidden sm:block opacity-80 tracking-wider">{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}</span>
+                        <span className="sm:hidden opacity-80 tracking-wider">{props.isEur ? 'EUR' : 'BCV'}</span>
+                        <div className="h-2.5 md:h-3 w-px bg-[var(--store-primary-text)]/40"></div>
                         <div className="flex items-baseline pt-px border-b border-[var(--store-primary-text)]/30 group-hover:border-[var(--store-primary-text)]/70 transition-colors pb-px leading-none">
-                            <span className="mr-0.5 select-none font-sans text-[10px] opacity-80">
+                            <span className="mr-0.5 select-none font-sans text-[9px] md:text-[10px] opacity-80">
                                 Bs.
                             </span>
-                            <span className="tabular-nums text-xs md:text-sm tracking-tight">{Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                            <span className="tabular-nums text-[11px] md:text-xs tracking-tight">
+                                {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}
+                            </span>
                         </div>
                     </button>
                 </div>

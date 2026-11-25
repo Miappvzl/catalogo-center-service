@@ -385,7 +385,7 @@ function ProductCardComponent({
             </div>
           )}
 
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
+          <div className="absolute top-3 left-2 z-10 flex flex-col gap-1.5 pointer-events-none">
             {isOutOfStock ? (
               <span className="bg-[var(--store-badge-soldout-bg)] text-[var(--store-badge-soldout-text)] text-[9px] font-mono uppercase tracking-[0.2em] px-2 py-1">
                 [ AGOTADO ]
@@ -532,7 +532,7 @@ function ProductCardComponent({
                 Agotado
               </span>
             ) : isPromo ? (
-              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[9px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
+              <span className="bg-[var(--store-badge-discount-bg)] text-[var(--store-badge-discount-text)] text-[12px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
                 -{promoPercent}%
               </span>
             ) : null}
