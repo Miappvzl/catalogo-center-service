@@ -183,14 +183,10 @@ function ProductCardComponent({
               <div className="flex items-center justify-between gap-1.5 mb-1.5">
                 {product.category ? (
                   <span className="text-[8px] font-mono font-bold uppercase tracking-[0.18em] text-[var(--store-surface-text)] truncate">
-                    // {product.category}
+                     {product.category}
                   </span>
                 ) : <span />}
-                {product.sku && (
-                  <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-[var(--store-text-main)] bg-[var(--store-bg)] px-1.5 py-0.5 border border-[var(--store-border)] shrink-0">
-                    {product.sku}
-                  </span>
-                )}
+               
               </div>
             )}
 
@@ -335,7 +331,7 @@ function ProductCardComponent({
                   {formatUSD(activeCompareAt)}
                 </span>
               )}
-              <span className={`text-sm font-medium tracking-widest ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+              <span className={`text-[1.05rem] font-medium tracking-widest ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                 {formatUSD(listPrice)}
               </span>
             </div>
@@ -343,13 +339,14 @@ function ProductCardComponent({
               {formatVES(pricing.priceInBs)}
             </span>
 
-            {penalty > 0 && !isOutOfStock && (
-              <div className="mt-1.5 flex items-center justify-center text-[8px] font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)] opacity-90">
-                <span className="mr-1.5 w-1 h-1 rounded-full bg-[var(--store-incentive)]" /> 
-                DIVISAS: {formatUSD(cashPrice)}
-              </div>
-            )}
-
+          {penalty > 0 && !isOutOfStock && (
+  <div className="mt-1.5 w-fit mx-auto flex items-center justify-center gap-1.5 pl-1.5 pr-3 py-0.5 rounded-l-sm bg-[linear-gradient(to_right,color-mix(in_srgb,var(--store-incentive)_20%,transparent),transparent)] text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--store-incentive)] opacity-90 leading-none">
+    <Flame size={10} className="fill-current shrink-0" />
+    <span>
+      DIVISAS: <span className="text-[11px]">{formatUSD(cashPrice)}</span>
+    </span>
+  </div>
+)}
             {hasWholesale && (
               <div className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-[var(--store-text-main)]/80">
                 MAYOR ({wholesaleMinQty}+): {formatUSD(wholesaleUnitUsd)}
@@ -445,14 +442,10 @@ function ProductCardComponent({
                     {product.category}
                   </span>
                 ) : <span />}
-                {product.sku && (
-                  <span className="text-[8px] font-mono text-[var(--store-surface-text)] uppercase tracking-widest shrink-0">
-                    {product.sku}
-                  </span>
-                )}
+              
               </div>
             )}
-            <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight uppercase">
+            <h3 className="text-xs md:text-sm font-medium text-[var(--store-text-main)] leading-snug line-clamp-2 min-h-[2.5em] tracking-tight ">
               {product.name}
             </h3>
             {availableSizesPreview.length > 0 && (
@@ -478,12 +471,14 @@ function ProductCardComponent({
               {formatVES(pricing.priceInBs)}
             </span>
 
-            {penalty > 0 && !isOutOfStock && (
-              <div className="mt-0.5 inline-flex items-center gap-1.5 text-[9px] font-mono font-medium text-[var(--store-incentive)] leading-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-incentive)] shrink-0" />
-                <span>EN DIVISAS: {formatUSD(cashPrice)}</span>
-              </div>
-            )}
+           {penalty > 0 && !isOutOfStock && (
+  <div className="mt-0.5 inline-flex items-center gap-1.5 pl-1.5 pr-3 py-0.5 rounded-l-sm bg-[linear-gradient(to_right,color-mix(in_srgb,var(--store-incentive)_20%,transparent),transparent)] text-[9px] font-mono font-medium text-[var(--store-incentive)] leading-none">
+    <span className="w-0.5 h-2 rounded-full bg-[var(--store-incentive)] shrink-0" />
+    <span>
+      EN DIVISAS: <span className="text-[11px] font-semibold">{formatUSD(cashPrice)}</span>
+    </span>
+  </div>
+)}
 
             {hasWholesale && (
               <div className="mt-0.5 inline-flex items-center gap-1 text-[8.5px] font-mono font-bold text-[var(--store-text-main)] leading-none">
@@ -577,32 +572,34 @@ function ProductCardComponent({
 
           <div className="pt-2.5 border-t border-[var(--store-border)]/40 flex flex-col mt-auto gap-1.5">
             {isPromo && (
-              <div className="flex items-center gap-1 text-[10px] font-medium text-[var(--store-surface-text)]">
+              <div className="flex items-center gap-1 text-[12px] font-medium text-[var(--store-surface-text)]">
                 <span className="line-through">{formatUSD(activeCompareAt)}</span>
               </div>
             )}
 
             <div className="flex flex-col gap-0.5">
-              <span className={`text-sm md:text-base font-black font-price leading-none ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
+              <span className={`text-[1.1rem] md:text-[1.2rem] font-black font-price leading-none ${isPromo ? 'text-[var(--store-badge-discount-bg)]' : 'text-[var(--store-text-main)]'}`}>
                 {formatUSD(listPrice)}
               </span>
-              <span className="text-[10px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
+              <span className="text-[12px] font-mono font-medium text-[var(--store-surface-text)]/80 tabular-nums">
                 {formatVES(pricing.priceInBs)}
               </span>
             </div>
 
-            {penalty > 0 && !isOutOfStock && (
-              <div
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[9px] font-medium w-fit mt-0.5"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--store-incentive) 12%, var(--store-bg))',
-                  color: 'var(--store-incentive)'
-                }}
-              >
-                <Flame size={10} className="fill-current shrink-0" />
-                <span>Divisas: <strong>{formatUSD(cashPrice)}</strong></span>
-              </div>
-            )}
+        {penalty > 0 && !isOutOfStock && (
+  <div
+    className="inline-flex items-center gap-.9 pl-1.5 pr-3 py-1 rounded-l-full text-[9px] font-medium w-fit mt-0.5 leading-none"
+    style={{
+      background: 'linear-gradient(to right, color-mix(in srgb, var(--store-incentive) 20%, transparent), transparent)',
+      color: 'var(--store-incentive)'
+    }}
+  >
+    <Flame size={10} className="fill-current shrink-0" />
+    <span>
+      Divisas: <strong className="text-[11.5px] font-semibold">{formatUSD(cashPrice)}</strong>
+    </span>
+  </div>
+)}
 
             {hasWholesale && (
               <div className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[var(--store-text-main)] mt-0.5">
