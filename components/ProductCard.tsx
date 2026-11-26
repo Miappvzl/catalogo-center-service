@@ -588,7 +588,7 @@ function ProductCardComponent({
 
         {penalty > 0 && !isOutOfStock && (
   <div
-    className="inline-flex items-center gap-.9 pl-1.5 pr-3 py-1 rounded-l-full text-[9px] font-medium w-fit mt-0.5 leading-none"
+    className="inline-flex items-center gap-.9 pl-1.5 pr-3 py-1 rounded-l-full text-[11px] font-medium w-fit mt-0.5 leading-none"
     style={{
       background: 'linear-gradient(to right, color-mix(in srgb, var(--store-incentive) 20%, transparent), transparent)',
       color: 'var(--store-incentive)'

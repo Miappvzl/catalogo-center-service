@@ -291,7 +291,7 @@ export default function CollectionCard({
               alt=""
               fill
               sizes="(max-width: 768px) 300px, 400px"
-              className="object-cover object-center opacity-90 group-hover:scale-105 transition-transform duration-700 ease-out"
+              className="object-cover object-center opacity-100 group-hover:scale-105 transition-transform duration-700 ease-out"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-rose-950/30" />
           </div>
