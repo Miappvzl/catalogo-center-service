@@ -1196,10 +1196,12 @@ export default function StoreInterface({ store: initialStore, products: initialP
         />
       )
 
-      // Inyección In-Feed de Banners de Campaña en el 4to producto
+      // 🚀 CONMUTACIÓN INTELIGENTE: Solo inyectamos el banner en el 4to producto si la tienda TIENE colecciones activas.
+      // Si NO tiene colecciones activas, el banner ya se exhibe en posición protagonista justo debajo del Hero.
+      const hasActiveCollections = Boolean(collections && collections.length > 0)
       const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3
 
-      if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
+      if (hasActiveCollections && index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
         const hasMultiple = displayPromotions.length > 1
 
         return (
@@ -1252,8 +1254,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
       }
       return productCard
     })
-  }, [paginatedProducts, displayPromotions, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme, activeRate, store?.slug, router])
-
+  }, [paginatedProducts, displayPromotions, collections, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme, activeRate, store?.slug, router, getProductPricing, handleOpenProduct])
   // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
@@ -1453,45 +1454,95 @@ export default function StoreInterface({ store: initialStore, products: initialP
             </div>
           )}
 
-        {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
-          {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
-            <section className="mb-14 animate-in fade-in">
-              <div className="flex items-end justify-between mb-5 px-1">
-                <div className="flex flex-col text-left">
-                  <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
-                    }`}>
-                    Colecciones Destacadas
-                  </h2>
+        {/* 🚀 POSICIÓN PROTAGONISTA POST-HERO: COLECCIONES ACTIVAS O BANNERS DE PROMOCIÓN */}
+          {collections && collections.length > 0 ? (
+            !selectedCollectionData && !debouncedSearch && (
+              <section className="mb-14 animate-in fade-in">
+                <div className="flex items-end justify-between mb-5 px-1">
+                  <div className="flex flex-col text-left">
+                    <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
+                      }`}>
+                      Colecciones Destacadas
+                    </h2>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
-                {collections.map((col: any, idx: number) => (
-                  <CollectionCard
-                    key={col.id}
-                    index={idx}
-                    collection={col}
-                    products={products}
-                    themeConfig={activeTheme}
-                    onClick={() => {
-                      setActiveCollectionSlug(col.slug)
-                      setSelectedCategory('Todos')
-                      setCurrentPage(1)
-                      window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
+                <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
+                  {collections.map((col: any, idx: number) => (
+                    <CollectionCard
+                      key={col.id}
+                      index={idx}
+                      collection={col}
+                      products={products}
+                      themeConfig={activeTheme}
+                      onClick={() => {
+                        setActiveCollectionSlug(col.slug)
+                        setSelectedCategory('Todos')
+                        setCurrentPage(1)
+                        window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
 
-                      setTimeout(() => {
-                        const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
-                        if (anchor) {
-                          const yOffset = -130
-                          const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
-                          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-                        }
-                      }, 60)
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
+                        setTimeout(() => {
+                          const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
+                          if (anchor) {
+                            const yOffset = -130
+                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+                          }
+                        }, 60)
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+          ) : (
+            /* 💎 SI LA TIENDA NO TIENE COLECCIONES ACTIVAS: El Banner de Promociones sube justo debajo del Hero */
+            displayPromotions && displayPromotions.length > 0 && !selectedPromoData && !selectedCollectionData && !debouncedSearch && (
+              <section
+                className="mb-10 md:mb-12 w-full overflow-hidden min-w-0 animate-in fade-in duration-500"
+                onMouseEnter={() => { isCarouselPausedRef.current = true }}
+                onMouseLeave={() => { isCarouselPausedRef.current = false }}
+                onTouchStart={() => { isCarouselPausedRef.current = true }}
+                onTouchEnd={() => { isCarouselPausedRef.current = false }}
+              >
+                <div
+                  ref={carouselRef}
+                  className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-3.5 sm:gap-4"
+                  style={{ scrollBehavior: 'smooth' }}
+                >
+                  {displayPromotions.map((promo: any) => {
+                    const hasMultiple = displayPromotions.length > 1
+                    return (
+                      <div
+                        key={`hero-promo-${promo.id}`}
+                        className={`shrink-0 snap-start flex flex-col transition-all ${
+                          hasMultiple
+                            ? 'w-[88%] sm:w-[90%] md:w-[92%] lg:w-[94%]'
+                            : 'w-full'
+                        }`}
+                      >
+                        <PromotionBanner
+                          promo={promo}
+                          themeConfig={activeTheme}
+                          isActive={false}
+                          onToggle={() => {
+                            const isSubdomain = typeof window !== 'undefined' &&
+                              (window.location.host.startsWith(`${store.slug}.`) ||
+                                (window.location.host.includes('.') && !window.location.host.startsWith('www.')))
+
+                            const targetUrl = isSubdomain
+                              ? `/promo/${promo.id}`
+                              : `/${store.slug}/promo/${promo.id}`
+
+                            router.push(targetUrl)
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )
           )}
 
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido - Agnóstico) */}
