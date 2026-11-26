@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode, ArrowUpDown, ChevronDown, Check, Eye, EyeOff, Trash2, Tag, ArrowUp } from 'lucide-react'
+import { ArrowLeft, Search, AlertTriangle, CheckCircle2, XCircle, Package, Save, Loader2, ArrowUpRight, Receipt, Star, GripVertical, X, Zap, ChevronRight, Barcode, ArrowUpDown, ChevronDown, Check, Eye, EyeOff, Trash2, Tag, ArrowUp, Megaphone, Layers } from 'lucide-react'
 import { AnimatePresence, motion, Reorder } from 'framer-motion'
 import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase-client'
@@ -16,7 +16,7 @@ import { deleteStoreDemoProducts } from '@/app/admin/orders/action'
 import { formatUSD } from '@/utils/currency'
 
 type InventorySortOption = 'recent' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc';
-type InventoryFilterStatus = 'all' | 'active' | 'draft' | 'featured' | 'discounted' | 'low' | 'out';
+type InventoryFilterStatus = 'all' | 'active' | 'draft' | 'featured' | 'discounted' | 'campaign' | 'collection' | 'low' | 'out';
 
 const INVENTORY_SORT_OPTIONS: { value: InventorySortOption; label: string; shortLabel: string }[] = [
     { value: 'recent', label: 'Más recientes', shortLabel: 'Recientes' },
@@ -25,6 +25,31 @@ const INVENTORY_SORT_OPTIONS: { value: InventorySortOption; label: string; short
     { value: 'stock_asc', label: 'Stock: menor a mayor', shortLabel: 'Menor stock' },
     { value: 'stock_desc', label: 'Stock: mayor a menor', shortLabel: 'Mayor stock' },
 ];
+
+interface CampaignSummary {
+    id: string;
+    title: string;
+    tagline: string | null;
+    imageUrl: string | null;
+    bgColor: string;
+    textColor: string;
+    isActive: boolean;
+    isExpired: boolean;
+    typeLabel: string;
+    productIds: Set<string>;
+}
+
+interface CollectionSummary {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    imageUrl: string | null;
+    badgeText: string | null;
+    isActive: boolean;
+    isExpired: boolean;
+    productIds: Set<string>;
+}
 
 interface InventoryItem {
     rowId: string;
@@ -211,42 +236,73 @@ export default function InventoryPage() {
             setIsSavingOrder(false)
         }
     }
-   const [filterStatus, setFilterStatus] = useState<InventoryFilterStatus>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('pz_inv_filter_status') as InventoryFilterStatus | null
-            if (saved) return saved
-        }
-        return 'all'
-    })
-    const [sortBy, setSortBy] = useState<InventorySortOption>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('pz_inv_sort_by') as InventorySortOption | null
-            if (saved) return saved
-        }
-        return 'recent'
-    })
+ // 🚀 ESTADOS DETERMINISTAS EN SSR Y CLIENTE (Cero Hydration Mismatch)
+    const [filterStatus, setFilterStatus] = useState<InventoryFilterStatus>('all')
+    const [sortBy, setSortBy] = useState<InventorySortOption>('recent')
+   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('ALL')
+    const [selectedCollectionId, setSelectedCollectionId] = useState<string>('ALL')
+    const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
+    const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+
+    const [campaignsList, setCampaignsList] = useState<CampaignSummary[]>([])
+    const [collectionsList, setCollectionsList] = useState<CollectionSummary[]>([])
+    const [selectorModalType, setSelectorModalType] = useState<'campaign' | 'collection' | null>(null)
+
     const [isSortOpen, setIsSortOpen] = useState(false)
     const sortDropdownRef = useRef<HTMLDivElement>(null)
     const [recentlyEditedProductId, setRecentlyEditedProductId] = useState<string | null>(null)
+    const isFilterStorageHydratedRef = useRef(false)
 
-    // Hidratar búsqueda guardada al montar
+    // 1. Hidratar filtros guardados desde sessionStorage DESPUÉS del montaje inicial
     useEffect(() => {
-        const savedSearch = sessionStorage.getItem('pz_inv_search')
-        if (savedSearch) setSearch(savedSearch)
+        try {
+            const savedFilter = sessionStorage.getItem('pz_inv_filter_status') as InventoryFilterStatus | null
+            const savedSort = sessionStorage.getItem('pz_inv_sort_by') as InventorySortOption | null
+            const savedSearch = sessionStorage.getItem('pz_inv_search')
+            const savedCampaign = sessionStorage.getItem('pz_inv_campaign_id')
+            const savedCollection = sessionStorage.getItem('pz_inv_collection_id')
+            const savedCat = sessionStorage.getItem('pz_inv_category')
+
+            if (savedFilter) setFilterStatus(savedFilter)
+            if (savedSort) setSortBy(savedSort)
+            if (savedSearch) setSearch(savedSearch)
+            if (savedCampaign) setSelectedCampaignId(savedCampaign)
+            if (savedCollection) setSelectedCollectionId(savedCollection)
+            if (savedCat) setSelectedCategory(savedCat)
+        } catch {}
+        isFilterStorageHydratedRef.current = true
     }, [])
 
-    // Sincronizar filtros, orden y búsqueda en sessionStorage para no perderlos al ir a editar un producto
+    // 2. Persistir cambios en sessionStorage solo una vez completada la hidratación
     useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
         sessionStorage.setItem('pz_inv_filter_status', filterStatus)
     }, [filterStatus])
 
     useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
         sessionStorage.setItem('pz_inv_sort_by', sortBy)
     }, [sortBy])
 
     useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
         sessionStorage.setItem('pz_inv_search', search)
     }, [search])
+
+    useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
+        sessionStorage.setItem('pz_inv_campaign_id', selectedCampaignId)
+    }, [selectedCampaignId])
+
+    useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
+        sessionStorage.setItem('pz_inv_collection_id', selectedCollectionId)
+    }, [selectedCollectionId])
+
+    useEffect(() => {
+        if (!isFilterStorageHydratedRef.current) return
+        sessionStorage.setItem('pz_inv_category', selectedCategory)
+    }, [selectedCategory])
 
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
@@ -295,8 +351,8 @@ export default function InventoryPage() {
                     setDemoProductIds(store.onboarding_missions.demo_product_ids.map(String));
                 }
 
-                // 🚀 CONSULTA PARALELA (0ms extra): Productos con compare_at_usd + Campañas Promocionales Activas
-                const [productsRes, promosRes] = await Promise.all([
+                // 🚀 CONSULTA PARALELA TRIPLE (0ms extra): Productos + Campañas (Banners) + Colecciones con sus ítems
+                const [productsRes, promosRes, collectionsRes] = await Promise.all([
                     supabase
                         .from('products')
                         .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, compare_at_usd, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
@@ -304,23 +360,107 @@ export default function InventoryPage() {
                         .order('created_at', { ascending: false }),
                     supabase
                         .from('promotions')
-                        .select('id, title, is_active, expires_at, linked_products, promo_type, discount_percentage, bogo_buy, bogo_pay')
+                        .select('id, title, tagline, image_url, bg_color, text_color, is_active, expires_at, linked_products, promo_type, discount_percentage, bogo_buy, bogo_pay')
                         .eq('store_id', store.id)
-                        .eq('is_active', true)
+                        .order('created_at', { ascending: false }),
+                    supabase
+                        .from('collections')
+                        .select('id, name, slug, description, image_url, is_active, valid_until, settings, display_order, collection_items(item_type, product_id, promotion_id, category_name)')
+                        .eq('store_id', store.id)
+                        .order('display_order', { ascending: true })
                 ]);
 
                 const products = productsRes.data || [];
+                const allPromos = promosRes.data || [];
+                const allCollections = collectionsRes.data || [];
                 const nowMs = Date.now();
-                const activePromos = (promosRes.data || []).filter((p: any) => {
+
+                // 1. Construir Resumen de Campañas (Banners)
+                const parsedCampaigns: CampaignSummary[] = allPromos.map((p: any) => {
+                    const isExpired = Boolean(p.expires_at && new Date(p.expires_at).getTime() <= nowMs);
+                    const pIds = new Set<string>((p.linked_products || []).map((id: any) => String(id)));
+                    const typeLabel = p.promo_type === 'percentage' && Number(p.discount_percentage) > 0
+                        ? `Descuento -${Number(p.discount_percentage)}%`
+                        : p.promo_type === 'bogo' && Number(p.bogo_buy) > 0
+                            ? `Promoción ${p.bogo_buy}x${p.bogo_pay}`
+                            : 'Banner Visual';
+
+                    return {
+                        id: String(p.id),
+                        title: p.title || 'Campaña sin título',
+                        tagline: p.tagline || null,
+                        imageUrl: p.image_url || null,
+                        bgColor: p.bg_color || '#171717',
+                        textColor: p.text_color || '#ffffff',
+                        isActive: Boolean(p.is_active),
+                        isExpired,
+                        typeLabel,
+                        productIds: pIds
+                    };
+                });
+                setCampaignsList(parsedCampaigns);
+
+                // 2. Construir Resumen Polimórfico de Colecciones (Productos directos + Categorías + Promociones)
+                const parsedCollections: CollectionSummary[] = allCollections.map((col: any) => {
+                    const isExpired = Boolean(col.valid_until && new Date(col.valid_until).getTime() <= nowMs);
+                    const allowedProductIds = new Set<string>();
+                    const allowedCategories = new Set<string>();
+                    const allowedPromoIds = new Set<string>();
+
+                    (col.collection_items || []).forEach((it: any) => {
+                        if (it.item_type === 'product' && it.product_id !== null && it.product_id !== undefined) {
+                            allowedProductIds.add(String(it.product_id));
+                        } else if (it.item_type === 'category' && it.category_name) {
+                            allowedCategories.add(String(it.category_name).toLowerCase().trim());
+                        } else if (it.item_type === 'promotion' && it.promotion_id) {
+                            allowedPromoIds.add(String(it.promotion_id));
+                        }
+                    });
+
+                    allPromos.forEach((pr: any) => {
+                        if (allowedPromoIds.has(String(pr.id))) {
+                            (pr.linked_products || []).forEach((pid: any) => allowedProductIds.add(String(pid)));
+                        }
+                    });
+
+                    const resolvedProductIds = new Set<string>();
+                    let fallbackCoverUrl: string | null = null;
+
+                    products.forEach((prod: any) => {
+                        const pid = String(prod.id);
+                        const pcat = String(prod.category || '').toLowerCase().trim();
+                        if (allowedProductIds.has(pid) || (pcat && allowedCategories.has(pcat))) {
+                            resolvedProductIds.add(pid);
+                            if (!fallbackCoverUrl && prod.image_url) {
+                                fallbackCoverUrl = prod.image_url;
+                            }
+                        }
+                    });
+
+                    return {
+                        id: String(col.id),
+                        name: col.name || 'Colección',
+                        slug: col.slug || '',
+                        description: col.description || null,
+                        imageUrl: col.image_url || fallbackCoverUrl,
+                        badgeText: col.settings?.badge_text || null,
+                        isActive: Boolean(col.is_active),
+                        isExpired,
+                        productIds: resolvedProductIds
+                    };
+                });
+                setCollectionsList(parsedCollections);
+
+                // 3. Mapa O(1) de descuentos por campaña activa para cada producto
+                const activeDiscountPromos = allPromos.filter((p: any) => {
                     if (!p.is_active) return false;
                     if (p.expires_at && new Date(p.expires_at).getTime() <= nowMs) return false;
                     return (p.promo_type === 'percentage' && Number(p.discount_percentage) > 0) ||
                         (p.promo_type === 'bogo' && Number(p.bogo_buy) > 0);
                 });
 
-                // Mapa O(1) de descuentos por campaña activa para cada producto
                 const productPromoLabelMap = new Map<string, string>();
-                activePromos.forEach((p: any) => {
+                activeDiscountPromos.forEach((p: any) => {
                     const label = p.promo_type === 'percentage'
                         ? `-${Number(p.discount_percentage)}% (${p.title})`
                         : `${p.bogo_buy}x${p.bogo_pay} (${p.title})`;
@@ -571,8 +711,71 @@ export default function InventoryPage() {
         }
     };
 
+    // Conjuntos O(1) de todos los productos vinculados a cualquier campaña o colección
+    const allCampaignProductIds = useMemo(() => {
+        const set = new Set<string>();
+        campaignsList.forEach(c => c.productIds.forEach(pid => set.add(pid)));
+        return set;
+    }, [campaignsList]);
+
+    const allCollectionProductIds = useMemo(() => {
+        const set = new Set<string>();
+        collectionsList.forEach(c => c.productIds.forEach(pid => set.add(pid)));
+        return set;
+    }, [collectionsList]);
+
+    const activeCampaignObj = useMemo(() => {
+        if (selectedCampaignId === 'ALL') return null;
+        return campaignsList.find(c => c.id === selectedCampaignId) || null;
+    }, [campaignsList, selectedCampaignId]);
+
+    const activeCollectionObj = useMemo(() => {
+        if (selectedCollectionId === 'ALL') return null;
+        return collectionsList.find(c => c.id === selectedCollectionId) || null;
+    }, [collectionsList, selectedCollectionId]);
+
+   // Bloqueo de scroll de fondo cuando cualquier modal está abierto (Impide que la barra inferior móvil se asome)
+    const isAnyModalOpen = Boolean(isReordering || visibilityModalTarget || selectorModalType || isCategoryMenuOpen);
+
+    useEffect(() => {
+        if (isAnyModalOpen) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        };
+    }, [isAnyModalOpen]);
+
+    // Directorio Suizo de Categorías extraído en vivo del inventario
+    const categoriesDirectory = useMemo(() => {
+        const map = new Map<string, { name: string; rowCount: number; productIds: Set<string>; outCount: number }>();
+
+        items.forEach(item => {
+            const rawCat = (item.category || '').trim();
+            if (!rawCat) return;
+            const normalized = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+            const key = normalized.toLowerCase();
+
+            if (!map.has(key)) {
+                map.set(key, { name: normalized, rowCount: 0, productIds: new Set(), outCount: 0 });
+            }
+            const entry = map.get(key)!;
+            entry.rowCount += 1;
+            entry.productIds.add(String(item.productId));
+            if (item.stock === 0) entry.outCount += 1;
+        });
+
+        return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [items]);
+
     const filteredItems = useMemo(() => {
         const term = search.toLowerCase().trim();
+        const activeCatLower = selectedCategory !== 'ALL' ? selectedCategory.toLowerCase().trim() : null;
 
         const baseFiltered = items.filter(item => {
             const textMatch =
@@ -583,15 +786,27 @@ export default function InventoryPage() {
                 (item.sku && item.sku.toLowerCase().includes(term)) ||
                 (item.category && item.category.toLowerCase().includes(term));
 
+            const categoryMatch = !activeCatLower || (item.category && item.category.toLowerCase().trim() === activeCatLower);
+
+            const pidStr = String(item.productId);
             let statusMatch = true;
+
             if (filterStatus === 'active') statusMatch = item.status === 'active';
             else if (filterStatus === 'draft') statusMatch = item.status === 'draft';
             else if (filterStatus === 'featured') statusMatch = item.isFeatured === true;
             else if (filterStatus === 'discounted') statusMatch = item.hasActiveDiscount === true;
-            else if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3;
+            else if (filterStatus === 'campaign') {
+                statusMatch = activeCampaignObj
+                    ? activeCampaignObj.productIds.has(pidStr)
+                    : allCampaignProductIds.has(pidStr);
+            } else if (filterStatus === 'collection') {
+                statusMatch = activeCollectionObj
+                    ? activeCollectionObj.productIds.has(pidStr)
+                    : allCollectionProductIds.has(pidStr);
+            } else if (filterStatus === 'low') statusMatch = item.stock > 0 && item.stock <= 3;
             else if (filterStatus === 'out') statusMatch = item.stock === 0;
 
-            return textMatch && statusMatch;
+            return textMatch && categoryMatch && statusMatch;
         });
 
         if (sortBy === 'recent') return baseFiltered;
@@ -603,7 +818,7 @@ export default function InventoryPage() {
             if (sortBy === 'stock_desc') return b.stock - a.stock;
             return 0;
         });
-    }, [items, search, filterStatus, sortBy]);
+    }, [items, search, selectedCategory, filterStatus, sortBy, activeCampaignObj, activeCollectionObj, allCampaignProductIds, allCollectionProductIds]);
 
     const stats = useMemo(() => ({
         total: items.length,
@@ -611,11 +826,17 @@ export default function InventoryPage() {
         draft: items.filter(i => i.status === 'draft').length,
         featured: items.filter(i => i.isFeatured).length,
         discounted: items.filter(i => i.hasActiveDiscount).length,
+        campaignRows: activeCampaignObj
+            ? items.filter(i => activeCampaignObj.productIds.has(String(i.productId))).length
+            : items.filter(i => allCampaignProductIds.has(String(i.productId))).length,
+        collectionRows: activeCollectionObj
+            ? items.filter(i => activeCollectionObj.productIds.has(String(i.productId))).length
+            : items.filter(i => allCollectionProductIds.has(String(i.productId))).length,
         low: items.filter(i => i.stock > 0 && i.stock <= 3).length,
         out: items.filter(i => i.stock === 0).length
-    }), [items]);
+    }), [items, activeCampaignObj, activeCollectionObj, allCampaignProductIds, allCollectionProductIds]);
 
-  // 1. SENSOR DE SCROLL HORIZONTAL DE LA TABLA (Activa la miniatura flotante a 120 FPS vía atributo DOM sin re-renderizar filas)
+    // 1. SENSOR DE SCROLL HORIZONTAL DE LA TABLA (Activa la miniatura flotante a 120 FPS vía atributo DOM sin re-renderizar filas)
     const tableScrollRef = useRef<HTMLDivElement>(null)
     const [isScrolledToEnd, setIsScrolledToEnd] = useState(false)
     const [isScrollable, setIsScrollable] = useState(false)
@@ -679,7 +900,7 @@ export default function InventoryPage() {
         return () => window.removeEventListener('resize', handleResize)
     }, [filteredItems])
 
-   // 3. SENSOR UNIVERSAL DE SCROLL VERTICAL (Fase de Captura: detecta scroll en window o en contenedores internos del Admin Layout)
+    // 3. SENSOR UNIVERSAL DE SCROLL VERTICAL (Fase de Captura: detecta scroll en window o en contenedores internos del Admin Layout)
     const [showScrollTop, setShowScrollTop] = useState(false)
     const verticalScrollerRef = useRef<HTMLElement | Window | null>(null)
     const lastKnownScrollTopRef = useRef<number>(0)
@@ -736,7 +957,7 @@ export default function InventoryPage() {
                 scrollTop: lastKnownScrollTopRef.current || window.scrollY || document.documentElement.scrollTop || 0,
                 timestamp: Date.now()
             }))
-        } catch {}
+        } catch { }
     }
 
     const hasRestoredScrollRef = useRef(false)
@@ -778,13 +999,13 @@ export default function InventoryPage() {
                     }
                 })
             })
-        } catch {}
+        } catch { }
     }, [loading, items.length])
 
     return (
         <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
 
-         {/* HEADER STICKY (Con Acción "Ordenar Vitrina" integrada en la esquina en Mobile) */}
+            {/* HEADER STICKY (Con Acción "Ordenar Vitrina" integrada en la esquina en Mobile) */}
             <div className="bg-[#FAFAFC]/95 backdrop-blur-md border-b border-neutral-200/50 sticky top-0 z-30 px-4 md:px-8 py-3.5 md:py-4 flex justify-between items-center gap-3 transition-all">
                 <div className="flex items-center gap-3 min-w-0">
                     <Link href="/admin" className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-neutral-200/50 hover:border-neutral-300 transition-colors shrink-0 shadow-xs active:scale-[0.98]">
@@ -796,18 +1017,39 @@ export default function InventoryPage() {
                     </div>
                 </div>
 
-                {/* BOTÓN ORDENAR VITRINA EN MOBILE (Esquina Superior Derecha) */}
-                {items.length > 1 && (
+              {/* ACCIONES RÁPIDAS MOBILE EN HEADER STICKY: ORDENAR VITRINA + ÍNDICE SUIZO DE CATEGORÍAS */}
+                <div className="flex md:hidden items-center gap-1.5 shrink-0">
+                    {items.length > 1 && (
+                        <button
+                            type="button"
+                            onClick={openReorderModal}
+                            className="bg-neutral-950 text-white px-2.5 h-9 rounded-xl text-[11px] font-semibold shadow-2xs hover:bg-black active:scale-[0.97] transition-all flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                            <GripVertical size={12} className="text-neutral-300" />
+                            <span>Ordenar Vitrina</span>
+                        </button>
+                    )}
+
+                    {/* Botón Hamburguesa Minimalista (Estilo Suizo de 2 Trazos) */}
                     <button
                         type="button"
-                        onClick={openReorderModal}
-                        className="md:hidden bg-neutral-950 text-white px-3 py-2 rounded-xl text-[11px] font-semibold shadow-2xs hover:bg-black active:scale-[0.97] transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+                        onClick={() => setIsCategoryMenuOpen(true)}
+                        aria-label="Abrir índice de categorías"
+                        title="Filtrar por categoría"
+                        className={`relative w-9 h-9 rounded-xl border flex flex-col items-center justify-center gap-[4.5px] transition-all active:scale-95 cursor-pointer shrink-0 ${
+                            selectedCategory !== 'ALL'
+                                ? 'bg-neutral-950 border-neutral-950 text-white'
+                                : 'bg-white border-neutral-200/70 text-neutral-900 hover:border-neutral-400'
+                        }`}
                     >
-                        <GripVertical size={13} className="text-neutral-300" />
-                        <span>Ordenar Vitrina</span>
+                        <span className="w-4 h-[1.5px] bg-current rounded-full" />
+                        <span className="w-4 h-[1.5px] bg-current rounded-full" />
+                        {selectedCategory !== 'ALL' && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#FAFAFC]" />
+                        )}
                     </button>
-                )}
-
+                </div>
+              
                 {/* KPI CHIPS (Desktop) */}
                 <div className="hidden md:flex gap-2.5 shrink-0">
                     <div className="px-3.5 py-1.5 bg-white/80 rounded-lg flex items-center gap-2.5">
@@ -839,7 +1081,7 @@ export default function InventoryPage() {
                         />
                     )}
 
-                 {/* BARRA DE CONTROLES (Buscador/Acciones Arriba + Riel de Filtros con Desvanecido Lateral Abajo) */}
+                    {/* BARRA DE CONTROLES (Buscador/Acciones Arriba + Riel de Filtros con Desvanecido Lateral Abajo) */}
                     <div className="flex flex-col gap-3 w-full">
 
                         {/* NIVEL 1: Buscador Omnicanal + Selector de Ordenamiento + Acciones */}
@@ -875,11 +1117,10 @@ export default function InventoryPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsSortOpen(prev => !prev)}
-                                                    className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${
-                                                        isCustomSort || isSortOpen
+                                                    className={`w-full sm:w-auto min-h-[38px] px-3.5 py-2 rounded-xl border bg-white text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer active:scale-[0.99] shadow-2xs ${isCustomSort || isSortOpen
                                                             ? 'border-neutral-900 text-neutral-950'
                                                             : 'border-neutral-200/60 hover:border-neutral-400 text-neutral-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <ArrowUpDown size={13} className={isCustomSort ? 'text-neutral-950' : 'text-neutral-400'} />
@@ -919,11 +1160,10 @@ export default function InventoryPage() {
                                                                                 setSortBy(option.value);
                                                                                 setIsSortOpen(false);
                                                                             }}
-                                                                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                                                                isSelected
+                                                                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${isSelected
                                                                                     ? 'bg-neutral-950 text-white font-semibold'
                                                                                     : 'text-neutral-700 hover:bg-neutral-100/80 font-medium'
-                                                                            }`}
+                                                                                }`}
                                                                         >
                                                                             <span>{option.label}</span>
                                                                             {isSelected && <Check size={13} strokeWidth={2.5} />}
@@ -963,7 +1203,7 @@ export default function InventoryPage() {
                             </div>
                         </div>
 
-                        {/* NIVEL 2: Riel de 7 Filtros con Desvanecido Lateral Inteligente (Mobile y Desktop) */}
+{/* NIVEL 2: Riel de Filtros con Gatillos de Modal para Campañas y Colecciones */}
                         <div className="relative w-full bg-neutral-100/70 p-1 rounded-xl border border-neutral-200/60 overflow-hidden">
                             <div
                                 ref={filterRailRef}
@@ -972,13 +1212,31 @@ export default function InventoryPage() {
                                 className="flex overflow-x-auto no-scrollbar w-full gap-1 items-center"
                             >
                                 {[
-                                    { id: 'all', label: 'Todo', count: stats.total, icon: null },
-                                    { id: 'active', label: 'En Vitrina', count: stats.active, icon: Eye },
-                                    { id: 'draft', label: 'Borradores', count: stats.draft, icon: EyeOff },
-                                    { id: 'featured', label: 'Lo Más Vendido', count: stats.featured, icon: Star },
-                                    { id: 'discounted', label: 'Con Descuento', count: stats.discounted, icon: Tag },
-                                    { id: 'low', label: 'Stock Bajo', count: stats.low, icon: null },
-                                    { id: 'out', label: 'Agotados', count: stats.out, icon: null }
+                                    { id: 'all', label: 'Todo', count: stats.total, icon: null, isModalTrigger: false },
+                                    { id: 'active', label: 'En Vitrina', count: stats.active, icon: Eye, isModalTrigger: false },
+                                    { id: 'draft', label: 'Borradores', count: stats.draft, icon: EyeOff, isModalTrigger: false },
+                                    { id: 'featured', label: 'Lo Más Vendido', count: stats.featured, icon: Star, isModalTrigger: false },
+                                    { id: 'discounted', label: 'Con Descuento', count: stats.discounted, icon: Tag, isModalTrigger: false },
+                                    {
+                                        id: 'campaign',
+                                        label: filterStatus === 'campaign'
+                                            ? (activeCampaignObj ? `Campaña: ${activeCampaignObj.title}` : 'Campañas: Todas')
+                                            : 'Campañas',
+                                        count: stats.campaignRows,
+                                        icon: Megaphone,
+                                        isModalTrigger: true
+                                    },
+                                    {
+                                        id: 'collection',
+                                        label: filterStatus === 'collection'
+                                            ? (activeCollectionObj ? `Colección: ${activeCollectionObj.name}` : 'Colecciones: Todas')
+                                            : 'Colecciones',
+                                        count: stats.collectionRows,
+                                        icon: Layers,
+                                        isModalTrigger: true
+                                    },
+                                    { id: 'low', label: 'Stock Bajo', count: stats.low, icon: null, isModalTrigger: false },
+                                    { id: 'out', label: 'Agotados', count: stats.out, icon: null, isModalTrigger: false }
                                 ].map(tab => {
                                     const isActive = filterStatus === tab.id;
                                     const TabIcon = tab.icon;
@@ -986,7 +1244,15 @@ export default function InventoryPage() {
                                         <button
                                             key={tab.id}
                                             type="button"
-                                            onClick={() => setFilterStatus(tab.id as InventoryFilterStatus)}
+                                            onClick={() => {
+                                                if (tab.id === 'campaign') {
+                                                    setSelectorModalType('campaign');
+                                                } else if (tab.id === 'collection') {
+                                                    setSelectorModalType('collection');
+                                                } else {
+                                                    setFilterStatus(tab.id as InventoryFilterStatus);
+                                                }
+                                            }}
                                             className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer ${
                                                 isActive
                                                     ? 'bg-white text-neutral-950 shadow-2xs border border-neutral-200/60'
@@ -1001,11 +1267,16 @@ export default function InventoryPage() {
                                                             ? 'text-amber-500 fill-amber-500'
                                                             : tab.id === 'discounted' && isActive
                                                               ? 'text-emerald-600'
-                                                              : 'opacity-70'
+                                                              : (tab.id === 'campaign' || tab.id === 'collection') && isActive
+                                                                ? 'text-neutral-950'
+                                                                : 'opacity-70'
                                                     }
                                                 />
                                             )}
-                                            <span>{tab.label}</span>
+                                            <span className="max-w-[160px] truncate">{tab.label}</span>
+                                            {tab.isModalTrigger && (
+                                                <ChevronDown size={11} className="text-neutral-400 -ml-0.5 shrink-0" />
+                                            )}
                                             <span className={`font-mono text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${
                                                 isActive
                                                     ? 'bg-neutral-900 text-white font-bold'
@@ -1018,6 +1289,97 @@ export default function InventoryPage() {
                                 })}
                             </div>
                         </div>
+
+                        {/* BARRA CONTEXTUAL CUANDO HAY UNA CAMPAÑA O COLECCIÓN ACTIVA */}
+                        <AnimatePresence>
+                            {(filterStatus === 'campaign' || filterStatus === 'collection') && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    transition={{ duration: 0.16 }}
+                                    className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-white border border-neutral-200/70 shadow-2xs"
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-neutral-100 border border-neutral-200/60 flex items-center justify-center shrink-0 text-neutral-800">
+                                            {filterStatus === 'campaign' ? <Megaphone size={13} /> : <Layers size={13} />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-neutral-900 truncate">
+                                                {filterStatus === 'campaign'
+                                                    ? (activeCampaignObj ? activeCampaignObj.title : 'Todas las Campañas (Banners)')
+                                                    : (activeCollectionObj ? activeCollectionObj.name : 'Todas las Colecciones')}
+                                            </p>
+                                            <p className="text-[10px] font-mono text-neutral-400 truncate">
+                                                Mostrando {filteredItems.length} {filteredItems.length === 1 ? 'fila vinculada' : 'filas vinculadas'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectorModalType(filterStatus === 'campaign' ? 'campaign' : 'collection')}
+                                            className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200/70 text-neutral-800 text-[11px] font-semibold transition-colors cursor-pointer"
+                                        >
+                                            {filterStatus === 'campaign' ? 'Cambiar campaña' : 'Cambiar colección'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFilterStatus('all')}
+                                            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+                                            title="Quitar filtro"
+                                        >
+                                            <X size={14} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* BARRA CONTEXTUAL SUIZA CUANDO HAY UNA CATEGORÍA SELECCIONADA */}
+                        <AnimatePresence>
+                            {selectedCategory !== 'ALL' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -4 }}
+                                    transition={{ duration: 0.16 }}
+                                    className="flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl bg-white border border-neutral-200/70 shadow-2xs"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-400">
+                                            CATEGORÍA //
+                                        </span>
+                                        <span className="text-xs font-bold text-neutral-950 truncate">
+                                            {selectedCategory}
+                                        </span>
+                                        <span className="font-mono text-[10px] text-neutral-400">
+                                            ({filteredItems.length})
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryMenuOpen(true)}
+                                            className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 transition-colors cursor-pointer"
+                                        >
+                                            Cambiar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedCategory('ALL')}
+                                            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 transition-colors cursor-pointer"
+                                            title="Ver todas las categorías"
+                                        >
+                                            <X size={13} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    
                     </div>
                     {/* TABLA ELITE (Executive Cleanlook) */}
                     <div className="bg-white rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] w-full max-w-full relative overflow-hidden">
@@ -1045,7 +1407,7 @@ export default function InventoryPage() {
                                 </div>
 
                                 <div
-                        
+
                                     ref={tableScrollRef}
                                     onScroll={checkScroll}
                                     data-first-col-hidden="false"
@@ -1083,18 +1445,17 @@ export default function InventoryPage() {
                                                     statusText = 'Bajo'
                                                 }
 
-                                           const isRecentlyEdited = recentlyEditedProductId === String(item.productId)
+                                                const isRecentlyEdited = recentlyEditedProductId === String(item.productId)
 
                                                 return (
                                                     <tr
                                                         key={item.rowId}
                                                         id={`inv-row-${item.rowId}`}
                                                         data-product-id={item.productId}
-                                                        className={`group transition-colors duration-500 ${
-                                                            isRecentlyEdited
+                                                        className={`group transition-colors duration-500 ${isRecentlyEdited
                                                                 ? 'bg-emerald-50/60 hover:bg-emerald-50/80'
                                                                 : 'hover:bg-neutral-50/40'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
                                                             <Link
@@ -1104,9 +1465,8 @@ export default function InventoryPage() {
                                                                 className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left"
                                                                 title="Editar producto"
                                                             >
-                                                                <div className={`w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border overflow-hidden shrink-0 relative transition-colors ${
-                                                                    isRecentlyEdited ? 'border-emerald-400 ring-2 ring-emerald-500/20' : 'border-neutral-200/50 group-hover/portal:border-neutral-300'
-                                                                }`}>
+                                                                <div className={`w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border overflow-hidden shrink-0 relative transition-colors ${isRecentlyEdited ? 'border-emerald-400 ring-2 ring-emerald-500/20' : 'border-neutral-200/50 group-hover/portal:border-neutral-300'
+                                                                    }`}>
                                                                     {item.image ? (
                                                                         <Image
                                                                             src={getOptimizedUrl(item.image)}
@@ -1380,7 +1740,7 @@ export default function InventoryPage() {
                                                             </button>
                                                         </td>
 
-                                                      {/* CELDA: ESTADO */}
+                                                        {/* CELDA: ESTADO */}
                                                         <td className="px-4 py-3 md:px-6 md:py-4 text-right align-middle">
                                                             <div className="flex justify-end items-center gap-3">
                                                                 <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 ${statusColor}`}>
@@ -1422,6 +1782,383 @@ export default function InventoryPage() {
                     )}
                 </div>
             </div>
+
+            {/* 💎 MENÚ LATERAL ESTILO SUIZO: DIRECTORIO DE CATEGORÍAS EN MOBILE (Z-9999 & Overscroll-Contain) */}
+            <AnimatePresence>
+                {isCategoryMenuOpen && (
+                    <div className="fixed inset-0 z-[9999] flex justify-end">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="absolute inset-0 bg-neutral-950/35 backdrop-blur-xs"
+                            onClick={() => setIsCategoryMenuOpen(false)}
+                        />
+
+                        <motion.aside
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                            className="relative w-full max-w-[320px] h-dvh bg-white border-l border-neutral-200 flex flex-col z-10 select-none"
+                        >
+                            {/* Cabecera Tipográfica Suiza */}
+                            <div className="px-6 py-5 border-b border-neutral-900 flex items-baseline justify-between shrink-0">
+                                <div>
+                                    <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.24em] text-neutral-400">
+                                        ÍNDICE // {categoriesDirectory.length.toString().padStart(2, '0')}
+                                    </span>
+                                    <h3 className="font-bold text-lg tracking-tight text-neutral-950 mt-0.5 leading-none">
+                                        Categorías
+                                    </h3>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCategoryMenuOpen(false)}
+                                    className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-950 transition-colors py-1 flex items-center gap-1 cursor-pointer"
+                                >
+                                    <span>Cerrar</span>
+                                    <X size={13} strokeWidth={1.75} />
+                                </button>
+                            </div>
+
+                            {/* Lista Modular Suiza (Hilos de 1px, Cero Cajas) */}
+                            <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar divide-y divide-neutral-200/70">
+                                {/* Fila 00: Todas las Categorías */}
+                                {(() => {
+                                    const isAllSelected = selectedCategory === 'ALL';
+                                    return (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedCategory('ALL');
+                                                setIsCategoryMenuOpen(false);
+                                            }}
+                                            className={`w-full px-6 py-4 flex items-baseline justify-between gap-3 text-left transition-colors cursor-pointer ${
+                                                isAllSelected
+                                                    ? 'bg-neutral-950 text-white'
+                                                    : 'bg-white text-neutral-900 hover:bg-neutral-50'
+                                            }`}
+                                        >
+                                            <div className="flex items-baseline gap-4 min-w-0">
+                                                <span className={`font-mono text-[10px] tabular-nums shrink-0 ${
+                                                    isAllSelected ? 'text-neutral-400' : 'text-neutral-400'
+                                                }`}>
+                                                    00
+                                                </span>
+                                                <span className={`text-sm tracking-tight truncate ${
+                                                    isAllSelected ? 'font-bold' : 'font-medium'
+                                                }`}>
+                                                    Todas las categorías
+                                                </span>
+                                            </div>
+
+                                            <span className={`font-mono text-xs tabular-nums shrink-0 ${
+                                                isAllSelected ? 'text-white font-bold' : 'text-neutral-400'
+                                            }`}>
+                                                {items.length}
+                                            </span>
+                                        </button>
+                                    );
+                                })()}
+
+                                {/* Filas 01..N: Categorías Reales del Inventario */}
+                                {categoriesDirectory.map((cat, idx) => {
+                                    const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+                                    const indexLabel = (idx + 1).toString().padStart(2, '0');
+
+                                    return (
+                                        <button
+                                            key={cat.name}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedCategory(cat.name);
+                                                setIsCategoryMenuOpen(false);
+                                            }}
+                                            className={`w-full px-6 py-4 flex items-baseline justify-between gap-3 text-left transition-colors cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-neutral-950 text-white'
+                                                    : 'bg-white text-neutral-900 hover:bg-neutral-50'
+                                            }`}
+                                        >
+                                            <div className="flex items-baseline gap-4 min-w-0">
+                                                <span className="font-mono text-[10px] text-neutral-400 tabular-nums shrink-0">
+                                                    {indexLabel}
+                                                </span>
+                                                <span className={`text-sm tracking-tight truncate ${
+                                                    isSelected ? 'font-bold' : 'font-medium'
+                                                }`}>
+                                                    {cat.name}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {cat.outCount > 0 && (
+                                                    <span
+                                                        className={`w-1.5 h-1.5 rounded-full ${
+                                                            isSelected ? 'bg-rose-400' : 'bg-rose-500'
+                                                        }`}
+                                                        title={`${cat.outCount} agotados en esta categoría`}
+                                                    />
+                                                )}
+                                                <span className={`font-mono text-xs tabular-nums ${
+                                                    isSelected ? 'text-white font-bold' : 'text-neutral-400'
+                                                }`}>
+                                                    {cat.rowCount}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Pie de Página Suizo */}
+                            <div className="px-6 py-3.5 border-t border-neutral-200/80 bg-neutral-50/50 flex items-center justify-between text-[10px] font-mono text-neutral-400 shrink-0">
+                                <span>TOTAL FILAS: {items.length}</span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Con agotados
+                                </span>
+                            </div>
+                        </motion.aside>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* MODAL EJECUTIVO SELECTOR DE CAMPAÑA (BANNERS) O COLECCIÓN ESPECÍFICA */}
+            <AnimatePresence>
+                {selectorModalType && (() => {
+                    const isCampaignMode = selectorModalType === 'campaign';
+                    const entities = isCampaignMode ? campaignsList : collectionsList;
+                    const currentSelectedId = isCampaignMode ? selectedCampaignId : selectedCollectionId;
+                    const isCurrentFilterTypeActive = filterStatus === selectorModalType;
+                    const allAssociatedRowsCount = isCampaignMode
+                        ? items.filter(i => allCampaignProductIds.has(String(i.productId))).length
+                        : items.filter(i => allCollectionProductIds.has(String(i.productId))).length;
+
+                    const handleSelectEntity = (id: string) => {
+                        if (isCampaignMode) {
+                            setSelectedCampaignId(id);
+                            setFilterStatus('campaign');
+                        } else {
+                            setSelectedCollectionId(id);
+                            setFilterStatus('collection');
+                        }
+                        setSelectorModalType(null);
+                    };
+
+                    return (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-neutral-900/35 backdrop-blur-xs"
+                                onClick={() => setSelectorModalType(null)}
+                            />
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.97, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 420, damping: 30 } }}
+                                exit={{ opacity: 0, scale: 0.97, y: 10, transition: { duration: 0.16 } }}
+                                className="relative bg-[#FAFAFC] w-full max-w-lg rounded-2xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.16)] border border-neutral-200/70 flex flex-col max-h-[82vh] z-10"
+                            >
+                                {/* Cabecera */}
+                                <div className="p-5 bg-white border-b border-neutral-200/60 flex items-center justify-between gap-3 shrink-0">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-xl bg-neutral-100 border border-neutral-200/70 flex items-center justify-center text-neutral-900 shrink-0">
+                                            {isCampaignMode ? <Megaphone size={16} /> : <Layers size={16} />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-sm md:text-base text-neutral-900 tracking-tight leading-none">
+                                                {isCampaignMode ? 'Filtrar por Campaña (Banner)' : 'Filtrar por Colección'}
+                                            </h3>
+                                            <p className="text-[10px] font-mono font-semibold uppercase tracking-wider text-neutral-400 mt-1">
+                                                {isCampaignMode
+                                                    ? 'Selecciona una campaña para auditar sus productos'
+                                                    : 'Selecciona una colección para revisar su inventario'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectorModalType(null)}
+                                        className="p-1.5 bg-neutral-50 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 border border-neutral-200/60 transition-colors cursor-pointer"
+                                    >
+                                        <X size={15} strokeWidth={2.5} />
+                                    </button>
+                                </div>
+
+                                {/* Cuerpo de Selección */}
+                                <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-2.5 no-scrollbar">
+                                    {entities.length === 0 ? (
+                                        <div className="py-12 px-4 text-center flex flex-col items-center gap-3 bg-white rounded-xl border border-neutral-200/60">
+                                            <div className="w-11 h-11 rounded-xl bg-neutral-50 border border-neutral-200/60 flex items-center justify-center text-neutral-400">
+                                                {isCampaignMode ? <Megaphone size={18} /> : <Layers size={18} />}
+                                            </div>
+                                            <div className="space-y-1 max-w-xs">
+                                                <p className="font-bold text-xs text-neutral-900">
+                                                    {isCampaignMode ? 'No tienes campañas creadas' : 'No tienes colecciones creadas'}
+                                                </p>
+                                                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                                                    {isCampaignMode
+                                                        ? 'Crea banners promocionales y vincula productos para auditar su stock desde aquí.'
+                                                        : 'Agrupa productos en colecciones temáticas o combos para filtrarlos rápidamente.'}
+                                                </p>
+                                            </div>
+                                            <Link
+                                                href={isCampaignMode ? '/admin/promotions' : '/admin/collections'}
+                                                className="mt-1 px-4 py-2 rounded-xl bg-neutral-950 text-white text-xs font-semibold hover:bg-black transition-colors inline-flex items-center gap-1.5"
+                                            >
+                                                <span>{isCampaignMode ? 'Ir a Campañas' : 'Ir a Colecciones'}</span>
+                                                <ArrowUpRight size={13} />
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Opción Global: Ver todas las campañas / todas las colecciones */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSelectEntity('ALL')}
+                                                className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] ${
+                                                    isCurrentFilterTypeActive && currentSelectedId === 'ALL'
+                                                        ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
+                                                        : 'bg-white text-neutral-900 border-neutral-200/70 hover:border-neutral-400'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
+                                                        isCurrentFilterTypeActive && currentSelectedId === 'ALL'
+                                                            ? 'bg-white/10 border-white/15 text-white'
+                                                            : 'bg-neutral-50 border-neutral-200/60 text-neutral-700'
+                                                    }`}>
+                                                        {isCampaignMode ? <Megaphone size={16} /> : <Layers size={16} />}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-xs truncate">
+                                                            {isCampaignMode ? 'Todas las campañas (Vista combinada)' : 'Todas las colecciones (Vista combinada)'}
+                                                        </p>
+                                                        <p className={`text-[10px] font-mono mt-0.5 ${
+                                                            isCurrentFilterTypeActive && currentSelectedId === 'ALL' ? 'text-neutral-300' : 'text-neutral-400'
+                                                        }`}>
+                                                            {entities.length} {isCampaignMode ? 'campañas registradas' : 'colecciones registradas'} · {allAssociatedRowsCount} filas en total
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {isCurrentFilterTypeActive && currentSelectedId === 'ALL' && (
+                                                    <Check size={15} strokeWidth={2.5} className="shrink-0" />
+                                                )}
+                                            </button>
+
+                                            {/* Lista Individual de cada Campaña o Colección con Telemetría de Stock */}
+                                            {entities.map((entity: any) => {
+                                                const isSelected = isCurrentFilterTypeActive && currentSelectedId === entity.id;
+                                                const entityTitle = isCampaignMode ? entity.title : entity.name;
+                                                const entitySubtitle = isCampaignMode
+                                                    ? (entity.tagline || entity.typeLabel)
+                                                    : (entity.badgeText || entity.description || 'Colección curada');
+
+                                                const matchingRows = items.filter(i => entity.productIds.has(String(i.productId)));
+                                                const outOfStockRows = matchingRows.filter(i => i.stock === 0).length;
+                                                const lowStockRows = matchingRows.filter(i => i.stock > 0 && i.stock <= 3).length;
+
+                                                return (
+                                                    <button
+                                                        key={entity.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectEntity(entity.id)}
+                                                        className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] ${
+                                                            isSelected
+                                                                ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
+                                                                : 'bg-white text-neutral-900 border-neutral-200/70 hover:border-neutral-400'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                            {/* Miniatura de Banner o Portada de Colección */}
+                                                            <div
+                                                                className="w-11 h-11 rounded-lg overflow-hidden shrink-0 relative border border-neutral-200/60 flex items-center justify-center bg-neutral-100"
+                                                                style={isCampaignMode && !entity.imageUrl ? { backgroundColor: entity.bgColor, color: entity.textColor } : undefined}
+                                                            >
+                                                                {entity.imageUrl ? (
+                                                                    <Image src={getOptimizedUrl(entity.imageUrl)} alt={entityTitle} fill sizes="44px" className="object-cover" />
+                                                                ) : isCampaignMode ? (
+                                                                    <Megaphone size={15} />
+                                                                ) : (
+                                                                    <Layers size={15} className="text-neutral-400" />
+                                                                )}
+                                                            </div>
+
+                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <p className="font-bold text-xs truncate">{entityTitle}</p>
+                                                                    {/* Estado Operativo */}
+                                                                    {entity.isExpired ? (
+                                                                        <span className="text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                                                                            Expirada
+                                                                        </span>
+                                                                    ) : entity.isActive ? (
+                                                                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                                                            isSelected ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
+                                                                        }`}>
+                                                                            Activa
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                                                            isSelected ? 'bg-white/15 text-neutral-300' : 'bg-neutral-100 text-neutral-500'
+                                                                        }`}>
+                                                                            Oculta
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono">
+                                                                    <span className={isSelected ? 'text-neutral-300' : 'text-neutral-500'}>
+                                                                        {entity.productIds.size} {entity.productIds.size === 1 ? 'producto' : 'productos'} ({matchingRows.length} filas)
+                                                                    </span>
+
+                                                                    {outOfStockRows > 0 && (
+                                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                                                            isSelected ? 'bg-rose-500/25 text-rose-200' : 'bg-rose-50 text-rose-700'
+                                                                        }`}>
+                                                                            ⚠️ {outOfStockRows} agotados
+                                                                        </span>
+                                                                    )}
+
+                                                                    {outOfStockRows === 0 && lowStockRows > 0 && (
+                                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                                                            isSelected ? 'bg-amber-500/25 text-amber-200' : 'bg-amber-50 text-amber-700'
+                                                                        }`}>
+                                                                            {lowStockRows} stock bajo
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {entitySubtitle && (
+                                                                    <p className={`text-[10px] truncate ${isSelected ? 'text-neutral-400' : 'text-neutral-400'}`}>
+                                                                        {entitySubtitle}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {isSelected ? (
+                                                            <Check size={15} strokeWidth={2.5} className="shrink-0" />
+                                                        ) : (
+                                                            <ChevronRight size={15} className="text-neutral-300 shrink-0" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    );
+                })()}
+            </AnimatePresence>
 
             {/* MODAL EJECUTIVO DE CONFIRMACIÓN DE VISIBILIDAD (VITRINA ⇄ BORRADOR) */}
             <AnimatePresence>
@@ -1592,7 +2329,7 @@ export default function InventoryPage() {
                             {/* Cabecera del Modal */}
                             <div className="p-5 md:p-6 bg-white border-b border-neutral-200/50 flex justify-between items-center shrink-0">
                                 <div>
-                                <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5">
                                         <GripVertical size={15} className="text-neutral-900" />
                                         <h3 className="font-bold text-sm md:text-base text-neutral-900 tracking-tight">Ordenar Vitrina</h3>
                                     </div>
@@ -1685,11 +2422,11 @@ export default function InventoryPage() {
                         </motion.div>
                     </div>
                 )}
-          </AnimatePresence>
+            </AnimatePresence>
 
-          {/* 🚀 BOTÓN FLOTANTE DISCRETO: VOLVER ARRIBA (Detecta scroll en window o contenedores internos) */}
+            {/* 🚀 BOTÓN FLOTANTE DISCRETO: VOLVER ARRIBA (Detecta scroll en window o contenedores internos) */}
             <AnimatePresence>
-                {showScrollTop && !isReordering && !visibilityModalTarget && (
+               {showScrollTop && !isReordering && !visibilityModalTarget && !selectorModalType && (
                     <motion.button
                         type="button"
                         onClick={scrollToTop}
